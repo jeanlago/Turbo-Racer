@@ -8,21 +8,23 @@ O objetivo é controlar carros em uma pista baseada em imagem, com física simpl
 ## 📂 Estrutura do Projeto
 ```text
 Turbo-Racer/
-├─ assets/                 # Recursos do jogo (sprites e mapas)
+├─ assets/
 │  └─ images/
-│     ├─ car_sprites/      # Sprites dos carros (red.png, blue.png, etc.)
-│     └─ maps/             # Mapas da pista (Map_1.png, etc.)
+│     ├─ car_sprites/
+│     │  ├─ blue.png
+│     │  └─ red.png
+│     └─ maps/
+│        └─ Map_1.png
+├─ src/
+│  ├─ main.py              # ponto de entrada do jogo
+│  ├─ config.py            # constantes (tela, FPS, caminhos, paleta/HSV)
+│  ├─ core/
+│  │  ├─ carro.py          # classe Carro (física, direção, colisões)
+│  │  └─ pista.py          # carregar pista e checar se o pixel é dirigível
+│  └─ utils/
+│     └─ cores.py          # utilitários de cor (RGB/HSV)
 │
-├─ core/
-│  ├─ carro.py             # Classe Carro (física, direção, colisões)
-│  └─ pista.py             # Carrega pista e checa se pixel é dirigível
-│
-├─ utils/
-│  └─ cores.py             # Auxiliares de cor (RGB/HSV)
-│
-├─ config.py               # Constantes globais (tela, FPS, caminhos, paleta)
-├─ main.py                 # Ponto de entrada (inicializa e roda o loop)
-└─ README.md               # Este arquivo
+└─ README.md
 ```
 ---
 
