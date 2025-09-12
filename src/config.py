@@ -1,7 +1,7 @@
 import os
 
 # ---------- Tela ----------
-LARGURA, ALTURA = 1024, 768
+LARGURA, ALTURA = 1280, 720
 FPS = 60
 
 # ---------- Caminhos ----------

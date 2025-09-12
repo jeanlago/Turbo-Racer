@@ -1,4 +1,3 @@
-# core/carro.py
 import os, math, pygame
 from config import (
     LARGURA, ALTURA, DIR_SPRITES,
@@ -190,7 +189,7 @@ class Carro:
             direcao_out = (1 if esquerda else -1)  # esquerda => traseira pra direita (v_lat > 0)
             v_lat += direcao_out * abs(v_long) * self.DRIFT_KICK_START
 
-        # 2) Slip CONTÍNUO enquanto segura handbrake + direção (injeta lateral, não “só acelera”)
+        # 2) Slip CONTÍNUO enquanto segura handbrake + direção (injeta lateral, não "só acelera")
         if drifteando and (direita ^ esquerda) and abs(v_long) > 0.1:
             direcao_out = (1 if esquerda else -1)
             v_lat += direcao_out * abs(v_long) * (self.DRIFT_FEED_PER_S * dt)
@@ -199,7 +198,7 @@ class Carro:
         lat_grip = (self.LATERAL_GRIP_DRIFT if drifteando else self.LATERAL_GRIP_NORMAL)
         v_lat *= lat_grip
 
-        # 4) Limite de drift angle: impede “pirueta” e mantém sensação arcade
+        # 4) Limite de drift angle: impede "pirueta" e mantém sensação arcade
         max_vlat = max(self.DRIFT_RATIO_MARGIN, abs(v_long) * self.DRIFT_RATIO_MAX)
         if v_lat >  max_vlat: v_lat =  max_vlat
         if v_lat < -max_vlat: v_lat = -max_vlat
@@ -256,7 +255,7 @@ class Carro:
         self.x = max(0.0, min(LARGURA * 1.0, self.x))
         self.y = max(0.0, min(ALTURA * 1.0, self.y))
 
-        # Atualiza “velocidade” (longitudinal) para HUD/lógica existente
+        # Atualiza "velocidade" (longitudinal) para HUD/lógica existente
         self.velocidade = v_long
 
         # Partículas & intensidade de drift

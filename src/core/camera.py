@@ -60,5 +60,5 @@ class Camera:
         """Recorta a visão do mundo e escala para preencher a tela."""
         r = self.ret_visao()
         recorte = superficie_mundo.subsurface(r).copy()
-        ampliado = pygame.transform.smoothscale(recorte, (self.largura_tela, self.altura_tela))
+        ampliado = pygame.transform.scale(recorte, (self.largura_tela, self.altura_tela))
         superficie_tela.blit(ampliado, (0, 0))

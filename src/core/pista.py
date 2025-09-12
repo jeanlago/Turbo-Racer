@@ -1,7 +1,8 @@
 import pygame, os, math, json
 from config import (
     LARGURA, ALTURA, CAMINHO_MAPA, CAMINHO_GUIAS, CAMINHO_WAYPOINTS_JSON,
-    CORES_PISTA, TOLERANCIA_COR, HSV_S_MAX, HSV_V_MAX,
+    CORES_PISTA, TOLERANCIA_COR,
+    HSV_S_MAX, HSV_V_MAX,
     CHECKPOINT_COR, CHECKPOINT_TOL, CHECKPOINT_MIN_PIXELS,
     WAYPOINTS_MAP_1
 )
@@ -10,21 +11,37 @@ from config import (
 def _cor_proxima(c, alvo, tol):
     return abs(c[0]-alvo[0])<=tol and abs(c[1]-alvo[1])<=tol and abs(c[2]-alvo[2])<=tol
 
-def _is_asfalto_hsv(rgb):
+def _is_grey_like(rgb):
+    """
+    Considera 'pista' qualquer cor de baixa saturação (cinza/branco),
+    desde que não seja muito escura (valor baixo).
+    """
     c = pygame.Color(*rgb)
-    h,s,v,_ = c.hsva
-    return (s <= HSV_S_MAX and v <= HSV_V_MAX)
+    h, s, v, _ = c.hsva  # s e v em [0..100]
+    return (s <= HSV_S_MAX) and (v <= HSV_V_MAX)
 
 def eh_pixel_da_pista(surface, x, y):
+    """True se é pista; False se é limite/fora."""
     if x < 0 or y < 0 or x >= surface.get_width() or y >= surface.get_height():
         return False
-    r,g,b,_ = surface.get_at((x,y))
-    if _is_asfalto_hsv((r,g,b)):
+
+    r, g, b, _ = surface.get_at((x, y))
+
+    # 1) Limite especial (verde-lima) SEMPRE fora
+    if _cor_proxima((r, g, b), (0, 255, 0), 45):
+        return False
+
+    # 2) Cinzas/brancos (baixa saturação) contam como pista
+    if _is_grey_like((r, g, b)):
         return True
-    for pr,pg,pb in CORES_PISTA:
-        if _cor_proxima((r,g,b), (pr,pg,pb), TOLERANCIA_COR):
+
+    # 3) Paleta explícita adicional
+    for pr, pg, pb in CORES_PISTA:
+        if _cor_proxima((r, g, b), (pr, pg, pb), TOLERANCIA_COR):
             return True
+
     return False
+
 
 # ---------- carregamento ----------
 def carregar_pista():
