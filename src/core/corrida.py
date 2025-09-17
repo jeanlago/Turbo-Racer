@@ -94,7 +94,8 @@ class GerenciadorCorrida:
             voltas = self.voltas.get(carro, 0)
             t_final = self.tempo_final.get(carro, None)
             t_txt = self._fmt_tempo(self.tempo_global if t_final is None else t_final)
-            texto = f"P{i}  Voltas: {voltas}/{VOLTAS_OBJETIVO}  Turbo: {int(carro.turbo_carga)}%  Tempo: {t_txt}"
+            nome_carro = getattr(carro, 'nome', f'P{i}')
+            texto = f"{nome_carro}  Voltas: {voltas}/{VOLTAS_OBJETIVO}  Turbo: {int(carro.turbo_carga)}%  Tempo: {t_txt}"
             sombra = self.fonte.render(texto, True, COR_SOMBRA)
             superficie = self.fonte.render(texto, True, COR_TEXTO)
             tela.blit(sombra, (10, y+2))
