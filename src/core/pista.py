@@ -27,18 +27,101 @@ def eh_pixel_da_pista(surface, x, y):
 
     r, g, b, _ = surface.get_at((x, y))
 
-    # 1) Limite especial (verde-lima) SEMPRE fora
-    if _cor_proxima((r, g, b), (0, 255, 0), 45):
+    # 1) Verde = fora da pista (limite)
+    if _cor_proxima((r, g, b), (0, 255, 0), 50):
         return False
 
-    # 2) Cinzas/brancos (baixa saturação) contam como pista
-    if _is_grey_like((r, g, b)):
+    # 2) Laranja = pista (área válida para carros) - incluindo tons próximos
+    if _cor_proxima((r, g, b), (255, 165, 0), 50):  # Laranja padrão
+        return True
+    if _cor_proxima((r, g, b), (254, 168, 59), 50):  # Laranja da sua imagem
+        return True
+    if _cor_proxima((r, g, b), (254, 169, 59), 50):  # Variação do laranja
+        return True
+    
+    # 3) Tons de laranja/amarelo também contam como pista
+    if _cor_proxima((r, g, b), (255, 200, 0), 50):  # Amarelo-laranja
+        return True
+    if _cor_proxima((r, g, b), (255, 140, 0), 50):  # Laranja escuro
         return True
 
-    # 3) Paleta explícita adicional
-    for pr, pg, pb in CORES_PISTA:
-        if _cor_proxima((r, g, b), (pr, pg, pb), TOLERANCIA_COR):
-            return True
+    # 4) Magenta = checkpoints (É pista válida para a IA seguir)
+    # O magenta é o caminho que a IA deve seguir em loop
+    if _cor_proxima((r, g, b), (255, 0, 255), 50):  # Magenta
+        return True
+
+    return False
+
+def eh_pixel_transitavel(surface, x, y):
+    """True se é área transitável (não colide); False se é parede/limite."""
+    if x < 0 or y < 0 or x >= surface.get_width() or y >= surface.get_height():
+        return False
+
+    r, g, b, _ = surface.get_at((x, y))
+
+    # 1) Verde = fora da pista (limite) - NÃO transitável
+    if _cor_proxima((r, g, b), (0, 255, 0), 50):
+        return False
+
+    # 2) Laranja = pista (área válida para carros) - transitável
+    if _cor_proxima((r, g, b), (255, 165, 0), 50):  # Laranja padrão
+        return True
+    if _cor_proxima((r, g, b), (254, 168, 59), 50):  # Laranja da sua imagem
+        return True
+    if _cor_proxima((r, g, b), (254, 169, 59), 50):  # Variação do laranja
+        return True
+    
+    # 3) Tons de laranja/amarelo também contam como transitável
+    if _cor_proxima((r, g, b), (255, 200, 0), 50):  # Amarelo-laranja
+        return True
+    if _cor_proxima((r, g, b), (255, 140, 0), 50):  # Laranja escuro
+        return True
+
+    # 4) Magenta = checkpoints (transitável para carros)
+    # O magenta é transitável para carros e pode ser usado como pista
+    if _cor_proxima((r, g, b), (255, 0, 255), 50):  # Magenta padrão
+        return True
+    if _cor_proxima((r, g, b), (254, 0, 254), 50):  # Magenta da sua imagem
+        return True
+    if _cor_proxima((r, g, b), (254, 0, 253), 50):  # Variação do magenta
+        return True
+    if _cor_proxima((r, g, b), (254, 0, 252), 50):  # Variação do magenta
+        return True
+    if _cor_proxima((r, g, b), (253, 0, 252), 50):  # Variação do magenta
+        return True
+    if _cor_proxima((r, g, b), (254, 9, 241), 50):  # Variação do magenta
+        return True
+    if _cor_proxima((r, g, b), (254, 6, 244), 50):  # Variação do magenta
+        return True
+    # Adicionar mais variações de magenta para garantir cobertura total
+    if _cor_proxima((r, g, b), (255, 0, 254), 50):  # Magenta claro
+        return True
+    if _cor_proxima((r, g, b), (254, 0, 255), 50):  # Magenta alternativo
+        return True
+    if _cor_proxima((r, g, b), (253, 0, 255), 50):  # Magenta alternativo
+        return True
+    
+    # 5) Tons de rosa/magenta que não estavam sendo detectados
+    if _cor_proxima((r, g, b), (254, 65, 175), 50):  # Rosa-magenta
+        return True
+    if _cor_proxima((r, g, b), (254, 55, 188), 50):  # Rosa-magenta
+        return True
+    if _cor_proxima((r, g, b), (254, 48, 195), 50):  # Rosa-magenta
+        return True
+    if _cor_proxima((r, g, b), (254, 41, 204), 50):  # Rosa-magenta
+        return True
+    if _cor_proxima((r, g, b), (254, 34, 211), 50):  # Rosa-magenta
+        return True
+    if _cor_proxima((r, g, b), (254, 30, 218), 50):  # Rosa-magenta
+        return True
+    if _cor_proxima((r, g, b), (254, 28, 217), 50):  # Rosa-magenta
+        return True
+    if _cor_proxima((r, g, b), (254, 28, 220), 50):  # Rosa-magenta
+        return True
+    if _cor_proxima((r, g, b), (254, 26, 222), 50):  # Rosa-magenta
+        return True
+    if _cor_proxima((r, g, b), (254, 23, 225), 50):  # Rosa-magenta
+        return True
 
     return False
 
@@ -62,30 +145,95 @@ def carregar_pista():
 
 # ---------- checkpoints ----------
 def extrair_checkpoints(surface):
-    visited = [[False]*ALTURA for _ in range(LARGURA)]
+    """Encontra uma sequência de checkpoints ao longo do caminho magenta"""
     pontos = []
-    for x in range(LARGURA):
-        for y in range(ALTURA):
-            if visited[x][y]: 
-                continue
+    
+    def eh_magenta(r, g, b):
+        """Verifica se a cor é magenta (incluindo variações)"""
+        # Magenta padrão
+        if _cor_proxima((r, g, b), (255, 0, 255), CHECKPOINT_TOL):
+            return True
+        if _cor_proxima((r, g, b), (254, 0, 254), CHECKPOINT_TOL):
+            return True
+        if _cor_proxima((r, g, b), (254, 0, 253), CHECKPOINT_TOL):
+            return True
+        if _cor_proxima((r, g, b), (254, 0, 252), CHECKPOINT_TOL):
+            return True
+        if _cor_proxima((r, g, b), (253, 0, 252), CHECKPOINT_TOL):
+            return True
+        if _cor_proxima((r, g, b), (254, 9, 241), CHECKPOINT_TOL):
+            return True
+        if _cor_proxima((r, g, b), (254, 6, 244), CHECKPOINT_TOL):
+            return True
+        # Tons de rosa/magenta
+        if _cor_proxima((r, g, b), (254, 65, 175), CHECKPOINT_TOL):
+            return True
+        if _cor_proxima((r, g, b), (254, 55, 188), CHECKPOINT_TOL):
+            return True
+        if _cor_proxima((r, g, b), (254, 48, 195), CHECKPOINT_TOL):
+            return True
+        if _cor_proxima((r, g, b), (254, 41, 204), CHECKPOINT_TOL):
+            return True
+        if _cor_proxima((r, g, b), (254, 34, 211), CHECKPOINT_TOL):
+            return True
+        if _cor_proxima((r, g, b), (254, 30, 218), CHECKPOINT_TOL):
+            return True
+        if _cor_proxima((r, g, b), (254, 28, 217), CHECKPOINT_TOL):
+            return True
+        if _cor_proxima((r, g, b), (254, 28, 220), CHECKPOINT_TOL):
+            return True
+        if _cor_proxima((r, g, b), (254, 26, 222), CHECKPOINT_TOL):
+            return True
+        if _cor_proxima((r, g, b), (254, 23, 225), CHECKPOINT_TOL):
+            return True
+        return False
+    
+    # Encontrar pixels magenta com amostragem
+    pixels_magenta = []
+    step = 4
+    for x in range(0, LARGURA, step):
+        for y in range(0, ALTURA, step):
             r,g,b,a = surface.get_at((x,y))
-            if a<=0: 
-                continue
-            if _cor_proxima((r,g,b), CHECKPOINT_COR, CHECKPOINT_TOL):
-                fila = [(x,y)]
-                visited[x][y] = True
-                soma_x=soma_y=cont=0
-                while fila:
-                    cx,cy = fila.pop()
-                    soma_x += cx; soma_y += cy; cont += 1
-                    for nx,ny in ((cx+1,cy),(cx-1,cy),(cx,cy+1),(cx,cy-1)):
-                        if 0<=nx<LARGURA and 0<=ny<ALTURA and not visited[nx][ny]:
-                            r2,g2,b2,a2 = surface.get_at((nx,ny))
-                            if a2>0 and _cor_proxima((r2,g2,b2), CHECKPOINT_COR, CHECKPOINT_TOL):
-                                visited[nx][ny] = True
-                                fila.append((nx,ny))
-                if cont >= CHECKPOINT_MIN_PIXELS:
-                    pontos.append((soma_x/cont, soma_y/cont))
+            if a > 0 and eh_magenta(r, g, b):
+                pixels_magenta.append((x, y))
+    
+    if not pixels_magenta:
+        print("Nenhum pixel magenta encontrado")
+        return pontos
+    
+    print(f"Encontrados {len(pixels_magenta)} pixels magenta")
+    
+    # Ordenar pixels para criar um caminho sequencial
+    # Primeiro, encontrar o pixel mais próximo do início (canto superior esquerdo)
+    if pixels_magenta:
+        # Encontrar ponto de partida (mais próximo do canto superior esquerdo)
+        inicio = min(pixels_magenta, key=lambda p: p[0] + p[1])
+        pontos_ordenados = [inicio]
+        pixels_restantes = [p for p in pixels_magenta if p != inicio]
+        
+        # Construir caminho sequencial (algoritmo do vizinho mais próximo)
+        while pixels_restantes:
+            ultimo_ponto = pontos_ordenados[-1]
+            # Encontrar o pixel mais próximo do último ponto
+            proximo = min(pixels_restantes, key=lambda p: 
+                (p[0] - ultimo_ponto[0])**2 + (p[1] - ultimo_ponto[1])**2)
+            pontos_ordenados.append(proximo)
+            pixels_restantes.remove(proximo)
+        
+        # Dividir o caminho em segmentos para criar checkpoints
+        segmento_size = max(20, len(pontos_ordenados) // 8)  # 8 checkpoints máximo
+        for i in range(0, len(pontos_ordenados), segmento_size):
+            segmento = pontos_ordenados[i:i+segmento_size]
+            if len(segmento) >= 5:  # Mínimo de 5 pixels por checkpoint
+                # Calcular centro do segmento
+                centro_x = sum(p[0] for p in segmento) / len(segmento)
+                centro_y = sum(p[1] for p in segmento) / len(segmento)
+                pontos.append((centro_x, centro_y))
+        
+        print(f"Criados {len(pontos)} checkpoints sequenciais")
+        for i, (x, y) in enumerate(pontos):
+            print(f"  Checkpoint {i+1}: ({x:.1f}, {y:.1f})")
+    
     return pontos
 
 def _angulo(b, c, centro):
@@ -177,7 +325,164 @@ def gerar_rota_pp(surface_guides):
 def desenhar_rota_debug(superficie, camera, pontos, cor=(120,200,255)):
     if not pontos or not camera:
         return
-    pts = [camera.mundo_para_tela(x, y) for (x,y) in pontos]
-    pygame.draw.lines(superficie, cor, True, pts, 2)
-    for (x,y) in pts[:: max(1, len(pts)//24) ]:
-        pygame.draw.circle(superficie, (255,255,0), (int(x), int(y)), 3)
+    
+    try:
+        pts = []
+        for (x, y) in pontos:
+            try:
+                sx, sy = camera.mundo_para_tela(x, y)
+                # Verificar se as coordenadas são válidas
+                if not (isinstance(sx, (int, float)) and isinstance(sy, (int, float))):
+                    continue
+                pts.append((sx, sy))
+            except Exception as e:
+                print(f"Erro ao converter coordenada ({x}, {y}): {e}")
+                continue
+        
+        if len(pts) > 1:
+            pygame.draw.lines(superficie, cor, True, pts, 2)
+            for (x,y) in pts[:: max(1, len(pts)//24) ]:
+                pygame.draw.circle(superficie, (255,255,0), (int(x), int(y)), 3)
+    except Exception as e:
+        print(f"Erro ao desenhar rota debug: {e}")
+
+# Cache para checkpoints
+_checkpoints_cache = None
+
+# ---------- desenhar checkpoints ----------
+def desenhar_checkpoints(superficie, camera, checkpoints=None):
+    """Desenha os checkpoints com uma linha branca no chão"""
+    global _checkpoints_cache
+    
+    if not camera:
+        return
+    
+    # Usar checkpoints fornecidos ou usar cache
+    if checkpoints is None:
+        if _checkpoints_cache is None:
+            # Carregar checkpoints da superfície de guias apenas uma vez
+            if os.path.exists(CAMINHO_GUIAS):
+                try:
+                    surface_guides = pygame.image.load(CAMINHO_GUIAS).convert_alpha()
+                    if surface_guides.get_width() != LARGURA or surface_guides.get_height() != ALTURA:
+                        surface_guides = pygame.transform.smoothscale(surface_guides, (LARGURA, ALTURA))
+                    checkpoints = extrair_checkpoints(surface_guides)
+                    if checkpoints:
+                        checkpoints = ordenar_checkpoints(checkpoints, "horario")
+                        _checkpoints_cache = checkpoints
+                except Exception as e:
+                    print(f"Erro ao carregar checkpoints: {e}")
+                    _checkpoints_cache = []
+            else:
+                _checkpoints_cache = []
+        else:
+            checkpoints = _checkpoints_cache
+    
+    if not checkpoints:
+        return
+    
+    # Desenhar linha branca conectando os checkpoints
+    try:
+        pts = [camera.mundo_para_tela(x, y) for (x, y) in checkpoints]
+        if len(pts) > 1:
+            # Linha branca grossa no chão
+            pygame.draw.lines(superficie, (255, 255, 255), False, pts, 4)
+            
+            # Círculos brancos nos pontos de checkpoint
+            for (x, y) in pts:
+                pygame.draw.circle(superficie, (255, 255, 255), (int(x), int(y)), 8)
+                # Borda preta para contraste
+                pygame.draw.circle(superficie, (0, 0, 0), (int(x), int(y)), 8, 2)
+    except Exception as e:
+        print(f"Erro ao desenhar checkpoints: {e}")
+
+def encontrar_linha_amarela(surface):
+    """Encontra a linha amarela de largada no mapa"""
+    pixels_amarelos = []
+    
+    def eh_amarelo(r, g, b):
+        """Verifica se a cor é amarela (incluindo variações)"""
+        # Amarelo puro
+        if _cor_proxima((r, g, b), (255, 255, 0), 30):
+            return True
+        # Amarelo dourado
+        if _cor_proxima((r, g, b), (255, 215, 0), 30):
+            return True
+        # Amarelo claro
+        if _cor_proxima((r, g, b), (255, 255, 100), 30):
+            return True
+        # Amarelo escuro
+        if _cor_proxima((r, g, b), (255, 200, 0), 30):
+            return True
+        # Amarelo-laranja
+        if _cor_proxima((r, g, b), (255, 180, 0), 30):
+            return True
+        return False
+    
+    # Procurar pixels amarelos com amostragem
+    step = 2
+    for x in range(0, LARGURA, step):
+        for y in range(0, ALTURA, step):
+            r, g, b, a = surface.get_at((x, y))
+            if a > 0 and eh_amarelo(r, g, b):
+                pixels_amarelos.append((x, y))
+    
+    if not pixels_amarelos:
+        print("Nenhuma linha amarela encontrada")
+        return None
+    
+    print(f"Encontrados {len(pixels_amarelos)} pixels amarelos")
+    
+    # Encontrar a linha amarela (assumindo que é horizontal)
+    # Agrupar por Y e encontrar a linha com mais pixels
+    linhas_y = {}
+    for x, y in pixels_amarelos:
+        if y not in linhas_y:
+            linhas_y[y] = []
+        linhas_y[y].append(x)
+    
+    # Encontrar a linha com mais pixels (linha principal)
+    linha_principal_y = max(linhas_y.keys(), key=lambda y: len(linhas_y[y]))
+    pixels_linha = linhas_y[linha_principal_y]
+    
+    # Calcular centro da linha
+    centro_x = sum(pixels_linha) / len(pixels_linha)
+    centro_y = linha_principal_y
+    
+    print(f"Linha amarela encontrada em Y={centro_y}, centro X={centro_x:.1f}")
+    
+    return (centro_x, centro_y)
+
+def calcular_posicoes_iniciais(surface):
+    """Calcula posições iniciais atrás da linha amarela"""
+    linha_amarela = encontrar_linha_amarela(surface)
+    
+    if not linha_amarela:
+        # Fallback para posições centralizadas
+        print("Usando posições de fallback")
+        centro_x = LARGURA // 2
+        centro_y = ALTURA // 2
+        return {
+            'p1': (centro_x - 30, centro_y - 20),
+            'p2': (centro_x + 30, centro_y - 20),
+            'ia': (centro_x, centro_y + 10)
+        }
+    
+    linha_x, linha_y = linha_amarela
+    
+    # Posicionar carros atrás da linha (Y maior = mais para baixo)
+    offset_y = 40  # Distância atrás da linha
+    offset_lateral = 30  # Distância entre carros
+    
+    posicoes = {
+        'p1': (linha_x - offset_lateral, linha_y + offset_y),
+        'p2': (linha_x + offset_lateral, linha_y + offset_y),
+        'ia': (linha_x, linha_y + offset_y + 20)  # IA um pouco mais atrás
+    }
+    
+    print(f"Posições calculadas atrás da linha amarela:")
+    print(f"  P1: {posicoes['p1']}")
+    print(f"  P2: {posicoes['p2']}")
+    print(f"  IA: {posicoes['ia']}")
+    
+    return posicoes

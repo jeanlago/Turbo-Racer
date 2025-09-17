@@ -47,7 +47,10 @@ class Camera:
         # garante que o rect está dentro do mundo
         left = max(0, min(self.largura_mundo - int(vw), left))
         top  = max(0, min(self.altura_mundo  - int(vh), top))
-        return pygame.Rect(left, top, int(vw), int(vh))
+        # garante que as dimensões não excedem o mundo
+        width = min(int(vw), self.largura_mundo - left)
+        height = min(int(vh), self.altura_mundo - top)
+        return pygame.Rect(left, top, width, height)
 
     def mundo_para_tela(self, x, y):
         """Converte coordenadas do mundo para tela (aplica offset e zoom)."""
@@ -55,6 +58,13 @@ class Camera:
         sx = int((x - r.left) * self.zoom)
         sy = int((y - r.top ) * self.zoom)
         return sx, sy
+    
+    def tela_para_mundo(self, sx, sy):
+        """Converte coordenadas da tela para mundo (remove offset e zoom)."""
+        r = self.ret_visao()
+        x = (sx / self.zoom) + r.left
+        y = (sy / self.zoom) + r.top
+        return x, y
 
     def desenhar_fundo(self, superficie_tela, superficie_mundo):
         """Recorta a visão do mundo e escala para preencher a tela."""

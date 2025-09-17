@@ -1,0 +1,34 @@
+{
+  "audio": {
+    "volume_master": 1.0,
+    "volume_musica": 1.0,
+    "volume_efeitos": 1.0,
+    "audio_habilitado": true,
+    "musica_habilitada": true,
+    "musica_no_menu": true,
+    "musica_no_jogo": true,
+    "musica_aleatoria": true
+  },
+  "video": {
+    "resolucao": [
+      1280,
+      720
+    ],
+    "fullscreen": false,
+    "tela_cheia_sem_bordas": false,
+    "vsync": true,
+    "fps_max": 120,
+    "qualidade_alta": true
+  },
+  "controles": {
+    "sensibilidade_volante": 1.0,
+    "inverter_volante": false,
+    "auto_centro": true
+  },
+  "jogo": {
+    "dificuldade_ia": 1.0,
+    "modo_drift": true,
+    "mostrar_fps": true,
+    "mostrar_debug": false
+  }
+}

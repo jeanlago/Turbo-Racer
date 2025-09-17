@@ -6,7 +6,7 @@ from config import (
     VEL_MAX, ACEL_BASE,
     TURBO_FORCA_IMPULSO, TURBO_FATOR, TURBO_DURACAO_S, TURBO_COOLDOWN_S
 )
-from core.pista import eh_pixel_da_pista
+from core.pista import eh_pixel_da_pista, eh_pixel_transitavel
 from core.particulas import EmissorFumaca
 
 # Mapear nomes ("K_LCTRL", etc.) -> constantes pygame.K_*
@@ -32,7 +32,7 @@ class Carro:
     DRIFT_SPEED_HOLD_S   = 1.0    # janela mantendo mais velocidade no começo do drift
     DRIFT_LONG_EXTRA_LOSS = 0.985 # perda longitudinal extra após a janela
 
-    def __init__(self, x, y, prefixo_cor, controles, turbo_key=None):
+    def __init__(self, x, y, prefixo_cor, controles, turbo_key=None, nome=None):
         self.x = float(x)
         self.y = float(y)
         self.angulo = 0.0  # graus (0 aponta pra -x do sprite)
@@ -45,9 +45,32 @@ class Carro:
 
         self.controles = controles
         self.turbo_key = KEY_NAME_TO_CONST.get(turbo_key) if isinstance(turbo_key, str) else turbo_key
+        self.nome = nome or f"Carro {prefixo_cor}"
 
         caminho_sprite = os.path.join(DIR_SPRITES, f"{prefixo_cor}.png")
-        self.sprite_base = pygame.image.load(caminho_sprite).convert_alpha()
+        sprite_original = pygame.image.load(caminho_sprite).convert_alpha()
+        
+        # Redimensionar sprite mantendo proporção para evitar esticamento
+        largura_original, altura_original = sprite_original.get_size()
+        proporcao = largura_original / altura_original
+        
+        # Definir área máxima (todos os carros terão área similar)
+        area_maxima = 48 * 48  # 2304 pixels quadrados
+        
+        # Calcular dimensões baseadas na área máxima
+        if proporcao >= 1.0:  # Carro mais largo que alto
+            largura_desejada = int((area_maxima * proporcao) ** 0.5)
+            altura_desejada = int(largura_desejada / proporcao)
+        else:  # Carro mais alto que largo
+            altura_desejada = int((area_maxima / proporcao) ** 0.5)
+            largura_desejada = int(altura_desejada * proporcao)
+        
+        # Limitar tamanho máximo para evitar carros muito grandes
+        largura_desejada = min(largura_desejada, 64)
+        altura_desejada = min(altura_desejada, 64)
+        
+        # Redimensionar mantendo proporção
+        self.sprite_base = pygame.transform.scale(sprite_original, (largura_desejada, altura_desejada))
 
         # Física base (mantidas)
         self.VEL_MAX_FRENTE = VEL_MAX if 'VEL_MAX' in globals() else 6.0
@@ -238,7 +261,7 @@ class Carro:
         for ox, oy in amostras_local:
             px = int(cx + ox * dir_frente_x + oy * dir_direita_x)
             py = int(cy + ox * dir_frente_y + oy * dir_direita_y)
-            if not eh_pixel_da_pista(superficie_mascara, px, py):
+            if not eh_pixel_transitavel(superficie_mascara, px, py):
                 houve_colisao = True
                 break
 
