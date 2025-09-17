@@ -16,10 +16,50 @@ Um jogo de corrida top-down desenvolvido em **Python** com **Pygame**, com siste
 
 ---
 
+## 📚 Documentação
+
+### **Game Design Document (GDD)**
+- **[GDD_Turbo_Racer.md](docs/gdd/GDD_Turbo_Racer.md)** - Documento completo de design do jogo
+  - Visão geral e conceito principal
+  - Mecânicas de jogo detalhadas
+  - Sistema de IA e física
+  - Arquitetura técnica
+  - Roadmap e futuras implementações
+
+### **Documentação Técnica**
+- **[DOCUMENTACAO.md](docs/tech/DOCUMENTACAO.md)** - Documentação técnica completa
+  - Arquitetura do sistema
+  - Módulos principais
+  - API Reference
+  - Exemplos de uso
+  - Troubleshooting
+
+- **[GAME_OBJECTS_Turbo_Racer.md](docs/tech/GAME_OBJECTS_Turbo_Racer.md)** - Lista detalhada de objetos do jogo
+  - Objetos principais e sistemas
+  - Propriedades e métodos
+  - Hierarquia de objetos
+  - Relacionamentos entre sistemas
+
+### **Guias de Desenvolvimento**
+- **[COMO_ADICIONAR_MAPAS.md](docs/guides/COMO_ADICIONAR_MAPAS.md)** - Guia para adicionar novos mapas
+
+### **Ferramentas de Debug**
+- **[tools/README.md](tools/README.md)** - Ferramentas de desenvolvimento e debug
+  - `test_debug.py` - Teste básico de funcionalidades
+  - `debug_ia_travada.py` - Debug visual de checkpoints e IA
+  - `test_audio.py` - Teste do sistema de áudio
+
+### **Dados e Configurações**
+- **[data/README.md](data/README.md)** - Dados do usuário e configurações
+  - `config.json` - Configurações do usuário (áudio, vídeo, controles)
+  - `checkpoints_backup.json` - Backup de checkpoints legado
+
+---
+
 ## 📂 Estrutura do Projeto
 
 ```text
-Turbo-Racer-1/
+Turbo-Racer/
 ├─ assets/
 │  ├─ images/
 │  │  ├─ cars/                    # Sprites dos carros
@@ -30,9 +70,27 @@ Turbo-Racer-1/
 │  │  │     ├─ Map_1_guides.png
 │  │  │     └─ Map_1_checkpoints.json
 │  │  ├─ effects/                 # Efeitos visuais
+│  │  ├─ icons/                   # Ícones da interface
 │  │  └─ ui/                      # Interface do usuário
 │  └─ sounds/
 │     └─ music/                   # Músicas do jogo
+├─ docs/                          # Documentação do projeto
+│  ├─ gdd/                        # Game Design Documents
+│  │  └─ GDD_Turbo_Racer.md       # Documento de design do jogo
+│  ├─ tech/                       # Documentação técnica
+│  │  ├─ DOCUMENTACAO.md          # Documentação técnica completa
+│  │  └─ GAME_OBJECTS_Turbo_Racer.md # Lista de objetos do jogo
+│  └─ guides/                     # Guias de desenvolvimento
+│     └─ COMO_ADICIONAR_MAPAS.md  # Guia para adicionar mapas
+├─ tools/                         # Ferramentas de debug e teste
+│  ├─ test_debug.py               # Teste básico de funcionalidades
+│  ├─ debug_ia_travada.py         # Debug visual de checkpoints
+│  ├─ test_audio.py               # Teste do sistema de áudio
+│  └─ README.md                   # Documentação das ferramentas
+├─ data/                          # Dados e configurações do usuário
+│  ├─ config.json                 # Configurações do usuário
+│  ├─ checkpoints_backup.json     # Backup de checkpoints legado
+│  └─ README.md                   # Documentação dos dados
 ├─ src/
 │  ├─ main.py                     # Ponto de entrada principal
 │  ├─ config.py                   # Configurações e constantes
@@ -49,6 +107,7 @@ Turbo-Racer-1/
 │     └─ popup_musica.py          # Interface de música
 ├─ checkpoints.json               # Checkpoints salvos
 ├─ config.json                    # Configurações do usuário
+├─ COMO_ADICIONAR_MAPAS.md        # Guia para adicionar mapas
 └─ README.md
 ```
 
@@ -201,21 +260,68 @@ python src/main.py
 - **Escalável:** Fácil adicionar novos mapas e carros
 - **Configurável:** Todas as configurações em arquivos JSON
 - **Português:** Código e variáveis em português
+- **Documentado:** Documentação técnica completa disponível
+
+### **Documentação para Desenvolvedores**
+- **GDD:** Consulte o [Game Design Document](docs/gdd/GDD_Turbo_Racer.md) para entender o design do jogo
+- **Game Objects:** Veja a [lista de objetos](docs/tech/GAME_OBJECTS_Turbo_Racer.md) para entender a arquitetura
+- **API Reference:** Consulte a [documentação técnica](docs/tech/DOCUMENTACAO.md) para detalhes de implementação
 
 ### **Adicionando Novos Carros**
 1. Adicione o sprite em `assets/images/cars/`
 2. Configure em `CARROS_DISPONIVEIS` no `main.py`
 3. Adicione sprite de seleção em `assets/images/car_selection/`
+4. Consulte a documentação de Game Objects para detalhes técnicos
 
 ### **Personalizando Física**
 - Ajuste constantes em `config.py`
 - Modifique `core/carro.py` para física personalizada
 - Configure parâmetros de IA em `core/ia_simples.py`
+- Veja exemplos na documentação técnica
+
+### **Adicionando Novos Mapas**
+- Siga o guia em [COMO_ADICIONAR_MAPAS.md](docs/guides/COMO_ADICIONAR_MAPAS.md)
+- Use o editor visual de checkpoints (F7) para configurar navegação
+- Consulte a documentação técnica para detalhes de implementação
+
+---
+
+## 🤝 Contribuição
+
+### **Como Contribuir**
+1. **Fork** o repositório
+2. **Crie** uma branch para sua feature (`git checkout -b feature/nova-funcionalidade`)
+3. **Commit** suas mudanças (`git commit -m 'Adiciona nova funcionalidade'`)
+4. **Push** para a branch (`git push origin feature/nova-funcionalidade`)
+5. **Abra** um Pull Request
+
+### **Diretrizes de Contribuição**
+- Siga a estrutura de código existente
+- Mantenha a documentação atualizada
+- Teste suas mudanças antes de submeter
+- Use commits descritivos
+- Consulte a documentação técnica antes de contribuir
+
+### **Áreas de Contribuição**
+- **Novos Carros:** Adicione sprites e configurações
+- **Novos Mapas:** Crie pistas e checkpoints
+- **Melhorias de IA:** Otimize algoritmos de navegação
+- **Efeitos Visuais:** Adicione partículas e animações
+- **Interface:** Melhore menus e HUD
+- **Documentação:** Melhore guias e referências
 
 ---
 
 ## 📝 Licença
 
 Este projeto é de código aberto e está disponível sob a licença MIT.
+
+---
+
+## 📞 Suporte
+
+- **Issues:** Use o sistema de issues do GitHub para reportar bugs
+- **Documentação:** Consulte a documentação técnica para dúvidas
+- **Desenvolvimento:** Veja os guias de contribuição para participar
 
 ---

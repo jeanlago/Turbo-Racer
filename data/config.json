@@ -6,7 +6,7 @@
     "audio_habilitado": true,
     "musica_habilitada": true,
     "musica_no_menu": true,
-    "musica_no_jogo": true,
+    "musica_no_jogo": false,
     "musica_aleatoria": true
   },
   "video": {

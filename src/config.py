@@ -181,7 +181,7 @@ CONFIGURACOES = {
 }
 
 # Caminho para salvar configurações
-CAMINHO_CONFIG = os.path.join(DIR_PROJETO, "config.json")
+CAMINHO_CONFIG = os.path.join(DIR_PROJETO, "data", "config.json")
 
 def carregar_configuracoes():
     """Carrega configurações do arquivo JSON"""
