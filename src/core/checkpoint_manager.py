@@ -4,7 +4,7 @@ import pygame
 from config import DIR_PROJETO, MAPAS_DISPONIVEIS, MAPA_ATUAL, obter_caminho_checkpoints
 
 class CheckpointManager:
-    """Gerenciador de checkpoints com edição em tempo real para múltiplos mapas"""
+    """GerencIAdor de checkpoints com edição em tempo real para múltiplos mapas"""
     
     def __init__(self, mapa_atual=None):
         self.checkpoints = []
@@ -39,7 +39,7 @@ class CheckpointManager:
                     self.checkpoints = json.load(f)
                 print(f"Carregados {len(self.checkpoints)} checkpoints do arquivo")
             else:
-                print("Arquivo de checkpoints não encontrado, usando lista vazia")
+                print("Arquivo de checkpoints não encontrado, usando lista vazIA")
                 self.checkpoints = []
         except Exception as e:
             print(f"Erro ao carregar checkpoints: {e}")
@@ -73,17 +73,22 @@ class CheckpointManager:
         """Move checkpoint para nova posição"""
         if 0 <= indice < len(self.checkpoints):
             self.checkpoints[indice] = [float(novo_x), float(novo_y)]
-            print(f"Checkpoint {indice} movido para: ({novo_x:.1f}, {novo_y:.1f})")
+            # Removido print para reduzir spam no console
             return True
         return False
     
     def encontrar_checkpoint_proximo(self, x, y, raio=30):
         """Encontra checkpoint próximo à posição especificada"""
+        melhor_indice = -1
+        menor_distancia = float('inf')
+        
         for i, (cx, cy) in enumerate(self.checkpoints):
             dist = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
-            if dist <= raio:
-                return i
-        return -1
+            if dist <= raio and dist < menor_distancia:
+                melhor_indice = i
+                menor_distancia = dist
+        
+        return melhor_indice
     
     def alternar_modo_edicao(self):
         """Alterna entre modo de edição e modo normal"""
@@ -106,10 +111,18 @@ class CheckpointManager:
             # Clicou em checkpoint existente - selecionar para mover
             self.checkpoint_selecionado = indice
             print(f"Checkpoint {indice} selecionado para mover")
-        else:
-            # Clicou em área vazia - adicionar novo checkpoint
-            self.adicionar_checkpoint(mundo_x, mundo_y)
-            self.checkpoint_selecionado = len(self.checkpoints) - 1
+        # Removido: adicionar checkpoint automaticamente em área vazia
+        # Agora área vazia arrasta a câmera
+    
+    def adicionar_checkpoint_na_posicao(self, x, y, camera):
+        """Adiciona checkpoint na posição especificada"""
+        if not self.modo_edicao or not camera:
+            return
+        
+        mundo_x, mundo_y = camera.tela_para_mundo(x, y)
+        self.adicionar_checkpoint(mundo_x, mundo_y)
+        self.checkpoint_selecionado = len(self.checkpoints) - 1
+        print(f"Checkpoint adicionado em ({mundo_x:.1f}, {mundo_y:.1f})")
     
     def processar_teclado(self, teclas):
         """Processa teclas para edição de checkpoints"""
@@ -127,6 +140,48 @@ class CheckpointManager:
             self.checkpoint_selecionado -= 1
         elif teclas[pygame.K_RIGHT] and self.checkpoint_selecionado < len(self.checkpoints) - 1:
             self.checkpoint_selecionado += 1
+    
+    def processar_teclas_f(self, teclas):
+        """Processa teclas F para comandos do editor"""
+        # F7 - Toggle modo edição
+        if teclas[pygame.K_F7]:
+            self.modo_edicao = not self.modo_edicao
+            print(f"Modo edição: {'ON' if self.modo_edicao else 'OFF'}")
+        
+        # F5 - Salvar checkpoints
+        if teclas[pygame.K_F5]:
+            self.salvar_checkpoints()
+            print("Checkpoints salvos!")
+        
+        # F6 - Carregar checkpoints
+        if teclas[pygame.K_F6]:
+            self.carregar_checkpoints()
+            print("Checkpoints carregados!")
+        
+        # F8 - Limpar todos os checkpoints
+        if teclas[pygame.K_F8]:
+            self.checkpoints = []
+            self.checkpoint_selecionado = -1
+            print("Todos os checkpoints removidos!")
+        
+        # F9 - Próximo mapa (placeholder)
+        if teclas[pygame.K_F9]:
+            print("F9 - Próximo mapa (não implementado)")
+        
+        # F10 - Mostrar todos os checkpoints
+        if teclas[pygame.K_F10]:
+            print(f"Checkpoints atuais: {len(self.checkpoints)}")
+            for i, (x, y) in enumerate(self.checkpoints):
+                print(f"  {i}: ({x:.1f}, {y:.1f})")
+        
+        # F12 - Mostrar rota (placeholder)
+        if teclas[pygame.K_F12]:
+            print("F12 - Mostrar rota (não implementado)")
+        
+        # Ctrl+Clique - Adicionar checkpoint na posição do mouse
+        if teclas[pygame.K_LCTRL] or teclas[pygame.K_RCTRL]:
+            # Esta funcionalidade será chamada do main.py quando necessário
+            pass
     
     def desenhar(self, superficie, camera):
         """Desenha checkpoints na tela"""

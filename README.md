@@ -6,12 +6,13 @@ Um jogo de corrida top-down desenvolvido em **Python** com **Pygame**, com siste
 
 ## Funcionalidades Principais
 
--  **Sistema de Corrida Completo** - Física realista, derrapagem, turbo e colisões
--  **IA Inteligente** - Carros controlados por IA que seguem checkpoints
+-  **Sistema de Corrida Completo** - Física realista com tipos de tração, derrapagem, turbo e colisões
+-  **IA Inteligente** - Carros controlados por IA melhorada que seguem checkpoints
 -  **Múltiplos Mapas** - Sistema escalável para adicionar quantos mapas quiser
 -  **Editor Visual de Checkpoints** - Crie e edite checkpoints arrastando e soltando
 -  **Sistema de Música** - Múltiplas faixas com controles de volume
 -  **Modo Drift** - Sistema de pontuação por derrapagem
+-  **HUD Personalizado** - Interface moderna com minimapa e informações detalhadas
 -  **Configurações Avançadas** - Resolução, fullscreen, controles personalizáveis
 
 ---
@@ -37,16 +38,16 @@ Um jogo de corrida top-down desenvolvido em **Python** com **Pygame**, com siste
 - **[GAME_OBJECTS_Turbo_Racer.md](docs/tech/GAME_OBJECTS_Turbo_Racer.md)** - Lista detalhada de objetos do jogo
   - Objetos principais e sistemas
   - Propriedades e métodos
-  - Hierarquia de objetos
+  - HierarquIA de objetos
   - Relacionamentos entre sistemas
 
-### **Guias de Desenvolvimento**
-- **[COMO_ADICIONAR_MAPAS.md](docs/guides/COMO_ADICIONAR_MAPAS.md)** - Guia para adicionar novos mapas
+### **GuIAs de Desenvolvimento**
+- **[COMO_ADICIONAR_MAPAS.md](docs/guides/COMO_ADICIONAR_MAPAS.md)** - GuIA para adicionar novos mapas
 
 ### **Ferramentas de Debug**
 - **[tools/README.md](tools/README.md)** - Ferramentas de desenvolvimento e debug
   - `test_debug.py` - Teste básico de funcionalidades
-  - `debug_ia_travada.py` - Debug visual de checkpoints e IA
+  - `debug_IA_travada.py` - Debug visual de checkpoints e IA
   - `test_audio.py` - Teste do sistema de áudio
 
 ### **Dados e Configurações**
@@ -66,7 +67,7 @@ Turbo-Racer/
 │  │  ├─ car_selection/           # Sprites para seleção de carros
 │  │  ├─ maps/                    # Mapas do jogo
 │  │  │  ├─ Map_1.png
-│  │  │  └─ guides/               # Guias e checkpoints
+│  │  │  └─ guides/               # GuIAs e checkpoints
 │  │  │     ├─ Map_1_guides.png
 │  │  │     └─ Map_1_checkpoints.json
 │  │  ├─ effects/                 # Efeitos visuais
@@ -80,11 +81,11 @@ Turbo-Racer/
 │  ├─ tech/                       # Documentação técnica
 │  │  ├─ DOCUMENTACAO.md          # Documentação técnica completa
 │  │  └─ GAME_OBJECTS_Turbo_Racer.md # Lista de objetos do jogo
-│  └─ guides/                     # Guias de desenvolvimento
-│     └─ COMO_ADICIONAR_MAPAS.md  # Guia para adicionar mapas
+│  └─ guides/                     # GuIAs de desenvolvimento
+│     └─ COMO_ADICIONAR_MAPAS.md  # GuIA para adicionar mapas
 ├─ tools/                         # Ferramentas de debug e teste
 │  ├─ test_debug.py               # Teste básico de funcionalidades
-│  ├─ debug_ia_travada.py         # Debug visual de checkpoints
+│  ├─ debug_IA_travada.py         # Debug visual de checkpoints
 │  ├─ test_audio.py               # Teste do sistema de áudio
 │  └─ README.md                   # Documentação das ferramentas
 ├─ data/                          # Dados e configurações do usuário
@@ -98,16 +99,16 @@ Turbo-Racer/
 │     ├─ carro.py                 # Física e controle dos carros
 │     ├─ pista.py                 # Carregamento e detecção de pista
 │     ├─ camera.py                # Sistema de câmera
-│     ├─ corrida.py               # Gerenciador de corrida
-│     ├─ ia_simples.py            # Inteligência artificial
+│     ├─ corrida.py               # GerencIAdor de corrida
+│     ├─ IA_v2.py       # InteligêncIA artificIAl melhorada
 │     ├─ checkpoint_manager.py    # Editor de checkpoints
 │     ├─ menu.py                  # Sistema de menus
-│     ├─ musica.py                # Gerenciador de música
+│     ├─ musica.py                # GerencIAdor de música
 │     ├─ particulas.py            # Efeitos de partículas
 │     └─ popup_musica.py          # Interface de música
 ├─ checkpoints.json               # Checkpoints salvos
 ├─ config.json                    # Configurações do usuário
-├─ COMO_ADICIONAR_MAPAS.md        # Guia para adicionar mapas
+├─ COMO_ADICIONAR_MAPAS.md        # GuIA para adicionar mapas
 └─ README.md
 ```
 
@@ -132,19 +133,21 @@ Turbo-Racer/
 - **Drift:** Shift
 
 ### **Controles Gerais**
-- **M:** Alternar música
-- **N:** Próxima música
-- **F11:** Alternar modo de tela
-- **ESC:** Voltar ao menu
+- **M:** Próxima música
+- **N:** Música anterior
+- **H:** Alternar HUD completo
+- **F1:** Ativar/desativar debug da IA
+- **ESC:** Pausar/despausar ou voltar ao menu
 
-### **Editor de Checkpoints (F7)**
+### **Editor de Checkpoints**
+- **F7:** Ativar/desativar modo edição
 - **F5:** Salvar checkpoints
 - **F6:** Carregar checkpoints
-- **F7:** Ativar/desativar modo edição
 - **F8:** Limpar todos os checkpoints
-- **F9:** Trocar para próximo mapa
-- **Clique e Arrastar:** Mover checkpoints
-- **Clique em área vazia:** Adicionar checkpoint
+- **F10:** Mostrar todos os checkpoints
+- **Clique em checkpoint:** Selecionar/mover checkpoint
+- **Ctrl+Clique:** Adicionar novo checkpoint
+- **Arrastar área vazia:** Mover câmera
 - **DEL:** Remover checkpoint selecionado
 
 ---
@@ -176,7 +179,7 @@ python src/main.py
    ├── SeuMapa.png
    └── guides/
        ├── SeuMapa_guides.png
-       └── SeuMapa_checkpoints.json (criado automaticamente)
+       └── SeuMapa_checkpoints.json (crIAdo automaticamente)
    ```
 
 2. **Adicione no config.py**:
@@ -184,7 +187,7 @@ python src/main.py
    "SeuMapa": {
        "nome": "Nome do Mapa",
        "arquivo_mapa": os.path.join(DIR_MAPS, "SeuMapa.png"),
-       "arquivo_guias": os.path.join(DIR_MAPS_GUIDES, "SeuMapa_guides.png"),
+       "arquivo_guIAs": os.path.join(DIR_MAPS_GUIDES, "SeuMapa_guides.png"),
        "arquivo_checkpoints": os.path.join(DIR_MAPS_GUIDES, "SeuMapa_checkpoints.json"),
        "waypoints_fallback": [(x1, y1), (x2, y2), ...]
    }
@@ -195,7 +198,7 @@ python src/main.py
 ### **Editor de Checkpoints**
 - **Ative o modo edição** (F7)
 - **Clique e arraste** para mover checkpoints
-- **Clique em área vazia** para adicionar novos
+- **Clique em área vazIA** para adicionar novos
 - **Salve** com F5
 
 ---
@@ -209,7 +212,7 @@ python src/main.py
     "volume_master": 1.0,
     "volume_musica": 0.8,
     "musica_habilitada": true,
-    "musica_aleatoria": false
+    "musica_aleatorIA": false
   },
   "video": {
     "resolucao": [1280, 720],
@@ -234,8 +237,9 @@ python src/main.py
 - Detecção de colisões e recuperação automática
 
 ### **Física Realista**
+- **Sistema de Tração**: Traseira, frontal e integral com comportamentos únicos
 - Aceleração e frenagem progressivas
-- Sistema de derrapagem com pontuação
+- Sistema de derrapagem com contraesterço e colisões realistas
 - Colisões com rebote e perda de velocidade
 - Turbo com cooldown
 
@@ -276,7 +280,7 @@ python src/main.py
 ### **Personalizando Física**
 - Ajuste constantes em `config.py`
 - Modifique `core/carro.py` para física personalizada
-- Configure parâmetros de IA em `core/ia_simples.py`
+- Configure parâmetros de IA em `core/ia.py`
 - Veja exemplos na documentação técnica
 
 ### **Adicionando Novos Mapas**
@@ -305,10 +309,10 @@ python src/main.py
 ### **Áreas de Contribuição**
 - **Novos Carros:** Adicione sprites e configurações
 - **Novos Mapas:** Crie pistas e checkpoints
-- **Melhorias de IA:** Otimize algoritmos de navegação
+- **MelhorIAs de IA:** Otimize algoritmos de navegação
 - **Efeitos Visuais:** Adicione partículas e animações
 - **Interface:** Melhore menus e HUD
-- **Documentação:** Melhore guias e referências
+- **Documentação:** Melhore guIAs e referêncIAs
 
 ---
 
@@ -322,6 +326,6 @@ Este projeto é de código aberto e está disponível sob a licença MIT.
 
 - **Issues:** Use o sistema de issues do GitHub para reportar bugs
 - **Documentação:** Consulte a documentação técnica para dúvidas
-- **Desenvolvimento:** Veja os guias de contribuição para participar
+- **Desenvolvimento:** Veja os guIAs de contribuição para participar
 
 ---

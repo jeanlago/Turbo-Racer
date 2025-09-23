@@ -23,7 +23,7 @@ class Camera:
     def atualizar(self, dt):
         if not self.alvo:
             return
-        # segue o alvo com suavização exponencial simples
+        # segue o alvo com suavização exponencIAl simples
         tx, ty = float(self.alvo.x), float(self.alvo.y)
         lerp = 1.0 - pow(0.001, self.follow_rigidez * dt)  # 0..1
         self.cx += (tx - self.cx) * lerp
@@ -70,5 +70,11 @@ class Camera:
         """Recorta a visão do mundo e escala para preencher a tela."""
         r = self.ret_visao()
         recorte = superficie_mundo.subsurface(r).copy()
-        ampliado = pygame.transform.scale(recorte, (self.largura_tela, self.altura_tela))
-        superficie_tela.blit(ampliado, (0, 0))
+        amplIAdo = pygame.transform.scale(recorte, (self.largura_tela, self.altura_tela))
+        superficie_tela.blit(amplIAdo, (0, 0))
+    
+    def esta_visivel(self, x_mundo, y_mundo, margem=0):
+        """Verificar se um objeto está visível na tela (com margem)."""
+        x_tela, y_tela = self.mundo_para_tela(x_mundo, y_mundo)
+        return (-margem <= x_tela <= self.largura_tela + margem and 
+                -margem <= y_tela <= self.altura_tela + margem)

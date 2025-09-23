@@ -6,7 +6,7 @@ from config import DIR_PROJETO
 # Forçar uso de driver de áudio real
 os.environ["SDL_AUDIODRIVER"] = "directsound"  # Windows
 
-class GerenciadorMusica:
+class GerencIAdorMusica:
     def __init__(self):
         self.musicas = []
         self.musica_atual = 0
@@ -45,7 +45,7 @@ class GerenciadorMusica:
                         'nome': nome_musica
                     })
         
-        # Se não houver músicas, criar uma lista vazia
+        # Se não houver músicas, crIAr uma lista vazIA
         if not self.musicas:
             print("Nenhuma música encontrada na pasta assets/sounds/music")
     
@@ -102,8 +102,8 @@ class GerenciadorMusica:
             self.musica_atual = (self.musica_atual - 1) % len(self.musicas)
             self.tocar_musica()
     
-    def musica_aleatoria(self):
-        """Toca uma música aleatória"""
+    def musica_aleatorIA(self):
+        """Toca uma música aleatórIA"""
         if self.musicas:
             self.musica_atual = random.randint(0, len(self.musicas) - 1)
             self.tocar_musica()
@@ -134,5 +134,5 @@ class GerenciadorMusica:
         """Retorna o total de músicas"""
         return len(self.musicas)
 
-# Instância global do gerenciador de música
-gerenciador_musica = GerenciadorMusica()
+# InstâncIA global do gerencIAdor de música
+gerencIAdor_musica = GerencIAdorMusica()

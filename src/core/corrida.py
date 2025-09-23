@@ -7,14 +7,14 @@ from config import (
 )
 
 
-class GerenciadorCorrida:
+class GerencIAdorCorrida:
     def __init__(self, fonte=None):
         self.fonte = fonte or pygame.font.SysFont("consolas", 26)
         self.fonte_grande = pygame.font.SysFont("consolas", 64, bold=True)
 
         # Semáforo 3-2-1-VAI
         self.contagem_regressiva = 3.0
-        self.iniciada = False
+        self.inicIAda = False
 
         # Progresso/estado por carro
         self.proximo_checkpoint = {}   # carro -> idx próximo CP
@@ -37,21 +37,21 @@ class GerenciadorCorrida:
 
     # --- Semáforo e tempo global ---
     def atualizar_contagem(self, dt):
-        if self.iniciada:
+        if self.inicIAda:
             return
         self.contagem_regressiva -= dt
         if self.contagem_regressiva <= 0:
-            self.iniciada = True
+            self.inicIAda = True
 
     def atualizar_tempo(self, dt):
-        if self.iniciada and not self.todos_finalizados():
+        if self.inicIAda and not self.todos_finalizados():
             self.tempo_global += dt
 
     def pode_controlar(self):
-        return self.iniciada
+        return self.inicIAda
 
     def desenhar_semaforo(self, tela, largura, altura):
-        if self.iniciada:
+        if self.inicIAda:
             return
         val = max(0, int(self.contagem_regressiva) + 1)
         texto = "VAI!" if val <= 0 else str(val)
@@ -131,7 +131,7 @@ class GerenciadorCorrida:
         tela.blit(sombra, (rect.x+3, rect.y+3))
         tela.blit(texto, rect)
 
-class GerenciadorDrift:
+class GerencIAdorDrift:
     def __init__(self, fonte=None):
         self.fonte = fonte or pygame.font.SysFont("consolas", 26)
         self.score = 0.0
@@ -148,7 +148,7 @@ class GerenciadorDrift:
             self.combo = min(DRIFT_COMBO_MAX, self.combo + DRIFT_COMBO_STEP * dt)
             self.chain_timer = 0.0
         else:
-            # decai “cadeia” e pontuação "quente"
+            # decai “cadeIA” e pontuação "quente"
             self.chain_timer += dt
             self.score = max(0.0, self.score - DRIFT_DECAY_POR_SEG * dt)
             # combo cai devagar se ficar muito tempo sem drift

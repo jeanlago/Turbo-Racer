@@ -36,7 +36,7 @@ def eh_pixel_da_pista(surface, x, y):
         return True
     if _cor_proxima((r, g, b), (254, 168, 59), 50):  # Laranja da sua imagem
         return True
-    if _cor_proxima((r, g, b), (254, 169, 59), 50):  # Variação do laranja
+    if _cor_proxima((r, g, b), (254, 169, 59), 50):  # VarIAção do laranja
         return True
     
     # 3) Tons de laranja/amarelo também contam como pista
@@ -52,11 +52,25 @@ def eh_pixel_da_pista(surface, x, y):
 
     return False
 
+# Cache para detecção de pista (otimização de performance)
+_pixel_cache = {}
+_cache_hits = 0
+_cache_misses = 0
+
 def eh_pixel_transitavel(surface, x, y):
     """True se é área transitável (não colide); False se é parede/limite."""
+    global _cache_hits, _cache_misses
+    
     if x < 0 or y < 0 or x >= surface.get_width() or y >= surface.get_height():
         return False
 
+    # Verificar cache primeiro
+    cache_key = (x, y)
+    if cache_key in _pixel_cache:
+        _cache_hits += 1
+        return _pixel_cache[cache_key]
+    
+    _cache_misses += 1
     r, g, b, _ = surface.get_at((x, y))
 
     # 1) Verde = fora da pista (limite) - NÃO transitável
@@ -68,7 +82,7 @@ def eh_pixel_transitavel(surface, x, y):
         return True
     if _cor_proxima((r, g, b), (254, 168, 59), 50):  # Laranja da sua imagem
         return True
-    if _cor_proxima((r, g, b), (254, 169, 59), 50):  # Variação do laranja
+    if _cor_proxima((r, g, b), (254, 169, 59), 50):  # VarIAção do laranja
         return True
     
     # 3) Tons de laranja/amarelo também contam como transitável
@@ -83,17 +97,17 @@ def eh_pixel_transitavel(surface, x, y):
         return True
     if _cor_proxima((r, g, b), (254, 0, 254), 50):  # Magenta da sua imagem
         return True
-    if _cor_proxima((r, g, b), (254, 0, 253), 50):  # Variação do magenta
+    if _cor_proxima((r, g, b), (254, 0, 253), 50):  # VarIAção do magenta
         return True
-    if _cor_proxima((r, g, b), (254, 0, 252), 50):  # Variação do magenta
+    if _cor_proxima((r, g, b), (254, 0, 252), 50):  # VarIAção do magenta
         return True
-    if _cor_proxima((r, g, b), (253, 0, 252), 50):  # Variação do magenta
+    if _cor_proxima((r, g, b), (253, 0, 252), 50):  # VarIAção do magenta
         return True
-    if _cor_proxima((r, g, b), (254, 9, 241), 50):  # Variação do magenta
+    if _cor_proxima((r, g, b), (254, 9, 241), 50):  # VarIAção do magenta
         return True
-    if _cor_proxima((r, g, b), (254, 6, 244), 50):  # Variação do magenta
+    if _cor_proxima((r, g, b), (254, 6, 244), 50):  # VarIAção do magenta
         return True
-    # Adicionar mais variações de magenta para garantir cobertura total
+    # Adicionar mais varIAções de magenta para garantir cobertura total
     if _cor_proxima((r, g, b), (255, 0, 254), 50):  # Magenta claro
         return True
     if _cor_proxima((r, g, b), (254, 0, 255), 50):  # Magenta alternativo
@@ -121,16 +135,49 @@ def eh_pixel_transitavel(surface, x, y):
     if _cor_proxima((r, g, b), (254, 26, 222), 50):  # Rosa-magenta
         return True
     if _cor_proxima((r, g, b), (254, 23, 225), 50):  # Rosa-magenta
-        return True
+        resultado = True
+    else:
+        resultado = False
+    
+    # Armazenar no cache (limitar tamanho do cache)
+    if len(_pixel_cache) < 10000:  # Limite de 10k entradas
+        _pixel_cache[cache_key] = resultado
+    
+    return resultado
 
-    return False
+def limpar_cache_pista():
+    """Limpa o cache de detecção de pista"""
+    global _pixel_cache, _cache_hits, _cache_misses
+    _pixel_cache.clear()
+    _cache_hits = 0
+    _cache_misses = 0
 
+def obter_estatisticas_cache():
+    """Retorna estatísticas do cache de detecção de pista"""
+    total = _cache_hits + _cache_misses
+    hit_rate = (_cache_hits / total * 100) if total > 0 else 0
+    return {
+        'hits': _cache_hits,
+        'misses': _cache_misses,
+        'total': total,
+        'hit_rate': hit_rate,
+        'cache_size': len(_pixel_cache)
+    }
 
 # ---------- carregamento ----------
 def carregar_pista():
+    from config import CONFIGURACOES
     pista = pygame.image.load(CAMINHO_MAPA).convert()
+    
+    # Aplicar configurações de qualidade
+    qualidade_alta = CONFIGURACOES["video"]["qualidade_alta"]
+    
     if pista.get_width() != LARGURA or pista.get_height() != ALTURA:
-        pista = pygame.transform.smoothscale(pista, (LARGURA, ALTURA))
+        if qualidade_alta:
+            pista = pygame.transform.smoothscale(pista, (LARGURA, ALTURA))
+        else:
+            # Usar scale normal para melhor performance
+            pista = pygame.transform.scale(pista, (LARGURA, ALTURA))
 
     mascara_pista = pista.copy()
 
@@ -145,11 +192,11 @@ def carregar_pista():
 
 # ---------- checkpoints ----------
 def extrair_checkpoints(surface):
-    """Encontra uma sequência de checkpoints ao longo do caminho magenta"""
+    """Encontra uma sequêncIA de checkpoints ao longo do caminho magenta"""
     pontos = []
     
     def eh_magenta(r, g, b):
-        """Verifica se a cor é magenta (incluindo variações)"""
+        """Verifica se a cor é magenta (incluindo varIAções)"""
         # Magenta padrão
         if _cor_proxima((r, g, b), (255, 0, 255), CHECKPOINT_TOL):
             return True
@@ -203,7 +250,7 @@ def extrair_checkpoints(surface):
     
     print(f"Encontrados {len(pixels_magenta)} pixels magenta")
     
-    # Ordenar pixels para criar um caminho sequencial
+    # Ordenar pixels para crIAr um caminho sequencIAl
     # Primeiro, encontrar o pixel mais próximo do início (canto superior esquerdo)
     if pixels_magenta:
         # Encontrar ponto de partida (mais próximo do canto superior esquerdo)
@@ -211,7 +258,7 @@ def extrair_checkpoints(surface):
         pontos_ordenados = [inicio]
         pixels_restantes = [p for p in pixels_magenta if p != inicio]
         
-        # Construir caminho sequencial (algoritmo do vizinho mais próximo)
+        # Construir caminho sequencIAl (algoritmo do vizinho mais próximo)
         while pixels_restantes:
             ultimo_ponto = pontos_ordenados[-1]
             # Encontrar o pixel mais próximo do último ponto
@@ -220,7 +267,7 @@ def extrair_checkpoints(surface):
             pontos_ordenados.append(proximo)
             pixels_restantes.remove(proximo)
         
-        # Dividir o caminho em segmentos para criar checkpoints
+        # Dividir o caminho em segmentos para crIAr checkpoints
         segmento_size = max(20, len(pontos_ordenados) // 8)  # 8 checkpoints máximo
         for i in range(0, len(pontos_ordenados), segmento_size):
             segmento = pontos_ordenados[i:i+segmento_size]
@@ -230,7 +277,7 @@ def extrair_checkpoints(surface):
                 centro_y = sum(p[1] for p in segmento) / len(segmento)
                 pontos.append((centro_x, centro_y))
         
-        print(f"Criados {len(pontos)} checkpoints sequenciais")
+        print(f"CrIAdos {len(pontos)} checkpoints sequencIAis")
         for i, (x, y) in enumerate(pontos):
             print(f"  Checkpoint {i+1}: ({x:.1f}, {y:.1f})")
     
@@ -401,7 +448,7 @@ def encontrar_linha_amarela(surface):
     pixels_amarelos = []
     
     def eh_amarelo(r, g, b):
-        """Verifica se a cor é amarela (incluindo variações)"""
+        """Verifica se a cor é amarela (incluindo varIAções)"""
         # Amarelo puro
         if _cor_proxima((r, g, b), (255, 255, 0), 30):
             return True
@@ -454,7 +501,7 @@ def encontrar_linha_amarela(surface):
     return (centro_x, centro_y)
 
 def calcular_posicoes_iniciais(surface):
-    """Calcula posições iniciais atrás da linha amarela"""
+    """Calcula posições inicIAis atrás da linha amarela"""
     linha_amarela = encontrar_linha_amarela(surface)
     
     if not linha_amarela:
@@ -465,24 +512,24 @@ def calcular_posicoes_iniciais(surface):
         return {
             'p1': (centro_x - 30, centro_y - 20),
             'p2': (centro_x + 30, centro_y - 20),
-            'ia': (centro_x, centro_y + 10)
+            'IA': (centro_x, centro_y + 10)
         }
     
     linha_x, linha_y = linha_amarela
     
     # Posicionar carros atrás da linha (Y maior = mais para baixo)
-    offset_y = 40  # Distância atrás da linha
-    offset_lateral = 30  # Distância entre carros
+    offset_y = 40  # DistâncIA atrás da linha
+    offset_lateral = 30  # DistâncIA entre carros
     
     posicoes = {
         'p1': (linha_x - offset_lateral, linha_y + offset_y),
         'p2': (linha_x + offset_lateral, linha_y + offset_y),
-        'ia': (linha_x, linha_y + offset_y + 20)  # IA um pouco mais atrás
+        'IA': (linha_x, linha_y + offset_y + 20)  # IA um pouco mais atrás
     }
     
     print(f"Posições calculadas atrás da linha amarela:")
     print(f"  P1: {posicoes['p1']}")
     print(f"  P2: {posicoes['p2']}")
-    print(f"  IA: {posicoes['ia']}")
+    print(f"  IA: {posicoes['IA']}")
     
     return posicoes
