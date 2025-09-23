@@ -1,18 +1,18 @@
 import pygame
 import os
 
-# Inicializar pygame
+# InicIAlizar pygame
 pygame.init()
 
 # Configurar mixer
 try:
     pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
-    print("Mixer inicializado com sucesso")
+    print("Mixer inicIAlizado com sucesso")
     print(f"Configuração do mixer: {pygame.mixer.get_init()}")
 except pygame.error as e:
-    print(f"Erro ao inicializar mixer: {e}")
+    print(f"Erro ao inicIAlizar mixer: {e}")
     pygame.mixer.init()
-    print("Mixer inicializado com configurações padrão")
+    print("Mixer inicIAlizado com configurações padrão")
 
 # Verificar se há músicas
 pasta_musicas = "assets/sounds/music"
@@ -32,7 +32,7 @@ if os.path.exists(pasta_musicas):
             print("Música carregada com sucesso")
             
             pygame.mixer.music.play()
-            print("Música iniciada")
+            print("Música inicIAda")
             
             # Verificar se está tocando
             if pygame.mixer.music.get_busy():

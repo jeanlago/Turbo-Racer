@@ -29,7 +29,7 @@ MAPAS_DISPONIVEIS = {
     }
     # Adicione novos mapas aqui conforme necessário
     # "Map_2": {
-    #     "nome": "Pista Secundária",
+    #     "nome": "Pista SecundárIA",
     #     "arquivo_mapa": os.path.join(DIR_MAPS, "Map_2.png"),
     #     "arquivo_guias": os.path.join(DIR_MAPS_GUIDES, "Map_2_guides.png"),
     #     "arquivo_checkpoints": os.path.join(DIR_MAPS_GUIDES, "Map_2_checkpoints.json"),
@@ -102,8 +102,8 @@ PP_LD_MIN = 60.0
 PP_LD_MAX = 200.0
 PP_LD_KV  = 1.5
 
-PP_V_MIN = 50.0   # Reduzido de 70.0 para 50.0
-PP_V_MAX = 200.0  # Reduzido de 280.0 para 200.0
+PP_V_MIN = 60.0   # Aumentado de 50.0 para 60.0
+PP_V_MAX = 250.0  # Aumentado de 200.0 para 250.0
 PP_K_CURV_SPEED = 120.0  # Reduzido de 180.0 para 120.0
 
 PP_BRAKE_EPS = 25.0
@@ -119,11 +119,11 @@ PP_RECOVER_STEER_DEG = 28
 
 # ---------- Efeitos / Partículas ----------
 DIR_EFFECTS = os.path.join(DIR_PROJETO, "assets", "images", "effects")
-CAMINHO_FUMACA = os.path.join(DIR_EFFECTS, "smoke.png")  # coloque seu asset aqui
+CAMINHO_FUMACA = os.path.join(DIR_EFFECTS, "smoke", "pixels_00.png")  # coloque seu asset aqui
 
 # ---------- Modo Drift / Pontuação ----------
 MODO_DRIFT = True
-DRIFT_MIN_VEL = 1.6
+DRIFT_MIN_VEL = 1.2  # Reduzido para permitir drift em velocidades menores
 DRIFT_PONTOS_BASE = 1.0
 DRIFT_PONTOS_VEL_FACTOR = 0.06
 DRIFT_DECAY_POR_SEG = 60.0
@@ -137,14 +137,14 @@ DRIFT_ATRITO_DERRAPANDO  = 0.985
 DRIFT_GIRO_RESP          = 1.25
 DRIFT_PERP_K             = 0.0065
 
-VEL_MAX                  = 3.5  # Reduzido de 5.2 para 3.5
+VEL_MAX                  = 5.5  # Aumentado de 3.5 para 5.5 (mais velocidade)
 ACEL_BASE                = 0.08  # Reduzido de 0.12 para 0.08
 
 # ---------- Turbo ----------
-TURBO_FORCA_IMPULSO = 4.2
-TURBO_FATOR        = 1.25
-TURBO_DURACAO_S    = 0.9
-TURBO_COOLDOWN_S   = 2.5
+TURBO_FORCA_IMPULSO = 2.5  # Reduzido de 4.2 para 2.5 (mais realista)
+TURBO_FATOR        = 1.15  # Reduzido de 1.25 para 1.15 (mais realista)
+TURBO_DURACAO_S    = 1.2   # Aumentado de 0.9 para 1.2 (dura mais tempo)
+TURBO_COOLDOWN_S   = 3.0   # Aumentado de 2.5 para 3.0 (cooldown maior)
 
 # ---------- Configurações de Opções ----------
 # Configurações padrão
@@ -157,15 +157,16 @@ CONFIGURACOES = {
         "musica_habilitada": True,
         "musica_no_menu": True,
         "musica_no_jogo": True,
-        "musica_aleatoria": False
+        "musica_aleatorIA": False
     },
     "video": {
         "resolucao": (1280, 720),
         "fullscreen": False,
-        "tela_cheia_sem_bordas": False,
+        "tela_cheIA_sem_bordas": False,
         "vsync": True,
         "fps_max": 60,
-        "qualidade_alta": True
+        "qualidade_alta": True,
+        "mostrar_fps": False
     },
     "controles": {
         "sensibilidade_volante": 1.0,
@@ -173,7 +174,7 @@ CONFIGURACOES = {
         "auto_centro": True
     },
     "jogo": {
-        "dificuldade_ia": 1.0,
+        "dificuldade_IA": 1.0,
         "modo_drift": True,
         "mostrar_fps": False,
         "mostrar_debug": False

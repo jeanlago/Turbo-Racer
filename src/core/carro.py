@@ -17,14 +17,14 @@ class Carro:
     Física com drift arcade:
       - Mantém tua aceleração/freio.
       - Em drift (handbrake): grip lateral quase 1 (escorrega), injeta slip contínuo, e aplica yaw extra a partir do slip.
-      - S (freio) NÃO ativa drift; drift só via self.drift_hold (Space/Shift no main).
+      - S (freio) NÃO ativa drift; drift só vIA self.drift_hold (Space/Shift no main).
     """
     # Grip lateral (fator por frame sobre v_lat): normal "mata" lateral; em drift quase não reduz.
     LATERAL_GRIP_NORMAL = 0.82
     LATERAL_GRIP_DRIFT  = 0.9985  # deixa escorregar de lado
 
     # Parâmetros do drift (ajuste fino)
-    DRIFT_KICK_START     = 0.14   # fração de |v_long| injetada em v_lat ao iniciar a derrapagem
+    DRIFT_KICK_START     = 0.14   # fração de |v_long| injetada em v_lat ao inicIAr a derrapagem
     DRIFT_FEED_PER_S     = 0.70   # slip contínuo por segundo enquanto handbrake+direção
     DRIFT_RATIO_MAX      = 1.25   # |v_lat| <= |v_long| * ratio + margem (limita ângulo de drift)
     DRIFT_RATIO_MARGIN   = 2.5    # margem fixa (px/frame) para baixa velocidade
@@ -102,6 +102,13 @@ class Carro:
         self._turbo_cd = 0.0
         self._turbo_mul = 1.0
 
+        # Sistema de Nitro
+        self.nitro = 100.0  # Nitro atual (0-100)
+        self.nitro_max = 100.0  # Nitro máximo
+        self.usando_nitro = False  # Se está usando nitro no momento
+        self.nitro_consumo = 20.0  # Consumo por segundo quando usando
+        self.nitro_recuperacao = 8.0  # Recuperação por segundo quando não está usando
+
     # ===== vetores úteis =====
     def _vetor_frente(self):
         rad = math.radians(self.angulo)
@@ -171,6 +178,19 @@ class Carro:
         acel_mult = (self.TURBO_MULT_ACEL if self.turbo_ativo or (self._turbo_timer > 0.0) else 1.0)
         vel_max   = self.VEL_MAX_FRENTE * (self.TURBO_MULT_VEL if self.turbo_ativo or (self._turbo_timer > 0.0) else 1.0)
 
+        # Sistema de Nitro (usar quando acelerar e tiver nitro)
+        self.usando_nitro = bool(acelerar and self.nitro > 0.0)
+        
+        # Aplicar efeitos do nitro
+        if self.usando_nitro:
+            acel_mult *= 1.5  # 50% mais aceleração
+            vel_max *= 1.3    # 30% mais velocidade máxima
+            # Consumir nitro
+            self.nitro = max(0.0, self.nitro - self.nitro_consumo * dt)
+        else:
+            # Recuperar nitro quando não está usando
+            self.nitro = min(self.nitro_max, self.nitro + self.nitro_recuperacao * dt)
+
         # Decompõe velocidade atual
         v_long, v_lat = self._decomp_vel()
 
@@ -207,7 +227,7 @@ class Carro:
             self.angulo += fator_giro * sinal_direcao
 
         # ======== BLOCO: DRIFT MELHORADO ========
-        # 1) Kick de slip quando COMEÇA o drift (traseira sai imediatamente)
+        # 1) Kick de slip quando COMEÇA o drift (traseira sai imedIAtamente)
         if drifteando and not self._was_drifting and (direita ^ esquerda) and abs(v_long) > 0.2:
             direcao_out = (1 if esquerda else -1)  # esquerda => traseira pra direita (v_lat > 0)
             v_lat += direcao_out * abs(v_long) * self.DRIFT_KICK_START

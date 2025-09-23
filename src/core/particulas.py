@@ -29,14 +29,28 @@ class EmissorFumaca:
         self.tex = pygame.image.load(CAMINHO_FUMACA).convert_alpha()
         self.ps = []
         self._accum = 0.0
+        self.max_particulas = 50  # Reduzido ainda mais para melhor performance
+        self._particulas_por_frame = 2  # Máximo de partículas crIAdas por frame
 
     def spawn(self, x, y, dirx, diry, taxa_qps, dt):
+        # Limitar número de partículas para performance
+        if len(self.ps) >= self.max_particulas:
+            return
+            
         self._accum += taxa_qps * dt
         n = int(self._accum)
         if n <= 0: return
         self._accum -= n
+        
+        # Limitar número de partículas crIAdas por frame
+        n = min(n, self._particulas_por_frame)
+        
         base_ang = math.atan2(diry, dirx) + math.pi
         for _ in range(n):
+            # Verificar limite novamente dentro do loop
+            if len(self.ps) >= self.max_particulas:
+                break
+                
             ang = base_ang + random.uniform(-0.6, 0.6)
             v = random.uniform(20, 80)
             vx, vy = math.cos(ang)*v, math.sin(ang)*v
@@ -48,12 +62,16 @@ class EmissorFumaca:
             self.ps.append(p)
 
     def update(self, dt):
-        self.ps = [p for p in self.ps if p.update(dt) or p.alive()]
+        # Otimização: usar list comprehension mais eficiente
+        self.ps = [p for p in self.ps if p.alive() and p.update(dt)]
 
     def draw(self, surface, camera=None):
+        # Otimização: pré-calcular zoom se houver câmera
+        zoom = getattr(camera, "zoom", 1.0) if camera else 1.0
+        
         for p in self.ps:
             scale, alpha = p.interp()
-            img = pygame.transform.rotozoom(self.tex, p.ang, scale if camera is None else scale*(getattr(camera, "zoom",1.0)))
+            img = pygame.transform.rotozoom(self.tex, p.ang, scale * zoom)
             img.set_alpha(alpha)
             x, y = p.x, p.y
             if camera:

@@ -14,13 +14,13 @@ def main():
     tela = pygame.display.set_mode((LARGURA, ALTURA))
     pygame.display.set_caption("Debug IA Travada")
     
-    # Carregar imagem de guias
+    # Carregar imagem de guIAs
     if os.path.exists(CAMINHO_GUIAS):
         surface_guides = pygame.image.load(CAMINHO_GUIAS).convert_alpha()
         if surface_guides.get_width() != LARGURA or surface_guides.get_height() != ALTURA:
             surface_guides = pygame.transform.smoothscale(surface_guides, (LARGURA, ALTURA))
     else:
-        print("Arquivo de guias não encontrado!")
+        print("Arquivo de guIAs não encontrado!")
         return
     
     # Carregar checkpoints

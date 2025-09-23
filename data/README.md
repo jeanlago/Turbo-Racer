@@ -12,7 +12,7 @@ Esta pasta contém arquivos de dados e configurações do Turbo Racer.
 - Configurações de controles (sensibilidade)
 - Configurações de jogo (dificuldade, modo drift)
 
-**Uso:** Carregado automaticamente pelo jogo na inicialização
+**Uso:** Carregado automaticamente pelo jogo na inicIAlização
 
 ### **checkpoints_backup.json**
 **Propósito:** Backup de checkpoints legado  
@@ -21,8 +21,8 @@ Esta pasta contém arquivos de dados e configurações do Turbo Racer.
 
 ## 🔧 Configuração
 
-### **Criar config.json padrão**
-Se o arquivo `config.json` não existir, o jogo criará automaticamente um arquivo com configurações padrão.
+### **CrIAr config.json padrão**
+Se o arquivo `config.json` não existir, o jogo crIArá automaticamente um arquivo com configurações padrão.
 
 ### **Backup de Configurações**
 Recomenda-se fazer backup desta pasta antes de atualizações importantes do jogo.
@@ -32,9 +32,9 @@ Recomenda-se fazer backup desta pasta antes de atualizações importantes do jog
 - **Não edite** os arquivos manualmente a menos que saiba o que está fazendo
 - **Backup recomendado** antes de modificações
 - **Formato JSON** - use um editor que suporte JSON válido
-- **Codificação UTF-8** - importante para caracteres especiais
+- **Codificação UTF-8** - importante para caracteres especIAis
 
 ---
 
-**Criado em:** Dezembro 2024  
+**CrIAdo em:** Dezembro 2024  
 **Propósito:** Armazenamento de dados do usuário
