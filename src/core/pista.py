@@ -166,7 +166,7 @@ def obter_estatisticas_cache():
 
 # ---------- carregamento ----------
 def carregar_pista():
-    from config import CONFIGURACOES
+    from config import CONFIGURACOES, CAMINHO_MAPA, CAMINHO_GUIAS
     pista = pygame.image.load(CAMINHO_MAPA).convert()
     
     # Aplicar configurações de qualidade
@@ -395,6 +395,11 @@ def desenhar_rota_debug(superficie, camera, pontos, cor=(120,200,255)):
 
 # Cache para checkpoints
 _checkpoints_cache = None
+
+def limpar_cache_checkpoints():
+    """Limpa o cache de checkpoints quando o mapa é trocado"""
+    global _checkpoints_cache
+    _checkpoints_cache = None
 
 # ---------- desenhar checkpoints ----------
 def desenhar_checkpoints(superficie, camera, checkpoints=None):

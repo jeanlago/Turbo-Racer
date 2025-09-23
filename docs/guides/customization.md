@@ -71,6 +71,41 @@ Guia para personalizar e modificar o Turbo Racer.
 
 ## 🎨 Interface e HUD
 
+### Personalizar Menus
+
+#### Navegação de Menu
+O sistema de menus usa controles intuitivos:
+- **Setas ←→ ou A/D:** Navegar entre opções do menu principal
+- **Setas ↑↓ ou W/S:** Navegar entre opções verticais (ex: número de jogadores)
+- **ENTER ou ESPAÇO:** Confirmar seleção
+- **ESC:** Voltar ao menu anterior
+
+#### Modificar Layout de Menu
+Para ajustar espaçamentos e posições dos menus:
+
+```python
+# Em src/core/menu.py, função modo_jogo_loop()
+# Ajustar tamanho da caixa
+caixa_largura = 600  # Largura da caixa
+caixa_altura = 500   # Altura da caixa
+
+# Ajustar espaçamentos
+y = caixa_y + 120 + i * 50  # Espaçamento entre opções (50px)
+```
+
+#### Adicionar Novas Opções de Menu
+Para adicionar novas opções ao menu de modo de jogo:
+
+```python
+# Em src/core/menu.py, função modo_jogo_loop()
+opcoes_modo = [
+    ("1 JOGADOR", ModoJogo.UM_JOGADOR),
+    ("2 JOGADORES", ModoJogo.DOIS_JOGADORES),
+    # Adicionar nova opção aqui
+    ("NOVA_OPCAO", ModoJogo.NOVA_OPCAO)
+]
+```
+
 ### Personalizar HUD
 
 #### Ativar Elementos Removidos
