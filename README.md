@@ -139,6 +139,14 @@ Turbo-Racer/
 - **F1:** Ativar/desativar debug da IA
 - **ESC:** Pausar/despausar ou voltar ao menu
 
+### **Navegação no Menu**
+- **Setas ←→ ou A/D:** Navegar entre opções do menu principal
+- **Setas ↑↓ ou W/S:** Navegar entre opções de "Número de jogadores" no modo de jogo
+- **Setas ←→ ou A/D:** Navegar entre opções de "Tipo de jogo" no modo de jogo
+- **ENTER ou ESPAÇO:** Confirmar seleção
+- **ESC:** Voltar ao menu anterior
+- **R:** Recarregar mapas (na seleção de mapas)
+
 ### **Editor de Checkpoints**
 - **F7:** Ativar/desativar modo edição
 - **F5:** Salvar checkpoints
@@ -169,9 +177,9 @@ python src/main.py
 
 ---
 
-## 🗺️ Sistema de Mapas
+## 🗺️ Sistema de Mapas (ESCALÁVEL)
 
-### **Adicionar Novo Mapa**
+### **Adicionar Novo Mapa (AUTOMÁTICO)**
 
 1. **Coloque os arquivos** na estrutura:
    ```
@@ -179,21 +187,24 @@ python src/main.py
    ├── SeuMapa.png
    └── guides/
        ├── SeuMapa_guides.png
-       └── SeuMapa_checkpoints.json (crIAdo automaticamente)
+       └── SeuMapa_checkpoints.json (opcional - criado automaticamente)
    ```
 
-2. **Adicione no config.py**:
-   ```python
-   "SeuMapa": {
-       "nome": "Nome do Mapa",
-       "arquivo_mapa": os.path.join(DIR_MAPS, "SeuMapa.png"),
-       "arquivo_guIAs": os.path.join(DIR_MAPS_GUIDES, "SeuMapa_guides.png"),
-       "arquivo_checkpoints": os.path.join(DIR_MAPS_GUIDES, "SeuMapa_checkpoints.json"),
-       "waypoints_fallback": [(x1, y1), (x2, y2), ...]
-   }
-   ```
+2. **Execute o jogo** - o mapa será detectado automaticamente!
 
-3. **Crie os checkpoints** usando o editor visual (F7)
+3. **No menu de seleção de mapas**:
+   - Pressione **R** para recarregar mapas
+   - O sistema detecta automaticamente novos mapas
+
+4. **Crie os checkpoints** usando o editor visual (F7) se necessário
+
+### **Recursos do Sistema Escalável**
+
+- ✅ **Detecção automática** de mapas na pasta `maps`
+- ✅ **Nomes amigáveis** gerados automaticamente
+- ✅ **Recarregamento dinâmico** (tecla R no menu)
+- ✅ **Fallback inteligente** para mapas sem guias/checkpoints
+- ✅ **Zero configuração manual** necessária
 
 ### **Editor de Checkpoints**
 - **Ative o modo edição** (F7)

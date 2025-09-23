@@ -7,6 +7,26 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+## [2.1.0] - 2024-12-XX
+
+### Adicionado
+- **Sistema de Navegação de Menu Melhorado** - Controles intuitivos com setas e A/D
+- **Sistema de Mapas Escalável** - Detecção automática de mapas sem configuração manual
+- **Recarregamento Dinâmico de Mapas** - Tecla R para recarregar mapas em tempo real
+- **Interface de Modo de Jogo Otimizada** - Layout melhorado com espaçamentos ajustados
+- **Instruções de Navegação** - Guias claros para controles do menu
+
+### Modificado
+- **Navegação do Menu Principal** - Ordem visual e lógica sincronizadas
+- **Layout do Menu de Modo de Jogo** - Espaçamentos otimizados e elementos reposicionados
+- **Sistema de Detecção de Mapas** - Escaneamento automático da pasta maps
+- **Tratamento de Erros de Menu** - Correção de crash ao pressionar ESC
+
+### Corrigido
+- **Crash ao Pressionar ESC** - Problema de tipo de retorno corrigido
+- **Sobreposição de Elementos** - Botões não sobrepõem mais opções de voltas
+- **Navegação Inconsistente** - Ordem de navegação corrigida para corresponder ao layout visual
+
 ## [2.0.0] - 2024-12-XX
 
 ### Adicionado

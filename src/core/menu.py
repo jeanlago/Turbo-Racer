@@ -70,68 +70,357 @@ def desenhar_scrollbar(screen, scroll_offset, max_scroll, caixa_x, caixa_y, caix
     # Borda da barra
     pygame.draw.rect(screen, (255, 255, 255), (scrollbar_x, scrollbar_y, scrollbar_width, scrollbar_height), 1)
 
+# Cache para o atlas de fonte pixel art
+_pixel_font_atlas = None
+_pixel_font_chars = {}
+
+def load_pixel_font_atlas():
+    """Carrega o atlas de fonte pixel art"""
+    global _pixel_font_atlas, _pixel_font_chars
+    
+    if _pixel_font_atlas is None:
+        try:
+            # Garantir que pygame está inicializado
+            if not pygame.get_init():
+                pygame.init()
+            _pixel_font_atlas = pygame.image.load("assets/fonts/pixel_font_atlas.png").convert_alpha()
+            
+            # Definir caracteres e suas posições no atlas
+            char_width = 8
+            char_height = 12
+            chars_per_row = 10
+            
+            # Carregar caracteres ASCII 32-126
+            for ascii_code in range(32, 127):
+                char = chr(ascii_code)
+                char_index = ascii_code - 32
+                
+                row = char_index // chars_per_row
+                col = char_index % chars_per_row
+                
+                x = col * char_width
+                y = row * char_height
+                
+                # Extrair caractere do atlas
+                char_surface = pygame.Surface((char_width, char_height), pygame.SRCALPHA)
+                char_surface.blit(_pixel_font_atlas, (0, 0), (x, y, char_width, char_height))
+                _pixel_font_chars[char] = char_surface
+            
+            # Carregar caracteres especiais portugueses
+            special_chars = ['ç', 'Ç', 'ã', 'Ã', 'õ', 'Õ', 'á', 'Á', 'à', 'À', 'â', 'Â', 
+                           'é', 'É', 'ê', 'Ê', 'í', 'Í', 'ó', 'Ó', 'ô', 'Ô', 'ú', 'Ú', 
+                           'ü', 'Ü', 'ñ', 'Ñ']
+            
+            char_index = 95  # 127 - 32 = 95 (posição após ASCII 32-126)
+            
+            for char in special_chars:
+                row = char_index // chars_per_row
+                col = char_index % chars_per_row
+                
+                x = col * char_width
+                y = row * char_height
+                
+                # Extrair caractere do atlas
+                char_surface = pygame.Surface((char_width, char_height), pygame.SRCALPHA)
+                char_surface.blit(_pixel_font_atlas, (0, 0), (x, y, char_width, char_height))
+                _pixel_font_chars[char] = char_surface
+                
+                char_index += 1
+                
+        except Exception as e:
+            print(f"Erro ao carregar atlas de fonte pixel art: {e}")
+            _pixel_font_atlas = None
+
+def render_pixel_text(text, size, color=(255,255,255)):
+    """Renderiza texto usando fonte pixel art do atlas"""
+    load_pixel_font_atlas()
+    
+    if _pixel_font_atlas is None:
+        # Fallback para fonte do sistema
+        font = pygame.font.SysFont("consolas", size, bold=True)
+        return font.render(text, True, color)
+    
+    # Calcular escala baseada no tamanho desejado
+    base_size = 12  # Tamanho base dos caracteres no atlas
+    scale = size / base_size
+    
+    char_width = int(8 * scale)
+    char_height = int(12 * scale)
+    
+    # Criar superfície para o texto completo
+    text_width = len(text) * char_width
+    text_height = char_height
+    text_surface = pygame.Surface((text_width, text_height), pygame.SRCALPHA)
+    
+    # Renderizar cada caractere
+    for i, char in enumerate(text):
+        if char in _pixel_font_chars:
+            char_surface = _pixel_font_chars[char]
+            
+            # Escalar caractere
+            if scale != 1.0:
+                char_surface = pygame.transform.scale(char_surface, (char_width, char_height))
+            
+            # Aplicar cor corretamente
+            char_colored = pygame.Surface(char_surface.get_size(), pygame.SRCALPHA)
+            
+            # Aplicar cor apenas nos pixels brancos (que representam o caractere)
+            for x in range(char_surface.get_width()):
+                for y in range(char_surface.get_height()):
+                    pixel = char_surface.get_at((x, y))
+                    if pixel[0] > 128:  # Se é um pixel branco (caractere)
+                        char_colored.set_at((x, y), (*color, 255))
+            
+            # Posicionar caractere
+            x = i * char_width
+            text_surface.blit(char_colored, (x, 0))
+        else:
+            # Se caractere não existe, usar fonte do sistema como fallback
+            font_fallback = pygame.font.SysFont("consolas", size, bold=True)
+            char_surface = font_fallback.render(char, True, color)
+            char_surface = pygame.transform.scale(char_surface, (char_width, char_height))
+            x = i * char_width
+            text_surface.blit(char_surface, (x, 0))
+    
+    return text_surface
+
+def normalizar_texto(text):
+    """Substitui acentos e cedilha por caracteres normais para compatibilidade com fontes TTF"""
+    # Mapeamento de caracteres especiais para normais
+    mapeamento = {
+        'á': 'a', 'à': 'a', 'â': 'a', 'ã': 'a', 'ä': 'a',
+        'Á': 'A', 'À': 'A', 'Â': 'A', 'Ã': 'A', 'Ä': 'A',
+        'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+        'É': 'E', 'È': 'E', 'Ê': 'E', 'Ë': 'E',
+        'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
+        'Í': 'I', 'Ì': 'I', 'Î': 'I', 'Ï': 'I',
+        'ó': 'o', 'ò': 'o', 'ô': 'o', 'õ': 'o', 'ö': 'o',
+        'Ó': 'O', 'Ò': 'O', 'Ô': 'O', 'Õ': 'O', 'Ö': 'O',
+        'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
+        'Ú': 'U', 'Ù': 'U', 'Û': 'U', 'Ü': 'U',
+        'ç': 'c', 'Ç': 'C',
+        'ñ': 'n', 'Ñ': 'N'
+    }
+    
+    # Aplicar mapeamento
+    texto_normalizado = ""
+    for char in text:
+        texto_normalizado += mapeamento.get(char, char)
+    
+    return texto_normalizado
+
 def render_text(text, size, color=(255,255,255), bold=True, pixel_style=True):
     pygame.font.init()
     
     if pixel_style:
-        # Usar fonte pixel art para estilo retrô/synthwave
-        try:
-            # Tentar carregar fonte pixel art
-            font = pygame.font.Font("assets/fonts/pixel_font.ttf", size)
-        except:
+        # Usar fonte TTF com suporte a acentos (sem normalização)
+        # Usar fontes do sistema com suporte a acentos (desabilitar atlas customizado por enquanto)
+        # try:
+        #     pixel_text = render_pixel_text(text, size, color)
+        #     if pixel_text.get_width() > 0:  # Se conseguiu renderizar
+        #         # Adicionar contorno se necessário
+        #         if size >= 16:
+        #             outline_width = 2 if size < 32 else 3
+        #             final_surface = pygame.Surface((pixel_text.get_width() + outline_width * 2, pixel_text.get_height() + outline_width * 2), pygame.SRCALPHA)
+        #             
+        #             # Desenhar contorno
+        #             outline_surface = render_pixel_text(text, size, (0, 0, 0))
+        #             for dx in range(-outline_width, outline_width + 1):
+        #                 for dy in range(-outline_width, outline_width + 1):
+        #                     if dx != 0 or dy != 0:
+        #                         final_surface.blit(outline_surface, (outline_width + dx, outline_width + dy))
+        #             
+        #             # Desenhar texto principal
+        #             final_surface.blit(pixel_text, (outline_width, outline_width))
+        #             return final_surface
+        #         else:
+        #             return pixel_text
+        # except:
+        #     pass
+        
+        # Fallback para fontes TTF pixel art com suporte a acentos
+        pixel_fonts = [
+            "assets/fonts/PixeloidSans.ttf",           # PixeloidSans (pixel art com acentos)
+            "assets/fonts/ByteBounce.ttf",             # ByteBounce (pixel art com acentos)
+            "assets/fonts/PressStart2P-Regular.ttf",  # Press Start 2P (clássica)
+            "assets/fonts/04b_03.ttf",               # 04b_03 (pixel art clássica)
+            "assets/fonts/04b_08.ttf",               # 04b_08 (pixel art moderna)
+            "assets/fonts/pixel_font.ttf",           # Fonte customizada
+            "assets/fonts/retro_font.ttf",           # Fonte retrô customizada
+        ]
+        
+        # Se não encontrar fontes TTF, usar fontes do sistema com aparência pixel art
+        if not any(os.path.exists(font_path) for font_path in pixel_fonts):
+            # Usar fontes do sistema que suportam acentos
+            system_fonts = [
+                "consolas",      # Consolas (monospace, suporta acentos)
+                "courier",       # Courier (monospace, suporta acentos)
+                "lucida console", # Lucida Console (monospace, suporta acentos)
+                "arial"          # Arial (fallback)
+            ]
+            
+            for font_name in system_fonts:
+                try:
+                    font = pygame.font.SysFont(font_name, size, bold=bold)
+                    # Aplicar efeito pixel art (escalar para baixo e depois para cima)
+                    if size > 12:
+                        # Criar superfície pequena para efeito pixel
+                        small_size = max(8, size // 2)
+                        small_font = pygame.font.SysFont(font_name, small_size, bold=bold)
+                        small_surface = small_font.render(text, True, color)
+                        # Escalar para o tamanho desejado
+                        font = pygame.transform.scale(small_surface, (small_surface.get_width() * 2, small_surface.get_height() * 2))
+                    break
+                except:
+                    continue
+        
+        font = None
+        for font_path in pixel_fonts:
             try:
-                # Fallback para fonte pixel art do sistema
-                font = pygame.font.Font("assets/fonts/retro_font.ttf", size)
+                font = pygame.font.Font(font_path, size)
+                break
             except:
-                # Fallback final: usar fonte monospace com estilo pixel
-                font = pygame.font.SysFont("consolas", size, bold=bold)
+                continue
+        
+        # Se nenhuma fonte pixel art funcionar, usar fontes do sistema com suporte a acentos
+        if font is None:
+            # Tentar fontes que suportam acentos e têm aparência pixel art
+            system_fonts = [
+                "consolas",      # Consolas (monospace, suporta acentos)
+                "courier",       # Courier (monospace, suporta acentos)
+                "lucida console", # Lucida Console (monospace, suporta acentos)
+                "monaco",        # Monaco (se disponível)
+                "menlo",         # Menlo (se disponível)
+                "arial"          # Arial (fallback)
+            ]
+            
+            for font_name in system_fonts:
+                try:
+                    font = pygame.font.SysFont(font_name, size, bold=bold)
+                    break
+                except:
+                    continue
     else:
         font = pygame.font.SysFont("arIAl", size, bold=bold)
     
     # Renderizar texto com contorno para estilo pixel art
-    if pixel_style and size >= 24:
-        # CrIAr contorno preto para texto grande
+    if pixel_style and size >= 16:
+        # CrIAr contorno preto para texto pixel art
         text_surface = font.render(text, True, color)
         outline_surface = font.render(text, True, (0, 0, 0))
         
         # CrIAr superfície maior para o contorno
-        final_surface = pygame.Surface((text_surface.get_width() + 4, text_surface.get_height() + 4), pygame.SRCALPHA)
+        outline_width = 2 if size < 32 else 3
+        final_surface = pygame.Surface((text_surface.get_width() + outline_width * 2, text_surface.get_height() + outline_width * 2), pygame.SRCALPHA)
         
-        # Desenhar contorno (4 posições)
-        for dx in [-2, 0, 2]:
-            for dy in [-2, 0, 2]:
+        # Desenhar contorno (8 posições para contorno mais suave)
+        for dx in range(-outline_width, outline_width + 1):
+            for dy in range(-outline_width, outline_width + 1):
                 if dx != 0 or dy != 0:
-                    final_surface.blit(outline_surface, (2 + dx, 2 + dy))
+                    final_surface.blit(outline_surface, (outline_width + dx, outline_width + dy))
         
         # Desenhar texto principal
-        final_surface.blit(text_surface, (2, 2))
+        final_surface.blit(text_surface, (outline_width, outline_width))
         
         return final_surface
     else:
         return font.render(text, True, color)
 
 class Escolha(Enum):
-    JOGAR = 0
+    SELECIONAR_MAPAS = 0
     SELECIONAR_CARROS = 1
-    SELECIONAR_MAPAS = 2
+    JOGAR = 2
     OPCOES = 3
     SAIR = 4
+
+def splash_screen(screen) -> bool:
+    """Tela de splash com 'Aperte qualquer botão para iniciar'"""
+    bg_raw = pygame.image.load(CAMINHO_MENU).convert_alpha()
+    bg = scale_to_cover(bg_raw, LARGURA, ALTURA)
+    
+    clock = pygame.time.Clock()
+    start_time = pygame.time.get_ticks()
+    
+    # Efeito de fade in
+    fade_surface = pygame.Surface((LARGURA, ALTURA))
+    fade_surface.fill((0, 0, 0))
+    
+    while True:
+        dt = clock.tick(FPS) / 1000.0
+        
+        # Atualizar música (sem popup)
+        gerencIAdor_musica.verificar_fim_musica()
+        
+        for ev in pygame.event.get():
+            if ev.type == pygame.QUIT:
+                return False
+            if ev.type == pygame.KEYDOWN or ev.type == pygame.MOUSEBUTTONDOWN:
+                # Qualquer tecla ou clique do mouse inicia o jogo
+                return True
+        
+        # Desenhar
+        screen.blit(bg, (0, 0))
+        
+        # Calcular fade in (2 segundos)
+        elapsed = pygame.time.get_ticks() - start_time
+        fade_alpha = max(0, 255 - int((elapsed / 2000.0) * 255))
+        
+        # Desenhar fade
+        if fade_alpha > 0:
+            fade_surface.set_alpha(fade_alpha)
+            screen.blit(fade_surface, (0, 0))
+        
+        # Efeito de piscar para o texto "Aperte qualquer botão"
+        blink_time = (pygame.time.get_ticks() % 2000) / 2000.0
+        if blink_time < 0.5:  # Pisca a cada 1 segundo
+            texto_iniciar = render_text("APERTE QUALQUER BOTÃO PARA INICIAR", 24, (0, 200, 255), bold=True, pixel_style=True)
+            texto_iniciar_x = (LARGURA - texto_iniciar.get_width()) // 2
+            texto_iniciar_y = ALTURA // 2 + 50
+            screen.blit(texto_iniciar, (texto_iniciar_x, texto_iniciar_y))
+        
+        pygame.display.flip()
 
 def menu_loop(screen) -> Escolha:
     bg_raw = pygame.image.load(CAMINHO_MENU).convert_alpha()
     bg = scale_to_cover(bg_raw, LARGURA, ALTURA)
 
-    itens = ["JOGAR", "SELECIONAR CARROS", "SELECIONAR MAPAS", "OPÇÕES", "SAIR"]
-    idx = 0
+    # Ordem visual (da esquerda para a direita)
+    itens = ["SELECIONAR MAPAS", "SELECIONAR CARROS", "JOGAR", "OPÇÕES", "SAIR"]
+    idx = 2  # Começar no JOGAR (centro)
     clock = pygame.time.Clock()
 
-    # posições dos botões (layout horizontal na parte inferior)
+    # Layout com botão JOGAR centralizado na linha inferior, mas em destaque
+    itens_completos = ["SELECIONAR MAPAS", "SELECIONAR CARROS", "JOGAR", "OPÇÕES", "SAIR"]
     base_y = int(ALTURA * 0.85)
-    botao_largura = 230
-    botao_altura = 60  
-    espacamento = 20
-    total_largura = len(itens) * botao_largura + (len(itens) - 1) * espacamento
-    base_x = (LARGURA - total_largura) // 2  # Centralizar horizontalmente
+    
+    # Tamanhos dos botões
+    jogar_largura = 280  # Maior que os outros
+    jogar_altura = 70    # Maior que os outros
+    botao_largura = 180  # Menor que o JOGAR
+    botao_altura = 50    # Menor que o JOGAR
+    espacamento = 15
+    
+    # Ajustar posição vertical para alinhar os centros dos botões
+    # O centro do JOGAR deve estar na mesma linha que o centro dos outros botões
+    jogar_y = base_y + (botao_altura - jogar_altura) // 2  # Ajustar para alinhar centros
+    
+    # Calcular posições - JOGAR no meio, outros ao redor
+    # JOGAR fica no centro, então calculamos as posições dos outros
+    jogar_x = (LARGURA - jogar_largura) // 2
+    
+    # Posições dos outros botões (2 de cada lado do JOGAR)
+    outros_posicoes = []
+    outros_itens = ["SELECIONAR MAPAS", "SELECIONAR CARROS", "OPÇÕES", "SAIR"]
+    
+    # Calcular espaço total necessário
+    espaco_esquerda = jogar_x - espacamento
+    espaco_direita = LARGURA - (jogar_x + jogar_largura) - espacamento
+    
+    # Distribuir 2 botões à esquerda e 2 à direita (ordem visual)
+    outros_posicoes.append((jogar_x - espacamento - 2 * botao_largura - espacamento, base_y))  # SELECIONAR MAPAS (mais à esquerda)
+    outros_posicoes.append((jogar_x - espacamento - botao_largura, base_y))  # SELECIONAR CARROS
+    outros_posicoes.append((jogar_x + jogar_largura + espacamento, base_y))  # OPÇÕES
+    outros_posicoes.append((jogar_x + jogar_largura + espacamento + botao_largura + espacamento, base_y))  # SAIR (mais à direita)
     
     # Variáveis para animação de hover dos botões
     hover_animation = [0.0] * len(itens)  # Progresso da animação para cada botão
@@ -150,9 +439,12 @@ def menu_loop(screen) -> Escolha:
         
         # Atualizar animação de hover dos botões
         for i in range(len(itens)):
-            tx = base_x + i * (botao_largura + espacamento)
-            ty = base_y
-            rect = pygame.Rect(tx, ty, botao_largura, botao_altura)
+            if i == 0:  # Botão JOGAR
+                rect = pygame.Rect(jogar_x, jogar_y, jogar_largura, jogar_altura)
+            else:  # Outros botões
+                x, y = outros_posicoes[i - 1]
+                rect = pygame.Rect(x, y, botao_largura, botao_altura)
+            
             is_hovering = rect.collidepoint(mouse_x, mouse_y)
             
             if is_hovering:
@@ -186,11 +478,16 @@ def menu_loop(screen) -> Escolha:
                         popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
             if ev.type == pygame.MOUSEMOTION:
                 mx, my = ev.pos
-                # detecta hover do mouse nas opções (layout horizontal)
+                # detecta hover do mouse nas opções
                 for i in range(len(itens)):
-                    tx = base_x + i * (botao_largura + espacamento)
-                    ty = base_y
-                    rect = pygame.Rect(tx, ty, botao_largura, botao_altura)
+                    if i == 2:  # Botão JOGAR (terceiro na nova ordem)
+                        rect = pygame.Rect(jogar_x, jogar_y, jogar_largura, jogar_altura)
+                    else:  # Outros botões
+                        if i < 2:  # SELECIONAR MAPAS, SELECIONAR CARROS
+                            x, y = outros_posicoes[i]
+                        else:  # OPÇÕES, SAIR
+                            x, y = outros_posicoes[i - 1]
+                        rect = pygame.Rect(x, y, botao_largura, botao_altura)
                     if rect.collidepoint(mx, my):
                         idx = i
             if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
@@ -208,23 +505,39 @@ def menu_loop(screen) -> Escolha:
                     # Se não clicou no popup, verificar se clicou em algum botão
                     mouse_x, mouse_y = ev.pos
                     for i, txt in enumerate(itens):
-                        x = base_x + i * (botao_largura + espacamento)
-                        y = base_y
-                        botao_rect = pygame.Rect(x, y, botao_largura, botao_altura)
+                        if i == 2:  # Botão JOGAR (terceiro na nova ordem)
+                            botao_rect = pygame.Rect(jogar_x, jogar_y, jogar_largura, jogar_altura)
+                        else:  # Outros botões
+                            if i < 2:  # SELECIONAR MAPAS, SELECIONAR CARROS
+                                x, y = outros_posicoes[i]
+                            else:  # OPÇÕES, SAIR
+                                x, y = outros_posicoes[i - 1]
+                            botao_rect = pygame.Rect(x, y, botao_largura, botao_altura)
                         if botao_rect.collidepoint(mouse_x, mouse_y):
                             return Escolha(i)
 
         # desenha
         screen.blit(bg, (0, 0))
 
-        # Botões do menu - layout horizontal na parte inferior
+        # Renderizar todos os botões na mesma linha
         for i, txt in enumerate(itens):
             sel = (i == idx)
             hover_progress = hover_animation[i]  # Progresso da animação de hover (0.0 a 1.0)
             
-            # Posição do botão
-            x = base_x + i * (botao_largura + espacamento)
-            y = base_y
+            # Posição e tamanho do botão
+            if i == 2:  # Botão JOGAR (terceiro na nova ordem)
+                x, y = jogar_x, jogar_y
+                largura, altura = jogar_largura, jogar_altura
+                fonte_tamanho = 24  # Fonte maior para JOGAR
+                borda_espessura = 4  # Borda mais espessa para JOGAR
+            else:  # Outros botões
+                if i < 2:  # SELECIONAR MAPAS, SELECIONAR CARROS
+                    x, y = outros_posicoes[i]
+                else:  # OPÇÕES, SAIR
+                    x, y = outros_posicoes[i - 1]
+                largura, altura = botao_largura, botao_altura
+                fonte_tamanho = 16  # Fonte menor para outros
+                borda_espessura = 3  # Borda normal para outros
             
             # Cores base do botão
             if sel:
@@ -269,10 +582,10 @@ def menu_loop(screen) -> Escolha:
             
             # Efeito de escala suave no hover
             scale_factor = 1.0 + (hover_progress * 0.05)  # Aumenta até 5% no hover
-            scaled_width = int(botao_largura * scale_factor)
-            scaled_height = int(botao_altura * scale_factor)
-            offset_x = (scaled_width - botao_largura) // 2
-            offset_y = (scaled_height - botao_altura) // 2
+            scaled_width = int(largura * scale_factor)
+            scaled_height = int(altura * scale_factor)
+            offset_x = (scaled_width - largura) // 2
+            offset_y = (scaled_height - altura) // 2
             
             # Desenhar fundo do botão com escala
             botao_fundo = pygame.Surface((scaled_width, scaled_height), pygame.SRCALPHA)
@@ -280,12 +593,12 @@ def menu_loop(screen) -> Escolha:
             screen.blit(botao_fundo, (x - offset_x, y - offset_y))
             
             # Desenhar borda do botão com escala
-            pygame.draw.rect(screen, cor_borda, (x - offset_x, y - offset_y, scaled_width, scaled_height), 3)
+            pygame.draw.rect(screen, cor_borda, (x - offset_x, y - offset_y, scaled_width, scaled_height), borda_espessura)
             
             # Desenhar texto do botão centralizado
-            texto_surface = render_text(txt, 20, cor_texto, bold=True, pixel_style=True)
-            texto_x = x + (botao_largura - texto_surface.get_width()) // 2
-            texto_y = y + (botao_altura - texto_surface.get_height()) // 2
+            texto_surface = render_text(txt, fonte_tamanho, cor_texto, bold=True, pixel_style=True)
+            texto_x = x + (largura - texto_surface.get_width()) // 2
+            texto_y = y + (altura - texto_surface.get_height()) // 2
             screen.blit(texto_surface, (texto_x, texto_y))
             
             # Efeito de glow no hover
@@ -297,9 +610,9 @@ def menu_loop(screen) -> Escolha:
             
             if sel:
                 # Efeito de brilho/glow sob o botão ativo (teclado)
-                glow_surface = pygame.Surface((botao_largura + 10, botao_altura + 10), pygame.SRCALPHA)
-                glow_surface.fill((0, 200, 255, 30))  # Glow azul cIAno suave
-                screen.blit(glow_surface, (x - 5, y - 5))
+                glow_surface = pygame.Surface((scaled_width + 20, scaled_height + 20), pygame.SRCALPHA)
+                glow_surface.fill((0, 200, 255, 20))  # Glow sutil
+                screen.blit(glow_surface, (x - offset_x - 10, y - offset_y - 10))
 
         # Desenhar pop-up de música
         popup_musica.desenhar(screen)
@@ -310,7 +623,8 @@ def selecionar_mapas_loop(screen):
     bg_raw = pygame.image.load(CAMINHO_MENU).convert_alpha()
     bg = scale_to_cover(bg_raw, LARGURA, ALTURA)
     
-    mapas = list(MAPAS_DISPONIVEIS.keys())
+    from config import obter_lista_mapas, obter_nome_mapa, recarregar_mapas
+    mapas = obter_lista_mapas()
     indice = 0
     relogio = pygame.time.Clock()
     
@@ -343,6 +657,14 @@ def selecionar_mapas_loop(screen):
                     gerencIAdor_musica.proxima_musica()
                     if gerencIAdor_musica.musica_tocando:
                         popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
+                elif event.key == pygame.K_r:
+                    # Recarregar mapas
+                    if recarregar_mapas():
+                        mapas = obter_lista_mapas()
+                        indice = 0
+                        popup_musica.mostrar("Mapas recarregados!")
+                    else:
+                        popup_musica.mostrar("Nenhum mapa novo encontrado")
         
         screen.blit(bg, (0, 0))
         
@@ -351,8 +673,7 @@ def selecionar_mapas_loop(screen):
         screen.blit(titulo, (titulo_x, base_y - 100))
         
         for i, mapa_id in enumerate(mapas):
-            mapa_info = MAPAS_DISPONIVEIS[mapa_id]
-            nome_mapa = mapa_info["nome"]
+            nome_mapa = obter_nome_mapa(mapa_id)
             
             if i == indice:
                 cor = (255, 100, 255)  # Magenta vibrante
@@ -364,7 +685,15 @@ def selecionar_mapas_loop(screen):
             texto = render_text(nome_mapa, tamanho, cor, bold=True, pixel_style=True)
             screen.blit(texto, (base_x, base_y + i * passo))
         
-        # Instruções removidas
+        # Instruções
+        instrucoes = [
+            "↑↓: Navegar | ENTER: Selecionar | ESC: Voltar",
+            "R: Recarregar mapas | M: Próxima música"
+        ]
+        
+        for j, instrucao in enumerate(instrucoes):
+            texto_instrucao = render_text(instrucao, 20, (200, 200, 200), pixel_style=True)
+            screen.blit(texto_instrucao, (base_x, base_y + len(mapas) * passo + 40 + j * 25))
         
         popup_musica.desenhar(screen)
         
@@ -1644,6 +1973,7 @@ def modo_jogo_loop(screen):
     # Configurações atuais (podem ser salvas em CONFIGURACOES)
     modo_jogo_atual = ModoJogo.UM_JOGADOR
     tipo_jogo_atual = TipoJogo.CORRIDA
+    voltas_atual = 1  # Número de voltas selecionado
     
     # Opções de modo de jogo
     opcoes_modo = [
@@ -1657,19 +1987,28 @@ def modo_jogo_loop(screen):
         ("DRIFT", TipoJogo.DRIFT)
     ]
     
+    # Opções de voltas (apenas para corrida) - máximo 3 voltas
+    opcoes_voltas = [
+        ("1 VOLTA", 1),
+        ("2 VOLTAS", 2),
+        ("3 VOLTAS", 3)
+    ]
+    
     opcao_modo_atual = 0
     opcao_tipo_atual = 0
+    opcao_voltas_atual = 0
     clock = pygame.time.Clock()
     
-    # Caixa principal
-    caixa_largura = 500
-    caixa_altura = 450
+    # Caixa principal (ajustada para layout horizontal das voltas)
+    caixa_largura = 600
+    caixa_altura = 500
     caixa_x = (LARGURA - caixa_largura) // 2
     caixa_y = (ALTURA - caixa_altura) // 2
     
     # Animações de hover
     hover_animation_modo = [0.0] * len(opcoes_modo)
     hover_animation_tipo = [0.0] * len(opcoes_tipo)
+    hover_animation_voltas = [0.0] * len(opcoes_voltas)
     hover_speed = 3.0
     
     while True:
@@ -1703,7 +2042,7 @@ def modo_jogo_loop(screen):
                     
                     # Verificar clique em modo de jogo
                     for i, (nome, modo) in enumerate(opcoes_modo):
-                        y = caixa_y + 100 + i * 50
+                        y = caixa_y + 120 + i * 50
                         rect = pygame.Rect(caixa_x + 50, y - 5, 200, 40)
                         if rect.collidepoint(mouse_x, mouse_y):
                             opcao_modo_atual = i
@@ -1711,24 +2050,34 @@ def modo_jogo_loop(screen):
                     
                     # Verificar clique em tipo de jogo
                     for i, (nome, tipo) in enumerate(opcoes_tipo):
-                        y = caixa_y + 250 + i * 50
+                        y = caixa_y + 260 + i * 50
                         rect = pygame.Rect(caixa_x + 50, y - 5, 200, 40)
                         if rect.collidepoint(mouse_x, mouse_y):
                             opcao_tipo_atual = i
                             tipo_jogo_atual = tipo
                     
+                    # Verificar clique em voltas (apenas se for corrida) - layout horizontal
+                    if tipo_jogo_atual == TipoJogo.CORRIDA:
+                        for i, (nome, voltas) in enumerate(opcoes_voltas):
+                            x = caixa_x + 50 + i * 180  # Espaçamento horizontal aumentado
+                            y = caixa_y + 380
+                            rect = pygame.Rect(x, y - 5, 140, 40)
+                            if rect.collidepoint(mouse_x, mouse_y):
+                                opcao_voltas_atual = i
+                                voltas_atual = voltas
+                    
                     # Verificar clique no botão iniciar jogo
-                    iniciar_rect = pygame.Rect(caixa_x + 50, caixa_y + caixa_altura - 100, 200, 40)
+                    iniciar_rect = pygame.Rect(caixa_x + 50, caixa_y + caixa_altura - 60, 200, 40)
                     if iniciar_rect.collidepoint(mouse_x, mouse_y):
-                        return (modo_jogo_atual, tipo_jogo_atual)
+                        return (modo_jogo_atual, tipo_jogo_atual, voltas_atual)
                     
                     # Verificar clique no botão voltar
-                    voltar_rect = pygame.Rect(caixa_x + 270, caixa_y + caixa_altura - 100, 200, 40)
+                    voltar_rect = pygame.Rect(caixa_x + 270, caixa_y + caixa_altura - 60, 200, 40)
                     if voltar_rect.collidepoint(mouse_x, mouse_y):
                         return None
             elif ev.type == pygame.KEYDOWN:
                 if ev.key == pygame.K_ESCAPE:
-                    return True
+                    return None
                 elif ev.key in (pygame.K_UP, pygame.K_w):
                     if opcao_modo_atual > 0:
                         opcao_modo_atual -= 1
@@ -1746,7 +2095,7 @@ def modo_jogo_loop(screen):
                         opcao_tipo_atual += 1
                         tipo_jogo_atual = opcoes_tipo[opcao_tipo_atual][1]
                 elif ev.key == pygame.K_RETURN:
-                    return (modo_jogo_atual, tipo_jogo_atual)
+                    return (modo_jogo_atual, tipo_jogo_atual, voltas_atual)
                 elif ev.key == pygame.K_m:
                     # Próxima música
                     gerencIAdor_musica.proxima_musica()
@@ -1760,7 +2109,7 @@ def modo_jogo_loop(screen):
         
         # Atualizar animações de hover
         for i in range(len(opcoes_modo)):
-            y = caixa_y + 100 + i * 50
+            y = caixa_y + 120 + i * 50
             rect = pygame.Rect(caixa_x + 50, y - 5, 200, 40)
             is_hovering = rect.collidepoint(mouse_x, mouse_y)
             
@@ -1770,7 +2119,7 @@ def modo_jogo_loop(screen):
                 hover_animation_modo[i] = max(0.0, hover_animation_modo[i] - hover_speed * dt)
         
         for i in range(len(opcoes_tipo)):
-            y = caixa_y + 250 + i * 50
+            y = caixa_y + 260 + i * 50
             rect = pygame.Rect(caixa_x + 50, y - 5, 200, 40)
             is_hovering = rect.collidepoint(mouse_x, mouse_y)
             
@@ -1778,6 +2127,19 @@ def modo_jogo_loop(screen):
                 hover_animation_tipo[i] = min(1.0, hover_animation_tipo[i] + hover_speed * dt)
             else:
                 hover_animation_tipo[i] = max(0.0, hover_animation_tipo[i] - hover_speed * dt)
+        
+        # Atualizar animações de hover para voltas (apenas se for corrida) - layout horizontal
+        if tipo_jogo_atual == TipoJogo.CORRIDA:
+            for i in range(len(opcoes_voltas)):
+                x = caixa_x + 50 + i * 180  # Espaçamento horizontal aumentado
+                y = caixa_y + 380
+                rect = pygame.Rect(x, y - 5, 140, 40)
+                is_hovering = rect.collidepoint(mouse_x, mouse_y)
+                
+                if is_hovering:
+                    hover_animation_voltas[i] = min(1.0, hover_animation_voltas[i] + hover_speed * dt)
+                else:
+                    hover_animation_voltas[i] = max(0.0, hover_animation_voltas[i] - hover_speed * dt)
         
         # Desenhar
         screen.blit(bg, (0, 0))
@@ -1800,10 +2162,10 @@ def modo_jogo_loop(screen):
         
         # Modo de jogo
         modo_titulo = render_text("NÚMERO DE JOGADORES:", 24, (255, 255, 255), bold=True, pixel_style=True)
-        screen.blit(modo_titulo, (caixa_x + 50, caixa_y + 70))
+        screen.blit(modo_titulo, (caixa_x + 50, caixa_y + 80))
         
         for i, (nome, modo) in enumerate(opcoes_modo):
-            y = caixa_y + 100 + i * 50
+            y = caixa_y + 120 + i * 50
             
             # Cores baseadas na seleção e hover
             if i == opcao_modo_atual:
@@ -1845,7 +2207,7 @@ def modo_jogo_loop(screen):
         screen.blit(tipo_titulo, (caixa_x + 50, caixa_y + 220))
         
         for i, (nome, tipo) in enumerate(opcoes_tipo):
-            y = caixa_y + 250 + i * 50
+            y = caixa_y + 260 + i * 50
             
             # Cores baseadas na seleção e hover
             if i == opcao_tipo_atual:
@@ -1882,21 +2244,67 @@ def modo_jogo_loop(screen):
             texto = render_text(nome, 20, cor_texto, bold=True, pixel_style=True)
             screen.blit(texto, (caixa_x + 60, y))
         
+        # Opções de voltas (apenas se for corrida) - layout horizontal
+        if tipo_jogo_atual == TipoJogo.CORRIDA:
+            voltas_titulo = render_text("NÚMERO DE VOLTAS:", 24, (255, 255, 255), bold=True, pixel_style=True)
+            screen.blit(voltas_titulo, (caixa_x + 50, caixa_y + 350))
+            
+            for i, (nome, voltas) in enumerate(opcoes_voltas):
+                x = caixa_x + 50 + i * 180  # Espaçamento horizontal aumentado
+                y = caixa_y + 390
+                
+                # Cores baseadas na seleção e hover
+                if i == opcao_voltas_atual:
+                    cor_fundo = (0, 200, 255, 50)
+                    cor_texto = (0, 200, 255)
+                else:
+                    cor_fundo = (0, 0, 0, 0)
+                    cor_texto = (255, 255, 255)
+                
+                # Aplicar hover
+                hover_progress = hover_animation_voltas[i]
+                if hover_progress > 0:
+                    hover_cor_fundo = (0, 200, 255, 30)
+                    hover_cor_texto = (0, 200, 255)
+                    cor_fundo = (
+                        int(cor_fundo[0] + (hover_cor_fundo[0] - cor_fundo[0]) * hover_progress),
+                        int(cor_fundo[1] + (hover_cor_fundo[1] - cor_fundo[1]) * hover_progress),
+                        int(cor_fundo[2] + (hover_cor_fundo[2] - cor_fundo[2]) * hover_progress),
+                        int(cor_fundo[3] + (hover_cor_fundo[3] - cor_fundo[3]) * hover_progress)
+                    )
+                    cor_texto = (
+                        int(cor_texto[0] + (hover_cor_texto[0] - cor_texto[0]) * hover_progress),
+                        int(cor_texto[1] + (hover_cor_texto[1] - cor_texto[1]) * hover_progress),
+                        int(cor_texto[2] + (hover_cor_texto[2] - cor_texto[2]) * hover_progress)
+                    )
+                
+                # Desenhar fundo
+                if cor_fundo[3] > 0:
+                    opcao_fundo = pygame.Surface((140, 40), pygame.SRCALPHA)
+                    opcao_fundo.fill(cor_fundo)
+                    screen.blit(opcao_fundo, (x, y - 5))
+                
+                # Desenhar texto centralizado
+                texto = render_text(nome, 18, cor_texto, bold=True, pixel_style=True)
+                texto_x = x + (140 - texto.get_width()) // 2  # Centralizar horizontalmente
+                screen.blit(texto, (texto_x, y))
+        
         # Botão iniciar jogo
-        iniciar_rect = pygame.Rect(caixa_x + 50, caixa_y + caixa_altura - 100, 200, 40)
+        iniciar_rect = pygame.Rect(caixa_x + 50, caixa_y + caixa_altura - 60, 200, 40)
         iniciar_hover = iniciar_rect.collidepoint(mouse_x, mouse_y)
         if iniciar_hover:
             pygame.draw.rect(screen, (0, 255, 0, 50), iniciar_rect)
         iniciar_texto = render_text("INICIAR JOGO", 24, (0, 255, 0) if iniciar_hover else (255, 255, 255), bold=True, pixel_style=True)
-        screen.blit(iniciar_texto, (caixa_x + 60, caixa_y + caixa_altura - 90))
+        screen.blit(iniciar_texto, (caixa_x + 60, caixa_y + caixa_altura - 50))
         
         # Botão voltar
-        voltar_rect = pygame.Rect(caixa_x + 270, caixa_y + caixa_altura - 100, 200, 40)
+        voltar_rect = pygame.Rect(caixa_x + 270, caixa_y + caixa_altura - 60, 200, 40)
         voltar_hover = voltar_rect.collidepoint(mouse_x, mouse_y)
         if voltar_hover:
             pygame.draw.rect(screen, (0, 200, 255, 50), voltar_rect)
         voltar_texto = render_text("VOLTAR", 24, (0, 200, 255) if voltar_hover else (255, 255, 255), bold=True, pixel_style=True)
-        screen.blit(voltar_texto, (caixa_x + 280, caixa_y + caixa_altura - 90))
+        screen.blit(voltar_texto, (caixa_x + 280, caixa_y + caixa_altura - 50))
+        
         
         # Desenhar popup de música
         popup_musica.desenhar(screen)
@@ -1945,19 +2353,28 @@ def run():
             if gerencIAdor_musica.musica_tocando:
                 popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
     
+    # Mostrar tela de splash primeiro
+    if not splash_screen(screen):
+        return  # Usuário fechou a janela na splash screen
+    
     while True:
         escolha = menu_loop(screen)
         
         if escolha == Escolha.JOGAR:
             # Abrir tela de seleção de modo de jogo primeiro
             resultado_modo = modo_jogo_loop(screen)
-            if resultado_modo:  # Se não cancelou
-                modo_jogo, tipo_jogo = resultado_modo
+            if resultado_modo is not None:  # Se não cancelou
+                if len(resultado_modo) == 3:  # Novo formato com voltas
+                    modo_jogo, tipo_jogo, voltas = resultado_modo
+                else:  # Formato antigo (compatibilidade)
+                    modo_jogo, tipo_jogo = resultado_modo
+                    voltas = 1  # Padrão
+                
                 # Parar música do menu se não deve tocar no jogo
                 if not CONFIGURACOES["audio"]["musica_no_jogo"]:
                     gerencIAdor_musica.parar_musica()
                 # inicIA seu jogo original com carros selecionados e modos
-                main.principal(carro_p1, carro_p2, modo_jogo=modo_jogo, tipo_jogo=tipo_jogo)
+                main.principal(carro_p1, carro_p2, modo_jogo=modo_jogo, tipo_jogo=tipo_jogo, voltas=voltas)
                 # Após o jogo, volta para o menu (não fecha a janela)
                 # ReinicIAr música do menu se habilitada
                 if CONFIGURACOES["audio"]["musica_habilitada"] and CONFIGURACOES["audio"]["musica_no_menu"]:

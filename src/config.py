@@ -1,4 +1,5 @@
 import os
+import glob
 
 # ---------- Tela ----------
 LARGURA, ALTURA = 1280, 720
@@ -15,48 +16,160 @@ CAMINHO_MENU = os.path.join(DIR_PROJETO, "assets", "images", "ui", "Menu.png")
 CAMINHO_OFICINA = os.path.join(DIR_PROJETO, "assets", "images", "ui", "oficina.png")
 
 # ---------- Sistema de Mapas ----------
-MAPAS_DISPONIVEIS = {
-    "Map_1": {
-        "nome": "Pista Principal",
-        "arquivo_mapa": os.path.join(DIR_MAPS, "Map_1.png"),
-        "arquivo_guias": os.path.join(DIR_MAPS_GUIDES, "Map_1_guides.png"),
-        "arquivo_checkpoints": os.path.join(DIR_MAPS_GUIDES, "Map_1_checkpoints.json"),
-        "waypoints_fallback": [
-            (820, 140), (930, 360), (860, 620),
-            (520, 650), (200, 600), (160, 420),
-            (260, 150), (500, 120)
-        ]
+def escanear_mapas_automaticamente():
+    """Escaneia automaticamente a pasta maps e detecta mapas disponíveis"""
+    mapas_detectados = {}
+    
+    # Verificar se a pasta maps existe
+    if not os.path.exists(DIR_MAPS):
+        print(f"Pasta de mapas não encontrada: {DIR_MAPS}")
+        return mapas_detectados
+    
+    # Buscar todos os arquivos .png na pasta maps (exceto guides)
+    padrao_mapa = os.path.join(DIR_MAPS, "*.png")
+    arquivos_mapa = glob.glob(padrao_mapa)
+    
+    for arquivo_mapa in arquivos_mapa:
+        nome_arquivo = os.path.basename(arquivo_mapa)
+        nome_base = os.path.splitext(nome_arquivo)[0]
+        
+        # Pular arquivos que estão na subpasta guides
+        if nome_base.endswith('_guides'):
+            continue
+            
+        # Verificar se existe o arquivo de guias correspondente
+        arquivo_guias = os.path.join(DIR_MAPS_GUIDES, f"{nome_base}_guides.png")
+        arquivo_checkpoints = os.path.join(DIR_MAPS_GUIDES, f"{nome_base}_checkpoints.json")
+        
+        # Criar configuração do mapa
+        mapa_config = {
+            "nome": nome_base.replace("_", " ").title(),
+            "arquivo_mapa": arquivo_mapa,
+            "arquivo_guias": arquivo_guias,
+            "arquivo_checkpoints": arquivo_checkpoints,
+            "waypoints_fallback": [
+                (640, 360), (800, 200), (1000, 400),
+                (800, 600), (400, 600), (200, 400),
+                (400, 200), (600, 300)
+            ]  # Pontos de fallback genéricos
+        }
+        
+        # Verificar se os arquivos existem
+        arquivos_existentes = []
+        if os.path.exists(arquivo_mapa):
+            arquivos_existentes.append("mapa")
+        if os.path.exists(arquivo_guias):
+            arquivos_existentes.append("guias")
+        if os.path.exists(arquivo_checkpoints):
+            arquivos_existentes.append("checkpoints")
+        
+        # Adicionar mapa se pelo menos o arquivo principal existir
+        if "mapa" in arquivos_existentes:
+            mapas_detectados[nome_base] = mapa_config
+            print(f"Mapa detectado: {nome_base} (arquivos: {', '.join(arquivos_existentes)})")
+        else:
+            print(f"Mapa ignorado: {nome_base} (arquivo principal não encontrado)")
+    
+    return mapas_detectados
+
+# Escanear mapas automaticamente
+MAPAS_DISPONIVEIS = escanear_mapas_automaticamente()
+
+# Se nenhum mapa foi detectado, usar configuração padrão
+if not MAPAS_DISPONIVEIS:
+    print("Nenhum mapa detectado automaticamente, usando configuração padrão")
+    MAPAS_DISPONIVEIS = {
+        "Map_1": {
+            "nome": "Pista Principal",
+            "arquivo_mapa": os.path.join(DIR_MAPS, "Map_1.png"),
+            "arquivo_guias": os.path.join(DIR_MAPS_GUIDES, "Map_1_guides.png"),
+            "arquivo_checkpoints": os.path.join(DIR_MAPS_GUIDES, "Map_1_checkpoints.json"),
+            "waypoints_fallback": [
+                (820, 140), (930, 360), (860, 620),
+                (520, 650), (200, 600), (160, 420),
+                (260, 150), (500, 120)
+            ]
+        }
     }
-    # Adicione novos mapas aqui conforme necessário
-    # "Map_2": {
-    #     "nome": "Pista SecundárIA",
-    #     "arquivo_mapa": os.path.join(DIR_MAPS, "Map_2.png"),
-    #     "arquivo_guias": os.path.join(DIR_MAPS_GUIDES, "Map_2_guides.png"),
-    #     "arquivo_checkpoints": os.path.join(DIR_MAPS_GUIDES, "Map_2_checkpoints.json"),
-    #     "waypoints_fallback": [(100, 100), (200, 200), (300, 300)]
-    # }
-}
 
 # Mapa atual (pode ser alterado dinamicamente)
-MAPA_ATUAL = "Map_1"
+MAPA_ATUAL = list(MAPAS_DISPONIVEIS.keys())[0] if MAPAS_DISPONIVEIS else "Map_1"
 
 # Funções para obter caminhos do mapa atual
 def obter_caminho_mapa():
-    return MAPAS_DISPONIVEIS[MAPA_ATUAL]["arquivo_mapa"]
+    if MAPA_ATUAL in MAPAS_DISPONIVEIS:
+        return MAPAS_DISPONIVEIS[MAPA_ATUAL]["arquivo_mapa"]
+    return os.path.join(DIR_MAPS, "Map_1.png")
 
 def obter_caminho_guias():
-    return MAPAS_DISPONIVEIS[MAPA_ATUAL]["arquivo_guias"]
+    if MAPA_ATUAL in MAPAS_DISPONIVEIS:
+        return MAPAS_DISPONIVEIS[MAPA_ATUAL]["arquivo_guias"]
+    return os.path.join(DIR_MAPS_GUIDES, "Map_1_guides.png")
 
 def obter_caminho_checkpoints():
-    return MAPAS_DISPONIVEIS[MAPA_ATUAL]["arquivo_checkpoints"]
+    if MAPA_ATUAL in MAPAS_DISPONIVEIS:
+        return MAPAS_DISPONIVEIS[MAPA_ATUAL]["arquivo_checkpoints"]
+    return os.path.join(DIR_MAPS_GUIDES, "Map_1_checkpoints.json")
 
 def obter_waypoints_fallback():
-    return MAPAS_DISPONIVEIS[MAPA_ATUAL]["waypoints_fallback"]
+    if MAPA_ATUAL in MAPAS_DISPONIVEIS:
+        return MAPAS_DISPONIVEIS[MAPA_ATUAL]["waypoints_fallback"]
+    return [(640, 360), (800, 200), (1000, 400), (800, 600), (400, 600), (200, 400), (400, 200), (600, 300)]
 
-# Compatibilidade com código existente
+def recarregar_mapas():
+    """Recarrega a lista de mapas escaneando novamente a pasta"""
+    global MAPAS_DISPONIVEIS, MAPA_ATUAL
+    mapas_anteriores = set(MAPAS_DISPONIVEIS.keys())
+    MAPAS_DISPONIVEIS = escanear_mapas_automaticamente()
+    mapas_novos = set(MAPAS_DISPONIVEIS.keys())
+    
+    # Verificar se há mapas novos
+    mapas_adicionados = mapas_novos - mapas_anteriores
+    mapas_removidos = mapas_anteriores - mapas_novos
+    
+    if mapas_adicionados:
+        print(f"Mapas adicionados: {', '.join(mapas_adicionados)}")
+    if mapas_removidos:
+        print(f"Mapas removidos: {', '.join(mapas_removidos)}")
+    
+    # Se o mapa atual foi removido, trocar para o primeiro disponível
+    if MAPA_ATUAL not in MAPAS_DISPONIVEIS and MAPAS_DISPONIVEIS:
+        MAPA_ATUAL = list(MAPAS_DISPONIVEIS.keys())[0]
+        print(f"Mapa atual alterado para: {MAPA_ATUAL}")
+    
+    # Atualizar caminhos após recarregar
+    atualizar_caminhos_mapa()
+    
+    return len(mapas_adicionados) > 0 or len(mapas_removidos) > 0
+
+def obter_lista_mapas():
+    """Retorna lista de mapas disponíveis para o menu"""
+    return list(MAPAS_DISPONIVEIS.keys())
+
+def obter_nome_mapa(mapa_id):
+    """Retorna o nome amigável de um mapa"""
+    if mapa_id in MAPAS_DISPONIVEIS:
+        return MAPAS_DISPONIVEIS[mapa_id]["nome"]
+    return mapa_id
+
+# Compatibilidade com código existente - serão atualizadas dinamicamente
 CAMINHO_MAPA = obter_caminho_mapa()
 CAMINHO_GUIAS = obter_caminho_guias()
 CAMINHO_WAYPOINTS_JSON = obter_caminho_checkpoints()
+
+def atualizar_caminhos_mapa():
+    """Atualiza as variáveis globais de caminho quando o mapa é trocado"""
+    global CAMINHO_MAPA, CAMINHO_GUIAS, CAMINHO_WAYPOINTS_JSON
+    CAMINHO_MAPA = obter_caminho_mapa()
+    CAMINHO_GUIAS = obter_caminho_guias()
+    CAMINHO_WAYPOINTS_JSON = obter_caminho_checkpoints()
+    
+    # Limpar cache de checkpoints quando trocar de mapa
+    try:
+        from core.pista import limpar_cache_checkpoints
+        limpar_cache_checkpoints()
+    except ImportError:
+        pass  # Se o módulo não estiver disponível, ignorar
 
 # ---------- Pista (cores aceitas) / HSV ----------
 CORES_PISTA = [(31, 23, 38), (0, 0, 0), (240, 224, 0), (144, 105, 0)]

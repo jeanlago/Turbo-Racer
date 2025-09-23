@@ -4,7 +4,8 @@ import pygame
 from config import (
     LARGURA, ALTURA, FPS, TURBO_P1, TURBO_P2,
     USAR_IA_NO_CARRO_2, CONFIGURACOES,
-    MAPAS_DISPONIVEIS, MAPA_ATUAL, obter_caminho_mapa, obter_caminho_guias
+    MAPAS_DISPONIVEIS, MAPA_ATUAL, obter_caminho_mapa, obter_caminho_guias,
+    obter_lista_mapas
 )
 from core.pista import (
     carregar_pista, eh_pixel_transitavel, calcular_posicoes_iniciais, extrair_checkpoints
@@ -26,16 +27,16 @@ CARROS_DISPONIVEIS = [
     {"nome": "Chevrolet Camaro", "prefixo_cor": "Car3", "posicao": (560, 210), "sprite_selecao": "Car3", "tipo_tracao": "rear", "tamanho_oficina": (580, 550), "posicao_oficina": (LARGURA//2 - 320, 200)},
     {"nome": "Toyota Supra", "prefixo_cor": "Car4", "posicao": (570, 190), "sprite_selecao": "Car4", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380)},
     {"nome": "Toyota Trueno", "prefixo_cor": "Car5", "posicao": (590, 175), "sprite_selecao": "Car5", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380)},
-    {"nome": "Nissan Skyline", "prefixo_cor": "Car6", "posicao": (550, 200), "sprite_selecao": "Car6", "tipo_tracao": "front", "tamanho_oficina": (900, 650), "posicao_oficina": (LARGURA//2 - 450, 215)},
+    {"nome": "Nissan Skyline", "prefixo_cor": "Car6", "posicao": (550, 200), "sprite_selecao": "Car6", "tipo_tracao": "front", "tamanho_oficina": (900, 650), "posicao_oficina": (LARGURA//2 - 490, 215)},
     {"nome": "Nissan Silvia S13", "prefixo_cor": "Car7", "posicao": (600, 185), "sprite_selecao": "Car7", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380)},
     {"nome": "Mazda RX-7", "prefixo_cor": "Car8", "posicao": (540, 220), "sprite_selecao": "Car8", "tipo_tracao": "awd", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380)},
     {"nome": "Toyota Celica", "prefixo_cor": "Car9", "posicao": (610, 195), "sprite_selecao": "Car9", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 350, 380)},
     {"nome": "Volkswagem Fusca", "prefixo_cor": "Car10", "posicao": (530, 240), "sprite_selecao": "Car10", "tipo_tracao": "front", "tamanho_oficina": (750, 550), "posicao_oficina": (LARGURA//2 - 400, 250)},
-    {"nome": "Mitsubishi Lancer", "prefixo_cor": "Car11", "posicao": (620, 205), "sprite_selecao": "Car11", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380)},
-    {"nome": "Subaru WRX", "prefixo_cor": "Car12", "posicao": (520, 260), "sprite_selecao": "Car12", "tipo_tracao": "awd", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380)},
+    {"nome": "Mitsubishi Lancer", "prefixo_cor": "Car11", "posicao": (620, 205), "sprite_selecao": "Car11", "tipo_tracao": "rear", "tamanho_oficina": (900, 650), "posicao_oficina": (LARGURA//2 - 490, 150)},
+    {"nome": "Subaru WRX", "prefixo_cor": "Car12", "posicao": (520, 260), "sprite_selecao": "Car12", "tipo_tracao": "awd", "tamanho_oficina": (900, 650), "posicao_oficina": (LARGURA//2 - 490, 215)},
 ]
 
-def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=None, modo_jogo=ModoJogo.UM_JOGADOR, tipo_jogo=TipoJogo.CORRIDA):
+def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=None, modo_jogo=ModoJogo.UM_JOGADOR, tipo_jogo=TipoJogo.CORRIDA, voltas=1):
     pygame.init()
     
     from config import carregar_configuracoes
@@ -81,14 +82,14 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         return imagem
 
     from config import MAPA_ATUAL
-    mapa_atual = mapa_selecionado if mapa_selecionado and mapa_selecionado in MAPAS_DISPONIVEIS else MAPA_ATUAL
+    # Verificar se o mapa selecionado existe na lista atual
+    mapas_disponiveis = obter_lista_mapas()
+    mapa_atual = mapa_selecionado if mapa_selecionado and mapa_selecionado in mapas_disponiveis else MAPA_ATUAL
     
     if mapa_atual != MAPA_ATUAL:
         import config
         config.MAPA_ATUAL = mapa_atual
-        from config import obter_caminho_mapa, obter_caminho_guias
-        config.CAMINHO_MAPA = obter_caminho_mapa()
-        config.CAMINHO_GUIAS = obter_caminho_guias()
+        config.atualizar_caminhos_mapa()
     
     img_pista, mask_pista, mask_guias = carregar_pista()
     
@@ -126,7 +127,9 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     fonte_checkpoint = pygame.font.SysFont("consolas", 18, bold=True)
     fonte_debug = pygame.font.SysFont("consolas", 16)
     fonte_debug_bold = pygame.font.SysFont("consolas", 16, bold=True)
-    corrida = GerencIAdorCorrida(fonte)
+    # Criar gerenciador de corrida com checkpoints dinâmicos
+    voltas_objetivo = voltas  # Usar o parâmetro de voltas
+    corrida = GerencIAdorCorrida(fonte, checkpoints, voltas_objetivo)
     # drift = GerencIAdorDrift(fonte) if modo_drift_atual else None  # Removido - não usado
 
     carro_p1 = CARROS_DISPONIVEIS[carro_selecionado_p1]
@@ -250,12 +253,12 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
             elif ev.type == pygame.KEYDOWN:
                 if ev.key == pygame.K_ESCAPE:
-                    # Sistema de pause
-                    if not jogo_terminado:
+                    # Sistema de pause - só funciona se o jogo não terminou
+                    if not jogo_terminado and not alguem_venceu:
                         jogo_pausado = not jogo_pausado
                         print(f"Jogo {'pausado' if jogo_pausado else 'retomado'}")
                     else:
-                        # Se o jogo terminou, ESC volta ao menu
+                        # Se o jogo terminou ou alguém venceu, ESC volta ao menu
                         return
                 elif ev.key == pygame.K_F1:
                     debug_IA = not debug_IA
@@ -357,12 +360,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 pontuacao_final = drift_scoring.points
                 print(f"Tempo esgotado! Pontuação final: {pontuacao_final}")
 
-        # Verificar se alguém venceu no modo 2 jogadores
-        alguem_venceu = False
-        if modo_jogo == ModoJogo.DOIS_JOGADORES and carro2 is not None:
-            if (hasattr(carro1, 'terminou_corrida') and carro1.terminou_corrida) or \
-               (hasattr(carro2, 'terminou_corrida') and carro2.terminou_corrida):
-                alguem_venceu = True
+        # Verificar se alguém venceu usando o sistema de corrida
+        alguem_venceu = corrida.alguem_finalizou()
 
         # Física com delta time fixo para estabilidade
         while acumulador_dt >= dt_fixo:
@@ -493,8 +492,10 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     carro.desenhar(superficie_p1, camera=camera_p1)
                 
                 # Renderizar checkpoints para jogador 1 (lado esquerdo)
-                if hasattr(carro1, 'checkpoint_atual') and carro1.checkpoint_atual < len(checkpoints):
-                    cx, cy = checkpoints[carro1.checkpoint_atual]
+                checkpoint_atual_p1 = corrida.proximo_checkpoint.get(carro1, 0)
+                if not corrida.finalizou.get(carro1, False):
+                    idx_cp = checkpoint_atual_p1 % len(checkpoints)
+                    cx, cy = checkpoints[idx_cp]
                     screen_x, screen_y = camera_p1.mundo_para_tela(cx, cy)
                     
                     # Desenhar próximo checkpoint para o player 1 (azul)
@@ -502,7 +503,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     pygame.draw.circle(superficie_p1, (0, 200, 255), (int(screen_x), int(screen_y)), 16)
                     
                     # Número do checkpoint para jogador 1
-                    texto_checkpoint = fonte_checkpoint.render(str(carro1.checkpoint_atual + 1), True, (255, 255, 255))
+                    texto_checkpoint = fonte_checkpoint.render(str(idx_cp + 1), True, (255, 255, 255))
                     texto_rect = texto_checkpoint.get_rect(center=(int(screen_x), int(screen_y)))
                     superficie_p1.blit(texto_checkpoint, texto_rect)
                 
@@ -521,18 +522,21 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     carro.desenhar(superficie_p2, camera=camera_p2)
                 
                 # Renderizar checkpoints para jogador 2 (lado direito)
-                if carro2 is not None and hasattr(carro2, 'checkpoint_atual') and carro2.checkpoint_atual < len(checkpoints):
-                    cx2, cy2 = checkpoints[carro2.checkpoint_atual]
-                    screen_x2, screen_y2 = camera_p2.mundo_para_tela(cx2, cy2)
-                    
-                    # Desenhar próximo checkpoint para o jogador 2 (amarelo)
-                    pygame.draw.circle(superficie_p2, (255, 255, 0), (int(screen_x2), int(screen_y2)), 20, 4)
-                    pygame.draw.circle(superficie_p2, (255, 200, 0), (int(screen_x2), int(screen_y2)), 16)
-                    
-                    # Número do checkpoint para jogador 2
-                    texto_checkpoint2 = fonte_checkpoint.render(str(carro2.checkpoint_atual + 1), True, (0, 0, 0))
-                    texto_rect2 = texto_checkpoint2.get_rect(center=(int(screen_x2), int(screen_y2)))
-                    superficie_p2.blit(texto_checkpoint2, texto_rect2)
+                if carro2 is not None:
+                    checkpoint_atual_p2 = corrida.proximo_checkpoint.get(carro2, 0)
+                    if not corrida.finalizou.get(carro2, False):
+                        idx_cp2 = checkpoint_atual_p2 % len(checkpoints)
+                        cx2, cy2 = checkpoints[idx_cp2]
+                        screen_x2, screen_y2 = camera_p2.mundo_para_tela(cx2, cy2)
+                        
+                        # Desenhar próximo checkpoint para o jogador 2 (amarelo)
+                        pygame.draw.circle(superficie_p2, (255, 255, 0), (int(screen_x2), int(screen_y2)), 20, 4)
+                        pygame.draw.circle(superficie_p2, (255, 200, 0), (int(screen_x2), int(screen_y2)), 16)
+                        
+                        # Número do checkpoint para jogador 2
+                        texto_checkpoint2 = fonte_checkpoint.render(str(idx_cp2 + 1), True, (0, 0, 0))
+                        texto_rect2 = texto_checkpoint2.get_rect(center=(int(screen_x2), int(screen_y2)))
+                        superficie_p2.blit(texto_checkpoint2, texto_rect2)
                 
                 # Desenhar as superfícies na tela principal
                 tela.blit(superficie_p1, (0, 0))
@@ -569,135 +573,27 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         if renderizar_frame and checkpoint_manager.modo_edicao:
             checkpoint_manager.desenhar(tela, camera)
         
-        # Sistema de checkpoints para o player (apenas se não for modo drift)
+        # Sistema de checkpoints agora é gerenciado pelo GerencIAdorCorrida
+        # Mostrar próximo checkpoint do player (apenas para modo 1 jogador ou drift)
         if checkpoints and not checkpoint_manager.modo_edicao and tipo_jogo != TipoJogo.DRIFT:
-            # InicIAlizar checkpoint atual do player se não existir
-            if not hasattr(carro1, 'checkpoint_atual'):
-                carro1.checkpoint_atual = 0
-            
-            # Verificar se passou pelo checkpoint atual
-            if carro1.checkpoint_atual < len(checkpoints):
-                cx, cy = checkpoints[carro1.checkpoint_atual]
-                dist = math.sqrt((cx - carro1.x)**2 + (cy - carro1.y)**2)
-                
-                # Detecção múltipla para ser mais responsiva
-                passou_checkpoint = False
-                
-                # Método 1: DistâncIA direta
-                if dist < 60:
-                    passou_checkpoint = True
-                
-                # Método 2: Projeção (passou "através" do checkpoint)
-                if carro1.checkpoint_atual < len(checkpoints) - 1:
-                    proximo_cx, proximo_cy = checkpoints[carro1.checkpoint_atual + 1]
-                    vetor_checkpoint = (proximo_cx - cx, proximo_cy - cy)
-                    vetor_carro = (carro1.x - cx, carro1.y - cy)
-                    
-                    produto_escalar = vetor_checkpoint[0] * vetor_carro[0] + vetor_checkpoint[1] * vetor_carro[1]
-                    if produto_escalar > 0 and dist < 80:
-                        passou_checkpoint = True
-                
-                # Método 3: Velocidade e direção
-                if hasattr(carro1, 'vx') and hasattr(carro1, 'vy'):
-                    velocidade = math.sqrt(carro1.vx*carro1.vx + carro1.vy*carro1.vy)
-                    if velocidade > 0.5:  # Se estiver se movendo
-                        direcao_movimento = (carro1.vx, carro1.vy)
-                        direcao_checkpoint = (proximo_cx - carro1.x, proximo_cy - carro1.y) if carro1.checkpoint_atual < len(checkpoints) - 1 else (0, 0)
-                        
-                        if (math.sqrt(direcao_movimento[0]**2 + direcao_movimento[1]**2) > 0.1 and
-                            math.sqrt(direcao_checkpoint[0]**2 + direcao_checkpoint[1]**2) > 0.1):
-                            
-                            norm_mov = math.sqrt(direcao_movimento[0]**2 + direcao_movimento[1]**2)
-                            norm_check = math.sqrt(direcao_checkpoint[0]**2 + direcao_checkpoint[1]**2)
-                            
-                            cos_angulo = (direcao_movimento[0] * direcao_checkpoint[0] + 
-                                         direcao_movimento[1] * direcao_checkpoint[1]) / (norm_mov * norm_check)
-                            
-                            if cos_angulo > 0.5 and dist < 80:  # Movendo na direção do próximo checkpoint
-                                passou_checkpoint = True
-                
-                if passou_checkpoint:
-                    carro1.checkpoint_atual += 1
-                    print(f"Player passou pelo checkpoint {carro1.checkpoint_atual}!")
-                    
-                    # Verificar se terminou todos os checkpoints
-                    if carro1.checkpoint_atual >= len(checkpoints):
-                        print(f"Player 1 terminou a corrida! Todos os {len(checkpoints)} checkpoints completados!")
-                        carro1.checkpoint_atual = len(checkpoints)  # Manter no último checkpoint
-                        # Adicionar flag de vitória
-                        if not hasattr(carro1, 'terminou_corrida'):
-                            carro1.terminou_corrida = True
-                
-                # Verificar checkpoint para jogador 2 se existir (mesma lógica do jogador 1)
-                if modo_jogo == ModoJogo.DOIS_JOGADORES and carro2 is not None:
-                    if not hasattr(carro2, 'checkpoint_atual'):
-                        carro2.checkpoint_atual = 0
-                    
-                    if carro2.checkpoint_atual < len(checkpoints):
-                        cx2, cy2 = checkpoints[carro2.checkpoint_atual]
-                        dist2 = math.sqrt((cx2 - carro2.x)**2 + (cy2 - carro2.y)**2)
-                        
-                        # Detecção múltipla para ser mais responsiva (mesma lógica do jogador 1)
-                        passou_checkpoint2 = False
-                        
-                        # Método 1: Distância direta
-                        if dist2 < 60:
-                            passou_checkpoint2 = True
-                        
-                        # Método 2: Direção e próximo checkpoint
-                        if not passou_checkpoint2 and carro2.checkpoint_atual < len(checkpoints) - 1:
-                            proximo_cx2, proximo_cy2 = checkpoints[carro2.checkpoint_atual + 1]
-                            vetor_checkpoint2 = (proximo_cx2 - cx2, proximo_cy2 - cy2)
-                            vetor_carro2 = (carro2.x - cx2, carro2.y - cy2)
-                            
-                            produto_escalar2 = vetor_checkpoint2[0] * vetor_carro2[0] + vetor_checkpoint2[1] * vetor_carro2[1]
-                            if produto_escalar2 > 0 and dist2 < 80:
-                                passou_checkpoint2 = True
-                        
-                        # Método 3: Velocidade e direção
-                        if not passou_checkpoint2 and hasattr(carro2, 'vx') and hasattr(carro2, 'vy'):
-                            velocidade2 = math.sqrt(carro2.vx*carro2.vx + carro2.vy*carro2.vy)
-                            if velocidade2 > 0.5:  # Se estiver se movendo
-                                direcao_movimento2 = (carro2.vx, carro2.vy)
-                                direcao_checkpoint2 = (proximo_cx2 - carro2.x, proximo_cy2 - carro2.y) if carro2.checkpoint_atual < len(checkpoints) - 1 else (0, 0)
-                                
-                                if (math.sqrt(direcao_movimento2[0]**2 + direcao_movimento2[1]**2) > 0.1 and
-                                    math.sqrt(direcao_checkpoint2[0]**2 + direcao_checkpoint2[1]**2) > 0.1):
-                                    
-                                    norm_mov2 = math.sqrt(direcao_movimento2[0]**2 + direcao_movimento2[1]**2)
-                                    norm_check2 = math.sqrt(direcao_checkpoint2[0]**2 + direcao_checkpoint2[1]**2)
-                                    
-                                    cos_angulo2 = (direcao_movimento2[0] * direcao_checkpoint2[0] + 
-                                                 direcao_movimento2[1] * direcao_checkpoint2[1]) / (norm_mov2 * norm_check2)
-                                    
-                                    if cos_angulo2 > 0.5 and dist2 < 80:  # Movendo na direção do próximo checkpoint
-                                        passou_checkpoint2 = True
-                        
-                        if passou_checkpoint2:
-                            carro2.checkpoint_atual += 1
-                            print(f"Player 2 passou pelo checkpoint {carro2.checkpoint_atual}!")
-                            
-                            # Verificar se terminou todos os checkpoints
-                            if carro2.checkpoint_atual >= len(checkpoints):
-                                print(f"Player 2 terminou a corrida! Todos os {len(checkpoints)} checkpoints completados!")
-                                carro2.checkpoint_atual = len(checkpoints)  # Manter no último checkpoint
-                                # Adicionar flag de vitória
-                                if not hasattr(carro2, 'terminou_corrida'):
-                                    carro2.terminou_corrida = True
-            
             # Mostrar próximo checkpoint do player (apenas para modo 1 jogador ou drift)
-            if modo_jogo != ModoJogo.DOIS_JOGADORES and hasattr(carro1, 'checkpoint_atual') and carro1.checkpoint_atual < len(checkpoints):
-                cx, cy = checkpoints[carro1.checkpoint_atual]
-                screen_x, screen_y = camera.mundo_para_tela(cx, cy)
-                
-                # Desenhar próximo checkpoint para o player (maior)
-                pygame.draw.circle(tela, (0, 255, 255), (int(screen_x), int(screen_y)), 20, 4)  # Círculo azul maior
-                pygame.draw.circle(tela, (0, 200, 255), (int(screen_x), int(screen_y)), 16)  # Preenchimento maior
-                
-                # Número do checkpoint (maior) - usar fonte pré-crIAda
-                texto_checkpoint = fonte_checkpoint.render(str(carro1.checkpoint_atual + 1), True, (255, 255, 255))
-                texto_rect = texto_checkpoint.get_rect(center=(int(screen_x), int(screen_y)))
-                tela.blit(texto_checkpoint, texto_rect)
+            if modo_jogo != ModoJogo.DOIS_JOGADORES:
+                # Obter checkpoint atual do jogador
+                checkpoint_atual = corrida.proximo_checkpoint.get(carro1, 0)
+                # Verificar se o jogador ainda não terminou a corrida
+                if not corrida.finalizou.get(carro1, False):
+                    idx_cp = checkpoint_atual % len(checkpoints)
+                    cx, cy = checkpoints[idx_cp]
+                    screen_x, screen_y = camera.mundo_para_tela(cx, cy)
+                    
+                    # Desenhar próximo checkpoint para o player (maior)
+                    pygame.draw.circle(tela, (0, 255, 255), (int(screen_x), int(screen_y)), 20, 4)  # Círculo azul maior
+                    pygame.draw.circle(tela, (0, 200, 255), (int(screen_x), int(screen_y)), 16)  # Preenchimento maior
+                    
+                    # Número do checkpoint (maior) - usar fonte pré-crIAda
+                    texto_checkpoint = fonte_checkpoint.render(str(idx_cp + 1), True, (255, 255, 255))
+                    texto_rect = texto_checkpoint.get_rect(center=(int(screen_x), int(screen_y)))
+                    tela.blit(texto_checkpoint, texto_rect)
 
         # Sistema de gravação removido - não usado
 
@@ -814,11 +710,11 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 corrida.desenhar_podio(tela, largura_atual, altura_atual, [carro1, carro2, carro3])
             
             # Tela de vitória para modo 2 jogadores
-            if modo_jogo == ModoJogo.DOIS_JOGADORES and carro2 is not None:
+            if modo_jogo == ModoJogo.DOIS_JOGADORES and carro2 is not None and alguem_venceu:
                 vencedor = None
-                if hasattr(carro1, 'terminou_corrida') and carro1.terminou_corrida:
+                if corrida.finalizou.get(carro1, False):
                     vencedor = "JOGADOR 1"
-                elif hasattr(carro2, 'terminou_corrida') and carro2.terminou_corrida:
+                elif corrida.finalizou.get(carro2, False):
                     vencedor = "JOGADOR 2"
                 
                 if vencedor:
@@ -830,6 +726,38 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     # Título de vitória
                     fonte_vitoria = pygame.font.Font(None, 72)
                     texto_vitoria = fonte_vitoria.render(f"{vencedor} VENCEU!", True, (255, 215, 0))
+                    texto_vitoria_rect = texto_vitoria.get_rect(center=(LARGURA//2, ALTURA//2 - 80))
+                    tela.blit(texto_vitoria, texto_vitoria_rect)
+                    
+                    # Mensagem de que o jogo parou
+                    fonte_parou = pygame.font.Font(None, 48)
+                    texto_parou = fonte_parou.render("CORRIDA FINALIZADA!", True, (255, 255, 255))
+                    texto_parou_rect = texto_parou.get_rect(center=(LARGURA//2, ALTURA//2 - 20))
+                    tela.blit(texto_parou, texto_parou_rect)
+                    
+                    # Instruções
+                    fonte_instrucao = pygame.font.Font(None, 36)
+                    texto_instrucao = fonte_instrucao.render("Pressione ESC para voltar ao menu", True, (200, 200, 200))
+                    texto_instrucao_rect = texto_instrucao.get_rect(center=(LARGURA//2, ALTURA//2 + 50))
+                    tela.blit(texto_instrucao, texto_instrucao_rect)
+            
+            # Tela de vitória para modo 1 jogador
+            elif modo_jogo != ModoJogo.DOIS_JOGADORES and alguem_venceu and tipo_jogo != TipoJogo.DRIFT:
+                vencedor = None
+                if corrida.finalizou.get(carro1, False):
+                    vencedor = "JOGADOR VENCEU!"
+                elif carro3 and corrida.finalizou.get(carro3, False):
+                    vencedor = "IA VENCEU!"
+                
+                if vencedor:
+                    # Overlay escuro
+                    overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+                    overlay.fill((0, 0, 0, 150))
+                    tela.blit(overlay, (0, 0))
+                    
+                    # Título de vitória
+                    fonte_vitoria = pygame.font.Font(None, 72)
+                    texto_vitoria = fonte_vitoria.render(vencedor, True, (255, 215, 0))
                     texto_vitoria_rect = texto_vitoria.get_rect(center=(LARGURA//2, ALTURA//2 - 80))
                     tela.blit(texto_vitoria, texto_vitoria_rect)
                     

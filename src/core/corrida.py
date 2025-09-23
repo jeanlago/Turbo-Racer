@@ -8,7 +8,7 @@ from config import (
 
 
 class GerencIAdorCorrida:
-    def __init__(self, fonte=None):
+    def __init__(self, fonte=None, checkpoints=None, voltas_objetivo=1):
         self.fonte = fonte or pygame.font.SysFont("consolas", 26)
         self.fonte_grande = pygame.font.SysFont("consolas", 64, bold=True)
 
@@ -25,7 +25,12 @@ class GerencIAdorCorrida:
         self.tempo_global = 0.0        # tempo desde o "VAI!"
         self.tempo_final = {}          # carro -> tempo quando finalizou
 
-        # Retângulos
+        # Sistema de checkpoints dinâmico
+        self.checkpoints = checkpoints or []
+        self.voltas_objetivo = voltas_objetivo
+        self.total_checkpoints_necessarios = len(self.checkpoints) * self.voltas_objetivo
+        
+        # Retângulos (mantidos para compatibilidade)
         self.ret_largada = pygame.Rect(*LINHA_LARGADA)
         self.ret_checkpoints = [pygame.Rect(*r) for r in PONTOS_DE_CONTROLE]
 
@@ -66,20 +71,82 @@ class GerencIAdorCorrida:
         if self.finalizou[carro]:
             return
 
-        idx_cp = self.proximo_checkpoint[carro]
-        if idx_cp < len(self.ret_checkpoints):
-            if self.ret_checkpoints[idx_cp].collidepoint(int(carro.x), int(carro.y)):
-                self.proximo_checkpoint[carro] += 1
+        # Sistema de checkpoints dinâmico
+        if self.checkpoints:
+            # Verificar se passou pelo checkpoint atual
+            idx_cp = self.proximo_checkpoint[carro] % len(self.checkpoints)
+            if idx_cp < len(self.checkpoints):
+                cx, cy = self.checkpoints[idx_cp]
+                dist = ((carro.x - cx) ** 2 + (carro.y - cy) ** 2) ** 0.5
+                
+                # Detecção de checkpoint com múltiplos métodos
+                passou_checkpoint = False
+                
+                # Método 1: Distância direta
+                if dist < 60:
+                    passou_checkpoint = True
+                
+                # Método 2: Projeção (passou "através" do checkpoint)
+                if not passou_checkpoint and idx_cp < len(self.checkpoints) - 1:
+                    proximo_cx, proximo_cy = self.checkpoints[idx_cp + 1]
+                    vetor_checkpoint = (proximo_cx - cx, proximo_cy - cy)
+                    vetor_carro = (carro.x - cx, carro.y - cy)
+                    
+                    produto_escalar = vetor_checkpoint[0] * vetor_carro[0] + vetor_checkpoint[1] * vetor_carro[1]
+                    if produto_escalar > 0 and dist < 80:
+                        passou_checkpoint = True
+                
+                # Método 3: Velocidade e direção
+                if not passou_checkpoint and hasattr(carro, 'vx') and hasattr(carro, 'vy'):
+                    velocidade = (carro.vx*carro.vx + carro.vy*carro.vy) ** 0.5
+                    if velocidade > 0.5:  # Se estiver se movendo
+                        direcao_movimento = (carro.vx, carro.vy)
+                        proximo_cx, proximo_cy = self.checkpoints[(idx_cp + 1) % len(self.checkpoints)]
+                        direcao_checkpoint = (proximo_cx - carro.x, proximo_cy - carro.y)
+                        
+                        if ((direcao_movimento[0]**2 + direcao_movimento[1]**2) ** 0.5 > 0.1 and
+                            (direcao_checkpoint[0]**2 + direcao_checkpoint[1]**2) ** 0.5 > 0.1):
+                            
+                            norm_mov = (direcao_movimento[0]**2 + direcao_movimento[1]**2) ** 0.5
+                            norm_check = (direcao_checkpoint[0]**2 + direcao_checkpoint[1]**2) ** 0.5
+                            
+                            cos_angulo = (direcao_movimento[0] * direcao_checkpoint[0] + 
+                                         direcao_movimento[1] * direcao_checkpoint[1]) / (norm_mov * norm_check)
+                            
+                            if cos_angulo > 0.5 and dist < 80:  # Movendo na direção do próximo checkpoint
+                                passou_checkpoint = True
+                
+                if passou_checkpoint:
+                    self.proximo_checkpoint[carro] += 1
+                    print(f"Carro {getattr(carro, 'nome', 'Desconhecido')} passou pelo checkpoint {self.proximo_checkpoint[carro]}!")
+                    
+                    # Verificar se completou uma volta
+                    checkpoints_por_volta = len(self.checkpoints)
+                    if self.proximo_checkpoint[carro] % checkpoints_por_volta == 0:
+                        self.voltas[carro] += 1
+                        print(f"Carro {getattr(carro, 'nome', 'Desconhecido')} completou a volta {self.voltas[carro]}!")
+                    
+                    # Verificar se terminou a corrida
+                    if self.proximo_checkpoint[carro] >= self.total_checkpoints_necessarios:
+                        self.finalizou[carro] = True
+                        if self.tempo_final[carro] is None:
+                            self.tempo_final[carro] = self.tempo_global
+                        print(f"Carro {getattr(carro, 'nome', 'Desconhecido')} terminou a corrida!")
+        else:
+            # Sistema antigo para compatibilidade
+            idx_cp = self.proximo_checkpoint[carro]
+            if idx_cp < len(self.ret_checkpoints):
+                if self.ret_checkpoints[idx_cp].collidepoint(int(carro.x), int(carro.y)):
+                    self.proximo_checkpoint[carro] += 1
 
-        if self.proximo_checkpoint[carro] == len(self.ret_checkpoints):
-            if self.ret_largada.collidepoint(int(carro.x), int(carro.y)):
-                self.voltas[carro] += 1
-                self.proximo_checkpoint[carro] = 0
-                if self.voltas[carro] >= VOLTAS_OBJETIVO:
-                    self.finalizou[carro] = True
-                    # registra tempo de chegada
-                    if self.tempo_final[carro] is None:
-                        self.tempo_final[carro] = self.tempo_global
+            if self.proximo_checkpoint[carro] == len(self.ret_checkpoints):
+                if self.ret_largada.collidepoint(int(carro.x), int(carro.y)):
+                    self.voltas[carro] += 1
+                    self.proximo_checkpoint[carro] = 0
+                    if self.voltas[carro] >= VOLTAS_OBJETIVO:
+                        self.finalizou[carro] = True
+                        if self.tempo_final[carro] is None:
+                            self.tempo_final[carro] = self.tempo_global
 
     # --- HUD ---
     def _fmt_tempo(self, t):
@@ -92,10 +159,20 @@ class GerencIAdorCorrida:
         y = 8
         for i, carro in enumerate(carros, start=1):
             voltas = self.voltas.get(carro, 0)
+            checkpoints_completados = self.proximo_checkpoint.get(carro, 0)
             t_final = self.tempo_final.get(carro, None)
             t_txt = self._fmt_tempo(self.tempo_global if t_final is None else t_final)
             nome_carro = getattr(carro, 'nome', f'P{i}')
-            texto = f"{nome_carro}  Voltas: {voltas}/{VOLTAS_OBJETIVO}  Turbo: {int(carro.turbo_carga)}%  Tempo: {t_txt}"
+            
+            # Mostrar progresso baseado no sistema de checkpoints
+            if self.checkpoints:
+                voltas_objetivo = self.voltas_objetivo
+                checkpoints_por_volta = len(self.checkpoints)
+                checkpoint_atual = checkpoints_completados % checkpoints_por_volta
+                texto = f"{nome_carro}  Voltas: {voltas}/{voltas_objetivo}  CP: {checkpoint_atual}/{checkpoints_por_volta}  Turbo: {int(carro.turbo_carga)}%  Tempo: {t_txt}"
+            else:
+                texto = f"{nome_carro}  Voltas: {voltas}/{VOLTAS_OBJETIVO}  Turbo: {int(carro.turbo_carga)}%  Tempo: {t_txt}"
+            
             sombra = self.fonte.render(texto, True, COR_SOMBRA)
             superficie = self.fonte.render(texto, True, COR_TEXTO)
             tela.blit(sombra, (10, y+2))
