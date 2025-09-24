@@ -1,59 +1,50 @@
 # 🏎️ Turbo Racer
 
-Um jogo de corrida top-down desenvolvido em **Python** com **Pygame**, com sistema completo de física, IA, múltiplos mapas e editor de checkpoints visual.
+Um jogo de corrida arcade 2D top-down desenvolvido em **Python** com **Pygame**, oferecendo física realista, múltiplos modos de jogo, IA inteligente e sistema escalável de mapas e carros.
 
 ---
 
-## Funcionalidades Principais
+## ✨ Funcionalidades Principais
 
--  **Sistema de Corrida Completo** - Física realista com tipos de tração, derrapagem, turbo e colisões
--  **IA Inteligente** - Carros controlados por IA melhorada que seguem checkpoints
--  **Múltiplos Mapas** - Sistema escalável para adicionar quantos mapas quiser
--  **Editor Visual de Checkpoints** - Crie e edite checkpoints arrastando e soltando
--  **Sistema de Música** - Múltiplas faixas com controles de volume
--  **Modo Drift** - Sistema de pontuação por derrapagem
--  **HUD Personalizado** - Interface moderna com minimapa e informações detalhadas
--  **Configurações Avançadas** - Resolução, fullscreen, controles personalizáveis
+-  **🎮 Múltiplos Modos de Jogo** - 1 jogador, 2 jogadores (split-screen) e modo drift
+-  **🚗 Sistema de Física Avançado** - 3 tipos de tração (RWD, FWD, AWD) com comportamento único
+-  **🤖 IA Inteligente** - Algoritmo Pure Pursuit para navegação suave e realista
+-  **🗺️ Sistema de Mapas Escalável** - Detecção automática de mapas sem configuração manual
+-  **🎯 Editor Visual de Checkpoints** - Crie e edite checkpoints arrastando e soltando
+-  **🎵 Sistema de Áudio Completo** - Múltiplas faixas musicais com controles independentes
+-  **🏁 Modo Drift** - Sistema de pontuação com tempo limitado e combos
+-  **📊 HUD Dinâmico** - Interface adaptativa com câmera inteligente
+-  **⚙️ Configurações Avançadas** - Resolução, fullscreen, controles e qualidade personalizáveis
 
 ---
 
 ## 📚 Documentação
 
-### **Game Design Document (GDD)**
-- **[GDD_Turbo_Racer.md](docs/gdd/GDD_Turbo_Racer.md)** - Documento completo de design do jogo
+### **🎮 Game Design Document**
+- **[game-design.md](docs/design/game-design.md)** - Documento completo de design do jogo
   - Visão geral e conceito principal
   - Mecânicas de jogo detalhadas
   - Sistema de IA e física
   - Arquitetura técnica
   - Roadmap e futuras implementações
 
-### **Documentação Técnica**
-- **[DOCUMENTACAO.md](docs/tech/DOCUMENTACAO.md)** - Documentação técnica completa
-  - Arquitetura do sistema
-  - Módulos principais
-  - API Reference
-  - Exemplos de uso
+### **🔧 Documentação Técnica**
+- **[API.md](docs/API.md)** - Referência completa da API
+  - Classes principais e métodos
+  - Sistemas de jogo
+  - Configuração e exemplos
   - Troubleshooting
 
-- **[GAME_OBJECTS_Turbo_Racer.md](docs/tech/GAME_OBJECTS_Turbo_Racer.md)** - Lista detalhada de objetos do jogo
-  - Objetos principais e sistemas
-  - Propriedades e métodos
-  - HierarquIA de objetos
-  - Relacionamentos entre sistemas
+### **📖 Guias de Desenvolvimento**
+- **[adding-maps.md](docs/guides/adding-maps.md)** - Como adicionar novos mapas
+- **[adding-cars.md](docs/guides/adding-cars.md)** - Como adicionar novos carros
+- **[customization.md](docs/guides/customization.md)** - Personalização e modificações
 
-### **GuIAs de Desenvolvimento**
-- **[COMO_ADICIONAR_MAPAS.md](docs/guides/COMO_ADICIONAR_MAPAS.md)** - GuIA para adicionar novos mapas
-
-### **Ferramentas de Debug**
-- **[tools/README.md](tools/README.md)** - Ferramentas de desenvolvimento e debug
-  - `test_debug.py` - Teste básico de funcionalidades
-  - `debug_IA_travada.py` - Debug visual de checkpoints e IA
-  - `test_audio.py` - Teste do sistema de áudio
-
-### **Dados e Configurações**
-- **[data/README.md](data/README.md)** - Dados do usuário e configurações
-  - `config.json` - Configurações do usuário (áudio, vídeo, controles)
-  - `checkpoints_backup.json` - Backup de checkpoints legado
+### **📝 Histórico de Versões**
+- **[CHANGELOG.md](docs/CHANGELOG.md)** - Histórico completo de mudanças
+  - Versão 2.1.0 - Melhorias de navegação e sistema de mapas
+  - Versão 2.0.0 - Modos de jogo e split-screen
+  - Versão 1.0.0 - Sistema base
 
 ---
 
@@ -61,282 +52,392 @@ Um jogo de corrida top-down desenvolvido em **Python** com **Pygame**, com siste
 
 ```text
 Turbo-Racer/
-├─ assets/
+├─ assets/                        # Recursos do jogo
 │  ├─ images/
-│  │  ├─ cars/                    # Sprites dos carros
+│  │  ├─ cars/                    # Sprites dos carros (12 carros)
 │  │  ├─ car_selection/           # Sprites para seleção de carros
-│  │  ├─ maps/                    # Mapas do jogo
-│  │  │  ├─ Map_1.png
-│  │  │  └─ guides/               # GuIAs e checkpoints
-│  │  │     ├─ Map_1_guides.png
-│  │  │     └─ Map_1_checkpoints.json
-│  │  ├─ effects/                 # Efeitos visuais
-│  │  ├─ icons/                   # Ícones da interface
-│  │  └─ ui/                      # Interface do usuário
+│  │  ├─ maps/                    # Mapas do jogo (detecção automática)
+│  │  │  └─ guides/               # Guias e checkpoints dos mapas
+│  │  ├─ effects/                 # Efeitos visuais (fumaça, nitro, skidmarks)
+│  │  ├─ icons/                   # Ícones da interface (velocímetro, nitro)
+│  │  └─ ui/                      # Interface do usuário (menus, oficina)
 │  └─ sounds/
-│     └─ music/                   # Músicas do jogo
-├─ docs/                          # Documentação do projeto
-│  ├─ gdd/                        # Game Design Documents
-│  │  └─ GDD_Turbo_Racer.md       # Documento de design do jogo
-│  ├─ tech/                       # Documentação técnica
-│  │  ├─ DOCUMENTACAO.md          # Documentação técnica completa
-│  │  └─ GAME_OBJECTS_Turbo_Racer.md # Lista de objetos do jogo
-│  └─ guides/                     # GuIAs de desenvolvimento
-│     └─ COMO_ADICIONAR_MAPAS.md  # GuIA para adicionar mapas
-├─ tools/                         # Ferramentas de debug e teste
-│  ├─ test_debug.py               # Teste básico de funcionalidades
-│  ├─ debug_IA_travada.py         # Debug visual de checkpoints
-│  ├─ test_audio.py               # Teste do sistema de áudio
-│  └─ README.md                   # Documentação das ferramentas
-├─ data/                          # Dados e configurações do usuário
+│     └─ music/                   # Músicas do jogo (6 faixas)
+├─ docs/                          # Documentação completa
+│  ├─ design/
+│  │  └─ game-design.md           # Game Design Document
+│  ├─ guides/                     # Guias de desenvolvimento
+│  │  ├─ adding-maps.md           # Como adicionar mapas
+│  │  ├─ adding-cars.md           # Como adicionar carros
+│  │  └─ customization.md         # Personalização
+│  ├─ API.md                      # Referência da API
+│  └─ CHANGELOG.md                # Histórico de versões
+├─ data/                          # Dados e configurações
 │  ├─ config.json                 # Configurações do usuário
-│  ├─ checkpoints_backup.json     # Backup de checkpoints legado
-│  └─ README.md                   # Documentação dos dados
-├─ src/
+│  └─ *.json                      # Checkpoints e dados de mapas
+├─ src/                           # Código fonte
 │  ├─ main.py                     # Ponto de entrada principal
 │  ├─ config.py                   # Configurações e constantes
-│  └─ core/
-│     ├─ carro.py                 # Física e controle dos carros
+│  └─ core/                       # Módulos principais
+│     ├─ carro_fisica.py          # Sistema de física avançada
 │     ├─ pista.py                 # Carregamento e detecção de pista
-│     ├─ camera.py                # Sistema de câmera
-│     ├─ corrida.py               # GerencIAdor de corrida
-│     ├─ IA_v2.py       # InteligêncIA artificIAl melhorada
-│     ├─ checkpoint_manager.py    # Editor de checkpoints
+│     ├─ camera.py                # Sistema de câmera dinâmica
+│     ├─ corrida.py               # Gerenciador de corrida
+│     ├─ ia.py                    # Inteligência artificial (Pure Pursuit)
+│     ├─ checkpoint_manager.py    # Editor visual de checkpoints
 │     ├─ menu.py                  # Sistema de menus
-│     ├─ musica.py                # GerencIAdor de música
+│     ├─ hud.py                   # Interface de jogo
+│     ├─ musica.py                # Gerenciador de música
 │     ├─ particulas.py            # Efeitos de partículas
-│     └─ popup_musica.py          # Interface de música
-├─ checkpoints.json               # Checkpoints salvos
-├─ config.json                    # Configurações do usuário
-├─ COMO_ADICIONAR_MAPAS.md        # GuIA para adicionar mapas
-└─ README.md
+│     ├─ skidmarks.py             # Sistema de marcas de pneu
+│     └─ drift_scoring.py         # Sistema de pontuação de drift
+└─ README.md                      # Este arquivo
 ```
 
 ---
 
 ## 🎮 Controles
 
-### **Carro 1 (Player 1)**
-- **Acelerar:** W
-- **Frear/Ré:** S
-- **Virar Direita:** D
-- **Virar Esquerda:** A
-- **Turbo:** Shift Esquerdo
-- **Drift:** Espaço
+### **🚗 Controles de Carro**
 
-### **Carro 2 (Player 2)**
-- **Acelerar:** Seta ↑
-- **Frear/Ré:** Seta ↓
-- **Virar Direita:** Seta →
-- **Virar Esquerda:** Seta ←
-- **Turbo:** Ctrl Direito
-- **Drift:** Shift
+#### **Jogador 1 (Player 1)**
+- **W** - Acelerar
+- **S** - Frear/Ré
+- **A** - Virar Esquerda
+- **D** - Virar Direita
+- **Shift Esquerdo** - Turbo
+- **Espaço** - Drift (por clique)
 
-### **Controles Gerais**
-- **M:** Próxima música
-- **N:** Música anterior
-- **H:** Alternar HUD completo
-- **F1:** Ativar/desativar debug da IA
-- **ESC:** Pausar/despausar ou voltar ao menu
+#### **Jogador 2 (Player 2)**
+- **Seta ↑** - Acelerar
+- **Seta ↓** - Frear/Ré
+- **Seta ←** - Virar Esquerda
+- **Seta →** - Virar Direita
+- **Ctrl Direito** - Turbo
+- **Shift** - Drift (hold)
 
-### **Navegação no Menu**
-- **Setas ←→ ou A/D:** Navegar entre opções do menu principal
-- **Setas ↑↓ ou W/S:** Navegar entre opções de "Número de jogadores" no modo de jogo
-- **Setas ←→ ou A/D:** Navegar entre opções de "Tipo de jogo" no modo de jogo
-- **ENTER ou ESPAÇO:** Confirmar seleção
-- **ESC:** Voltar ao menu anterior
-- **R:** Recarregar mapas (na seleção de mapas)
+### **🎵 Controles de Música**
+- **M** - Próxima música
+- **N** - Música anterior
 
-### **Editor de Checkpoints**
-- **F7:** Ativar/desativar modo edição
-- **F5:** Salvar checkpoints
-- **F6:** Carregar checkpoints
-- **F8:** Limpar todos os checkpoints
-- **F10:** Mostrar todos os checkpoints
-- **Clique em checkpoint:** Selecionar/mover checkpoint
-- **Ctrl+Clique:** Adicionar novo checkpoint
-- **Arrastar área vazia:** Mover câmera
-- **DEL:** Remover checkpoint selecionado
+### **🎮 Controles Gerais**
+- **ESC** - Pausar/despausar ou voltar ao menu
+- **H** - Alternar HUD completo
+- **F1** - Ativar/desativar debug da IA
+
+### **📋 Navegação no Menu**
+- **Setas ←→ ou A/D** - Navegar entre opções do menu principal
+- **Setas ↑↓ ou W/S** - Navegar entre opções verticais (ex: número de jogadores)
+- **ENTER ou ESPAÇO** - Confirmar seleção
+- **ESC** - Voltar ao menu anterior
+- **R** - Recarregar mapas (na seleção de mapas)
+
+### **✏️ Editor de Checkpoints**
+- **F7** - Ativar/desativar modo edição
+- **F5** - Salvar checkpoints
+- **F6** - Carregar checkpoints
+- **F8** - Limpar todos os checkpoints
+- **F10** - Mostrar todos os checkpoints
+- **Clique em checkpoint** - Selecionar/mover checkpoint
+- **Ctrl+Clique** - Adicionar novo checkpoint
+- **Arrastar área vazia** - Mover câmera
+- **DEL** - Remover checkpoint selecionado
 
 ---
 
-## ✏️ Como Executar
+## 🚀 Como Executar
 
-### **Requisitos**
-- Python **3.10+**
-- Biblioteca [Pygame](https://www.pygame.org/)
+### **📋 Requisitos**
+- **Python 3.10+** (recomendado 3.11+)
+- **Pygame 2.5+** - Biblioteca de jogos
+- **Windows 10+** (testado) / Linux / macOS
 
-### **Instalação**
+### **⚙️ Instalação**
+
+#### **Método 1: Instalação Rápida**
 ```bash
-# Instalar Pygame
+# 1. Instalar Pygame
 pip install pygame
 
-# Executar o jogo
+# 2. Executar o jogo
 python src/main.py
 ```
 
+#### **Método 2: Instalação com Virtual Environment (Recomendado)**
+```bash
+# 1. Criar ambiente virtual
+python -m venv turbo-racer-env
+
+# 2. Ativar ambiente virtual
+# Windows:
+turbo-racer-env\Scripts\activate
+# Linux/macOS:
+source turbo-racer-env/bin/activate
+
+# 3. Instalar dependências
+pip install pygame
+
+# 4. Executar o jogo
+python src/main.py
+```
+
+### **🔧 Primeira Execução**
+1. **Execute** o jogo pela primeira vez
+2. **Configure** as opções em "OPÇÕES" se necessário
+3. **Selecione** um carro e mapa
+4. **Divirta-se!** 🏎️
+
 ---
 
-## 🗺️ Sistema de Mapas (ESCALÁVEL)
+## 🗺️ Sistema de Mapas Escalável
 
-### **Adicionar Novo Mapa (AUTOMÁTICO)**
+### **🚀 Adicionar Novo Mapa (AUTOMÁTICO)**
 
-1. **Coloque os arquivos** na estrutura:
-   ```
-   assets/images/maps/
-   ├── SeuMapa.png
-   └── guides/
-       ├── SeuMapa_guides.png
-       └── SeuMapa_checkpoints.json (opcional - criado automaticamente)
-   ```
+#### **1. Preparar Assets**
+```
+assets/images/maps/
+├── MeuMapa.png                    # OBRIGATÓRIO
+└── guides/
+    ├── MeuMapa_guides.png         # OPCIONAL
+    └── MeuMapa_checkpoints.json   # OPCIONAL (criado automaticamente)
+```
 
-2. **Execute o jogo** - o mapa será detectado automaticamente!
+#### **2. Ativar o Mapa**
+1. **Execute** o jogo
+2. **Vá para "Selecionar Mapas"**
+3. **Pressione R** para recarregar mapas (se necessário)
+4. **Selecione** o novo mapa na lista
 
-3. **No menu de seleção de mapas**:
-   - Pressione **R** para recarregar mapas
-   - O sistema detecta automaticamente novos mapas
+#### **3. Criar Checkpoints (Opcional)**
+1. **Entre** no mapa
+2. **Pressione F7** para modo edição
+3. **Posicione** checkpoints clicando na pista
+4. **Mova** checkpoints arrastando
+5. **Salve** com F5
 
-4. **Crie os checkpoints** usando o editor visual (F7) se necessário
+### **✨ Recursos do Sistema Escalável**
 
-### **Recursos do Sistema Escalável**
+- ✅ **Detecção automática** - Mapas aparecem automaticamente
+- ✅ **Nomes inteligentes** - "MeuMapa" vira "Meu Mapa"
+- ✅ **Recarregamento dinâmico** - Adicione mapas sem reiniciar
+- ✅ **Fallback robusto** - Funciona mesmo sem guias/checkpoints
+- ✅ **Zero configuração** - Apenas coloque os arquivos
 
-- ✅ **Detecção automática** de mapas na pasta `maps`
-- ✅ **Nomes amigáveis** gerados automaticamente
-- ✅ **Recarregamento dinâmico** (tecla R no menu)
-- ✅ **Fallback inteligente** para mapas sem guias/checkpoints
-- ✅ **Zero configuração manual** necessária
+### **🎨 Especificações de Mapas**
 
-### **Editor de Checkpoints**
-- **Ative o modo edição** (F7)
-- **Clique e arraste** para mover checkpoints
-- **Clique em área vazIA** para adicionar novos
-- **Salve** com F5
+#### **Cores Padrão**
+- **🟠 Laranja (255, 165, 0)** - Pista transitável
+- **🟢 Verde (0, 255, 0)** - Limites não transitáveis
+- **🟣 Magenta (255, 0, 255)** - Checkpoints/área transitável
+- **🟡 Amarelo (255, 255, 0)** - Linha de largada (guias)
+
+#### **Resolução Recomendada**
+- **Mínimo:** 1280x720
+- **Recomendado:** 1920x1080
+- **Máximo:** 2560x1440 (para performance)
 
 ---
 
 ## ⚙️ Configurações
 
-### **Arquivo config.json**
+### **📁 Arquivo config.json**
 ```json
 {
   "audio": {
     "volume_master": 1.0,
     "volume_musica": 0.8,
+    "volume_efeitos": 0.9,
+    "audio_habilitado": true,
     "musica_habilitada": true,
-    "musica_aleatorIA": false
+    "musica_no_menu": true,
+    "musica_no_jogo": true,
+    "musica_aleatoria": false
   },
   "video": {
     "resolucao": [1280, 720],
     "fullscreen": false,
-    "fps_max": 60
+    "tela_cheia_sem_bordas": false,
+    "vsync": true,
+    "fps_max": 60,
+    "qualidade_alta": true,
+    "mostrar_fps": false
+  },
+  "controles": {
+    "sensibilidade_volante": 1.0,
+    "inverter_volante": false,
+    "auto_centro": true
   },
   "jogo": {
+    "dificuldade_IA": 1.0,
     "modo_drift": true,
-    "mostrar_fps": true,
     "mostrar_debug": false
   }
 }
 ```
 
+### **🔧 Configurações Principais**
+
+#### **Áudio**
+- **Volume Master** - Volume geral (0.0 - 1.0)
+- **Volume Música** - Volume das músicas (0.0 - 1.0)
+- **Volume Efeitos** - Volume dos efeitos sonoros (0.0 - 1.0)
+- **Música Aleatória** - Tocar músicas em ordem aleatória
+
+#### **Vídeo**
+- **Resolução** - Resolução da tela [largura, altura]
+- **Fullscreen** - Modo tela cheia
+- **VSync** - Sincronização vertical
+- **FPS Máximo** - Limite de FPS (recomendado: 60)
+- **Qualidade Alta** - Renderização em alta qualidade
+
+#### **Jogo**
+- **Dificuldade IA** - Dificuldade da inteligência artificial (0.5 - 2.0)
+- **Modo Drift** - Ativar sistema de drift
+- **Mostrar Debug** - Exibir informações de debug
+
 ---
 
 ## 🎯 Funcionalidades Avançadas
 
-### **Sistema de IA**
-- Carros controlados por IA seguem checkpoints automaticamente
-- Algoritmo Pure Pursuit para navegação suave
-- Detecção de colisões e recuperação automática
+### **🤖 Sistema de IA**
+- **Algoritmo Pure Pursuit** - Navegação suave e realista
+- **Detecção Inteligente** - Evita obstáculos e recupera de situações problemáticas
+- **Parâmetros Configuráveis** - Wheelbase, lookahead distance, velocidades
+- **Debug Visual** - Ative com F1 para ver o comportamento da IA
 
-### **Física Realista**
-- **Sistema de Tração**: Traseira, frontal e integral com comportamentos únicos
-- Aceleração e frenagem progressivas
-- Sistema de derrapagem com contraesterço e colisões realistas
-- Colisões com rebote e perda de velocidade
-- Turbo com cooldown
+### **🚗 Física Realista**
+- **3 Tipos de Tração:**
+  - **RWD (Tração Traseira)** - Pode fazer drift, instável em curvas
+  - **FWD (Tração Frontal)** - Muito estável, sem drift
+  - **AWD (Tração Integral)** - Equilibrado, drift limitado
+- **Sistema de Derrapagem** - Baseado em velocidade e ângulo
+- **Colisões Realistas** - Rebote e perda de velocidade
+- **Turbo com Cooldown** - 0.9s de duração, 2.5s de cooldown
 
-### **Sistema de Música**
-- Múltiplas faixas de música
-- Controles de volume independentes
-- Modo aleatório
-- Interface visual de música
+### **🎵 Sistema de Áudio**
+- **6 Faixas Musicais** - Estilos variados (Cyberpunk, Rock, Rave)
+- **Controles Independentes** - Volume master, música e efeitos
+- **Modo Aleatório** - Tocar músicas em ordem aleatória
+- **Interface Visual** - Controles de música integrados
 
-### **Modo Drift**
-- Pontuação baseada em velocidade e ângulo
-- Efeitos visuais de fumaça
-- Sistema de combo
-- Decay automático de pontos
+### **🏁 Modo Drift**
+- **Tempo Limitado** - 2 minutos para acumular pontos
+- **Sistema de Combo** - Multiplicador por derrapagens consecutivas
+- **Pontuação Inteligente** - Baseada em velocidade e ângulo de derrapagem
+- **Efeitos Visuais** - Fumaça e partículas durante o drift
+- **Decay Automático** - Pontos diminuem se não houver drift contínuo
 
 ---
 
 ## 🛠️ Desenvolvimento
 
-### **Estrutura do Código**
-- **Modular:** Cada funcionalidade em seu próprio módulo
-- **Escalável:** Fácil adicionar novos mapas e carros
-- **Configurável:** Todas as configurações em arquivos JSON
-- **Português:** Código e variáveis em português
-- **Documentado:** Documentação técnica completa disponível
+### **🏗️ Arquitetura do Código**
+- **Modular** - Cada funcionalidade em seu próprio módulo
+- **Escalável** - Fácil adicionar novos mapas e carros
+- **Configurável** - Todas as configurações em arquivos JSON
+- **Português** - Código e variáveis em português
+- **Documentado** - Documentação técnica completa disponível
 
-### **Documentação para Desenvolvedores**
-- **GDD:** Consulte o [Game Design Document](docs/gdd/GDD_Turbo_Racer.md) para entender o design do jogo
-- **Game Objects:** Veja a [lista de objetos](docs/tech/GAME_OBJECTS_Turbo_Racer.md) para entender a arquitetura
-- **API Reference:** Consulte a [documentação técnica](docs/tech/DOCUMENTACAO.md) para detalhes de implementação
+### **📚 Documentação para Desenvolvedores**
+- **[Game Design Document](docs/design/game-design.md)** - Design completo do jogo
+- **[API Reference](docs/API.md)** - Referência completa da API
+- **[Guias de Desenvolvimento](docs/guides/)** - Como adicionar conteúdo
+- **[Changelog](docs/CHANGELOG.md)** - Histórico de mudanças
 
-### **Adicionando Novos Carros**
-1. Adicione o sprite em `assets/images/cars/`
-2. Configure em `CARROS_DISPONIVEIS` no `main.py`
-3. Adicione sprite de seleção em `assets/images/car_selection/`
-4. Consulte a documentação de Game Objects para detalhes técnicos
+### **🚗 Adicionando Novos Carros**
+1. **Adicione** o sprite em `assets/images/cars/`
+2. **Configure** em `CARROS_DISPONIVEIS` no `main.py`
+3. **Adicione** sprite de seleção em `assets/images/car_selection/`
+4. **Defina** tipo de tração (RWD/FWD/AWD)
+5. **Teste** física e comportamento
 
-### **Personalizando Física**
-- Ajuste constantes em `config.py`
-- Modifique `core/carro.py` para física personalizada
-- Configure parâmetros de IA em `core/ia.py`
-- Veja exemplos na documentação técnica
+### **🗺️ Adicionando Novos Mapas**
+1. **Coloque** o arquivo PNG em `assets/images/maps/`
+2. **Execute** o jogo - detecção automática
+3. **Use** o editor visual (F7) para checkpoints
+4. **Teste** navegação da IA
 
-### **Adicionando Novos Mapas**
-- Siga o guia em [COMO_ADICIONAR_MAPAS.md](docs/guides/COMO_ADICIONAR_MAPAS.md)
-- Use o editor visual de checkpoints (F7) para configurar navegação
-- Consulte a documentação técnica para detalhes de implementação
+### **⚙️ Personalizando Física**
+- **Ajuste** constantes em `config.py`
+- **Modifique** `core/carro_fisica.py` para física personalizada
+- **Configure** parâmetros de IA em `core/ia.py`
+- **Teste** diferentes configurações
 
 ---
 
 ## 🤝 Contribuição
 
-### **Como Contribuir**
+### **🚀 Como Contribuir**
 1. **Fork** o repositório
 2. **Crie** uma branch para sua feature (`git checkout -b feature/nova-funcionalidade`)
-3. **Commit** suas mudanças (`git commit -m 'Adiciona nova funcionalidade'`)
+3. **Commit** suas mudanças (`git commit -m 'feat: adiciona nova funcionalidade'`)
 4. **Push** para a branch (`git push origin feature/nova-funcionalidade`)
 5. **Abra** um Pull Request
 
-### **Diretrizes de Contribuição**
-- Siga a estrutura de código existente
-- Mantenha a documentação atualizada
-- Teste suas mudanças antes de submeter
-- Use commits descritivos
-- Consulte a documentação técnica antes de contribuir
+### **📋 Diretrizes de Contribuição**
+- **Siga** a estrutura de código existente
+- **Mantenha** a documentação atualizada
+- **Teste** suas mudanças antes de submeter
+- **Use** commits descritivos com prefixos
+- **Consulte** a documentação técnica antes de contribuir
 
-### **Áreas de Contribuição**
-- **Novos Carros:** Adicione sprites e configurações
-- **Novos Mapas:** Crie pistas e checkpoints
-- **MelhorIAs de IA:** Otimize algoritmos de navegação
-- **Efeitos Visuais:** Adicione partículas e animações
-- **Interface:** Melhore menus e HUD
-- **Documentação:** Melhore guIAs e referêncIAs
+### **🎯 Áreas de Contribuição**
+- **🚗 Novos Carros** - Adicione sprites e configurações
+- **🗺️ Novos Mapas** - Crie pistas e checkpoints
+- **🤖 Melhorias de IA** - Otimize algoritmos de navegação
+- **✨ Efeitos Visuais** - Adicione partículas e animações
+- **🎨 Interface** - Melhore menus e HUD
+- **📚 Documentação** - Melhore guias e referências
+- **🐛 Correções** - Reporte e corrija bugs
+- **⚡ Performance** - Otimize código e renderização
+
+### **📝 Padrões de Commit**
+```
+feat: adiciona nova funcionalidade
+fix: corrige bug específico
+docs: atualiza documentação
+style: formatação de código
+refactor: refatoração sem mudança de funcionalidade
+test: adiciona ou modifica testes
+chore: mudanças em build, dependências, etc.
+```
 
 ---
 
 ## 📝 Licença
 
-Este projeto é de código aberto e está disponível sob a licença MIT.
+Este projeto é de código aberto e está disponível sob a **licença MIT**.
 
 ---
 
 ## 📞 Suporte
 
-- **Issues:** Use o sistema de issues do GitHub para reportar bugs
-- **Documentação:** Consulte a documentação técnica para dúvidas
-- **Desenvolvimento:** Veja os guIAs de contribuição para participar
+### **🐛 Reportar Bugs**
+- Use o sistema de [Issues](https://github.com/seu-usuario/turbo-racer/issues) do GitHub
+- Inclua informações sobre seu sistema operacional
+- Descreva os passos para reproduzir o problema
+
+### **❓ Dúvidas e Ajuda**
+- **Documentação:** Consulte a [documentação técnica](docs/API.md)
+- **Guias:** Veja os [guias de desenvolvimento](docs/guides/)
+- **Discord:** [Servidor da comunidade](https://discord.gg/turbo-racer) (em breve)
+
+### **💡 Sugestões**
+- Abra uma [Issue](https://github.com/seu-usuario/turbo-racer/issues) com a tag "enhancement"
+- Descreva sua ideia detalhadamente
+- Considere implementar você mesmo!
 
 ---
+
+## 🎉 Agradecimentos
+
+- **Pygame** - Biblioteca de jogos para Python
+- **Comunidade Python** - Suporte e recursos
+- **Contribuidores** - Todos que ajudaram no desenvolvimento
+- **Testadores** - Feedback valioso durante o desenvolvimento
+
+---
+
+**Desenvolvido com ❤️ por Jean Marins e Jayson Sales**  
+**Versão atual:** 2.1.0  
+**Última atualização:** Dezembro 2024

@@ -1,35 +1,39 @@
-# 🗺️ Como Adicionar Mapas - Turbo Racer (SISTEMA ESCALÁVEL)
+# 🗺️ Como Adicionar Mapas - Turbo Racer
 
-Guia passo a passo para adicionar novos mapas ao Turbo Racer usando o sistema automático.
+Guia completo para adicionar novos mapas ao Turbo Racer usando o sistema de detecção automática.
 
 ## 📋 Pré-requisitos
 
-- Editor de imagens (GIMP, Photoshop, etc.)
-- Acesso aos arquivos do jogo
-- **NÃO é necessário conhecimento de Python!**
+- **Editor de imagens** (GIMP, Photoshop, Paint.NET, etc.)
+- **Acesso aos arquivos** do jogo
+- **Conhecimento básico** de design de pistas
+- **NÃO é necessário conhecimento de Python!** ✅
 
-## 🎯 Passo a Passo (AUTOMÁTICO)
+## 🎯 Passo a Passo
 
 ### 1. Preparar Assets
 
-#### Mapa Principal
+#### **🗺️ Mapa Principal (OBRIGATÓRIO)**
 - **Formato:** PNG com transparência
-- **Resolução:** Recomendado 1920x1080 ou superior
-- **Cores:**
-  - **Verde (0, 255, 0)** - Limite da pista (não transitável)
-  - **Laranja (255, 165, 0)** - Pista válida
-  - **Magenta (255, 0, 255)** - Checkpoints/área transitável
+- **Resolução:** 
+  - Mínimo: 1280x720
+  - Recomendado: 1920x1080
+  - Máximo: 2560x1440 (para performance)
+- **Cores Padrão:**
+  - **🟠 Laranja (255, 165, 0)** - Pista transitável
+  - **🟢 Verde (0, 255, 0)** - Limites não transitáveis
+  - **🟣 Magenta (255, 0, 255)** - Checkpoints/área transitável
 
-#### Guias de Navegação (OPCIONAL)
+#### **🎯 Guias de Navegação (OPCIONAL)**
 - **Formato:** PNG com transparência
 - **Resolução:** Mesma do mapa principal
 - **Cores:**
-  - **Amarelo (255, 255, 0)** - Linha de largada
-  - **Azul (0, 0, 255)** - Guias de navegação
+  - **🟡 Amarelo (255, 255, 0)** - Linha de largada
+  - **🔵 Azul (0, 0, 255)** - Guias de navegação
 
 ### 2. Adicionar Arquivos (ZERO CONFIGURAÇÃO)
 
-#### Estrutura de Arquivos
+#### **📁 Estrutura de Arquivos**
 ```
 assets/images/maps/
 ├── MeuMapa.png                    # OBRIGATÓRIO
@@ -38,34 +42,46 @@ assets/images/maps/
     └── MeuMapa_checkpoints.json   # OPCIONAL (criado automaticamente)
 ```
 
-#### Convenção de Nomes
+#### **📝 Convenção de Nomes**
 - **Arquivo principal:** `NomeDoMapa.png`
 - **Guias:** `NomeDoMapa_guides.png`
 - **Checkpoints:** `NomeDoMapa_checkpoints.json`
 
+#### **✨ Nomes Inteligentes**
+O sistema converte automaticamente:
+- `MeuMapa` → "Meu Mapa"
+- `Pista_Circuito` → "Pista Circuito"
+- `Mapa_Teste_01` → "Mapa Teste 01"
+
 ### 3. Ativar o Mapa (AUTOMÁTICO)
 
-1. **Executar** o jogo
-2. **Ir para "Selecionar Mapa"**
-3. **Pressionar R** para recarregar mapas (se necessário)
-4. **Selecionar** o novo mapa na lista
+1. **🚀 Executar** o jogo
+2. **📋 Ir para "Selecionar Mapas"**
+3. **🔄 Pressionar R** para recarregar mapas (se necessário)
+4. **✅ Selecionar** o novo mapa na lista
 
 ### 4. Criar Checkpoints (OPCIONAL)
 
-#### Usando o Editor Visual
-1. **Entrar** no mapa
-2. **Pressionar F7** para entrar no modo edição
-3. **Posicionar** checkpoints clicando na pista
-4. **Mover** checkpoints arrastando
-5. **Pressionar F5** para salvar
+#### **✏️ Usando o Editor Visual**
+1. **🎮 Entrar** no mapa
+2. **⌨️ Pressionar F7** para entrar no modo edição
+3. **🖱️ Posicionar** checkpoints clicando na pista
+4. **🔄 Mover** checkpoints arrastando
+5. **💾 Pressionar F5** para salvar
+
+#### **🎯 Dicas de Posicionamento**
+- **Coloque checkpoints** em curvas importantes
+- **Mantenha distância** adequada entre eles
+- **Evite áreas** muito estreitas
+- **Teste a navegação** da IA (F1 para debug)
 
 ### 5. Testar o Mapa
 
-1. **Executar** o jogo
-2. **Selecionar** o novo mapa
-3. **Testar** navegação da IA
-4. **Verificar** checkpoints
-5. **Ajustar** se necessário
+1. **🎮 Executar** o jogo
+2. **🗺️ Selecionar** o novo mapa
+3. **🤖 Testar** navegação da IA (F1 para debug)
+4. **✅ Verificar** checkpoints
+5. **🔧 Ajustar** se necessário
 
 ## 🚀 Vantagens do Sistema Escalável
 

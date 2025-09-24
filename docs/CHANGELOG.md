@@ -7,7 +7,36 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
-## [2.1.0] - 2024-12-XX
+## [2.2.0] - 2025-09-XX
+
+### Adicionado
+- **Sistema de Skidmarks Avançado** - Marcas de pneu no drift com gerenciamento inteligente
+- **Configurações de Performance** - FPS máximo configurável e otimizações de renderização
+
+### Modificado
+- **Sistema de Física de Carros** - Melhorias na física de drift e estabilidade
+- **Sistema de Câmera** - Otimizações de performance e suavização de movimento
+- **Sistema de HUD** - Velocímetro e ponteiro com configurações otimizadas
+- **Sistema de Configuração** - Melhorias na gestão de configurações do jogo
+- **Sistema de Mapas** - Detecção automática aprimorada e recarregamento dinâmico
+- **Sistema de Partículas** - Curvas de fade suaves e animação de texturas
+
+### Corrigido
+- **Problemas de Assets** - Correção de imagens faltantes (Car2.png, Car4.png)
+- **Sistema de Skidmarks** - Marcas permanentes e conexão adequada entre segmentos
+- **Interface de Usuário** - Melhorias visuais nos ícones e elementos da interface
+- **Sistema de Física** - Correção de bugs na detecção de drift e estabilidade
+- **Performance de Renderização** - Otimizações para melhor FPS
+
+### Removido
+- **Arquivos de Debug** - Remoção de scripts de teste desnecessários (tools/debug_*.py)
+- **Assets Duplicados** - Limpeza de algumas das imagens duplicadas e arquivos desnecessários
+- **Documentação Redundante** - Consolidação de documentação duplicada
+- **Arquivos de Mapa Debug** - Remoção de mapas de teste não utilizados
+
+---
+
+## [2.1.0] - 2025-09-XX
 
 ### Adicionado
 - **Sistema de Navegação de Menu Melhorado** - Controles intuitivos com setas e A/D
@@ -27,7 +56,7 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - **Sobreposição de Elementos** - Botões não sobrepõem mais opções de voltas
 - **Navegação Inconsistente** - Ordem de navegação corrigida para corresponder ao layout visual
 
-## [2.0.0] - 2024-12-XX
+## [2.0.0] - 2025-09-XX
 
 ### Adicionado
 - **Sistema de Modos de Jogo** - Suporte para 1 jogador, 2 jogadores e modo drift
@@ -62,7 +91,7 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
-## [1.0.0] - 2024-11-XX
+## [1.0.0] - 2025-09-XX
 
 ### Adicionado
 - **Sistema Base** - Estrutura inicial do jogo
@@ -132,6 +161,6 @@ chore: atualizar dependências do pygame
 
 ---
 
-**Última atualização:** Dezembro 2024  
-**Versão atual:** 2.0.0  
-**Próxima versão:** 2.1.0 (planejada)
+**Última atualização:** Setembro 2025  
+**Versão atual:** 2.2.0  
+**Próxima versão:** 2.3.0 (planejada)

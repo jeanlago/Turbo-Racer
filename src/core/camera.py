@@ -14,8 +14,8 @@ class Camera:
         self.cx = largura_mundo / 2
         self.cy = altura_mundo / 2
 
-        # Suavização (follow “macio”)
-        self.follow_rigidez = 8.0  # maior = segue mais “grudado”
+        # Suavização (follow "macio")
+        self.follow_rigidez = 12.0  # maior = segue mais "grudado"
 
     def set_alvo(self, alvo):
         self.alvo = alvo
@@ -69,7 +69,9 @@ class Camera:
     def desenhar_fundo(self, superficie_tela, superficie_mundo):
         """Recorta a visão do mundo e escala para preencher a tela."""
         r = self.ret_visao()
-        recorte = superficie_mundo.subsurface(r).copy()
+        # Otimização: usar subsurface diretamente em vez de copy()
+        recorte = superficie_mundo.subsurface(r)
+        # Usar scale em vez de smoothscale para melhor performance
         amplIAdo = pygame.transform.scale(recorte, (self.largura_tela, self.altura_tela))
         superficie_tela.blit(amplIAdo, (0, 0))
     
