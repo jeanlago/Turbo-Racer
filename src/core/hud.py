@@ -22,7 +22,7 @@ class HUD:
         # Configurações do ponteiro (valores fixos otimizados)
         self.ponteiro_offset_x = 1
         self.ponteiro_offset_y = 23
-        self.ponteiro_escala_atual = 0.1
+        self.ponteiro_escala_atual = 0.07  # Reduzido de 0.1 para 0.07
         self.ponteiro_pivo_x = 180.69452265072886
         self.ponteiro_pivo_y = 1.2977856569646988
         self.ponteiro_angulo_inicial = 215
@@ -42,13 +42,13 @@ class HUD:
         self._carregar_imagens()
         
         # Configurações do velocímetro (canto inferior direito)
-        self.velocimetro_centro = (1100, 650)
-        self.velocimetro_raio = 150
+        self.velocimetro_centro = (1170, 630)
+        self.velocimetro_raio = 80  # Reduzido de 150 para 100
         self.velocimetro_vmax = 300.0  # km/h para escala
         
         # Configurações do nitro (ao lado esquerdo do velocímetro)
-        self.nitro_centro = (950, 650)  # Posição mais à direita do velocímetro
-        self.nitro_tamanho = (80, 80)   # Tamanho do ícone de nitro
+        self.nitro_centro = (1080, 675)  # Posição mais à direita do velocímetro
+        self.nitro_tamanho = (60, 60)   # Tamanho do ícone de nitro reduzido
         # Ângulos do mostrador (em graus). Usando arco completo do velocímetro
         # -135° a 135° = 270° de arco (3/4 de círculo)
         self.velocimetro_ang_min = -135.0
@@ -160,11 +160,11 @@ class HUD:
         if not carro:
             return
 
-        # Velocidade (km/h) - dobrada para correção
+        # Velocidade (km/h) - ajustada para nova escala
         if hasattr(carro, 'velocidade_kmh'):
-            velocidade_kmh = float(carro.velocidade_kmh) * 2.0
+            velocidade_kmh = float(carro.velocidade_kmh)  # Usar valor já calculado
         else:
-            velocidade_kmh = abs(float(getattr(carro, 'velocidade', 0.0))) * 0.216 * 2.0
+            velocidade_kmh = abs(float(getattr(carro, 'velocidade', 0.0))) * 1.0 * (200.0 / 650.0)  # escala automática
 
         # Fundo do velocímetro
         if self.imagem_velocimetro:
@@ -243,7 +243,7 @@ class HUD:
         y += self.espacamento_linhas
         
         # Velocidade
-        velocidade_kmh = abs(carro.velocidade) * 20.0
+        velocidade_kmh = abs(carro.velocidade) * 1.0 * (200.0 / 650.0)  # escala automática
         texto_velocidade = self.fonte_secundarIA.render(f"Velocidade: {int(velocidade_kmh)} km/h", True, self.cor_velocidade)
         superficie.blit(texto_velocidade, (posicao[0], y))
         y += self.espacamento_linhas

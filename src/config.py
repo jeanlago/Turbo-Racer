@@ -236,13 +236,13 @@ CAMINHO_FUMACA = os.path.join(DIR_EFFECTS, "smoke", "pixels_00.png")  # coloque 
 
 # ---------- Modo Drift / Pontuação ----------
 MODO_DRIFT = True
-DRIFT_MIN_VEL = 1.2  # Reduzido para permitir drift em velocidades menores
+DRIFT_MIN_VEL = 0.3  # Muito reduzido para permitir drift em velocidades baixas
 DRIFT_PONTOS_BASE = 1.0
 DRIFT_PONTOS_VEL_FACTOR = 0.06
 DRIFT_DECAY_POR_SEG = 60.0
 DRIFT_COMBO_MAX = 8
 DRIFT_COMBO_STEP = 1.0
-DRIFT_EMISSAO_QPS = 28.0
+DRIFT_EMISSAO_QPS = 40.0
 
 # ---------- Física de Drift (tuning) ----------
 DRIFT_ATRITO_GERAL       = 0.992
@@ -250,8 +250,8 @@ DRIFT_ATRITO_DERRAPANDO  = 0.985
 DRIFT_GIRO_RESP          = 1.25
 DRIFT_PERP_K             = 0.0065
 
-VEL_MAX                  = 5.5  # Aumentado de 3.5 para 5.5 (mais velocidade)
-ACEL_BASE                = 0.08  # Reduzido de 0.12 para 0.08
+VEL_MAX                  = 3.0  # Reduzido para velocidade mais realista
+ACEL_BASE                = 0.06  # Reduzido para aceleração mais suave
 
 # ---------- Turbo ----------
 TURBO_FORCA_IMPULSO = 2.5  # Reduzido de 4.2 para 2.5 (mais realista)
@@ -276,10 +276,10 @@ CONFIGURACOES = {
         "resolucao": (1280, 720),
         "fullscreen": False,
         "tela_cheIA_sem_bordas": False,
-        "vsync": True,
-        "fps_max": 60,
-        "qualidade_alta": True,
-        "mostrar_fps": False
+        "vsync": False,  # Desabilitado para melhor FPS
+        "fps_max": 240,  # Aumentado para 240 FPS para melhor responsividade
+        "qualidade_alta": False,  # Padrão para melhor performance
+        "mostrar_fps": True  # Habilitado para monitorar performance
     },
     "controles": {
         "sensibilidade_volante": 1.0,

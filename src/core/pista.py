@@ -71,7 +71,11 @@ def eh_pixel_transitavel(surface, x, y):
         return _pixel_cache[cache_key]
     
     _cache_misses += 1
-    r, g, b, _ = surface.get_at((x, y))
+    # Otimização: usar get_at com verificação de bounds
+    try:
+        r, g, b, _ = surface.get_at((x, y))
+    except IndexError:
+        return False
 
     # 1) Verde = fora da pista (limite) - NÃO transitável
     if _cor_proxima((r, g, b), (0, 255, 0), 50):

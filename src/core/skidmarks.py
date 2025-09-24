@@ -16,12 +16,8 @@ class Skidmark:
     def atualizar(self, dt):
         """Atualiza o skidmark"""
         self.tempo_vida += dt
-        if self.tempo_vida >= self.duracao:
-            self.ativo = False
-        else:
-            # Fade out gradual
-            progresso = self.tempo_vida / self.duracao
-            self.alpha = int(255 * (1.0 - progresso))
+        # Marca permanente - nunca fica inativa
+        # self.ativo sempre permanece True
     
     def desenhar(self, tela, camera):
         """Desenha o skidmark"""
@@ -36,27 +32,33 @@ class Skidmark:
             x1, y1 = self.x1, self.y1
             x2, y2 = self.x2, self.y2
         
-        # Desenhar linha
-        cor = (100, 100, 100, self.alpha)
-        pygame.draw.line(tela, cor, (int(x1), int(y1)), (int(x2), int(y2)), 3)
+        # Desenhar linha preta para marcas de pneu
+        cor = (0, 0, 0)  # Preto para marcas de pneu
+        pygame.draw.line(tela, cor, (int(x1), int(y1)), (int(x2), int(y2)), 3)  # Mais fina
 
 class GerenciadorSkidmarks:
     """Gerencia todos os skidmarks do jogo"""
     
     def __init__(self):
         self.skidmarks = []
-        self.max_skidmarks = 100
+        self.max_skidmarks = 200  # Aumentado para marcas permanentes
+        self.ultima_posicoes = {}  # Para conectar os skidmarks de cada pneu
     
-    def adicionar_skidmark(self, x, y, angulo, intensidade=1.0):
+    def adicionar_skidmark(self, x, y, angulo, intensidade=1.0, pneu_id="traseiro_esq"):
         """Adiciona um novo skidmark baseado na posição e ângulo"""
         import math
-        # Calcular posição final baseada no ângulo e intensidade
-        comprimento = 10 * intensidade
-        x2 = x + math.cos(angulo) * comprimento
-        y2 = y + math.sin(angulo) * comprimento
         
-        skidmark = Skidmark(x, y, x2, y2, duracao=4.0 * intensidade)
-        self.skidmarks.append(skidmark)
+        # Só criar skidmark se a intensidade for significativa (handbrake sempre cria)
+        if intensidade > 0.1:  # Threshold mais baixo para handbrake
+            # Se temos uma posição anterior para este pneu, conectar com ela
+            if pneu_id in self.ultima_posicoes:
+                x_anterior, y_anterior = self.ultima_posicoes[pneu_id]
+                # Criar skidmark conectando com a posição anterior
+                skidmark = Skidmark(x_anterior, y_anterior, x, y, duracao=5.0 * intensidade)
+                self.skidmarks.append(skidmark)
+            
+            # Atualizar posição anterior para este pneu
+            self.ultima_posicoes[pneu_id] = (x, y)
         
         # Limitar número de skidmarks
         if len(self.skidmarks) > self.max_skidmarks:
@@ -64,10 +66,9 @@ class GerenciadorSkidmarks:
     
     def atualizar(self, dt):
         """Atualiza todos os skidmarks"""
-        for skidmark in self.skidmarks[:]:
+        for skidmark in self.skidmarks:
             skidmark.atualizar(dt)
-            if not skidmark.ativo:
-                self.skidmarks.remove(skidmark)
+        # Não remover skidmarks - eles são permanentes
     
     def desenhar(self, tela, camera):
         """Desenha todos os skidmarks"""
@@ -77,3 +78,8 @@ class GerenciadorSkidmarks:
     def limpar(self):
         """Remove todos os skidmarks"""
         self.skidmarks.clear()
+        self.ultima_posicoes.clear()
+    
+    def parar_rastro(self):
+        """Para o rastro contínuo (quando para de derrapar)"""
+        self.ultima_posicoes.clear()
