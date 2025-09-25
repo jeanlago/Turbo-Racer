@@ -277,7 +277,7 @@ CONFIGURACOES = {
         "fullscreen": False,
         "tela_cheIA_sem_bordas": False,
         "vsync": False,  # Desabilitado para melhor FPS
-        "fps_max": 240,  # Aumentado para 240 FPS para melhor responsividade
+        "fps_max": 120,  # Reduzido para 120 FPS para melhor performance
         "qualidade_alta": False,  # Padrão para melhor performance
         "mostrar_fps": True  # Habilitado para monitorar performance
     },

@@ -439,10 +439,14 @@ def menu_loop(screen) -> Escolha:
         
         # Atualizar animação de hover dos botões
         for i in range(len(itens)):
-            if i == 0:  # Botão JOGAR
+            # Usar a mesma lógica de posicionamento que na renderização
+            if i == 2:  # Botão JOGAR (terceiro na nova ordem)
                 rect = pygame.Rect(jogar_x, jogar_y, jogar_largura, jogar_altura)
             else:  # Outros botões
-                x, y = outros_posicoes[i - 1]
+                if i < 2:  # SELECIONAR MAPAS, SELECIONAR CARROS
+                    x, y = outros_posicoes[i]
+                else:  # OPÇÕES, SAIR
+                    x, y = outros_posicoes[i - 1]
                 rect = pygame.Rect(x, y, botao_largura, botao_altura)
             
             is_hovering = rect.collidepoint(mouse_x, mouse_y)
