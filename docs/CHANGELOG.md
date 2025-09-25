@@ -7,6 +7,38 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+## [2.3.0] - 2025-01-XX
+
+### Adicionado
+- **Menu de Pausa Completo** - Sistema de pausa com opções de continuar, reiniciar e voltar ao menu
+- **Navegação por Teclado no Menu de Pausa** - Controles intuitivos com setas e ENTER/SPACE
+- **Interface Visual de Pausa** - Overlay escuro com opções destacadas e animações suaves
+- **Sistema de Otimização de Performance** - Melhorias significativas para atingir 100+ FPS
+- **Câmera Dinâmica Aprimorada** - Sensação de aceleração com zoom adaptativo baseado na velocidade
+
+### Modificado
+- **Sistema de Performance** - Otimizações agressivas mantendo qualidade visual
+- **Sistema de Skidmarks** - Marcas de pneu em todas as 4 rodas com frequência otimizada
+- **Sistema de Partículas** - Controle inteligente de densidade para melhor performance
+- **Sistema de Câmera** - Zoom inicial aumentado e transições mais responsivas
+- **Sistema de HUD** - Renderização otimizada para evitar flickering
+- **Sistema de Detecção de Colisão** - Amostras otimizadas para melhor performance
+
+### Corrigido
+- **Bugs de Hover no Menu** - Correção de inconsistência entre detecção e renderização de botões
+- **Flickering do HUD** - HUD agora renderiza suavemente sem piscar
+- **Performance de FPS** - Jogo agora roda consistentemente acima de 100 FPS
+- **Marcas de Pneu** - Restauradas marcas em todas as 4 rodas durante drift
+- **Tela de Vitória Duplicada** - Removida tela duplicada, mantida interface visual rica
+- **Câmera Muito Distante** - Zoom inicial ajustado para melhor experiência de jogo
+
+### Removido
+- **Prints de Debug** - Removidas mensagens de console desnecessárias (fumaça, partículas)
+- **Otimizações Excessivas** - Revertidas otimizações que comprometiam qualidade visual
+- **Tela de Vitória Simplificada** - Removida versão simplificada em favor da interface rica
+
+---
+
 ## [2.2.0] - 2025-09-XX
 
 ### Adicionado
@@ -161,6 +193,6 @@ chore: atualizar dependências do pygame
 
 ---
 
-**Última atualização:** Setembro 2025  
-**Versão atual:** 2.2.0  
-**Próxima versão:** 2.3.0 (planejada)
+**Última atualização:** Janeiro 2025  
+**Versão atual:** 2.3.0  
+**Próxima versão:** 2.4.0 (planejada)

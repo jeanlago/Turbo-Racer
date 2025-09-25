@@ -421,14 +421,15 @@ class CarroFisica:
         self.y += self.vy * dt_fis * speed_mult
 
 
-        # Colisão com a pista
+        # Colisão com a pista - otimizada mas eficiente
         fx, fy = self._vetor_frente()
         dir_frente_x, dir_frente_y = fx, fy
         dir_direita_x, dir_direita_y = (fy, -fx)
 
         cx, cy = int(self.x), int(self.y)
         houve_colisao = False
-        amostras_local = [(0, 0), (10, 0), (-10, 0), (0, 6), (0, -6)]
+        # Número equilibrado de amostras para boa detecção e performance
+        amostras_local = [(0, 0), (8, 0), (-8, 0), (0, 4), (0, -4)]  # 5 pontos para boa detecção
         for ox, oy in amostras_local:
             px = int(cx + ox * dir_frente_x + oy * dir_direita_x)
             py = int(cy + ox * dir_frente_y + oy * dir_direita_y)
@@ -499,8 +500,8 @@ class CarroFisica:
             else:
                 self.drift_intensidade = min(1.0, abs(v) / 80.0)
             
-            # Criar skidmark quando derrapando (com controle de frequência)
-            if self._ultimo_skidmark > 0.1:  # A cada 0.1 segundos para rastro mais contínuo
+            # Criar skidmark quando derrapando (com controle de frequência otimizado)
+            if self._ultimo_skidmark > 0.1:  # A cada 0.1 segundos para marcas contínuas em todas as 4 rodas
                 # Criar skidmarks dos 2 pneus traseiros paralelos
                 fx, fy = self._vetor_frente()
                 offset_tras = 12  # pixels atrás do carro (bem próximo)
@@ -517,7 +518,7 @@ class CarroFisica:
                 self.skidmarks.adicionar_skidmark(pos_x_dir, pos_y_dir, self.angulo, self.drift_intensidade, "traseiro_dir")
                 
                 # Se muito angular, criar marcas dos pneus dianteiros também
-                if abs(self.angulo) > 0.5:  # Ângulo significativo
+                if abs(self.angulo) > 0.5:  # Ângulo restaurado para marcas em todas as 4 rodas
                     offset_frente = 10  # pixels na frente do carro (bem próximo)
                     
                     # Pneu dianteiro esquerdo

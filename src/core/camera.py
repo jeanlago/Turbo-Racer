@@ -14,8 +14,8 @@ class Camera:
         self.cx = largura_mundo / 2
         self.cy = altura_mundo / 2
 
-        # Suavização (follow "macio")
-        self.follow_rigidez = 12.0  # maior = segue mais "grudado"
+        # Suavização (follow "macio") - mais responsivo
+        self.follow_rigidez = 20.0  # maior = segue mais "grudado" e responsivo
 
     def set_alvo(self, alvo):
         self.alvo = alvo

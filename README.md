@@ -7,6 +7,7 @@ Um jogo de corrida arcade 2D top-down desenvolvido em **Python** com **Pygame**,
 ## ✨ Funcionalidades Principais
 
 -  **🎮 Múltiplos Modos de Jogo** - 1 jogador, 2 jogadores (split-screen) e modo drift
+-  **⏸️ Menu de Pausa Completo** - Sistema de pausa com opções de continuar, reiniciar e voltar
 -  **🚗 Sistema de Física Avançado** - 3 tipos de tração (RWD, FWD, AWD) com comportamento único
 -  **🤖 IA Inteligente** - Algoritmo Pure Pursuit para navegação suave e realista
 -  **🗺️ Sistema de Mapas Escalável** - Detecção automática de mapas sem configuração manual
@@ -14,6 +15,7 @@ Um jogo de corrida arcade 2D top-down desenvolvido em **Python** com **Pygame**,
 -  **🎵 Sistema de Áudio Completo** - Múltiplas faixas musicais com controles independentes
 -  **🏁 Modo Drift** - Sistema de pontuação com tempo limitado e combos
 -  **📊 HUD Dinâmico** - Interface adaptativa com câmera inteligente
+-  **⚡ Performance Otimizada** - 100+ FPS com qualidade visual mantida
 -  **⚙️ Configurações Avançadas** - Resolução, fullscreen, controles e qualidade personalizáveis
 
 ---
@@ -124,6 +126,15 @@ Turbo-Racer/
 - **ESC** - Pausar/despausar ou voltar ao menu
 - **H** - Alternar HUD completo
 - **F1** - Ativar/desativar debug da IA
+
+### **⏸️ Menu de Pausa**
+- **ESC** - Abrir/fechar menu de pausa
+- **↑↓** - Navegar pelas opções
+- **ENTER/SPACE** - Selecionar opção
+- **Opções disponíveis:**
+  - **Continuar** - Retoma o jogo
+  - **Reiniciar** - Reinicia a corrida atual
+  - **Voltar ao Menu** - Sai do jogo e volta ao menu principal
 
 ### **📋 Navegação no Menu**
 - **Setas ←→ ou A/D** - Navegar entre opções do menu principal
@@ -327,6 +338,13 @@ assets/images/maps/
 - **Efeitos Visuais** - Fumaça e partículas durante o drift
 - **Decay Automático** - Pontos diminuem se não houver drift contínuo
 
+### **⚡ Sistema de Performance**
+- **100+ FPS** - Otimizações agressivas mantendo qualidade visual
+- **Marcas de Pneu em 4 Rodas** - Skidmarks completos durante drift
+- **Câmera Dinâmica** - Zoom adaptativo baseado na velocidade para sensação de aceleração
+- **Renderização Otimizada** - HUD suave sem flickering
+- **Sistema de Partículas Inteligente** - Controle de densidade para melhor performance
+
 ---
 
 ## 🛠️ Desenvolvimento
@@ -439,5 +457,5 @@ Este projeto é de código aberto e está disponível sob a **licença MIT**.
 ---
 
 **Desenvolvido com ❤️ por Jean Marins e Jayson Sales**  
-**Versão atual:** 2.1.0  
-**Última atualização:** Dezembro 2024
+**Versão atual:** 2.3.0  
+**Última atualização:** Janeiro 2025

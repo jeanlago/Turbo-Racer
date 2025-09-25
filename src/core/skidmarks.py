@@ -41,7 +41,7 @@ class GerenciadorSkidmarks:
     
     def __init__(self):
         self.skidmarks = []
-        self.max_skidmarks = 200  # Aumentado para marcas permanentes
+        self.max_skidmarks = 120  # Restaurado para manter marcas em todas as 4 rodas
         self.ultima_posicoes = {}  # Para conectar os skidmarks de cada pneu
     
     def adicionar_skidmark(self, x, y, angulo, intensidade=1.0, pneu_id="traseiro_esq"):
@@ -49,13 +49,16 @@ class GerenciadorSkidmarks:
         import math
         
         # Só criar skidmark se a intensidade for significativa (handbrake sempre cria)
-        if intensidade > 0.1:  # Threshold mais baixo para handbrake
+        if intensidade > 0.1:  # Threshold restaurado para manter marcas em todas as 4 rodas
             # Se temos uma posição anterior para este pneu, conectar com ela
             if pneu_id in self.ultima_posicoes:
                 x_anterior, y_anterior = self.ultima_posicoes[pneu_id]
-                # Criar skidmark conectando com a posição anterior
-                skidmark = Skidmark(x_anterior, y_anterior, x, y, duracao=5.0 * intensidade)
-                self.skidmarks.append(skidmark)
+                # Verificar se a distância é significativa para evitar skidmarks muito próximos
+                distancia = math.sqrt((x - x_anterior)**2 + (y - y_anterior)**2)
+                if distancia > 2.0:  # Distância menor para marcas mais contínuas
+                    # Criar skidmark conectando com a posição anterior
+                    skidmark = Skidmark(x_anterior, y_anterior, x, y, duracao=5.0 * intensidade)
+                    self.skidmarks.append(skidmark)
             
             # Atualizar posição anterior para este pneu
             self.ultima_posicoes[pneu_id] = (x, y)

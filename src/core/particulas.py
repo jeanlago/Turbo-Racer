@@ -43,30 +43,27 @@ class EmissorFumaca:
                     # Redimensionar para tamanho adequado
                     img = pygame.transform.scale(img, (16, 16))
                     self.tex_fumaca.append(img)
-                    print(f"Fumaça carregada: {caminho}")
                 except Exception as e:
-                    print(f"Erro ao carregar fumaça {caminho}: {e}")
+                    pass  # Silenciar erros de carregamento
         
         if not self.tex_fumaca:
             # Fallback se não encontrar as texturas
-            print("Criando fallback para fumaça")
             self.tex_fumaca = [pygame.Surface((16, 16), pygame.SRCALPHA)]
             self.tex_fumaca[0].fill((100, 100, 100, 128))
         
         self.ps = []
         self._accum = 0.0
-        self.max_particulas = 200  # Reduzido para melhor performance
-        self._particulas_por_frame = 4  # Reduzido para melhor performance
+        self.max_particulas = 80  # Equilibrado para boa performance e efeitos visuais
+        self._particulas_por_frame = 2  # 2 partículas por frame para efeitos visuais
         self._frame_atual = 0
-        
-        print(f"EmissorFumaca inicializado com {len(self.tex_fumaca)} texturas")
 
     def spawn(self, x, y, dirx, diry, taxa_qps, dt):
         # Limitar número de partículas para performance
         if len(self.ps) >= self.max_particulas:
             return
             
-        self._accum += taxa_qps * dt
+        # Reduzir taxa de spawn para boa performance
+        self._accum += taxa_qps * dt * 0.4  # Reduzir para 40% da taxa original
         n = int(self._accum)
         if n <= 0: 
             return
@@ -81,15 +78,15 @@ class EmissorFumaca:
             if len(self.ps) >= self.max_particulas:
                 break
                 
-            ang = base_ang + random.uniform(-0.1, 0.1)  # Dispersão muito menor
-            v = random.uniform(15, 40)  # Velocidade mais lenta e concentrada
+            ang = base_ang + random.uniform(-0.05, 0.05)  # Dispersão ainda menor
+            v = random.uniform(20, 35)  # Velocidade mais concentrada
             vx, vy = math.cos(ang)*v, math.sin(ang)*v
             # Adicionar movimento vertical para cima
-            vy -= random.uniform(20, 50)  # Força para cima mais concentrada
-            life = random.uniform(4.0, 6.0)  # Vida ainda mais longa
-            scale0 = random.uniform(2.0, 3.0)  # Tamanho maior inicial
-            scale1 = scale0 * random.uniform(2.0, 3.0)  # Crescimento moderado
-            alpha0 = random.randint(150, 200)  # Mais opaco inicial
+            vy -= random.uniform(25, 40)  # Força para cima mais concentrada
+            life = random.uniform(3.0, 4.5)  # Vida um pouco menor
+            scale0 = random.uniform(1.5, 2.5)  # Tamanho menor inicial
+            scale1 = scale0 * random.uniform(1.5, 2.0)  # Crescimento menor
+            alpha0 = random.randint(120, 180)  # Menos opaco inicial
             p = Particula(x, y, vx, vy, life, random.uniform(0,360), scale0, scale1, alpha0, 0, "fumaca")
             self.ps.append(p)
 
@@ -155,8 +152,8 @@ class EmissorNitro:
         
         self.ps = []
         self._accum = 0.0
-        self.max_particulas = 20  # Reduzido para melhor performance
-        self._particulas_por_frame = 2  # Mais partículas por frame
+        self.max_particulas = 20  # Equilibrado para boa performance e efeitos visuais
+        self._particulas_por_frame = 1  # 1 partícula por frame para nitro
         self._frame_atual = 0
 
     def spawn(self, x, y, dirx, diry, taxa_qps, dt):

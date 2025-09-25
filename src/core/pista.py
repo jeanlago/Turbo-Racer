@@ -143,8 +143,8 @@ def eh_pixel_transitavel(surface, x, y):
     else:
         resultado = False
     
-    # Armazenar no cache (limitar tamanho do cache)
-    if len(_pixel_cache) < 10000:  # Limite de 10k entradas
+    # Armazenar no cache (limitar tamanho do cache para boa performance)
+    if len(_pixel_cache) < 3000:  # Equilibrado para boa performance
         _pixel_cache[cache_key] = resultado
     
     return resultado
