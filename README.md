@@ -10,10 +10,11 @@ Um jogo de corrida arcade 2D top-down desenvolvido em **Python** com **Pygame**,
 -  **⏸️ Menu de Pausa Completo** - Sistema de pausa com opções de continuar, reiniciar e voltar
 -  **🚗 Sistema de Física Avançado** - 3 tipos de tração (RWD, FWD, AWD) com comportamento único
 -  **🤖 IA Inteligente** - Algoritmo Pure Pursuit para navegação suave e realista
+-  **🎯 Sistema de Dificuldade Universal** - 3 níveis (Fácil, Médio, Difícil) para corrida e drift
 -  **🗺️ Sistema de Mapas Escalável** - Detecção automática de mapas sem configuração manual
 -  **🎯 Editor Visual de Checkpoints** - Crie e edite checkpoints arrastando e soltando
 -  **🎵 Sistema de Áudio Completo** - Múltiplas faixas musicais com controles independentes
--  **🏁 Modo Drift** - Sistema de pontuação com tempo limitado e combos
+-  **🏁 Modo Drift** - Sistema de pontuação automática baseado em derrapagem real com tempo limitado e combos
 -  **📊 HUD Dinâmico** - Interface adaptativa com câmera inteligente
 -  **⚡ Performance Otimizada** - 100+ FPS com qualidade visual mantida
 -  **⚙️ Configurações Avançadas** - Resolução, fullscreen, controles e qualidade personalizáveis
@@ -314,6 +315,19 @@ assets/images/maps/
 - **Algoritmo Pure Pursuit** - Navegação suave e realista
 - **Detecção Inteligente** - Evita obstáculos e recupera de situações problemáticas
 - **Parâmetros Configuráveis** - Wheelbase, lookahead distance, velocidades
+
+### **🎯 Sistema de Dificuldade**
+- **Modo Corrida** - Ajusta comportamento da IA (Fácil: conservadora, Médio: equilibrada, Difícil: agressiva)
+- **Modo Drift** - Ajusta tempo disponível (Fácil: 1:30, Médio: 1:00, Difícil: 0:30)
+- **Seleção Intuitiva** - Escolha no submenu "JOGAR" para 1 jogador
+- **Feedback Visual** - Exibição da dificuldade atual no HUD
+
+### **🏁 Sistema de Pontuação de Drift**
+- **Pontuação Automática** - Baseada em derrapagem real (marcas de pneu), não em teclas
+- **Sistema de Combo** - Multiplicadores progressivos (x1, x1.5, x2, x3, x5)
+- **Tolerância Inteligente** - 3 segundos para manter combo sem derrapagem
+- **Parâmetros Sensíveis** - Velocidade mínima 8 km/h, ângulo mínimo 2°
+- **Taxa Generosa** - 80 pontos/segundo no nível base
 - **Debug Visual** - Ative com F1 para ver o comportamento da IA
 
 ### **🚗 Física Realista**

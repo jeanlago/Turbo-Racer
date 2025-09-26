@@ -632,9 +632,15 @@ def selecionar_mapas_loop(screen):
     indice = 0
     relogio = pygame.time.Clock()
     
-    base_x = int(LARGURA * 0.10)
-    base_y = int(ALTURA * 0.30)
-    passo = 60
+    # Layout padronizado como o submenu JOGAR
+    caixa_largura = 600
+    caixa_altura = 400
+    caixa_x = (LARGURA - caixa_largura) // 2
+    caixa_y = (ALTURA - caixa_altura) // 2
+    
+    # Animações de hover
+    hover_animation_mapas = [0.0] * len(mapas)
+    hover_speed = 3.0
     
     while True:
         dt = relogio.tick(FPS) / 1000.0
@@ -642,9 +648,41 @@ def selecionar_mapas_loop(screen):
         gerencIAdor_musica.verificar_fim_musica()
         popup_musica.atualizar(dt)
         
+        # Verificar hover do pop-up
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        popup_musica.verificar_hover(mouse_x, mouse_y)
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return None
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                # Verificar clique no pop-up de música primeiro
+                clique_popup = popup_musica.verificar_clique(event.pos[0], event.pos[1])
+                if clique_popup == "anterior":
+                    gerencIAdor_musica.musica_anterior()
+                    if gerencIAdor_musica.musica_tocando:
+                        popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
+                elif clique_popup == "proximo":
+                    gerencIAdor_musica.proxima_musica()
+                    if gerencIAdor_musica.musica_tocando:
+                        popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
+                else:
+                    # Verificar clique nos mapas
+                    mouse_x, mouse_y = event.pos
+                    
+                    for i, mapa_id in enumerate(mapas):
+                        y = caixa_y + 120 + i * 50
+                        rect = pygame.Rect(caixa_x + 50, y - 5, 500, 40)
+                        if rect.collidepoint(mouse_x, mouse_y):
+                            indice = i
+                            mapa_selecionado = mapas[indice]
+                            main.principal(mapa_selecionado=mapa_selecionado)
+                            return None
+                    
+                    # Verificar clique no botão voltar
+                    voltar_rect = pygame.Rect(caixa_x + 200, caixa_y + caixa_altura - 50, 200, 40)
+                    if voltar_rect.collidepoint(mouse_x, mouse_y):
+                        return None
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     return None
@@ -672,22 +710,62 @@ def selecionar_mapas_loop(screen):
         
         screen.blit(bg, (0, 0))
         
-        titulo = render_text("SELECIONAR MAPA", 56, (255, 100, 255), bold=True, pixel_style=True)
-        titulo_x = (LARGURA - titulo.get_width()) // 2
-        screen.blit(titulo, (titulo_x, base_y - 100))
+        # Caixa principal (padrão do submenu JOGAR)
+        pygame.draw.rect(screen, (0, 0, 0, 150), (caixa_x, caixa_y, caixa_largura, caixa_altura))
+        pygame.draw.rect(screen, (255, 255, 255, 50), (caixa_x, caixa_y, caixa_largura, caixa_altura), 2)
         
+        # Título
+        titulo = render_text("SELECIONAR MAPA", 32, (255, 255, 255), bold=True, pixel_style=True)
+        titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
+        screen.blit(titulo, (titulo_x, caixa_y + 20))
+        
+        # Lista de mapas
         for i, mapa_id in enumerate(mapas):
             nome_mapa = obter_nome_mapa(mapa_id)
+            y = caixa_y + 120 + i * 50
             
+            # Cores baseadas na seleção e hover
             if i == indice:
-                cor = (255, 100, 255)  # Magenta vibrante
-                tamanho = 42
+                cor_fundo = (0, 200, 255, 50)
+                cor_texto = (0, 200, 255)
             else:
-                cor = (100, 200, 255)  # Azul cIAno
-                tamanho = 36
+                cor_fundo = (0, 0, 0, 0)
+                cor_texto = (255, 255, 255)
             
-            texto = render_text(nome_mapa, tamanho, cor, bold=True, pixel_style=True)
-            screen.blit(texto, (base_x, base_y + i * passo))
+            # Aplicar hover
+            hover_progress = hover_animation_mapas[i]
+            if hover_progress > 0:
+                hover_cor_fundo = (0, 200, 255, 30)
+                hover_cor_texto = (0, 200, 255)
+                cor_fundo = (
+                    int(cor_fundo[0] + (hover_cor_fundo[0] - cor_fundo[0]) * hover_progress),
+                    int(cor_fundo[1] + (hover_cor_fundo[1] - cor_fundo[1]) * hover_progress),
+                    int(cor_fundo[2] + (hover_cor_fundo[2] - cor_fundo[2]) * hover_progress),
+                    int(cor_fundo[3] + (hover_cor_fundo[3] - cor_fundo[3]) * hover_progress)
+                )
+                cor_texto = (
+                    int(cor_texto[0] + (hover_cor_texto[0] - cor_texto[0]) * hover_progress),
+                    int(cor_texto[1] + (hover_cor_texto[1] - cor_texto[1]) * hover_progress),
+                    int(cor_texto[2] + (hover_cor_texto[2] - cor_texto[2]) * hover_progress)
+                )
+            
+            # Desenhar fundo
+            if cor_fundo[3] > 0:
+                opcao_fundo = pygame.Surface((500, 40), pygame.SRCALPHA)
+                opcao_fundo.fill(cor_fundo)
+                screen.blit(opcao_fundo, (caixa_x + 50, y - 5))
+            
+            # Desenhar texto
+            texto = render_text(nome_mapa, 20, cor_texto, bold=True, pixel_style=True)
+            screen.blit(texto, (caixa_x + 60, y))
+        
+        # Botão voltar
+        voltar_rect = pygame.Rect(caixa_x + 200, caixa_y + caixa_altura - 50, 200, 40)
+        voltar_hover = voltar_rect.collidepoint(mouse_x, mouse_y)
+        if voltar_hover:
+            pygame.draw.rect(screen, (0, 200, 255, 50), voltar_rect)
+        voltar_texto = render_text("VOLTAR", 24, (0, 200, 255) if voltar_hover else (255, 255, 255), bold=True, pixel_style=True)
+        screen.blit(voltar_texto, (caixa_x + 210, caixa_y + caixa_altura - 50))
         
         # Instruções
         instrucoes = [
@@ -696,9 +774,10 @@ def selecionar_mapas_loop(screen):
         ]
         
         for j, instrucao in enumerate(instrucoes):
-            texto_instrucao = render_text(instrucao, 20, (200, 200, 200), pixel_style=True)
-            screen.blit(texto_instrucao, (base_x, base_y + len(mapas) * passo + 40 + j * 25))
+            texto_instrucao = render_text(instrucao, 16, (200, 200, 200), pixel_style=True)
+            screen.blit(texto_instrucao, (caixa_x + 50, caixa_y + caixa_altura - 80 + j * 20))
         
+        # Desenhar popup de música
         popup_musica.desenhar(screen)
         
         pygame.display.flip()
@@ -1978,6 +2057,7 @@ def modo_jogo_loop(screen):
     modo_jogo_atual = ModoJogo.UM_JOGADOR
     tipo_jogo_atual = TipoJogo.CORRIDA
     voltas_atual = 1  # Número de voltas selecionado
+    dificuldade_ia_atual = "medio"  # Dificuldade da IA
     
     # Opções de modo de jogo
     opcoes_modo = [
@@ -1998,14 +2078,22 @@ def modo_jogo_loop(screen):
         ("3 VOLTAS", 3)
     ]
     
+    # Opções de dificuldade (IA para corrida, tempo para drift)
+    opcoes_dificuldade = [
+        ("FÁCIL", "facil"),
+        ("MÉDIO", "medio"),
+        ("DIFÍCIL", "dificil")
+    ]
+    
     opcao_modo_atual = 0
     opcao_tipo_atual = 0
     opcao_voltas_atual = 0
+    opcao_dificuldade_atual = 1  # Começar no MÉDIO
     clock = pygame.time.Clock()
     
-    # Caixa principal (ajustada para layout horizontal das voltas)
+    # Caixa principal (ajustada para layout horizontal das voltas e dificuldade)
     caixa_largura = 600
-    caixa_altura = 500
+    caixa_altura = 580  # Aumentado de 500 para 580 para acomodar dificuldade
     caixa_x = (LARGURA - caixa_largura) // 2
     caixa_y = (ALTURA - caixa_altura) // 2
     
@@ -2013,6 +2101,7 @@ def modo_jogo_loop(screen):
     hover_animation_modo = [0.0] * len(opcoes_modo)
     hover_animation_tipo = [0.0] * len(opcoes_tipo)
     hover_animation_voltas = [0.0] * len(opcoes_voltas)
+    hover_animation_dificuldade = [0.0] * len(opcoes_dificuldade)
     hover_speed = 3.0
     
     while True:
@@ -2070,13 +2159,23 @@ def modo_jogo_loop(screen):
                                 opcao_voltas_atual = i
                                 voltas_atual = voltas
                     
+                    # Verificar clique em dificuldade (1 jogador)
+                    if modo_jogo_atual == ModoJogo.UM_JOGADOR:
+                        for i, (nome, dificuldade) in enumerate(opcoes_dificuldade):
+                            x = caixa_x + 50 + i * 180  # Espaçamento horizontal
+                            y = caixa_y + 480
+                            rect = pygame.Rect(x, y - 5, 140, 40)
+                            if rect.collidepoint(mouse_x, mouse_y):
+                                opcao_dificuldade_atual = i
+                                dificuldade_ia_atual = dificuldade
+                    
                     # Verificar clique no botão iniciar jogo
-                    iniciar_rect = pygame.Rect(caixa_x + 50, caixa_y + caixa_altura - 60, 200, 40)
+                    iniciar_rect = pygame.Rect(caixa_x + 50, caixa_y + caixa_altura - 40, 200, 40)
                     if iniciar_rect.collidepoint(mouse_x, mouse_y):
-                        return (modo_jogo_atual, tipo_jogo_atual, voltas_atual)
+                        return (modo_jogo_atual, tipo_jogo_atual, voltas_atual, dificuldade_ia_atual)
                     
                     # Verificar clique no botão voltar
-                    voltar_rect = pygame.Rect(caixa_x + 270, caixa_y + caixa_altura - 60, 200, 40)
+                    voltar_rect = pygame.Rect(caixa_x + 270, caixa_y + caixa_altura - 40, 200, 40)
                     if voltar_rect.collidepoint(mouse_x, mouse_y):
                         return None
             elif ev.type == pygame.KEYDOWN:
@@ -2099,7 +2198,7 @@ def modo_jogo_loop(screen):
                         opcao_tipo_atual += 1
                         tipo_jogo_atual = opcoes_tipo[opcao_tipo_atual][1]
                 elif ev.key == pygame.K_RETURN:
-                    return (modo_jogo_atual, tipo_jogo_atual, voltas_atual)
+                    return (modo_jogo_atual, tipo_jogo_atual, voltas_atual, dificuldade_ia_atual)
                 elif ev.key == pygame.K_m:
                     # Próxima música
                     gerencIAdor_musica.proxima_musica()
@@ -2144,6 +2243,19 @@ def modo_jogo_loop(screen):
                     hover_animation_voltas[i] = min(1.0, hover_animation_voltas[i] + hover_speed * dt)
                 else:
                     hover_animation_voltas[i] = max(0.0, hover_animation_voltas[i] - hover_speed * dt)
+        
+        # Atualizar animações de hover para dificuldade (1 jogador)
+        if modo_jogo_atual == ModoJogo.UM_JOGADOR:
+            for i in range(len(opcoes_dificuldade)):
+                x = caixa_x + 50 + i * 180  # Espaçamento horizontal
+                y = caixa_y + 480
+                rect = pygame.Rect(x, y - 5, 140, 40)
+                is_hovering = rect.collidepoint(mouse_x, mouse_y)
+                
+                if is_hovering:
+                    hover_animation_dificuldade[i] = min(1.0, hover_animation_dificuldade[i] + hover_speed * dt)
+                else:
+                    hover_animation_dificuldade[i] = max(0.0, hover_animation_dificuldade[i] - hover_speed * dt)
         
         # Desenhar
         screen.blit(bg, (0, 0))
@@ -2293,21 +2405,71 @@ def modo_jogo_loop(screen):
                 texto_x = x + (140 - texto.get_width()) // 2  # Centralizar horizontalmente
                 screen.blit(texto, (texto_x, y))
         
-        # Botão iniciar jogo
-        iniciar_rect = pygame.Rect(caixa_x + 50, caixa_y + caixa_altura - 60, 200, 40)
+        # Opções de dificuldade (1 jogador + corrida = IA, 1 jogador + drift = tempo)
+        if modo_jogo_atual == ModoJogo.UM_JOGADOR:
+            # Título baseado no tipo de jogo
+            if tipo_jogo_atual == TipoJogo.CORRIDA:
+                titulo_dificuldade = "DIFICULDADE DA IA:"
+            else:  # DRIFT
+                titulo_dificuldade = "DIFICULDADE (TEMPO):"
+            dificuldade_titulo = render_text(titulo_dificuldade, 24, (255, 255, 255), bold=True, pixel_style=True)
+            screen.blit(dificuldade_titulo, (caixa_x + 50, caixa_y + 440))
+            
+            for i, (nome, dificuldade) in enumerate(opcoes_dificuldade):
+                x = caixa_x + 50 + i * 180  # Espaçamento horizontal
+                y = caixa_y + 480
+                
+                # Cores baseadas na seleção e hover
+                if i == opcao_dificuldade_atual:
+                    cor_fundo = (0, 200, 255, 50)
+                    cor_texto = (0, 200, 255)
+                else:
+                    cor_fundo = (0, 0, 0, 0)
+                    cor_texto = (255, 255, 255)
+                
+                # Aplicar hover
+                hover_progress = hover_animation_dificuldade[i]
+                if hover_progress > 0:
+                    hover_cor_fundo = (0, 200, 255, 30)
+                    hover_cor_texto = (0, 200, 255)
+                    cor_fundo = (
+                        int(cor_fundo[0] + (hover_cor_fundo[0] - cor_fundo[0]) * hover_progress),
+                        int(cor_fundo[1] + (hover_cor_fundo[1] - cor_fundo[1]) * hover_progress),
+                        int(cor_fundo[2] + (hover_cor_fundo[2] - cor_fundo[2]) * hover_progress),
+                        int(cor_fundo[3] + (hover_cor_fundo[3] - cor_fundo[3]) * hover_progress)
+                    )
+                    cor_texto = (
+                        int(cor_texto[0] + (hover_cor_texto[0] - cor_texto[0]) * hover_progress),
+                        int(cor_texto[1] + (hover_cor_texto[1] - cor_texto[1]) * hover_progress),
+                        int(cor_texto[2] + (hover_cor_texto[2] - cor_texto[2]) * hover_progress)
+                    )
+                
+                # Desenhar fundo
+                if cor_fundo[3] > 0:
+                    opcao_fundo = pygame.Surface((140, 40), pygame.SRCALPHA)
+                    opcao_fundo.fill(cor_fundo)
+                    screen.blit(opcao_fundo, (x, y - 5))
+                
+                # Desenhar texto centralizado
+                texto = render_text(nome, 18, cor_texto, bold=True, pixel_style=True)
+                texto_x = x + (140 - texto.get_width()) // 2  # Centralizar horizontalmente
+                screen.blit(texto, (texto_x, y))
+        
+        # Botão iniciar jogo (descido para não sobrepor dificuldade)
+        iniciar_rect = pygame.Rect(caixa_x + 50, caixa_y + caixa_altura - 53, 200, 40)
         iniciar_hover = iniciar_rect.collidepoint(mouse_x, mouse_y)
         if iniciar_hover:
             pygame.draw.rect(screen, (0, 255, 0, 50), iniciar_rect)
         iniciar_texto = render_text("INICIAR JOGO", 24, (0, 255, 0) if iniciar_hover else (255, 255, 255), bold=True, pixel_style=True)
-        screen.blit(iniciar_texto, (caixa_x + 60, caixa_y + caixa_altura - 50))
+        screen.blit(iniciar_texto, (caixa_x + 60, caixa_y + caixa_altura - 53))
         
-        # Botão voltar
-        voltar_rect = pygame.Rect(caixa_x + 270, caixa_y + caixa_altura - 60, 200, 40)
+        # Botão voltar (descido para não sobrepor dificuldade)
+        voltar_rect = pygame.Rect(caixa_x + 270, caixa_y + caixa_altura - 53, 200, 40)
         voltar_hover = voltar_rect.collidepoint(mouse_x, mouse_y)
         if voltar_hover:
             pygame.draw.rect(screen, (0, 200, 255, 50), voltar_rect)
         voltar_texto = render_text("VOLTAR", 24, (0, 200, 255) if voltar_hover else (255, 255, 255), bold=True, pixel_style=True)
-        screen.blit(voltar_texto, (caixa_x + 280, caixa_y + caixa_altura - 50))
+        screen.blit(voltar_texto, (caixa_x + 280, caixa_y + caixa_altura - 53))
         
         
         # Desenhar popup de música
@@ -2367,9 +2529,9 @@ def run():
         if escolha == Escolha.JOGAR:
             # Abrir tela de seleção de modo de jogo primeiro
             resultado_modo = modo_jogo_loop(screen)
-            if resultado_modo is not None:  # Se não cancelou
-                if len(resultado_modo) == 3:  # Novo formato com voltas
-                    modo_jogo, tipo_jogo, voltas = resultado_modo
+            if resultado_modo is not None and isinstance(resultado_modo, tuple):  # Se não cancelou e é uma tupla
+                if len(resultado_modo) == 4:  # Novo formato com voltas e dificuldade
+                    modo_jogo, tipo_jogo, voltas, dificuldade_ia = resultado_modo
                 else:  # Formato antigo (compatibilidade)
                     modo_jogo, tipo_jogo = resultado_modo
                     voltas = 1  # Padrão
@@ -2378,7 +2540,7 @@ def run():
                 if not CONFIGURACOES["audio"]["musica_no_jogo"]:
                     gerencIAdor_musica.parar_musica()
                 # inicIA seu jogo original com carros selecionados e modos
-                main.principal(carro_p1, carro_p2, modo_jogo=modo_jogo, tipo_jogo=tipo_jogo, voltas=voltas)
+                main.principal(carro_p1, carro_p2, modo_jogo=modo_jogo, tipo_jogo=tipo_jogo, voltas=voltas, dificuldade_ia=dificuldade_ia)
                 # Após o jogo, volta para o menu (não fecha a janela)
                 # ReinicIAr música do menu se habilitada
                 if CONFIGURACOES["audio"]["musica_habilitada"] and CONFIGURACOES["audio"]["musica_no_menu"]:
@@ -2415,6 +2577,7 @@ def run():
             break
     
     pygame.quit()
+
 
 if __name__ == "__main__":
     run()

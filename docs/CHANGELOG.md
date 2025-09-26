@@ -15,6 +15,9 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - **Interface Visual de Pausa** - Overlay escuro com opções destacadas e animações suaves
 - **Sistema de Otimização de Performance** - Melhorias significativas para atingir 100+ FPS
 - **Câmera Dinâmica Aprimorada** - Sensação de aceleração com zoom adaptativo baseado na velocidade
+- **Sistema de Dificuldade para Drift** - Tempo ajustável baseado na dificuldade (Fácil: 1:30, Médio: 1:00, Difícil: 0:30)
+- **Seleção de Dificuldade Universal** - Disponível para 1 jogador em ambos os modos (Corrida e Drift)
+- **Sistema de Pontuação de Drift Melhorado** - Pontuação automática baseada em derrapagem real (marcas de pneu)
 
 ### Modificado
 - **Sistema de Performance** - Otimizações agressivas mantendo qualidade visual

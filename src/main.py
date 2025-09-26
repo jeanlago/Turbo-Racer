@@ -36,7 +36,7 @@ CARROS_DISPONIVEIS = [
     {"nome": "Porsche 911 77'", "prefixo_cor": "Car12", "posicao": (520, 260), "sprite_selecao": "Car12", "tipo_tracao": "rear", "tamanho_oficina": (900, 650), "posicao_oficina": (LARGURA//2 - 490, 215)},
 ]
 
-def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=None, modo_jogo=ModoJogo.UM_JOGADOR, tipo_jogo=TipoJogo.CORRIDA, voltas=1):
+def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=None, modo_jogo=ModoJogo.UM_JOGADOR, tipo_jogo=TipoJogo.CORRIDA, voltas=1, dificuldade_ia="medio"):
     pygame.init()
 
     from config import carregar_configuracoes
@@ -155,7 +155,14 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
     carro3 = None
     if tipo_jogo != TipoJogo.DRIFT and modo_jogo != ModoJogo.DOIS_JOGADORES:
-        carro3 = Carro(pos_inicial_IA[0], pos_inicial_IA[1], "Car3", (0, 0, 0, 0), nome="IA-1")
+        carro3 = CarroFisica(
+            pos_inicial_IA[0], pos_inicial_IA[1],
+            "Car3",
+            (0, 0, 0, 0),
+            turbo_key=pygame.K_t,  # Tecla turbo para IA
+            nome="IA-1",
+            tipo_tracao=CarroFisica.TRACAO_TRASEIRA
+        )
         carros.append(carro3)
 
     for c in carros:
@@ -183,14 +190,26 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     def is_on_track(x, y):
         return eh_pixel_transitavel(mask_guias, x, y)
 
-    IA2 = IA(checkpoints, nome="IA-1")
-    IA3 = IA(checkpoints, nome="IA-2")
+    # Dificuldade da IA (recebida como parâmetro)
+
+    IA2 = IA(checkpoints, nome="IA-1", dificuldade=dificuldade_ia)
+    IA3 = IA(checkpoints, nome="IA-2", dificuldade=dificuldade_ia)
     debug_IA = True
 
     IA_update_timer = 0.0
     IA_update_interval = 1.0 / 20.0
 
-    tempo_drift = 60.0
+    # Tempo baseado na dificuldade (apenas para drift)
+    if tipo_jogo == TipoJogo.DRIFT:
+        if dificuldade_ia == "facil":
+            tempo_drift = 90.0  # 1:30 minuto
+        elif dificuldade_ia == "dificil":
+            tempo_drift = 30.0  # 30 segundos
+        else:  # medio
+            tempo_drift = 60.0  # 1 minuto
+    else:
+        tempo_drift = 60.0  # Padrão para outros modos
+    
     tempo_restante = tempo_drift
     jogo_pausado = False
     jogo_terminado = False
@@ -247,7 +266,24 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     IA2.debug = IA3.debug = debug_IA
                 elif ev.key == pygame.K_h:
                     mostrar_hud = not mostrar_hud
-                    print(f"HUD: {'Ativado' if mostrar_hud else 'Desativado'}")
+                elif ev.key == pygame.K_1:
+                    dificuldade_ia = "facil"
+                    print("Dificuldade da IA: FÁCIL")
+                elif ev.key == pygame.K_2:
+                    dificuldade_ia = "medio"
+                    print("Dificuldade da IA: MÉDIO")
+                elif ev.key == pygame.K_3:
+                    dificuldade_ia = "dificil"
+                    print("Dificuldade da IA: DIFÍCIL")
+                
+                # Atualizar dificuldade das IAs
+                if ev.key in (pygame.K_1, pygame.K_2, pygame.K_3):
+                    if IA2:
+                        IA2.dificuldade = dificuldade_ia
+                        IA2._configurar_dificuldade()
+                    if IA3:
+                        IA3.dificuldade = dificuldade_ia
+                        IA3._configurar_dificuldade()
 
                 # turbo (hold) – leitura feita dentro de atualizar()
                 if ev.key in (pygame.K_LCTRL, pygame.K_RCTRL):
@@ -332,7 +368,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             corrida.atualizar_contagem(dt)
         corrida.atualizar_tempo(dt)
 
-        if tipo_jogo == TipoJogo.DRIFT and not jogo_pausado and not jogo_terminado:
+        if tipo_jogo == TipoJogo.DRIFT and not jogo_pausado and not jogo_terminado and corrida.inicIAda:
             tempo_restante -= dt
             if tempo_restante <= 0:
                 tempo_restante = 0
@@ -340,39 +376,44 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 pontuacao_final = drift_scoring.points
                 print(f"Tempo esgotado! Pontuação final: {pontuacao_final}")
 
-        alguem_venceu = corrida.alguem_finalizou()
+        # No modo drift, não há vitória por checkpoints
+        alguem_venceu = corrida.alguem_finalizou() if tipo_jogo != TipoJogo.DRIFT else False
 
         # física com dt fixo - otimizado
         while acumulador_dt >= dt_fixo:
             if corrida.pode_controlar() and not jogo_pausado and not jogo_terminado and not alguem_venceu:
                 # player 1
-                carro1.atualizar(teclas, mask_guias, dt_fixo)
+                carro1.atualizar(teclas, mask_guias, dt_fixo, camera)
 
                 # player 2 (humano ou IA auxiliar)
                 if carro2 is not None:
                     if modo_jogo == ModoJogo.DOIS_JOGADORES:
-                        carro2.atualizar(teclas, mask_guias, dt_fixo)
+                        carro2.atualizar(teclas, mask_guias, dt_fixo, camera)
                     elif USAR_IA_NO_CARRO_2 and not alguem_venceu:
                         IA2.controlar(carro2, mask_guias, is_on_track, dt_fixo)
                     else:
-                        carro2.atualizar(teclas, mask_guias, dt_fixo)
+                        carro2.atualizar(teclas, mask_guias, dt_fixo, camera)
 
                 # IA principal (modo 1 jogador)
                 if carro3 is not None and not alguem_venceu:
                     IA3.controlar(carro3, mask_guias, is_on_track, dt_fixo)
 
                 # progresso nos checkpoints - otimizado para não processar todos os carros sempre
-                if len(carros) <= 3:  # Só processar se poucos carros
+                # Não processar checkpoints no modo drift
+                if len(carros) <= 3 and tipo_jogo != TipoJogo.DRIFT:  # Só processar se poucos carros e não for drift
                     for c in carros:
                         corrida.atualizar_progresso_carro(c)
 
-                # Drift scoring usando slip real (u/v) - otimizado
+                # Drift scoring baseado em skidmarks - otimizado
                 if tipo_jogo == TipoJogo.DRIFT:
                     vlong, vlat = carro1._mundo_para_local(carro1.vx, carro1.vy)
-                    velocidade_kmh = abs(vlong) * 0.35  # Escala simplificada
+                    velocidade_kmh = abs(vlong) * 0.5  # Escala aumentada para melhor detecção
                     angulo_drift = abs(math.degrees(math.atan2(vlat, max(0.1, abs(vlong)))))
                     drift_ativado = getattr(carro1, 'drift_ativado', False)
                     derrapando = getattr(carro1, 'drifting', False)
+                    
+                    # Verificar se há skidmarks sendo criados (base para pontuação) - mais permissivo
+                    has_skidmarks = derrapando and getattr(carro1, 'drift_intensidade', 0) > 0.05
 
                     drift_scoring.update(
                         dt_fixo,
@@ -382,7 +423,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         carro1.y,
                         drift_ativado,
                         derrapando,
-                        collision_force=0.0
+                        collision_force=0.0,
+                        has_skidmarks=has_skidmarks
                     )
 
             acumulador_dt -= dt_fixo
@@ -458,8 +500,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 carros_visiveis_p1 = [carro for carro in carros if camera_p1.esta_visivel(carro.x, carro.y, 30)]
                 for carro in carros_visiveis_p1:
                     carro.desenhar(superficie_p1, camera=camera_p1)
-                checkpoint_atual_p1 = corrida.proximo_checkpoint.get(carro1, 0)
-                if not corrida.finalizou.get(carro1, False) and checkpoints:
+                checkpoint_atual_p1 = corrida.proximo_checkpoint.get(carro1, 0) 
+                if not corrida.finalizou.get(carro1, False) and checkpoints and tipo_jogo != TipoJogo.DRIFT:
                     idx_cp = checkpoint_atual_p1 % len(checkpoints)
                     cx, cy = checkpoints[idx_cp]
                     screen_x, screen_y = camera_p1.mundo_para_tela(cx, cy)
@@ -494,7 +536,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 for carro in carros_visiveis_p2:
                     carro.desenhar(superficie_p2, camera=camera_p2)
                 checkpoint_atual_p2 = corrida.proximo_checkpoint.get(carro2, 0)
-                if not corrida.finalizou.get(carro2, False) and checkpoints:
+                if not corrida.finalizou.get(carro2, False) and checkpoints and tipo_jogo != TipoJogo.DRIFT:
                     idx_cp2 = checkpoint_atual_p2 % len(checkpoints)
                     cx2, cy2 = checkpoints[idx_cp2]
                     screen_x2, screen_y2 = camera_p2.mundo_para_tela(cx2, cy2)
@@ -537,7 +579,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         if renderizar_frame and checkpoint_manager.modo_edicao:
             checkpoint_manager.desenhar(tela, camera)
 
-        # Próximo checkpoint do player, em 1P
+        # Próximo checkpoint do player, em 1P (não renderizar no modo drift)
         if renderizar_frame and checkpoints and not checkpoint_manager.modo_edicao and tipo_jogo != TipoJogo.DRIFT:
             if modo_jogo != ModoJogo.DOIS_JOGADORES:
                 checkpoint_atual = corrida.proximo_checkpoint.get(carro1, 0)
@@ -561,20 +603,51 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 else:
                     hud.desenhar_hud_completo(tela, carro1)
 
-                # Timer modo drift
+                # Timer modo drift - centralizado com estilo de vidro
                 if tipo_jogo == TipoJogo.DRIFT:
                     minutos = int(tempo_restante // 60)
                     segundos = int(tempo_restante % 60)
-                    tempo_texto = f"Tempo: {minutos:02d}:{segundos:02d}"
+                    tempo_texto = f"{minutos:02d}:{segundos:02d}"
+                    
+                    # Cores baseadas no tempo restante
                     if tempo_restante > 30:
                         cor_tempo = (255, 255, 255)
+                        cor_fundo = (0, 0, 0, 100)
                     elif tempo_restante > 10:
                         cor_tempo = (255, 255, 0)
+                        cor_fundo = (100, 100, 0, 120)
                     else:
                         cor_tempo = (255, 0, 0)
-                    fonte_tempo = pygame.font.Font(None, 48)
+                        cor_fundo = (100, 0, 0, 120)
+                    
+                    # Fonte maior para o timer
+                    fonte_tempo = pygame.font.Font(None, 64)
                     texto_tempo = fonte_tempo.render(tempo_texto, True, cor_tempo)
-                    tela.blit(texto_tempo, (LARGURA - 200, 50))
+                    
+                    # Criar fundo de vidro com bordas arredondadas
+                    timer_width = texto_tempo.get_width() + 40
+                    timer_height = texto_tempo.get_height() + 20
+                    timer_x = (LARGURA - timer_width) // 2
+                    timer_y = 20
+                    
+                    # Fundo de vidro
+                    timer_surface = pygame.Surface((timer_width, timer_height), pygame.SRCALPHA)
+                    pygame.draw.rect(timer_surface, cor_fundo, (0, 0, timer_width, timer_height), border_radius=15)
+                    pygame.draw.rect(timer_surface, (255, 255, 255, 30), (0, 0, timer_width, timer_height), 2, border_radius=15)
+                    
+                    # Aplicar blur effect (simulado com transparência)
+                    blur_surface = pygame.Surface((timer_width, timer_height), pygame.SRCALPHA)
+                    pygame.draw.rect(blur_surface, (255, 255, 255, 20), (0, 0, timer_width, timer_height), border_radius=15)
+                    timer_surface.blit(blur_surface, (0, 0), special_flags=pygame.BLEND_ADD)
+                    
+                    # Desenhar fundo
+                    tela.blit(timer_surface, (timer_x, timer_y))
+                    
+                    # Desenhar texto centralizado
+                    texto_rect = texto_tempo.get_rect(center=(LARGURA//2, timer_y + timer_height//2))
+                    tela.blit(texto_tempo, texto_rect)
+                
+                # Informação de dificuldade removida para HUD mais limpo
 
                     if jogo_pausado:
                         fonte_pause = pygame.font.Font(None, 72)
@@ -603,20 +676,15 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         texto_instrucao_rect = texto_instrucao.get_rect(center=(LARGURA//2, ALTURA//2 + 50))
                         tela.blit(texto_instrucao, texto_instrucao_rect)
 
-                # HUD de drift (1P)
+                # HUD de drift (1P) - canto superior direito
                 if mostrar_drift_hud and tipo_jogo == TipoJogo.DRIFT:
                     fonte_drift = pygame.font.Font(None, 24)
-                    drift_scoring.draw_hud(tela, 20, 20, fonte_drift)
+                    # Posicionar no canto superior direito
+                    hud_x = LARGURA - 250
+                    hud_y = 20
+                    drift_scoring.draw_hud(tela, hud_x, hud_y, fonte_drift)
 
-            if mostrar_fps:
-                fps_atual = int(relogio.get_fps())
-                fps_texto = fonte_small.render(f"FPS: {fps_atual}", True, (255, 255, 255))
-                tela.blit(fps_texto, (largura_atual - 100, 10))
-                if mostrar_debug:
-                    from core.pista import obter_estatisticas_cache
-                    stats = obter_estatisticas_cache()
-                    cache_texto = fonte_small.render(f"Cache: {stats['hit_rate']:.1f}% ({stats['cache_size']})", True, (255, 255, 255))
-                    tela.blit(cache_texto, (largura_atual - 200, 30))
+            # FPS e debug removidos para HUD mais limpo
 
             corrida.desenhar_semaforo(tela, largura_atual, altura_atual)
 

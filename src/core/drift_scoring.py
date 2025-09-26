@@ -7,54 +7,67 @@ class DriftScoring:
     """
     
     def __init__(self):
-        # Parâmetros básicos
-        self.SPEED_MIN = 5.0   # Velocidade mínima para drift (km/h) - reduzido
-        self.ANGLE_MIN = 3.0   # Ângulo mínimo para drift (graus) - reduzido
+        # Parâmetros básicos (muito mais permissivos)
+        self.SPEED_MIN = 3.0   # Velocidade mínima para drift (km/h) - muito mais sensível
+        self.ANGLE_MIN = 0.5   # Ângulo mínimo para drift (graus) - extremamente sensível
         
-        # Sistema de combo
-        self.MULTIPLIERS = [1.0, 1.5, 2.0, 3.0, 5.0]  # x1, x1.5, x2, x3, x5
+        # Sistema de combo estilo CarX Drift Racing
+        self.MULTIPLIERS = [1.0, 2.0, 3.0, 4.0, 5.0]  # x1, x2, x3, x4, x5
         self.current_multiplier = 0  # Índice do multiplicador atual
         self.combo_fill = 0.0  # 0.0 a 1.0 para preencher o próximo nível
+        self.multiplier_progress = 0.0  # Progresso dentro do multiplicador atual (0.0 a 1.0)
         
         # Pontuação
         self.points = 0.0
         self.best_points = 0.0
         self.best_combo = 0
         
-        # Controle de tempo
+        # Controle de tempo estilo CarX (mais generoso)
         self.drift_timer = 0.0  # Tempo atual de drift
         self.no_drift_timer = 0.0  # Tempo sem drift
-        self.max_no_drift_time = 5.0  # 5 segundos de tolerância (aumentado)
+        self.max_no_drift_time = 4.0  # 4 segundos de tolerância (mais generoso)
         
         # Estado
         self.is_drifting = False
         self.last_drift_activated = False
         
-        # Taxa de pontos base
-        self.base_point_rate = 50.0  # Pontos por segundo no nível 1
+        # Taxa de pontos base (centenas por padrão)
+        self.base_point_rate = 500.0  # Pontos por segundo no nível 1 - centenas por padrão
         
         # Clipping zones (para compatibilidade)
         self.clipping_zones = []
         
-    def update(self, dt, angle_deg, speed_kmh, car_x, car_y, drift_activated=False, drifting=False, collision_force=0.0):
+    def update(self, dt, angle_deg, speed_kmh, car_x, car_y, drift_activated=False, drifting=False, collision_force=0.0, has_skidmarks=False):
         """
-        Atualiza o sistema de pontuação
+        Atualiza o sistema de pontuação baseado em skidmarks
         
         Args:
             dt: Delta time
             angle_deg: Ângulo de drift em graus
             speed_kmh: Velocidade em km/h
             car_x, car_y: Posição do carro
-            drift_activated: Se o drift foi ativado (espaço pressionado)
-            drifting: Se está atualmente derrapando (ignorado)
+            drift_activated: Se o drift foi ativado (espaço pressionado) - IGNORADO
+            drifting: Se está atualmente derrapando (baseado nas marcas de pneu)
             collision_force: Força da colisão (0-1)
+            has_skidmarks: Se há skidmarks sendo criados (base para pontuação)
         """
         
-        # Detectar se está derrapando - baseado APENAS no drift_ativado + velocidade
-        self.is_drifting = drift_activated and speed_kmh >= self.SPEED_MIN
+        # Detectar se está derrapando - baseado APENAS em skidmarks + velocidade + ângulo
+        self.is_drifting = has_skidmarks and speed_kmh >= self.SPEED_MIN and angle_deg >= self.ANGLE_MIN
         
+        # Mecânicas de perda de combo estilo CarX
         # Colisão forte reseta tudo
         if collision_force > 0.8:
+            self._reset_combo()
+            return
+        
+        # Verificar se saiu da pista (velocidade muito baixa por muito tempo)
+        if speed_kmh < 2.0 and self.no_drift_timer > 2.0:
+            self._reset_combo()
+            return
+        
+        # Verificar se parou o drift por muito tempo (mais generoso)
+        if not has_skidmarks and self.no_drift_timer > 3.0:
             self._reset_combo()
             return
         
@@ -63,9 +76,9 @@ class DriftScoring:
             self.drift_timer += dt
             self.no_drift_timer = 0.0
             
-            # Calcular pontos baseados no ângulo e velocidade
-            angle_factor = min(abs(angle_deg) / 30.0, 2.0)  # Máximo 2x por ângulo
-            speed_factor = min(speed_kmh / 100.0, 1.5)  # Máximo 1.5x por velocidade
+            # Calcular pontos baseados no ângulo e velocidade (mais generoso)
+            angle_factor = min(abs(angle_deg) / 20.0, 3.0)  # Máximo 3x por ângulo (mais generoso)
+            speed_factor = min(speed_kmh / 80.0, 2.0)  # Máximo 2x por velocidade (mais generoso)
             
             # Taxa de pontos base
             base_rate = self.base_point_rate * angle_factor * speed_factor
@@ -90,19 +103,19 @@ class DriftScoring:
             self.no_drift_timer += dt
             
             if self.no_drift_timer < self.max_no_drift_time:
-                # Decaimento mais rápido conforme multiplicador maior
-                base_decay_rate = 0.4 * dt  # Base de 0.4 por segundo
+                # Decaimento do progresso do multiplicador atual (muito mais lento)
+                base_decay_rate = 0.1 * dt  # Base de 0.1 por segundo (muito mais lento)
                 
                 # Multiplicador de decaimento: quanto maior o multiplicador, mais rápido cai
-                decay_multiplier = 1.0 + (self.current_multiplier * 0.3)  # +30% por nível
+                decay_multiplier = 1.0 + (self.current_multiplier * 0.15)  # +15% por nível (menos agressivo)
                 decay_rate = base_decay_rate * decay_multiplier
                 
-                self.combo_fill = max(0.0, self.combo_fill - decay_rate)
+                self.multiplier_progress = max(0.0, self.multiplier_progress - decay_rate)
                 
-                # Se o fill chegar a zero, diminuir o multiplicador gradualmente
-                if self.combo_fill <= 0.0 and self.current_multiplier > 0:
+                # Se o progresso chegar a zero, diminuir o multiplicador
+                if self.multiplier_progress <= 0.0 and self.current_multiplier > 0:
                     self.current_multiplier -= 1
-                    self.combo_fill = 0.7  # 70% do fill para o nível anterior (menos generoso)
+                    self.multiplier_progress = 0.7  # 70% do progresso para o nível anterior (mais generoso)
             else:
                 # Passou da tolerância - resetar combo
                 self._reset_combo()
@@ -119,81 +132,82 @@ class DriftScoring:
         })
     
     def _fill_combo(self, dt, angle_factor, speed_factor):
-        """Preenche a barra de combo"""
-        # Taxa de preenchimento diminui conforme o multiplicador aumenta
-        base_fill_rate = (angle_factor + speed_factor) * 0.6 * dt  # Reduzido de 0.8 para 0.6
+        """Preenche o combo estilo CarX - progresso contínuo dentro do multiplicador"""
+        # Taxa de preenchimento baseada na qualidade do drift
+        base_fill_rate = (angle_factor + speed_factor) * 0.8 * dt
         
-        # Penalidade progressiva: quanto maior o multiplicador, mais lento para subir
+        # Penalidade progressiva: quanto maior o multiplicador, mais difícil de subir
         multiplier_penalty = 1.0 - (self.current_multiplier * 0.15)  # -15% por nível
         multiplier_penalty = max(0.3, multiplier_penalty)  # Mínimo de 30% da velocidade original
         
         fill_rate = base_fill_rate * multiplier_penalty
-        self.combo_fill += fill_rate
+        self.multiplier_progress += fill_rate
         
-        # Subir de nível se necessário
-        while self.combo_fill >= 1.0 and self.current_multiplier < len(self.MULTIPLIERS) - 1:
-            self.combo_fill -= 1.0
+        # Subir de nível quando o progresso chegar a 1.0
+        if self.multiplier_progress >= 1.0 and self.current_multiplier < len(self.MULTIPLIERS) - 1:
+            self.multiplier_progress = 0.0
             self.current_multiplier += 1
             if self.current_multiplier > self.best_combo:
                 self.best_combo = self.current_multiplier
         
-        # Limitar o fill ao máximo de 1.0 quando estiver no nível máximo
+        # Limitar o progresso ao máximo de 1.0 quando estiver no nível máximo
         if self.current_multiplier >= len(self.MULTIPLIERS) - 1:
-            self.combo_fill = min(self.combo_fill, 1.0)
+            self.multiplier_progress = min(self.multiplier_progress, 1.0)
     
     def _reset_combo(self):
         """Reseta o combo completamente"""
         self.current_multiplier = 0
         self.combo_fill = 0.0
+        self.multiplier_progress = 0.0
         self.drift_timer = 0.0
         self.no_drift_timer = 0.0
     
     def draw_hud(self, surface, x, y, font):
-        """Desenha o HUD do drift scoring"""
+        """Desenha o HUD do drift scoring estilo CarX"""
         # Pontuação
         text_points = font.render(f"Score: {int(self.points)}", True, (255, 255, 255))
         surface.blit(text_points, (x, y))
-        y += text_points.get_height() + 5
+        y += text_points.get_height() + 8
         
-        # Multiplicador atual
-        mult_color = (255, 255, 0) if self.current_multiplier > 0 else (200, 200, 200)
-        text_mult = font.render(f"Combo: x{self.MULTIPLIERS[self.current_multiplier]:.1f}", True, mult_color)
-        surface.blit(text_mult, (x, y))
-        y += text_mult.get_height() + 5
-        
-        # Barra de combo
-        bar_width = 200
-        bar_height = 15
-        fill_width = int(bar_width * self.combo_fill)
-        
-        # Cor da barra
-        if self.current_multiplier == len(self.MULTIPLIERS) - 1:  # Max combo
-            bar_color = (255, 165, 0)  # Laranja
-        elif self.current_multiplier > 0:
-            bar_color = (0, 200, 255)  # Azul claro
+        # Multiplicador estilo CarX (ex: 3.2x, 3.4x, 3.6x)
+        if self.current_multiplier > 0:
+            # Calcular multiplicador com progresso (ex: 3.0 + 0.2 = 3.2x)
+            current_mult = self.MULTIPLIERS[self.current_multiplier] + (self.multiplier_progress * 0.2)
+            mult_text = f"x{current_mult:.1f}"
+            
+            # Cores baseadas no nível do multiplicador
+            if self.current_multiplier == len(self.MULTIPLIERS) - 1:  # Max combo (5x)
+                mult_color = (255, 100, 0)  # Laranja vibrante
+            elif self.current_multiplier >= 3:  # 4x+
+                mult_color = (255, 200, 0)  # Amarelo dourado
+            elif self.current_multiplier >= 2:  # 3x+
+                mult_color = (0, 255, 100)  # Verde
+            else:  # 2x
+                mult_color = (0, 200, 255)  # Azul
         else:
-            bar_color = (100, 100, 100)  # Cinza
+            mult_text = "x1.0"
+            mult_color = (200, 200, 200)  # Cinza
         
-        # Desenhar barra
-        pygame.draw.rect(surface, (50, 50, 50), (x, y, bar_width, bar_height), 2)  # Borda
-        pygame.draw.rect(surface, bar_color, (x, y, fill_width, bar_height))  # Preenchimento
-        y += bar_height + 5
+        # Fonte maior para o multiplicador
+        font_mult = pygame.font.Font(None, 32)
+        text_mult = font_mult.render(mult_text, True, mult_color)
+        surface.blit(text_mult, (x, y))
+        y += text_mult.get_height() + 8
         
-        # Tempo de drift
-        text_drift_time = font.render(f"Drift Time: {self.drift_timer:.1f}s", True, (255, 255, 255))
-        surface.blit(text_drift_time, (x, y))
-        y += text_drift_time.get_height() + 5
-        
-        # Melhor combo e pontos
-        text_best_combo = font.render(f"Best Combo: x{self.MULTIPLIERS[self.best_combo]:.1f}", True, (255, 255, 255))
-        surface.blit(text_best_combo, (x, y))
-        y += text_best_combo.get_height() + 5
-        
-        text_best_points = font.render(f"Best Score: {int(self.best_points)}", True, (255, 255, 255))
-        surface.blit(text_best_points, (x, y))
-        
-        # Mostrar tolerância se aplicável
-        if self.last_drift_activated and not self.is_drifting and self.no_drift_timer < self.max_no_drift_time:
-            remaining_time = self.max_no_drift_time - self.no_drift_timer
-            text_tolerance = font.render(f"Reset em: {remaining_time:.1f}s", True, (255, 200, 0))
-            surface.blit(text_tolerance, (x, y + 20))
+        # Barra de progresso do multiplicador atual
+        if self.current_multiplier > 0 and self.current_multiplier < len(self.MULTIPLIERS) - 1:
+            bar_width = 180
+            bar_height = 8
+            fill_width = int(bar_width * self.multiplier_progress)
+            
+            # Cor da barra baseada no multiplicador
+            if self.current_multiplier >= 3:
+                bar_color = (255, 200, 0)  # Amarelo dourado
+            elif self.current_multiplier >= 2:
+                bar_color = (0, 255, 100)  # Verde
+            else:
+                bar_color = (0, 200, 255)  # Azul
+            
+            # Desenhar barra
+            pygame.draw.rect(surface, (50, 50, 50), (x, y, bar_width, bar_height), 1)  # Borda
+            pygame.draw.rect(surface, bar_color, (x, y, fill_width, bar_height))  # Preenchimento
