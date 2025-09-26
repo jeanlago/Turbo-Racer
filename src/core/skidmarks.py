@@ -48,8 +48,8 @@ class GerenciadorSkidmarks:
         """Adiciona um novo skidmark baseado na posição e ângulo"""
         import math
         
-        # Só criar skidmark se a intensidade for significativa (handbrake sempre cria)
-        if intensidade > 0.1:  # Threshold restaurado para manter marcas em todas as 4 rodas
+        # Só criar skidmark se a intensidade for significativa (handbrake sempre cria) - mais permissivo
+        if intensidade > 0.05:  # Threshold mais baixo para detectar mais ângulos
             # Se temos uma posição anterior para este pneu, conectar com ela
             if pneu_id in self.ultima_posicoes:
                 x_anterior, y_anterior = self.ultima_posicoes[pneu_id]

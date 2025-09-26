@@ -69,7 +69,7 @@ class CarroFisica:
         self.min_speed_oversteer = 100.0
 
         # limites de velocidade
-        self.V_TOP  = 1000.0
+        self.V_TOP  = 750.0
         self.V_SOFT = 0.95 * self.V_TOP
 
         # direção e estabilidade
@@ -208,8 +208,31 @@ class CarroFisica:
         self.vx = fx * v_long + rx * v_lat
         self.vy = fy * v_long + ry * v_lat
 
+    def _corrigir_coordenadas_para_guide(self, x, y, camera, superficie_mascara):
+        """Corrige as coordenadas para considerar o zoom da câmera no guide"""
+        if camera is None:
+            return x, y
+        
+        # Obter a visão atual da câmera
+        visao = camera.ret_visao()
+        
+        # Aplicar o zoom da câmera para corrigir as coordenadas
+        # Quando a câmera tem zoom > 1, as coordenadas precisam ser ajustadas
+        zoom_factor = camera.zoom
+        
+        # Converter coordenadas do mundo para coordenadas da superfície do guide
+        # considerando o offset da câmera
+        x_corrigido = int((x - visao.left) * zoom_factor)
+        y_corrigido = int((y - visao.top) * zoom_factor)
+        
+        # Garantir que as coordenadas estejam dentro dos limites da superfície
+        x_corrigido = max(0, min(superficie_mascara.get_width() - 1, x_corrigido))
+        y_corrigido = max(0, min(superficie_mascara.get_height() - 1, y_corrigido))
+        
+        return x_corrigido, y_corrigido
+
     # ---------------- Loop principal ----------------
-    def atualizar(self, teclas, superficie_mascara, dt):
+    def atualizar(self, teclas, superficie_mascara, dt, camera=None):
         acelerar = teclas[self.controles[0]]
         direita  = teclas[self.controles[1]]
         esquerda = teclas[self.controles[2]]
@@ -219,9 +242,9 @@ class CarroFisica:
         if self.turbo_key is not None:
             turbo_pressed = bool(teclas[self.turbo_key])
 
-        self._step(acelerar, direita, esquerda, frear_re, turbo_pressed, superficie_mascara, dt)
+        self._step(acelerar, direita, esquerda, frear_re, turbo_pressed, superficie_mascara, dt, camera)
 
-    def _step(self, acelerar, direita, esquerda, frear_re, turbo_pressed, superficie_mascara, dt):
+    def _step(self, acelerar, direita, esquerda, frear_re, turbo_pressed, superficie_mascara, dt, camera=None):
         # Escalas arcade
         TIME_SCALE        = 2.9
         ARCADE_SPEED_MULT = 2.5
@@ -247,8 +270,9 @@ class CarroFisica:
 
         # direção desejada
         steer_input = -1.0 if direita else (1.0 if esquerda else 0.0)
-        if v_long < -0.25:
-            steer_input = -steer_input
+        # Remover inversão problemática que causa travamento em ré
+        # if v_long < -0.25:
+        #     steer_input = -steer_input
 
         # lock reduz com a velocidade
         lock_scale = max(0.20, 1.0 - self.speed_steer_k * abs(v_long))  # ★ um pouco mais agressivo
@@ -382,8 +406,8 @@ class CarroFisica:
         # torque de guinada + aligning torque
         Mz = self.a*(Fy_f*cs + Fx_f*sn) - self.b*Fy_r
 
-        # guinada pelo motor (reduzido)
-        if thr > 0.2 and abs(steer_input) > 0.15 and v_long > 0.0:
+        # guinada pelo motor (reduzido) - funcionar em ré também
+        if thr > 0.2 and abs(steer_input) > 0.15:
             Mz += self.engine_yaw_push * self.engine_force_fwd * thr * math.copysign(1.0, steer_input)
 
         # aligning torque (um pouco mais forte sempre)
@@ -421,29 +445,72 @@ class CarroFisica:
         self.y += self.vy * dt_fis * speed_mult
 
 
-        # Colisão com a pista - otimizada mas eficiente
+        # Colisão com a pista - melhorada para evitar carro preso e considerar câmera
         fx, fy = self._vetor_frente()
         dir_frente_x, dir_frente_y = fx, fy
         dir_direita_x, dir_direita_y = (fy, -fx)
 
         cx, cy = int(self.x), int(self.y)
         houve_colisao = False
-        # Número equilibrado de amostras para boa detecção e performance
-        amostras_local = [(0, 0), (8, 0), (-8, 0), (0, 4), (0, -4)]  # 5 pontos para boa detecção
+        colisao_count = 0
+        total_amostras = 0
+        
+        # Mais amostras para melhor detecção, especialmente nas bordas
+        amostras_local = [
+            (0, 0),      # Centro
+            (10, 0), (-10, 0), (0, 6), (0, -6),  # Pontos principais
+            (6, 3), (-6, 3), (6, -3), (-6, -3),  # Pontos diagonais
+            (15, 0), (-15, 0), (0, 9), (0, -9)   # Pontos externos
+        ]
+        
         for ox, oy in amostras_local:
             px = int(cx + ox * dir_frente_x + oy * dir_direita_x)
             py = int(cy + ox * dir_frente_y + oy * dir_direita_y)
+            
+            # Aplicar correção de coordenadas baseada na câmera se disponível
+            if camera is not None:
+                px, py = self._corrigir_coordenadas_para_guide(px, py, camera, superficie_mascara)
+            
+            total_amostras += 1
             if not eh_pixel_transitavel(superficie_mascara, px, py):
-                houve_colisao = True
-                break
+                colisao_count += 1
+                # Se mais de 30% dos pontos estão em colisão, considera colisão
+                if colisao_count > total_amostras * 0.3:
+                    houve_colisao = True
+                    break
 
         if houve_colisao:
-            self.x, self.y = x_ant, y_ant
-            self.vx *= -0.3
-            self.vy *= -0.3
+            # Sistema de "push" para evitar carro preso
+            # Calcular direção de escape baseada na posição da colisão
+            escape_x, escape_y = 0, 0
+            
+            # Verificar qual lado tem mais espaço livre
+            for ox, oy in [(10, 0), (-10, 0), (0, 6), (0, -6)]:
+                px = int(cx + ox * dir_frente_x + oy * dir_direita_x)
+                py = int(cy + ox * dir_frente_y + oy * dir_direita_y)
+                if eh_pixel_transitavel(superficie_mascara, px, py):
+                    escape_x += ox * 0.1
+                    escape_y += oy * 0.1
+            
+            # Aplicar push de escape
+            if escape_x != 0 or escape_y != 0:
+                self.x += escape_x
+                self.y += escape_y
+            else:
+                # Se não há direção de escape clara, voltar à posição anterior
+                self.x, self.y = x_ant, y_ant
+            
+            # Reduzir velocidade de forma mais suave
+            self.vx *= -0.2  # Reduzido de -0.3 para -0.2
+            self.vy *= -0.2  # Reduzido de -0.3 para -0.2
+            
+            # Aplicar damping adicional para evitar oscilações
+            self.vx *= 0.8
+            self.vy *= 0.8
+            
             v_long, v_lat = self._decomp_vel()
-            if v_long < -2.0:
-                v_long = -2.0
+            if v_long < -1.5:  # Reduzido de -2.0 para -1.5
+                v_long = -1.5
             self._recomp_vel(v_long, v_lat)
 
         # Limites da área
@@ -490,15 +557,15 @@ class CarroFisica:
         vel = math.hypot(u, v)
         slip = abs(math.degrees(math.atan2(v, max(0.1, abs(u)))))
         
-        # Detecção de drift: handbrake ativo OU drift natural
-        self.drifting = self.freio_mao_ativo or (vel > 12.0 and (slip > 1.5 or abs(v) > 4.0))
+        # Detecção de drift: handbrake ativo OU drift natural (extremamente sensível)
+        self.drifting = self.freio_mao_ativo or (vel > 5.0 and (slip > 0.5 or abs(v) > 1.0))
         
         if self.drifting:
             # Se handbrake ativo, intensidade máxima; senão, baseada na velocidade
             if self.freio_mao_ativo:
                 self.drift_intensidade = 1.0  # Intensidade máxima para handbrake
             else:
-                self.drift_intensidade = min(1.0, abs(v) / 80.0)
+                self.drift_intensidade = min(1.0, abs(v) / 40.0)  # Mais sensível para intensidade
             
             # Criar skidmark quando derrapando (com controle de frequência otimizado)
             if self._ultimo_skidmark > 0.1:  # A cada 0.1 segundos para marcas contínuas em todas as 4 rodas

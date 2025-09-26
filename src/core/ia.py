@@ -14,22 +14,26 @@ class IA:
     # Cache para cálculos trigonométricos (otimização)
     _trig_cache = {}
     
-    def __init__(self, checkpoints, nome="IA-Melhorada-V2"):
+    def __init__(self, checkpoints, nome="IA-Melhorada-V2", dificuldade="medio"):
         self.checkpoints = checkpoints
         self.nome = nome
         self.checkpoint_atual = 0
         self.chegou = False
         self.debug = False
+        self.dificuldade = dificuldade
         
         # Sistema de navegação melhorado
         self.pontos_navegacao = []
         self.ponto_navegacao_atual = 0
         self.atualizar_pontos_navegacao()
         
-        # Controle de velocidade baseado na física
+        # Controle de velocidade baseado na física e dificuldade
         self.velocidade_alvo = 3.0
         self.velocidade_maxima = 4.0
         self.velocidade_curva = 1.5
+        
+        # Parâmetros de dificuldade
+        self._configurar_dificuldade()
         
         # Sistema de lookahead para antecipação
         self.lookahead_distance = 80.0
@@ -58,6 +62,42 @@ class IA:
         else:
             self.alvo_x = 640
             self.alvo_y = 360
+    
+    def _configurar_dificuldade(self):
+        """Configura os parâmetros baseados na dificuldade"""
+        if self.dificuldade == "facil":
+            # IA FÁCIL - Medrosa, freia muito antes das curvas
+            self.velocidade_maxima = 3.2
+            self.velocidade_curva = 1.0
+            self.distancia_freio_curva = 80  # Freia muito antes
+            self.distancia_freio_checkpoint = 60  # Freia muito antes do checkpoint
+            self.angulo_max_curva = 25  # Freia em curvas menos fechadas
+            self.velocidade_max_curva = 1.5  # Velocidade máxima em curvas
+            self.agressividade = 0.3  # Muito conservadora
+            self.precisao_curva = 0.8  # Muito precisa
+            self.tempo_reacao = 0.15  # Reação mais lenta
+        elif self.dificuldade == "dificil":
+            # IA DIFÍCIL - EXTREMAMENTE DIFÍCIL, QUASE IMPOSSÍVEL DE VENCER
+            self.velocidade_maxima = 8.0  # Aumentado de 6.0 para 8.0 (EXTREMO)
+            self.velocidade_curva = 4.5  # Aumentado de 3.0 para 4.5 (EXTREMO)
+            self.distancia_freio_curva = 15  # Reduzido de 25 para 15 (freia MUITO menos)
+            self.distancia_freio_checkpoint = 10  # Reduzido de 20 para 10 (freia MUITO menos)
+            self.angulo_max_curva = 80  # Aumentado de 60 para 80 (freia MUITO menos)
+            self.velocidade_max_curva = 6.0  # Aumentado de 4.0 para 6.0 (EXTREMO)
+            self.agressividade = 1.0  # Máxima agressividade
+            self.precisao_curva = 0.99  # Aumentado de 0.98 para 0.99 (quase perfeita)
+            self.tempo_reacao = 0.01  # Reduzido de 0.03 para 0.01 (reação instantânea)
+        else:  # medio
+            # IA MÉDIA - Confiante, equilibrada, MAIS DIFÍCIL
+            self.velocidade_maxima = 4.5  # Aumentado de 3.8 para 4.5
+            self.velocidade_curva = 2.0  # Aumentado de 1.6 para 2.0
+            self.distancia_freio_curva = 45  # Reduzido de 60 para 45 (freia menos)
+            self.distancia_freio_checkpoint = 35  # Reduzido de 45 para 35 (freia menos)
+            self.angulo_max_curva = 45  # Aumentado de 35 para 45 (freia menos)
+            self.velocidade_max_curva = 2.8  # Aumentado de 2.2 para 2.8
+            self.agressividade = 0.75  # Aumentado de 0.6 para 0.75 (mais agressiva)
+            self.precisao_curva = 0.9  # Aumentado de 0.85 para 0.9 (mais precisa)
+            self.tempo_reacao = 0.08  # Reduzido de 0.1 para 0.08 (mais rápida)
     
     def atualizar_pontos_navegacao(self):
         """Atualiza os pontos de navegação baseados nos checkpoints"""
@@ -119,7 +159,7 @@ class IA:
         return pontos_lookahead
     
     def calcular_velocidade_alvo(self, carro):
-        """Calcula velocidade alvo baseada na curvatura"""
+        """Calcula velocidade alvo baseada na curvatura e dificuldade"""
         pontos_lookahead = self.obter_pontos_lookahead(carro)
         
         if len(pontos_lookahead) < 3:
@@ -138,17 +178,30 @@ class IA:
         curvatura_media = sum(curvaturas) / len(curvaturas) if curvaturas else 0.0
         self.curvatura_atual = curvatura_media
         
-        # Ajustar velocidade baseada na curvatura
+        # Ajustar velocidade baseada na curvatura e dificuldade
         if curvatura_media > 0.15:  # Curva muito fechada
-            return 1.0
+            return self.velocidade_curva
         elif curvatura_media > 0.08:  # Curva fechada
-            return 1.5
+            return self.velocidade_curva * 1.2
         elif curvatura_media > 0.04:  # Curva média
-            return 2.5
+            return self.velocidade_curva * 1.5
         elif curvatura_media > 0.02:  # Curva suave
-            return 3.2
+            return self.velocidade_maxima * 0.8
         else:  # Reta
             return self.velocidade_maxima
+        
+        # IA DIFÍCIL: Velocidades EXTREMAMENTE agressivas
+        if self.dificuldade == "dificil":
+            if curvatura_media > 0.15:  # Curva muito fechada
+                return self.velocidade_curva * 1.3  # MUITO mais rápido em curvas fechadas
+            elif curvatura_media > 0.08:  # Curva fechada
+                return self.velocidade_curva * 1.6  # MUITO mais rápido
+            elif curvatura_media > 0.04:  # Curva média
+                return self.velocidade_curva * 2.0  # EXTREMAMENTE mais rápido
+            elif curvatura_media > 0.02:  # Curva suave
+                return self.velocidade_maxima * 0.95  # Quase velocidade máxima
+            else:  # Reta
+                return self.velocidade_maxima * 1.1  # MUITO acima da velocidade máxima
     
     def atualizar_estado_curva(self, carro, dt):
         """Atualiza estado da curva baseado na curvatura"""
@@ -322,36 +375,55 @@ class IA:
         self.velocidade_alvo = self.calcular_velocidade_alvo(carro)
         self.atualizar_estado_curva(carro, dt)
         
-        # CONTROLE DE VELOCIDADE (baseado no jogo_antigo mas melhorado)
+        # CONTROLE DE VELOCIDADE baseado na dificuldade
         acelerar = True
         frear_re = False
         
-        # 1. Frear se estiver muito próximo do checkpoint
-        if distancia < 50 and velocidade_atual > 1.2:
+        # 1. Frear se estiver muito próximo do checkpoint (baseado na dificuldade)
+        if distancia < self.distancia_freio_checkpoint and velocidade_atual > 1.2:
             frear_re = True
             acelerar = False
         
-        # 2. Frear se precisar fazer uma curva muito fechada
-        if abs(diff_angulo) > 40 and velocidade_atual > 1.8:
+        # 2. Frear se precisar fazer uma curva (baseado na dificuldade)
+        if abs(diff_angulo) > self.angulo_max_curva and velocidade_atual > self.velocidade_max_curva:
             frear_re = True
             acelerar = False
         
-        # 3. Frear se estiver indo muito rápido em relação à distâncIA
-        if distancia < 70 and velocidade_atual > 2.8:
+        # 3. Frear se estiver indo muito rápido em relação à distâncIA (baseado na dificuldade)
+        if distancia < self.distancia_freio_curva and velocidade_atual > self.velocidade_maxima * 0.8:
             frear_re = True
             acelerar = False
         
-        # 4. Frear se estiver indo na direção errada
+        # 4. Frear se estiver indo na direção errada (baseado na dificuldade)
         if abs(diff_angulo) > 80 and velocidade_atual > 0.8:
             frear_re = True
             acelerar = False
         
-        # 5. Acelerar apenas se estiver alinhado e não muito próximo
-        if abs(diff_angulo) < 12 and distancia > 45 and velocidade_atual < 3.8:
+        # 5. Acelerar apenas se estiver alinhado e não muito próximo (baseado na dificuldade)
+        if abs(diff_angulo) < 12 and distancia > self.distancia_freio_checkpoint and velocidade_atual < self.velocidade_maxima * 0.9:
             acelerar = True
             frear_re = False
         
-        # 6. Controle baseado no estado da curva
+        # 5b. IA DIFÍCIL: Acelerar EXTREMAMENTE agressivamente
+        if self.dificuldade == "dificil":
+            # IA difícil acelera com ângulos muito maiores
+            if abs(diff_angulo) < 40 and distancia > self.distancia_freio_checkpoint and velocidade_atual < self.velocidade_maxima * 0.98:
+                acelerar = True
+                frear_re = False
+            # IA difícil acelera mesmo em curvas moderadas
+            if abs(diff_angulo) < 50 and self.curvatura_atual < 0.08 and velocidade_atual < self.velocidade_maxima * 0.9:
+                acelerar = True
+                frear_re = False
+            # IA difícil acelera mesmo em curvas fechadas se estiver alinhada
+            if abs(diff_angulo) < 25 and self.curvatura_atual < 0.12 and velocidade_atual < self.velocidade_maxima * 0.85:
+                acelerar = True
+                frear_re = False
+            # IA difícil NUNCA para de acelerar em retas
+            if abs(diff_angulo) < 15 and self.curvatura_atual < 0.03:
+                acelerar = True
+                frear_re = False
+        
+        # 6. Controle baseado no estado da curva (baseado na dificuldade)
         if self.estado_curva == "entrando_curva" and velocidade_atual > self.velocidade_alvo:
             frear_re = True
             acelerar = False
@@ -365,7 +437,48 @@ class IA:
         # Controles de direção (mais suaves que o jogo_antigo)
         direita = diff_angulo < -2  # Zona morta reduzida
         esquerda = diff_angulo > 2
+        
+        # Drift baseado na dificuldade
         turbo_pressed = False
+        if self.dificuldade == "dificil":
+            # IA difícil usa turbo CONSTANTEMENTE
+            if abs(diff_angulo) > 15 and velocidade_atual > 1.0:  # MUITO mais agressiva
+                turbo_pressed = True
+            # IA difícil usa turbo para acelerar em retas também
+            elif abs(diff_angulo) < 15 and velocidade_atual > 2.0 and velocidade_atual < self.velocidade_maxima * 0.9:
+                turbo_pressed = True
+            # IA difícil usa turbo em curvas suaves
+            elif abs(diff_angulo) < 30 and self.curvatura_atual < 0.06 and velocidade_atual > 1.5:
+                turbo_pressed = True
+            # IA difícil usa turbo para manter velocidade em curvas
+            elif abs(diff_angulo) < 45 and velocidade_atual > 2.5 and velocidade_atual < self.velocidade_maxima * 0.8:
+                turbo_pressed = True
+        elif self.dificuldade == "medio":
+            # IA média faz drift mais frequentemente
+            if abs(diff_angulo) > 30 and velocidade_atual > 2.0:  # Mais agressiva
+                turbo_pressed = True
+            # IA média usa turbo em retas ocasionalmente
+            elif abs(diff_angulo) < 15 and velocidade_atual > 2.5 and velocidade_atual < self.velocidade_maxima * 0.8:
+                turbo_pressed = True
+        # IA fácil não faz drift (muito conservadora)
+        
+        # IA MÉDIA: Acelerar mais agressivamente
+        if self.dificuldade == "medio":
+            # IA média acelera mais frequentemente
+            if abs(diff_angulo) < 25 and distancia > self.distancia_freio_checkpoint and velocidade_atual < self.velocidade_maxima * 0.85:
+                acelerar = True
+                frear_re = False
+            # IA média acelera em curvas suaves
+            if abs(diff_angulo) < 35 and self.curvatura_atual < 0.06 and velocidade_atual < self.velocidade_maxima * 0.75:
+                acelerar = True
+                frear_re = False
+        
+        # IA DIFÍCIL: Forçar aceleração constante (quase impossível de vencer)
+        if self.dificuldade == "dificil":
+            # IA difícil acelera SEMPRE, exceto em situações extremas
+            if not (abs(diff_angulo) > 70 and velocidade_atual > 5.0):  # Só não acelera se estiver muito desalinhada E muito rápida
+                acelerar = True
+                frear_re = False
         
         # Aplicar controles (usando sistema antigo que funciona)
         carro._step(acelerar, direita, esquerda, frear_re, turbo_pressed, superficie_mascara, dt)
