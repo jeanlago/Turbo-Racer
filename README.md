@@ -1,29 +1,29 @@
-# 🏎️ Turbo Racer
+# Turbo Racer
 
 Um jogo de corrida arcade 2D top-down desenvolvido em **Python** com **Pygame**, oferecendo física realista, múltiplos modos de jogo, IA inteligente e sistema escalável de mapas e carros.
 
 ---
 
-## ✨ Funcionalidades Principais
+## Funcionalidades Principais
 
--  **🎮 Múltiplos Modos de Jogo** - 1 jogador, 2 jogadores (split-screen) e modo drift
--  **⏸️ Menu de Pausa Completo** - Sistema de pausa com opções de continuar, reiniciar e voltar
--  **🚗 Sistema de Física Avançado** - 3 tipos de tração (RWD, FWD, AWD) com comportamento único
--  **🤖 IA Inteligente** - Algoritmo Pure Pursuit para navegação suave e realista
--  **🎯 Sistema de Dificuldade Universal** - 3 níveis (Fácil, Médio, Difícil) para corrida e drift
--  **🗺️ Sistema de Mapas Escalável** - Detecção automática de mapas sem configuração manual
--  **🎯 Editor Visual de Checkpoints** - Crie e edite checkpoints arrastando e soltando
--  **🎵 Sistema de Áudio Completo** - Múltiplas faixas musicais com controles independentes
--  **🏁 Modo Drift** - Sistema de pontuação automática baseado em derrapagem real com tempo limitado e combos
--  **📊 HUD Dinâmico** - Interface adaptativa com câmera inteligente
--  **⚡ Performance Otimizada** - 100+ FPS com qualidade visual mantida
--  **⚙️ Configurações Avançadas** - Resolução, fullscreen, controles e qualidade personalizáveis
+-  **Múltiplos Modos de Jogo** - 1 jogador, 2 jogadores (split-screen) e modo drift
+-  **Menu de Pausa Completo** - Sistema de pausa com opções de continuar, reiniciar e voltar
+-  **Sistema de Física Avançado** - 3 tipos de tração (RWD, FWD, AWD) com comportamento único
+-  **IA Inteligente** - Algoritmo Pure Pursuit para navegação suave e realista
+-  **Sistema de Dificuldade Universal** - 3 níveis (Fácil, Médio, Difícil) para corrida e drift
+-  **Sistema de Mapas Escalável** - Detecção automática de mapas sem configuração manual
+-  **Editor Visual de Checkpoints** - Crie e edite checkpoints arrastando e soltando
+-  **Sistema de Áudio Completo** - Múltiplas faixas musicais com controles independentes
+-  **Modo Drift** - Sistema de pontuação automática baseado em derrapagem real com tempo limitado e combos
+-  **HUD Dinâmico** - Interface adaptativa com câmera inteligente
+-  **Performance Otimizada** - 100+ FPS com qualidade visual mantida
+-  **Configurações Avançadas** - Resolução, fullscreen, controles e qualidade personalizáveis
 
 ---
 
-## 📚 Documentação
+## Documentação
 
-### **🎮 Game Design Document**
+### **Game Design Document**
 - **[game-design.md](docs/design/game-design.md)** - Documento completo de design do jogo
   - Visão geral e conceito principal
   - Mecânicas de jogo detalhadas
@@ -31,19 +31,19 @@ Um jogo de corrida arcade 2D top-down desenvolvido em **Python** com **Pygame**,
   - Arquitetura técnica
   - Roadmap e futuras implementações
 
-### **🔧 Documentação Técnica**
+### **Documentação Técnica**
 - **[API.md](docs/API.md)** - Referência completa da API
   - Classes principais e métodos
   - Sistemas de jogo
   - Configuração e exemplos
   - Troubleshooting
 
-### **📖 Guias de Desenvolvimento**
+### **Guias de Desenvolvimento**
 - **[adding-maps.md](docs/guides/adding-maps.md)** - Como adicionar novos mapas
 - **[adding-cars.md](docs/guides/adding-cars.md)** - Como adicionar novos carros
 - **[customization.md](docs/guides/customization.md)** - Personalização e modificações
 
-### **📝 Histórico de Versões**
+### **Histórico de Versões**
 - **[CHANGELOG.md](docs/CHANGELOG.md)** - Histórico completo de mudanças
   - Versão 2.1.0 - Melhorias de navegação e sistema de mapas
   - Versão 2.0.0 - Modos de jogo e split-screen
@@ -51,7 +51,7 @@ Um jogo de corrida arcade 2D top-down desenvolvido em **Python** com **Pygame**,
 
 ---
 
-## 📂 Estrutura do Projeto
+## Estrutura do Projeto
 
 ```text
 Turbo-Racer/
@@ -99,9 +99,9 @@ Turbo-Racer/
 
 ---
 
-## 🎮 Controles
+## Controles
 
-### **🚗 Controles de Carro**
+### **Controles de Carro**
 
 #### **Jogador 1 (Player 1)**
 - **W** - Acelerar
@@ -119,16 +119,16 @@ Turbo-Racer/
 - **Ctrl Direito** - Turbo
 - **Shift** - Drift (hold)
 
-### **🎵 Controles de Música**
+### **Controles de Música**
 - **M** - Próxima música
 - **N** - Música anterior
 
-### **🎮 Controles Gerais**
+### **Controles Gerais**
 - **ESC** - Pausar/despausar ou voltar ao menu
 - **H** - Alternar HUD completo
 - **F1** - Ativar/desativar debug da IA
 
-### **⏸️ Menu de Pausa**
+### **Menu de Pausa**
 - **ESC** - Abrir/fechar menu de pausa
 - **↑↓** - Navegar pelas opções
 - **ENTER/SPACE** - Selecionar opção
@@ -137,14 +137,14 @@ Turbo-Racer/
   - **Reiniciar** - Reinicia a corrida atual
   - **Voltar ao Menu** - Sai do jogo e volta ao menu principal
 
-### **📋 Navegação no Menu**
+### **Navegação no Menu**
 - **Setas ←→ ou A/D** - Navegar entre opções do menu principal
 - **Setas ↑↓ ou W/S** - Navegar entre opções verticais (ex: número de jogadores)
 - **ENTER ou ESPAÇO** - Confirmar seleção
 - **ESC** - Voltar ao menu anterior
 - **R** - Recarregar mapas (na seleção de mapas)
 
-### **✏️ Editor de Checkpoints**
+### **Editor de Checkpoints**
 - **F7** - Ativar/desativar modo edição
 - **F5** - Salvar checkpoints
 - **F6** - Carregar checkpoints
@@ -157,9 +157,9 @@ Turbo-Racer/
 
 ---
 
-## 🚀 Como Executar
+## Como Executar
 
-### **📋 Requisitos**
+### **Requisitos**
 - **Python 3.10+** (recomendado 3.11+)
 - **Pygame 2.5+** - Biblioteca de jogos
 - **Windows 10+** (testado) / Linux / macOS
@@ -193,17 +193,17 @@ pip install pygame
 python src/main.py
 ```
 
-### **🔧 Primeira Execução**
+### **Primeira Execução**
 1. **Execute** o jogo pela primeira vez
 2. **Configure** as opções em "OPÇÕES" se necessário
 3. **Selecione** um carro e mapa
-4. **Divirta-se!** 🏎️
+4. **Divirta-se!**
 
 ---
 
-## 🗺️ Sistema de Mapas Escalável
+##  Sistema de Mapas Escalável
 
-### **🚀 Adicionar Novo Mapa (AUTOMÁTICO)**
+### ** Adicionar Novo Mapa (AUTOMÁTICO)**
 
 #### **1. Preparar Assets**
 ```
@@ -227,21 +227,21 @@ assets/images/maps/
 4. **Mova** checkpoints arrastando
 5. **Salve** com F5
 
-### **✨ Recursos do Sistema Escalável**
+### **Recursos do Sistema Escalável**
 
-- ✅ **Detecção automática** - Mapas aparecem automaticamente
-- ✅ **Nomes inteligentes** - "MeuMapa" vira "Meu Mapa"
-- ✅ **Recarregamento dinâmico** - Adicione mapas sem reiniciar
-- ✅ **Fallback robusto** - Funciona mesmo sem guias/checkpoints
-- ✅ **Zero configuração** - Apenas coloque os arquivos
+- **Detecção automática** - Mapas aparecem automaticamente
+- **Nomes inteligentes** - "MeuMapa" vira "Meu Mapa"
+- **Recarregamento dinâmico** - Adicione mapas sem reiniciar
+- **Fallback robusto** - Funciona mesmo sem guias/checkpoints
+- **Zero configuração** - Apenas coloque os arquivos
 
-### **🎨 Especificações de Mapas**
+### **Especificações de Mapas**
 
 #### **Cores Padrão**
-- **🟠 Laranja (255, 165, 0)** - Pista transitável
-- **🟢 Verde (0, 255, 0)** - Limites não transitáveis
-- **🟣 Magenta (255, 0, 255)** - Checkpoints/área transitável
-- **🟡 Amarelo (255, 255, 0)** - Linha de largada (guias)
+- **Laranja (255, 165, 0)** - Pista transitável
+- **Verde (0, 255, 0)** - Limites não transitáveis
+- **Magenta (255, 0, 255)** - Checkpoints/área transitável
+- **Amarelo (255, 255, 0)** - Linha de largada (guias)
 
 #### **Resolução Recomendada**
 - **Mínimo:** 1280x720
@@ -250,9 +250,9 @@ assets/images/maps/
 
 ---
 
-## ⚙️ Configurações
+## Configurações
 
-### **📁 Arquivo config.json**
+### **Arquivo config.json**
 ```json
 {
   "audio": {
@@ -287,7 +287,7 @@ assets/images/maps/
 }
 ```
 
-### **🔧 Configurações Principais**
+### **Configurações Principais**
 
 #### **Áudio**
 - **Volume Master** - Volume geral (0.0 - 1.0)
@@ -309,20 +309,20 @@ assets/images/maps/
 
 ---
 
-## 🎯 Funcionalidades Avançadas
+## Funcionalidades Avançadas
 
-### **🤖 Sistema de IA**
+### **Sistema de IA**
 - **Algoritmo Pure Pursuit** - Navegação suave e realista
 - **Detecção Inteligente** - Evita obstáculos e recupera de situações problemáticas
 - **Parâmetros Configuráveis** - Wheelbase, lookahead distance, velocidades
 
-### **🎯 Sistema de Dificuldade**
+### **Sistema de Dificuldade**
 - **Modo Corrida** - Ajusta comportamento da IA (Fácil: conservadora, Médio: equilibrada, Difícil: agressiva)
 - **Modo Drift** - Ajusta tempo disponível (Fácil: 1:30, Médio: 1:00, Difícil: 0:30)
 - **Seleção Intuitiva** - Escolha no submenu "JOGAR" para 1 jogador
 - **Feedback Visual** - Exibição da dificuldade atual no HUD
 
-### **🏁 Sistema de Pontuação de Drift**
+### **Sistema de Pontuação de Drift**
 - **Pontuação Automática** - Baseada em derrapagem real (marcas de pneu), não em teclas
 - **Sistema de Combo** - Multiplicadores progressivos (x1, x1.5, x2, x3, x5)
 - **Tolerância Inteligente** - 3 segundos para manter combo sem derrapagem
@@ -330,7 +330,7 @@ assets/images/maps/
 - **Taxa Generosa** - 80 pontos/segundo no nível base
 - **Debug Visual** - Ative com F1 para ver o comportamento da IA
 
-### **🚗 Física Realista**
+### **Física Realista**
 - **3 Tipos de Tração:**
   - **RWD (Tração Traseira)** - Pode fazer drift, instável em curvas
   - **FWD (Tração Frontal)** - Muito estável, sem drift
@@ -339,20 +339,20 @@ assets/images/maps/
 - **Colisões Realistas** - Rebote e perda de velocidade
 - **Turbo com Cooldown** - 0.9s de duração, 2.5s de cooldown
 
-### **🎵 Sistema de Áudio**
+### **Sistema de Áudio**
 - **6 Faixas Musicais** - Estilos variados (Cyberpunk, Rock, Rave)
 - **Controles Independentes** - Volume master, música e efeitos
 - **Modo Aleatório** - Tocar músicas em ordem aleatória
 - **Interface Visual** - Controles de música integrados
 
-### **🏁 Modo Drift**
+### **Modo Drift**
 - **Tempo Limitado** - 2 minutos para acumular pontos
 - **Sistema de Combo** - Multiplicador por derrapagens consecutivas
 - **Pontuação Inteligente** - Baseada em velocidade e ângulo de derrapagem
 - **Efeitos Visuais** - Fumaça e partículas durante o drift
 - **Decay Automático** - Pontos diminuem se não houver drift contínuo
 
-### **⚡ Sistema de Performance**
+### **Sistema de Performance**
 - **100+ FPS** - Otimizações agressivas mantendo qualidade visual
 - **Marcas de Pneu em 4 Rodas** - Skidmarks completos durante drift
 - **Câmera Dinâmica** - Zoom adaptativo baseado na velocidade para sensação de aceleração
@@ -361,35 +361,35 @@ assets/images/maps/
 
 ---
 
-## 🛠️ Desenvolvimento
+## Desenvolvimento
 
-### **🏗️ Arquitetura do Código**
+### **Arquitetura do Código**
 - **Modular** - Cada funcionalidade em seu próprio módulo
 - **Escalável** - Fácil adicionar novos mapas e carros
 - **Configurável** - Todas as configurações em arquivos JSON
 - **Português** - Código e variáveis em português
 - **Documentado** - Documentação técnica completa disponível
 
-### **📚 Documentação para Desenvolvedores**
+### **Documentação para Desenvolvedores**
 - **[Game Design Document](docs/design/game-design.md)** - Design completo do jogo
 - **[API Reference](docs/API.md)** - Referência completa da API
 - **[Guias de Desenvolvimento](docs/guides/)** - Como adicionar conteúdo
 - **[Changelog](docs/CHANGELOG.md)** - Histórico de mudanças
 
-### **🚗 Adicionando Novos Carros**
+### **Adicionando Novos Carros**
 1. **Adicione** o sprite em `assets/images/cars/`
 2. **Configure** em `CARROS_DISPONIVEIS` no `main.py`
 3. **Adicione** sprite de seleção em `assets/images/car_selection/`
 4. **Defina** tipo de tração (RWD/FWD/AWD)
 5. **Teste** física e comportamento
 
-### **🗺️ Adicionando Novos Mapas**
+### **Adicionando Novos Mapas**
 1. **Coloque** o arquivo PNG em `assets/images/maps/`
 2. **Execute** o jogo - detecção automática
 3. **Use** o editor visual (F7) para checkpoints
 4. **Teste** navegação da IA
 
-### **⚙️ Personalizando Física**
+### **Personalizando Física**
 - **Ajuste** constantes em `config.py`
 - **Modifique** `core/carro_fisica.py` para física personalizada
 - **Configure** parâmetros de IA em `core/ia.py`
@@ -397,33 +397,26 @@ assets/images/maps/
 
 ---
 
-## 🤝 Contribuição
+## Contribuição
 
-### **🚀 Como Contribuir**
-1. **Fork** o repositório
-2. **Crie** uma branch para sua feature (`git checkout -b feature/nova-funcionalidade`)
-3. **Commit** suas mudanças (`git commit -m 'feat: adiciona nova funcionalidade'`)
-4. **Push** para a branch (`git push origin feature/nova-funcionalidade`)
-5. **Abra** um Pull Request
-
-### **📋 Diretrizes de Contribuição**
+### **Diretrizes de Contribuição**
 - **Siga** a estrutura de código existente
 - **Mantenha** a documentação atualizada
 - **Teste** suas mudanças antes de submeter
 - **Use** commits descritivos com prefixos
 - **Consulte** a documentação técnica antes de contribuir
 
-### **🎯 Áreas de Contribuição**
-- **🚗 Novos Carros** - Adicione sprites e configurações
-- **🗺️ Novos Mapas** - Crie pistas e checkpoints
-- **🤖 Melhorias de IA** - Otimize algoritmos de navegação
-- **✨ Efeitos Visuais** - Adicione partículas e animações
-- **🎨 Interface** - Melhore menus e HUD
-- **📚 Documentação** - Melhore guias e referências
-- **🐛 Correções** - Reporte e corrija bugs
-- **⚡ Performance** - Otimize código e renderização
+### **Áreas de Contribuição**
+- ** Novos Carros** - Adicione sprites e configurações
+- ** Novos Mapas** - Crie pistas e checkpoints
+- ** Melhorias de IA** - Otimize algoritmos de navegação
+- ** Efeitos Visuais** - Adicione partículas e animações
+- ** Interface** - Melhore menus e HUD
+- ** Documentação** - Melhore guias e referências
+- ** Correções** - Reporte e corrija bugs
+- ** Performance** - Otimize código e renderização
 
-### **📝 Padrões de Commit**
+### **Padrões de Commit**
 ```
 feat: adiciona nova funcionalidade
 fix: corrige bug específico
@@ -436,40 +429,34 @@ chore: mudanças em build, dependências, etc.
 
 ---
 
-## 📝 Licença
+## Licença
 
 Este projeto é de código aberto e está disponível sob a **licença MIT**.
 
 ---
 
-## 📞 Suporte
+## Suporte
 
-### **🐛 Reportar Bugs**
+### **Reportar Bugs**
 - Use o sistema de [Issues](https://github.com/seu-usuario/turbo-racer/issues) do GitHub
 - Inclua informações sobre seu sistema operacional
 - Descreva os passos para reproduzir o problema
 
-### **❓ Dúvidas e Ajuda**
+### **Dúvidas e Ajuda**
 - **Documentação:** Consulte a [documentação técnica](docs/API.md)
 - **Guias:** Veja os [guias de desenvolvimento](docs/guides/)
-- **Discord:** [Servidor da comunidade](https://discord.gg/turbo-racer) (em breve)
 
-### **💡 Sugestões**
+
+### **Sugestões**
 - Abra uma [Issue](https://github.com/seu-usuario/turbo-racer/issues) com a tag "enhancement"
 - Descreva sua ideia detalhadamente
-- Considere implementar você mesmo!
 
 ---
 
-## 🎉 Agradecimentos
 
-- **Pygame** - Biblioteca de jogos para Python
-- **Comunidade Python** - Suporte e recursos
-- **Contribuidores** - Todos que ajudaram no desenvolvimento
-- **Testadores** - Feedback valioso durante o desenvolvimento
 
 ---
 
-**Desenvolvido com ❤️ por Jean Marins e Jayson Sales**  
+**Desenvolvido com por Jean Marins e Jayson Sales**  
 **Versão atual:** 2.3.0  
-**Última atualização:** Janeiro 2025
+**Última atualização:** Setembro 2025
