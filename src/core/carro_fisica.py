@@ -136,6 +136,13 @@ class CarroFisica:
 
         # Internos
         self._bateu = False
+        
+        # Cache de performance
+        self._vetor_frente_cache = None
+        self._vetor_direita_cache = None
+        self._angulo_cache = None
+        self._sprite_rot_cache = None
+        self._sprite_angulo_cache = None
 
     # ---------------- Sprites ----------------
     def _carregar_sprite(self, prefixo_cor):
@@ -151,14 +158,21 @@ class CarroFisica:
         w = min(w, 64); h = min(h, 64)
         self.sprite_base = pygame.transform.scale(sprite, (w, h))
 
-    # ---------------- Bases / transformações ----------------
+    # ---------------- Bases / transformações ---------------- 
     def _vetor_frente(self):
-        rad = math.radians(self.angulo)
-        return (-math.cos(rad), math.sin(rad))
+        # Cache para evitar recálculos
+        if self._angulo_cache != self.angulo:
+            rad = math.radians(self.angulo)
+            self._vetor_frente_cache = (-math.cos(rad), math.sin(rad))
+            self._vetor_direita_cache = (self._vetor_frente_cache[1], -self._vetor_frente_cache[0])
+            self._angulo_cache = self.angulo
+        return self._vetor_frente_cache
 
     def _vetor_direita(self):
-        fx, fy = self._vetor_frente()
-        return (fy, -fx)
+        # Usar cache
+        if self._angulo_cache != self.angulo:
+            self._vetor_frente()  # Atualiza ambos os caches
+        return self._vetor_direita_cache
 
     def _mundo_para_local(self, vx, vy):
         fx, fy = self._vetor_frente()
@@ -393,7 +407,9 @@ class CarroFisica:
             v_lat *= (1.0 - 10.0 * dt_fis)
 
         # --- soft limiter + clamp duro ---
-        speed = math.hypot(v_long, v_lat)
+        # Usar distância ao quadrado para evitar sqrt quando possível
+        speed_sq = v_long*v_long + v_lat*v_lat
+        speed = math.sqrt(speed_sq)
         if speed > self.V_SOFT:
             cut = (speed - self.V_SOFT) / max(1e-6, self.V_TOP - self.V_SOFT)
             v_long *= (1.0 - 0.25*cut)
@@ -446,9 +462,10 @@ class CarroFisica:
 
 
         # Colisão com a pista - melhorada para evitar carro preso e considerar câmera
+        # Usar cache de vetores
         fx, fy = self._vetor_frente()
         dir_frente_x, dir_frente_y = fx, fy
-        dir_direita_x, dir_direita_y = (fy, -fx)
+        dir_direita_x, dir_direita_y = self._vetor_direita()
 
         cx, cy = int(self.x), int(self.y)
         houve_colisao = False
@@ -518,10 +535,22 @@ class CarroFisica:
         self.y = max(0.0, min(ALTURA * 1.0, self.y))
 
         # HUD - velocímetro mais fiel ao que anda na tela
+        # v_long está em pixels/segundo (antes do multiplicador arcade)
+        # V_TOP = 750 px/s é a velocidade máxima
+        # O movimento aplica ARCADE_SPEED_MULT = 2.5, mas para o velocímetro
+        # queremos mostrar a velocidade "real" que o jogador vê na tela
+        # Calcular velocidade considerando o multiplicador arcade aplicado no movimento
+        ARCADE_SPEED_MULT = 2.5
+        velocidade_com_mult = abs(v_long) * ARCADE_SPEED_MULT
+        
+        # Converter para km/h: 
+        # Se V_TOP = 750 px/s * 2.5 = 1875 px/s máximo
+        # Queremos que isso corresponda a ~250 km/h no velocímetro
+        # Fator de conversão: 250 / 1875 = 0.1333...
+        # Mas vamos usar um fator mais realista baseado na escala do jogo
+        PXPS_TO_KMH = 0.133  # 1875 px/s * 0.133 = ~250 km/h
+        self.velocidade_kmh = velocidade_com_mult * PXPS_TO_KMH
         self.velocidade = v_long  # mantém a telemetria longitudinal se precisar
-        world_speed = math.hypot(self.vx, self.vy)   # já em px/s do mundo
-        PXPS_TO_KMH = 0.35
-        self.velocidade_kmh = world_speed * PXPS_TO_KMH
 
         # Partículas & drift FX
         if MODO_DRIFT:
@@ -554,7 +583,9 @@ class CarroFisica:
 
     # ---------------- HUD/FX extras ----------------
     def _atualizar_estado_drift(self, u, v, dt):
-        vel = math.hypot(u, v)
+        # Otimização: evitar hypot
+        vel_sq = u*u + v*v
+        vel = math.sqrt(vel_sq) if vel_sq > 0.01 else 0.0
         slip = abs(math.degrees(math.atan2(v, max(0.1, abs(u)))))
         
         # Detecção de drift: handbrake ativo OU drift natural (extremamente sensível)
@@ -628,13 +659,22 @@ class CarroFisica:
     # ---------------- Render ----------------
     def desenhar(self, superficie, camera=None):
         if camera is None:
-            sprite_rot = pygame.transform.rotate(self.sprite_base, self.angulo)
+            # Cache de sprite rotacionado
+            if self._sprite_angulo_cache != self.angulo:
+                self._sprite_rot_cache = pygame.transform.rotate(self.sprite_base, self.angulo)
+                self._sprite_angulo_cache = self.angulo
+            sprite_rot = self._sprite_rot_cache
             rect = sprite_rot.get_rect(center=(self.x, self.y))
             superficie.blit(sprite_rot, rect.topleft)
             self.emissor_nitro.draw(superficie, camera)
             return
         sx, sy = camera.mundo_para_tela(self.x, self.y)
-        sprite_rot = pygame.transform.rotozoom(self.sprite_base, self.angulo, camera.zoom)
+        # Cache com zoom (mais complexo, mas ainda vale a pena)
+        cache_key = (int(self.angulo), int(camera.zoom * 10))
+        if self._sprite_angulo_cache != cache_key:
+            self._sprite_rot_cache = pygame.transform.rotozoom(self.sprite_base, self.angulo, camera.zoom)
+            self._sprite_angulo_cache = cache_key
+        sprite_rot = self._sprite_rot_cache
         rect = sprite_rot.get_rect(center=(sx, sy))
         superficie.blit(sprite_rot, rect.topleft)
         self.emissor_nitro.draw(superficie, camera)

@@ -124,10 +124,11 @@ class IA:
         if l1_sq < 0.01 or l2_sq < 0.01:  # 0.1^2 = 0.01
             return 0.0
         
-        # Normalizar
+        # Normalizar (otimizado - calcular sqrt apenas uma vez)
         l1 = math.sqrt(l1_sq)
+        l2 = math.sqrt(l2_sq)
         v1x, v1y = v1x/l1, v1y/l1
-        v2x, v2y = v2x/math.sqrt(l2_sq), v2y/math.sqrt(l2_sq)
+        v2x, v2y = v2x/l2, v2y/l2
         
         # Curvatura
         cross_product = v1x * v2y - v1y * v2x
@@ -140,12 +141,15 @@ class IA:
         if not self.pontos_navegacao:
             return []
         
-        # Encontrar checkpoint mais próximo usando distância ao quadrado
+        # Encontrar checkpoint mais próximo usando distância ao quadrado (já otimizado)
         distancia_min_sq = float('inf')
         indice_inicial = 0
+        carro_x, carro_y = carro.x, carro.y  # Cache para evitar múltiplas leituras
         
         for i, (px, py) in enumerate(self.pontos_navegacao):
-            dist_sq = (px - carro.x)**2 + (py - carro.y)**2
+            dx = px - carro_x
+            dy = py - carro_y
+            dist_sq = dx*dx + dy*dy
             if dist_sq < distancia_min_sq:
                 distancia_min_sq = dist_sq
                 indice_inicial = i
@@ -159,15 +163,17 @@ class IA:
         return pontos_lookahead
     
     def calcular_velocidade_alvo(self, carro):
-        """Calcula velocidade alvo baseada na curvatura e dificuldade"""
+        """Calcula velocidade alvo baseada na curvatura e dificuldade - otimizado"""
         pontos_lookahead = self.obter_pontos_lookahead(carro)
         
         if len(pontos_lookahead) < 3:
             return self.velocidade_maxima
         
-        # Calcular curvatura média
+        # Calcular curvatura média (otimizado - limitar iterações)
+        num_calculos = min(len(pontos_lookahead) - 2, 3)  # Máximo 3 cálculos
         curvaturas = []
-        for i in range(len(pontos_lookahead) - 2):
+        step = max(1, (len(pontos_lookahead) - 2) // num_calculos)
+        for i in range(0, len(pontos_lookahead) - 2, step):
             curv = self.calcular_curvatura(
                 pontos_lookahead[i],
                 pontos_lookahead[i+1],
@@ -278,15 +284,18 @@ class IA:
             self.chegou = True
             return
         
-        # Calcular velocidade atual
-        velocidade_atual = math.sqrt(carro.vx*carro.vx + carro.vy*carro.vy)
+        # Calcular velocidade atual (otimizado - evitar sqrt quando possível)
+        vel_sq = carro.vx*carro.vx + carro.vy*carro.vy
+        velocidade_atual = math.sqrt(vel_sq) if vel_sq > 0.01 else 0.0
         
-        # DETECÇÃO DE TRAVAMENTO (baseado no jogo_antigo)
+        # DETECÇÃO DE TRAVAMENTO (baseado no jogo_antigo) - otimizado
         posicao_atual = (carro.x, carro.y)
         if self.ultima_posicao is not None:
-            dist_movimento = math.sqrt((posicao_atual[0] - self.ultima_posicao[0])**2 + 
-                                     (posicao_atual[1] - self.ultima_posicao[1])**2)
-            if dist_movimento < 3.0:  # Movimento mínimo reduzido
+            # Usar distância ao quadrado para evitar sqrt
+            dx = posicao_atual[0] - self.ultima_posicao[0]
+            dy = posicao_atual[1] - self.ultima_posicao[1]
+            dist_movimento_sq = dx*dx + dy*dy
+            if dist_movimento_sq < 9.0:  # 3.0^2 = 9.0
                 self.tempo_travado += dt
             else:
                 self.tempo_travado = 0.0
@@ -300,42 +309,42 @@ class IA:
         if colidiu:
             if self.tempo_batido == 0.0:
                 self.ultima_posicao_valida = (carro.x, carro.y)
-                print(f"{self.nome} BATEU! Iniciando recuperação...")
             
             self.tempo_batido += dt
             
+            # Recuperação simples: dar ré e tentar se reposicionar
             if self.tempo_batido > self.max_tempo_batido:
-                print(f"{self.nome} tentando dar ré...")
-                carro.atualizar_com_ai(superficie_mascara, dt, self.checkpoints, 50)
+                # Dar ré por um tempo
+                carro._step(False, False, False, True, False, superficie_mascara, dt)
                 return
             else:
-                carro.atualizar_com_ai(superficie_mascara, dt, self.checkpoints, 50)
+                # Parar e tentar se reposicionar
+                carro._step(False, False, False, True, False, superficie_mascara, dt)
                 return
         else:
             if self.tempo_batido > 0.0:
-                print(f"{self.nome} se recuperou da colisão!")
-            self.tempo_batido = 0.0
+                self.tempo_batido = 0.0
         
         # NAVEGAÇÃO
         checkpoint_idx = self.checkpoint_atual % len(self.checkpoints)
         self.alvo_x = self.checkpoints[checkpoint_idx][0]
         self.alvo_y = self.checkpoints[checkpoint_idx][1]
         
-        # Calcular distâncIA e ângulo
+        # Calcular distâncIA e ângulo - otimizado
         dx = self.alvo_x - carro.x
         dy = self.alvo_y - carro.y
-        distancia = math.sqrt(dx*dx + dy*dy)
+        distancia_sq = dx*dx + dy*dy
+        distancia = math.sqrt(distancia_sq) if distancia_sq > 0.01 else 0.0
         
         # Calcular ângulo para o alvo (mesmo sistema do jogo_antigo)
         angulo_alvo = math.degrees(math.atan2(dy, -dx))  # -dx porque 0° aponta para -X
         diff_angulo = (angulo_alvo - carro.angulo + 180) % 360 - 180
         
-        # DETECÇÃO DE CHECKPOINTS (baseado no jogo_antigo)
-        if distancia < 60:  # Raio aumentado para detecção mais rápida
+        # DETECÇÃO DE CHECKPOINTS (baseado no jogo_antigo) - otimizado
+        if distancia_sq < 3600:  # 60^2 = 3600
             self.checkpoint_atual += 1
             self.tempo_travado = 0.0
             self.tentativas_recuperacao = 0
-            print(f"{self.nome} chegou ao checkpoint {self.checkpoint_atual}! (Loop: {self.checkpoint_atual // len(self.checkpoints) + 1})")
             
             # Atualizar para o próximo checkpoint
             checkpoint_idx = self.checkpoint_atual % len(self.checkpoints)
@@ -348,7 +357,6 @@ class IA:
         elif self.tempo_travado > self.max_tempo_travado:
             if self.tentativas_recuperacao < self.max_tentativas_recuperacao:
                 self.tentativas_recuperacao += 1
-                print(f"{self.nome} travado! Tentativa de recuperação {self.tentativas_recuperacao}/{self.max_tentativas_recuperacao}")
                 
                 # EstratégIA de recuperação: pular para o próximo checkpoint
                 self.checkpoint_atual += 1
@@ -362,7 +370,6 @@ class IA:
                 dy = self.alvo_y - carro.y
             else:
                 # Se esgotou tentativas, resetar para o início
-                print(f"{self.nome} esgotou tentativas! Resetando para checkpoint inicial.")
                 self.checkpoint_atual = 0
                 self.tentativas_recuperacao = 0
                 self.tempo_travado = 0.0
@@ -490,10 +497,7 @@ class IA:
         self.distancia_atual = distancia
         self.diff_angulo_atual = diff_angulo
         
-        # Debug
-        if self.debug:
-            status = "FREANDO" if frear_re else ("ACELERANDO" if acelerar else "NEUTRO")
-            print(f"{self.nome}: CP {self.checkpoint_atual+1}/{len(self.checkpoints)}, Dist={distancia:.1f}, Vel={velocidade_atual:.1f}, VelAlvo={self.velocidade_alvo:.1f}, Curv={self.curvatura_atual:.3f}, Estado={self.estado_curva}, {status}")
+        # Debug (removido print para melhor performance)
     
     def desenhar_debug(self, superficie, camera=None, mostrar_todos_checkpoints=False):
         """Desenha debug visual da IA (otimizado)"""

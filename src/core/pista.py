@@ -55,6 +55,7 @@ def eh_pixel_da_pista(surface, x, y):
 _pixel_cache = {}
 _cache_hits = 0
 _cache_misses = 0
+_cache_max_size = 5000  # Aumentado para melhor hit rate
 
 def eh_pixel_transitavel(surface, x, y):
     """True se é área transitável (não colide); False se é parede/limite."""
@@ -143,8 +144,15 @@ def eh_pixel_transitavel(surface, x, y):
         resultado = False
     
     # Armazenar no cache (limitar tamanho do cache para boa performance)
-    if len(_pixel_cache) < 3000:  # Equilibrado para boa performance
+    if len(_pixel_cache) < _cache_max_size:
         _pixel_cache[cache_key] = resultado
+    elif _cache_misses > _cache_hits * 2:
+        # Se há muitos misses, limpar cache parcialmente (LRU simples)
+        if len(_pixel_cache) > _cache_max_size // 2:
+            # Remover 25% mais antigos
+            keys_to_remove = list(_pixel_cache.keys())[:len(_pixel_cache) // 4]
+            for key in keys_to_remove:
+                del _pixel_cache[key]
     
     return resultado
 

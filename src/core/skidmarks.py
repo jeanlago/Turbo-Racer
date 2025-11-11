@@ -74,9 +74,21 @@ class GerenciadorSkidmarks:
         # Não remover skidmarks - eles são permanentes
     
     def desenhar(self, tela, camera):
-        """Desenha todos os skidmarks"""
-        for skidmark in self.skidmarks:
-            skidmark.desenhar(tela, camera)
+        """Desenha todos os skidmarks - otimizado"""
+        # Filtrar apenas skidmarks visíveis
+        if camera:
+            visao = camera.ret_visao()
+            margem = 50  # Margem para garantir que skidmarks próximos sejam desenhados
+            for skidmark in self.skidmarks:
+                # Verificar se pelo menos um ponto está visível
+                if (visao.left - margem <= skidmark.x1 <= visao.right + margem and
+                    visao.top - margem <= skidmark.y1 <= visao.bottom + margem) or \
+                   (visao.left - margem <= skidmark.x2 <= visao.right + margem and
+                    visao.top - margem <= skidmark.y2 <= visao.bottom + margem):
+                    skidmark.desenhar(tela, camera)
+        else:
+            for skidmark in self.skidmarks:
+                skidmark.desenhar(tela, camera)
     
     def limpar(self):
         """Remove todos os skidmarks"""

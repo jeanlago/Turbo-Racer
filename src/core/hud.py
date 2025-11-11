@@ -44,7 +44,7 @@ class HUD:
         # Configurações do velocímetro (canto inferior direito)
         self.velocimetro_centro = (1170, 630)
         self.velocimetro_raio = 80  # Reduzido de 150 para 100
-        self.velocimetro_vmax = 300.0  # km/h para escala
+        self.velocimetro_vmax = 250.0  # km/h para escala (ajustado para velocidade real do jogo)
         
         # Configurações do nitro (ao lado esquerdo do velocímetro)
         self.nitro_centro = (1080, 675)  # Posição mais à direita do velocímetro
@@ -219,16 +219,25 @@ class HUD:
             rect_rot.center = (int(centro_ponteiro_x), int(centro_ponteiro_y))
             superficie.blit(ponteiro_rot, rect_rot.topleft)
 
-        # Texto de velocidade (debug/visual)
+        # Texto de velocidade (debug/visual) - otimizado com cache
         if hasattr(carro, 'velocidade_kmh'):
-            fonte_vel = pygame.font.SysFont("consolas", 24, bold=True)
-            txt = fonte_vel.render(f"{int(velocidade_kmh)} km/h", True, (255, 255, 255))
-            tx = self.velocimetro_centro[0] - txt.get_width() // 2
+            if not hasattr(self, '_fonte_vel_cache'):
+                self._fonte_vel_cache = pygame.font.SysFont("consolas", 24, bold=True)
+                self._fundo_vel_cache = None
+                self._velocidade_texto_cache = None
+            
+            vel_int = int(velocidade_kmh)
+            if self._velocidade_texto_cache != vel_int:
+                txt = self._fonte_vel_cache.render(f"{vel_int} km/h", True, (255, 255, 255))
+                self._fundo_vel_cache = pygame.Surface((txt.get_width() + 10, txt.get_height() + 5), pygame.SRCALPHA)
+                self._fundo_vel_cache.fill((0, 0, 0, 150))
+                self._texto_vel_cache = txt
+                self._velocidade_texto_cache = vel_int
+            
+            tx = self.velocimetro_centro[0] - self._texto_vel_cache.get_width() // 2
             ty = self.velocimetro_centro[1] + self.velocimetro_raio + 20
-            fundo = pygame.Surface((txt.get_width() + 10, txt.get_height() + 5), pygame.SRCALPHA)
-            fundo.fill((0, 0, 0, 150))
-            superficie.blit(fundo, (tx - 5, ty - 2))
-            superficie.blit(txt, (tx, ty))
+            superficie.blit(self._fundo_vel_cache, (tx - 5, ty - 2))
+            superficie.blit(self._texto_vel_cache, (tx, ty))
     
     def desenhar_informacoes_carro(self, superficie, carro, posicao=(20, 200)):
         """Desenha informações detalhadas do carro"""
