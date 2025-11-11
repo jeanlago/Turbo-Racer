@@ -134,8 +134,8 @@ class HUD:
 ```
 
 **Elementos do HUD:**
-- Velocímetro com ponteiro
-- Indicador de nitro
+- Velocímetro horizontal com PNGs (número de velocidade + barra animada)
+- Indicador de nitro (posicionado ao lado do velocímetro)
 - Informações do carro
 - Debug de física (opcional)
 

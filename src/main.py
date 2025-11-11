@@ -24,17 +24,17 @@ from config import CAMINHO_MENU
 
 CARROS_DISPONIVEIS = [
     {"nome": "Nissan 350Z", "prefixo_cor": "Car1", "posicao": (570, 145), "sprite_selecao": "Car1", "tipo_tracao": "rear", "tamanho_oficina": (850, 550), "posicao_oficina": (LARGURA//2 - 430, 170), "preco": 0},  # Gratuito (primeiro carro)
-    {"nome": "BMW M3 95' ", "prefixo_cor": "Car2", "posicao": (570, 190), "sprite_selecao": "Car2", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380), "preco": 1500},
-    {"nome": "Chevrolet Camaro", "prefixo_cor": "Car3", "posicao": (560, 210), "sprite_selecao": "Car3", "tipo_tracao": "rear", "tamanho_oficina": (580, 550), "posicao_oficina": (LARGURA//2 - 320, 200), "preco": 2000},
-    {"nome": "Toyota Supra", "prefixo_cor": "Car4", "posicao": (570, 190), "sprite_selecao": "Car4", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380), "preco": 2500},
-    {"nome": "Toyota Trueno", "prefixo_cor": "Car5", "posicao": (590, 175), "sprite_selecao": "Car5", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380), "preco": 1800},
-    {"nome": "Nissan Skyline", "prefixo_cor": "Car6", "posicao": (550, 200), "sprite_selecao": "Car6", "tipo_tracao": "front", "tamanho_oficina": (900, 650), "posicao_oficina": (LARGURA//2 - 490, 215), "preco": 3000},
-    {"nome": "Nissan Silvia S13", "prefixo_cor": "Car7", "posicao": (600, 185), "sprite_selecao": "Car7", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380), "preco": 2200},
-    {"nome": "Mazda RX-7", "prefixo_cor": "Car8", "posicao": (540, 220), "sprite_selecao": "Car8", "tipo_tracao": "awd", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380), "preco": 3500},
-    {"nome": "Toyota Celica", "prefixo_cor": "Car9", "posicao": (610, 195), "sprite_selecao": "Car9", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 350, 380), "preco": 2000},
-    {"nome": "Volkswagem Fusca", "prefixo_cor": "Car10", "posicao": (530, 240), "sprite_selecao": "Car10", "tipo_tracao": "front", "tamanho_oficina": (750, 550), "posicao_oficina": (LARGURA//2 - 400, 250), "preco": 1200},
-    {"nome": "Mitsubishi Lancer", "prefixo_cor": "Car11", "posicao": (620, 205), "sprite_selecao": "Car11", "tipo_tracao": "rear", "tamanho_oficina": (900, 650), "posicao_oficina": (LARGURA//2 - 490, 150), "preco": 2800},
-    {"nome": "Porsche 911 77'", "prefixo_cor": "Car12", "posicao": (520, 260), "sprite_selecao": "Car12", "tipo_tracao": "rear", "tamanho_oficina": (900, 650), "posicao_oficina": (LARGURA//2 - 490, 215), "preco": 4000},
+    {"nome": "BMW M3 95' ", "prefixo_cor": "Car2", "posicao": (570, 190), "sprite_selecao": "Car2", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380), "preco": 3000},
+    {"nome": "Chevrolet Camaro", "prefixo_cor": "Car3", "posicao": (560, 210), "sprite_selecao": "Car3", "tipo_tracao": "rear", "tamanho_oficina": (580, 550), "posicao_oficina": (LARGURA//2 - 320, 200), "preco": 4000},
+    {"nome": "Toyota Supra", "prefixo_cor": "Car4", "posicao": (570, 190), "sprite_selecao": "Car4", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380), "preco": 5000},
+    {"nome": "Toyota Trueno", "prefixo_cor": "Car5", "posicao": (590, 175), "sprite_selecao": "Car5", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380), "preco": 3600},
+    {"nome": "Nissan Skyline", "prefixo_cor": "Car6", "posicao": (550, 200), "sprite_selecao": "Car6", "tipo_tracao": "front", "tamanho_oficina": (900, 650), "posicao_oficina": (LARGURA//2 - 490, 215), "preco": 6000},
+    {"nome": "Nissan Silvia S13", "prefixo_cor": "Car7", "posicao": (600, 185), "sprite_selecao": "Car7", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380), "preco": 4400},
+    {"nome": "Mazda RX-7", "prefixo_cor": "Car8", "posicao": (540, 220), "sprite_selecao": "Car8", "tipo_tracao": "awd", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380), "preco": 7000},
+    {"nome": "Toyota Celica", "prefixo_cor": "Car9", "posicao": (610, 195), "sprite_selecao": "Car9", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 350, 380), "preco": 4000},
+    {"nome": "Volkswagem Fusca", "prefixo_cor": "Car10", "posicao": (530, 240), "sprite_selecao": "Car10", "tipo_tracao": "front", "tamanho_oficina": (750, 550), "posicao_oficina": (LARGURA//2 - 400, 250), "preco": 2400},
+    {"nome": "Mitsubishi Lancer", "prefixo_cor": "Car11", "posicao": (620, 205), "sprite_selecao": "Car11", "tipo_tracao": "rear", "tamanho_oficina": (900, 650), "posicao_oficina": (LARGURA//2 - 490, 150), "preco": 5600},
+    {"nome": "Porsche 911 77'", "prefixo_cor": "Car12", "posicao": (520, 260), "sprite_selecao": "Car12", "tipo_tracao": "rear", "tamanho_oficina": (900, 650), "posicao_oficina": (LARGURA//2 - 490, 215), "preco": 8000},
 ]
 
 def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=None, modo_jogo=ModoJogo.UM_JOGADOR, tipo_jogo=TipoJogo.CORRIDA, voltas=1, dificuldade_ia="medio"):
@@ -499,7 +499,9 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         if resultado:
                             carro_p1_idx, carro_p2_idx = resultado
                             return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
-                        return
+                        # Se resultado for None (usuário cancelou), limpar estado e continuar
+                        estado_fim_jogo = None
+                        continue
                     elif acao == "menu" or acao == "sair":
                         return
                 continue
@@ -796,10 +798,10 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
         if mostrar_hud:
             if modo_jogo == ModoJogo.DOIS_JOGADORES and carro2 is not None:
-                hud.desenhar_hud_completo(tela, carro1)
-                hud.desenhar_hud_completo(tela, carro2)
+                hud.desenhar_hud_completo(tela, carro1, dt)
+                hud.desenhar_hud_completo(tela, carro2, dt)
             else:
-                hud.desenhar_hud_completo(tela, carro1)
+                hud.desenhar_hud_completo(tela, carro1, dt)
 
             if tipo_jogo == TipoJogo.DRIFT:
                 minutos = int(tempo_restante // 60)
@@ -858,7 +860,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
             if jogo_terminado and tipo_jogo == TipoJogo.DRIFT and not tela_fim_mostrada:
                 if not hasattr(principal, '_recompensa_drift_calculada'):
-                    recompensa_drift = int(pontuacao_final / 100)
+                    recompensa_drift = int(pontuacao_final / 200)  # Reduzido de /100 para /200
                     gerenciador_progresso.adicionar_dinheiro(recompensa_drift)
                     principal._recompensa_drift_calculada = recompensa_drift
                 else:
@@ -927,19 +929,19 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             posicao_jogador = None
             if corrida.finalizou.get(carro1, False):
                 vencedor = "JOGADOR VENCEU!"
-                recompensa_base = 500
+                recompensa_base = 150  # Reduzido de 500 para 150
                 if dificuldade_ia == "facil":
                     recompensa_dinheiro = recompensa_base
                 elif dificuldade_ia == "medio":
-                    recompensa_dinheiro = int(recompensa_base * 1.5)
+                    recompensa_dinheiro = int(recompensa_base * 1.5)  # 225
                 else:
-                    recompensa_dinheiro = int(recompensa_base * 2.0)
+                    recompensa_dinheiro = int(recompensa_base * 2.0)  # 300
                 gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro)
                 todos_carros = [c for c in carros if c is not None]
                 posicao_jogador = obter_posicao_jogador(carro1, todos_carros)
             elif carro3 and corrida.finalizou.get(carro3, False):
                 vencedor = "IA VENCEU!"
-                recompensa_dinheiro = 100
+                recompensa_dinheiro = 30  # Reduzido de 100 para 30
                 gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro)
                 todos_carros = [c for c in carros if c is not None]
                 posicao_jogador = obter_posicao_jogador(carro1, todos_carros)

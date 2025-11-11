@@ -705,9 +705,9 @@ def selecionar_mapas_loop(screen):
                     if recarregar_mapas():
                         mapas = obter_lista_mapas()
                         indice = 0
-                        popup_musica.mostrar("Mapas recarregados!")
+                        popup_musica.mostrar("Mapas recarregados!", tipo="outra")
                     else:
-                        popup_musica.mostrar("Nenhum mapa novo encontrado")
+                        popup_musica.mostrar("Nenhum mapa novo encontrado", tipo="outra")
         
         screen.blit(bg, (0, 0))
         
@@ -965,9 +965,9 @@ def selecionar_carros_loop(screen):
                             if botao_comprar_rect_p1 and botao_comprar_rect_p1.collidepoint(mouse_x, mouse_y):
                                 preco = carro_atual.get('preco', 0)
                                 if gerenciador_progresso.comprar_carro(carro_atual['prefixo_cor'], preco):
-                                    popup_musica.mostrar(f"Carro {carro_atual['nome']} comprado!")
+                                    popup_musica.mostrar(f"Carro {carro_atual['nome']} comprado!", tipo="outra")
                                 else:
-                                    popup_musica.mostrar("Dinheiro insuficiente!")
+                                    popup_musica.mostrar("Dinheiro insuficiente!", tipo="outra")
                     elif fase_selecao == 2:
                         carro_atual = CARROS_DISPONIVEIS[carro_p2]
                         esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
@@ -981,9 +981,9 @@ def selecionar_carros_loop(screen):
                             if botao_comprar_rect_p2 and botao_comprar_rect_p2.collidepoint(mouse_x, mouse_y):
                                 preco = carro_atual.get('preco', 0)
                                 if gerenciador_progresso.comprar_carro(carro_atual['prefixo_cor'], preco):
-                                    popup_musica.mostrar(f"Carro {carro_atual['nome']} comprado!")
+                                    popup_musica.mostrar(f"Carro {carro_atual['nome']} comprado!", tipo="outra")
                                 else:
-                                    popup_musica.mostrar("Dinheiro insuficiente!")
+                                    popup_musica.mostrar("Dinheiro insuficiente!", tipo="outra")
             if ev.type == pygame.KEYDOWN:
                 if ev.key == pygame.K_ESCAPE:
                     return None, None
@@ -1026,9 +1026,9 @@ def selecionar_carros_loop(screen):
                         if not esta_desbloqueado:
                             preco = carro_atual.get('preco', 0)
                             if gerenciador_progresso.comprar_carro(carro_atual['prefixo_cor'], preco):
-                                popup_musica.mostrar(f"Carro {carro_atual['nome']} comprado!")
+                                popup_musica.mostrar(f"Carro {carro_atual['nome']} comprado!", tipo="outra")
                             else:
-                                popup_musica.mostrar("Dinheiro insuficiente!")
+                                popup_musica.mostrar("Dinheiro insuficiente!", tipo="outra")
         
         # Desenhar
         screen.blit(bg, (0, 0))
@@ -1208,20 +1208,27 @@ def selecionar_carros_loop(screen):
                     screen.blit(texto_comprar, (texto_comprar_x, texto_comprar_y))
             
         elif fase_selecao == 2:
-            # FASE 2: Player 2 selecionando
+            # FASE 2: Player 2 selecionando (azul claro harmonizado) - mais espaçado
             subtitulo = render_text("JOGADOR 2 - ESCOLHA SEU CARRO", 32, (150, 220, 255), bold=True, pixel_style=True)
             subtitulo_x = (LARGURA - subtitulo.get_width()) // 2
-            screen.blit(subtitulo, (subtitulo_x, 50))
+            screen.blit(subtitulo, (subtitulo_x, 90))
             
             # Mostrar carro do P1 já selecionado (pequeno, no canto)
             carro_p1_selecionado = CARROS_DISPONIVEIS[carro_p1]
             sprite_p1 = pygame.transform.scale(sprites_carros[carro_p1_selecionado['prefixo_cor']], (90, 45))
-            screen.blit(render_text("P1:", 20, (255, 255, 255)), (50, 100))
+            screen.blit(render_text("P1:", 20, (255, 255, 255), bold=True, pixel_style=True), (50, 100))
             screen.blit(sprite_p1, (50, 120))
-            screen.blit(render_text(carro_p1_selecionado['nome'], 16, (255, 255, 255)), (50, 175))
+            screen.blit(render_text(carro_p1_selecionado['nome'], 16, (255, 255, 255), bold=True, pixel_style=True), (50, 175))
             
-            # Instruções
-            screen.blit(render_text("← → navegar | ENTER confirmar | ESC voltar", 18, (200, 200, 200)), (LARGURA//2 - 180, 60))
+            # Instruções - mais espaçado
+            carro_atual = CARROS_DISPONIVEIS[carro_p2]
+            esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+            if esta_desbloqueado:
+                instrucoes = render_text("← → navegar | ENTER confirmar | ESC voltar", 20, (255, 255, 255), bold=True, pixel_style=True)
+            else:
+                instrucoes = render_text("← → navegar | B comprar | ESC voltar", 20, (255, 255, 255), bold=True, pixel_style=True)
+            instrucoes_x = (LARGURA - instrucoes.get_width()) // 2
+            screen.blit(instrucoes, (instrucoes_x, 130))
             
             # Carro selecionado P2 - Grande e centralizado
             if transicao_ativa:

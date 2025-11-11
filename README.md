@@ -461,5 +461,5 @@ Este projeto é de código aberto e está disponível sob a **licença MIT**.
 ---
 
 **Desenvolvido com por Jean Marins e Jayson Sales**  
-**Versão atual:** 2.3.0  
-**Última atualização:** Setembro 2025
+**Versão atual:** 2.5.0  
+**Última atualização:** Novembro 2025

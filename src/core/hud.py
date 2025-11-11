@@ -2,6 +2,16 @@ import pygame
 import math
 import os
 
+# Importar render_text do menu para usar a mesma fonte
+try:
+    from core.menu import render_text
+except ImportError:
+    # Fallback caso não consiga importar
+    def render_text(text, size, color=(255, 255, 255), bold=True, pixel_style=True):
+        pygame.font.init()
+        fonte = pygame.font.SysFont("consolas", size, bold=bold)
+        return fonte.render(text, True, color)
+
 class HUD:
     """
     Sistema de HUD para o jogo com velocímetro, ponteiro e informações do carro
@@ -19,21 +29,7 @@ class HUD:
         self.cor_rpm = (255, 165, 0)
         self.cor_marcha = (0, 255, 255)
         
-        # Configurações do ponteiro (valores fixos otimizados)
-        self.ponteiro_offset_x = 1
-        self.ponteiro_offset_y = 23
-        self.ponteiro_escala_atual = 0.07  # Reduzido de 0.1 para 0.07
-        self.ponteiro_pivo_x = 180.69452265072886
-        self.ponteiro_pivo_y = 1.2977856569646988
-        self.ponteiro_angulo_inicial = 215
-        self.pivo_sprite_x = 180.69452265072886
-        self.pivo_sprite_y = 1.2977856569646988
-        self.ponteiro_comprimento_relativo = 0.1
-        self._ultimo_angulo_desenho = 0.0
-        
         # Imagens (serão carregadas se existirem)
-        self.imagem_velocimetro = None
-        self.imagem_ponteiro = None
         self.imagem_fundo_hud = None
         self.imagem_nitro_cheio = None
         self.imagem_nitro_vazio = None
@@ -41,23 +37,23 @@ class HUD:
         # Carregar imagens se existirem
         self._carregar_imagens()
         
-        # Configurações do velocímetro (canto inferior direito)
-        self.velocimetro_centro = (1170, 630)
-        self.velocimetro_raio = 80  # Reduzido de 150 para 100
-        self.velocimetro_vmax = 250.0  # km/h para escala (ajustado para velocidade real do jogo)
+        # Configurações do novo velocímetro horizontal com PNGs
+        self.velocimetro_posicao = (1000, 650)  # Posição do velocímetro (canto inferior direito, mais baixo)
+        self.velocimetro_vmax = 180.0  # Velocidade máxima: 180 km/h
+        self.velocimetro_largura = 250  # Largura desejada do velocímetro
+        self.velocimetro_altura = 40  # Altura desejada do velocímetro
         
-        # Configurações do nitro (ao lado esquerdo do velocímetro)
-        self.nitro_centro = (1080, 675)  # Posição mais à direita do velocímetro
+        # Imagens do velocímetro (colorido e sem cor)
+        self.imagem_velocimetro_colorido = None
+        self.imagem_velocimetro_sem_cor = None
+        self._carregar_imagens_velocimetro()
+        
+        # Cache para animação suave
+        self._velocidade_anterior = 0.0
+        self._velocidade_alvo = 0.0
+        
+        # Configurações do nitro (ao lado do número do velocímetro)
         self.nitro_tamanho = (60, 60)   # Tamanho do ícone de nitro reduzido
-        # Ângulos do mostrador (em graus). Usando arco completo do velocímetro
-        # -135° a 135° = 270° de arco (3/4 de círculo)
-        self.velocimetro_ang_min = -135.0
-        self.velocimetro_ang_max = 135.0
-        # Offset para alinhar a orientação do sprite do ponteiro
-        # -90° para ponteiro que aponta para cima no sprite original
-        self.ponteiro_offset_graus = -90.0
-        # Comprimento relativo do ponteiro em relação ao raio do velocímetro
-        self.ponteiro_comprimento_relativo = 0.85
         
         # Configurações do HUD (canto inferior esquerdo - minimapa)
         self.posicao_hud = (20, 510)  # Ajustado para ficar acima do velocímetro descido
@@ -66,18 +62,6 @@ class HUD:
     def _carregar_imagens(self):
         """Carrega imagens do HUD se existirem"""
         try:
-            # Carregar velocímetro
-            caminho_velocimetro = "assets/images/icons/velocimetro.png"
-            if os.path.exists(caminho_velocimetro):
-                self.imagem_velocimetro = pygame.image.load(caminho_velocimetro).convert_alpha()
-                print("Velocímetro carregado com sucesso!")
-            
-            # Carregar ponteiro
-            caminho_ponteiro = "assets/images/icons/ponteiro.png"
-            if os.path.exists(caminho_ponteiro):
-                self.imagem_ponteiro = pygame.image.load(caminho_ponteiro).convert_alpha()
-                print("Ponteiro carregado com sucesso!")
-            
             # Carregar fundo do HUD (se existir)
             caminho_fundo = "assets/images/icons/hud_fundo.png"
             if os.path.exists(caminho_fundo):
@@ -99,145 +83,188 @@ class HUD:
         except Exception as e:
             print(f"Erro ao carregar imagens do HUD: {e}")
     
+    def _carregar_imagens_velocimetro(self):
+        """Carrega as 2 imagens do velocímetro (colorido e sem cor)"""
+        try:
+            # Tentar diferentes caminhos para a imagem colorida
+            caminhos_colorido = [
+                "assets/images/icons/velocimetro/velocimetro_colorido.png",
+                "assets/images/icons/velocimetro_colorido.png",
+                "assets/images/velocimetro/velocimetro_colorido.png",
+                "assets/images/icons/velocimetro.png",
+            ]
+            
+            for caminho in caminhos_colorido:
+                if os.path.exists(caminho):
+                    try:
+                        img = pygame.image.load(caminho).convert_alpha()
+                        # Redimensionar para o tamanho desejado
+                        self.imagem_velocimetro_colorido = pygame.transform.scale(
+                            img, (self.velocimetro_largura, self.velocimetro_altura)
+                        )
+                        print(f"Velocímetro colorido carregado e redimensionado: {caminho}")
+                        break
+                    except Exception as e:
+                        print(f"Erro ao carregar {caminho}: {e}")
+            
+            # Tentar diferentes caminhos para a imagem sem cor (branco/preto)
+            caminhos_sem_cor = [
+                "assets/images/icons/velocimetro/velocimetro_sem_cor.png",
+                "assets/images/icons/velocimetro_sem_cor.png",
+                "assets/images/velocimetro/velocimetro_sem_cor.png",
+                "assets/images/icons/velocimetro_branco.png",
+                "assets/images/icons/velocimetro_vazio.png",
+            ]
+            
+            for caminho in caminhos_sem_cor:
+                if os.path.exists(caminho):
+                    try:
+                        img = pygame.image.load(caminho).convert_alpha()
+                        # Redimensionar para o tamanho desejado
+                        self.imagem_velocimetro_sem_cor = pygame.transform.scale(
+                            img, (self.velocimetro_largura, self.velocimetro_altura)
+                        )
+                        print(f"Velocímetro sem cor carregado e redimensionado: {caminho}")
+                        break
+                    except Exception as e:
+                        print(f"Erro ao carregar {caminho}: {e}")
+            
+            # Criar fallback se não encontrar as imagens
+            if not self.imagem_velocimetro_colorido:
+                print("Criando fallback para velocímetro colorido")
+                self.imagem_velocimetro_colorido = pygame.Surface(
+                    (self.velocimetro_largura, self.velocimetro_altura), pygame.SRCALPHA
+                )
+                self.imagem_velocimetro_colorido.fill((0, 255, 0, 200))
+            
+            if not self.imagem_velocimetro_sem_cor:
+                print("Criando fallback para velocímetro sem cor")
+                self.imagem_velocimetro_sem_cor = pygame.Surface(
+                    (self.velocimetro_largura, self.velocimetro_altura), pygame.SRCALPHA
+                )
+                self.imagem_velocimetro_sem_cor.fill((200, 200, 200, 200))
+                    
+        except Exception as e:
+            print(f"Erro ao carregar imagens do velocímetro: {e}")
     
-    def _calcular_ponta_ponteiro(self, angulo_graus=None):
-        """Calcula a posição da ponta do ponteiro para um ângulo específico"""
-        if angulo_graus is None:
-            angulo_graus = 0  # Ângulo base para edição
+    
+    def _obter_cor_por_velocidade(self, velocidade_kmh):
+        """Retorna a cor baseada na velocidade (muda a cada 10km/h até 180km/h)"""
+        # Limitar velocidade a 180 km/h
+        velocidade_kmh = min(velocidade_kmh, 180.0)
         
-        comprimento_ponteiro = self.velocimetro_raio * self.ponteiro_comprimento_relativo
-        import math
-        angulo_rad = math.radians(angulo_graus)
-        ponta_x = self.velocimetro_centro[0] + comprimento_ponteiro * math.cos(angulo_rad)
-        ponta_y = self.velocimetro_centro[1] + comprimento_ponteiro * math.sin(angulo_rad)
-        return ponta_x, ponta_y
+        # Calcular qual faixa de 10km estamos (0-9, 10-19, 20-29, etc.)
+        faixa = int(velocidade_kmh // 10)
+        
+        # Definir cores para cada faixa de 10km (18 faixas de 0 a 180)
+        # Gradiente de verde (baixo) -> amarelo -> laranja -> vermelho (alto)
+        cores = [
+            (0, 255, 0),      # 0-9: Verde
+            (50, 255, 0),     # 10-19: Verde claro
+            (100, 255, 0),    # 20-29: Verde amarelado
+            (150, 255, 0),    # 30-39: Amarelo esverdeado
+            (200, 255, 0),    # 40-49: Amarelo
+            (255, 255, 0),    # 50-59: Amarelo puro
+            (255, 220, 0),    # 60-69: Amarelo alaranjado
+            (255, 180, 0),    # 70-79: Laranja claro
+            (255, 140, 0),    # 80-89: Laranja
+            (255, 100, 0),    # 90-99: Laranja escuro
+            (255, 80, 0),     # 100-109: Vermelho alaranjado
+            (255, 60, 0),     # 110-119: Vermelho laranja
+            (255, 40, 0),     # 120-129: Vermelho
+            (255, 20, 0),     # 130-139: Vermelho escuro
+            (255, 0, 0),      # 140-149: Vermelho puro
+            (220, 0, 0),      # 150-159: Vermelho muito escuro
+            (180, 0, 0),      # 160-169: Vermelho quase preto
+            (150, 0, 0),      # 170-180: Vermelho muito escuro
+        ]
+        
+        # Garantir que não ultrapasse o índice
+        faixa = min(faixa, len(cores) - 1)
+        return cores[faixa]
     
-    def _escala_atual_sprite(self):
-        """Calcula a escala atual do sprite do ponteiro"""
-        if not self.imagem_ponteiro:
-            return 1.0
-        # Usar uma escala fixa menor para manter o ponteiro no tamanho original do arquivo
-        return 0.10  # Escala menor para ponteiro mais proporcional
-    
-    def _calcular_centro_ponteiro(self):
-        """Calcula a posição do centro do ponteiro (bolinha vermelha)"""
-        # centro = velocímetro + offset do ponteiro
-        return (self.velocimetro_centro[0] + self.ponteiro_offset_x,
-                self.velocimetro_centro[1] + self.ponteiro_offset_y)
-    
-    
-    
-    def _rotozoom_com_pivo(self, surf, ang_graus, escala, piv_rel_centro):
-        """
-        Gira/escala 'surf' em torno de um pivô (x,y) dado em coordenadas
-        RELATIVAS AO CENTRO do sprite original. Retorna (rot, rect).
-        """
-        w, h = surf.get_width(), surf.get_height()
-        # surface âncora grandinha p/ evitar crop
-        anc_w, anc_h = int(w*3), int(h*3)
-        ancora = pygame.Surface((anc_w, anc_h), pygame.SRCALPHA)
-
-        # onde fica o centro da âncora
-        cx, cy = anc_w // 2, anc_h // 2
-
-        # pivô é relativo ao CENTRO do sprite.
-        piv_x, piv_y = piv_rel_centro  # (ex.: -28.54, -33.38)
-
-        # top-left do sprite dentro da âncora para que o PIVÔ caIA no centro da âncora
-        tl_x = cx - (w/2 + piv_x)
-        tl_y = cy - (h/2 + piv_y)
-
-        ancora.blit(surf, (tl_x, tl_y))
-        rot = pygame.transform.rotozoom(ancora, ang_graus, escala)
-        rect = rot.get_rect()  # vamos só posicionar depois
-        return rot, rect
-    
-    
-    
-    
-    def desenhar_velocimetro(self, superficie, carro):
-        """Desenha o velocímetro com ponteiro (pivô correto e rotação horárIA)."""
+    def desenhar_velocimetro(self, superficie, carro, dt=0.016):
+        """Desenha o velocímetro horizontal com 2 PNGs (colorido e sem cor), similar ao nitro."""
         if not carro:
             return
 
-        # Velocidade (km/h) - ajustada para nova escala
+        # Obter velocidade (km/h)
         if hasattr(carro, 'velocidade_kmh'):
-            velocidade_kmh = float(carro.velocidade_kmh)  # Usar valor já calculado
+            velocidade_kmh = float(carro.velocidade_kmh)
         else:
-            velocidade_kmh = abs(float(getattr(carro, 'velocidade', 0.0))) * 1.0 * (200.0 / 650.0)  # escala automática
+            velocidade_kmh = abs(float(getattr(carro, 'velocidade', 0.0))) * 1.0 * (200.0 / 650.0)
 
-        # Fundo do velocímetro
-        if self.imagem_velocimetro:
-            w0 = self.imagem_velocimetro.get_width()
-            h0 = self.imagem_velocimetro.get_height()
-            esc = (self.velocimetro_raio * 2) / max(w0, h0)
-            nw, nh = int(w0 * esc), int(h0 * esc)
-            img = pygame.transform.smoothscale(self.imagem_velocimetro, (nw, nh))
-            superficie.blit(img, (self.velocimetro_centro[0] - nw // 2,
-                                  self.velocimetro_centro[1] - nh // 2))
+        # Limitar velocidade a 180 km/h
+        velocidade_kmh = min(velocidade_kmh, self.velocimetro_vmax)
+        velocidade_kmh = max(0.0, velocidade_kmh)
 
-        # Ponteiro do velocímetro
-        if self.imagem_ponteiro:
-            # Mapear velocidade para ângulo dentro do arco definido
-            # 0 km/h = ângulo mínimo, velocidade máxima = ângulo máximo
-            v = max(0.0, min(velocidade_kmh, self.velocimetro_vmax))
-            t = v / self.velocimetro_vmax  # t vai de 0 a 1
-            angulo_graus = self.velocimetro_ang_min + t * (self.velocimetro_ang_max - self.velocimetro_ang_min)
+        # Animar suavemente a velocidade (similar ao nitro)
+        velocidade_suavizada = velocidade_kmh
+        if abs(velocidade_kmh - self._velocidade_alvo) > 0.1:
+            # Interpolação suave
+            velocidade_suavizada = self._velocidade_anterior + (velocidade_kmh - self._velocidade_anterior) * min(1.0, dt * 8.0)
+            self._velocidade_anterior = velocidade_suavizada
+        else:
+            self._velocidade_anterior = velocidade_kmh
+        
+        self._velocidade_alvo = velocidade_kmh
+
+        # Posição do velocímetro
+        x, y = self.velocimetro_posicao
+
+        # Desenhar número da velocidade usando a fonte do menu
+        vel_texto = f"{int(velocidade_suavizada)}"
+        texto_surface = render_text(vel_texto, 48, (255, 255, 255), bold=True, pixel_style=True)
+        
+        # Posicionar o número acima do velocímetro
+        texto_x = x
+        texto_y = y - texto_surface.get_height() - 10
+        superficie.blit(texto_surface, (texto_x, texto_y))
+
+        # Calcular porcentagem de velocidade (0.0 a 1.0)
+        porcentagem_velocidade = velocidade_suavizada / self.velocimetro_vmax
+        porcentagem_velocidade = max(0.0, min(1.0, porcentagem_velocidade))
+
+        # Desenhar velocímetro similar ao nitro
+        if self.imagem_velocimetro_colorido and self.imagem_velocimetro_sem_cor:
+            # Obter tamanho das imagens
+            largura = self.imagem_velocimetro_colorido.get_width()
+            altura = self.imagem_velocimetro_colorido.get_height()
             
-            # Calcular comprimento do ponteiro
-            comprimento_ponteiro = self.velocimetro_raio * self.ponteiro_comprimento_relativo
+            # Criar superfície para o velocímetro
+            velocimetro_surface = pygame.Surface((largura, altura), pygame.SRCALPHA)
             
-            # Calcular posição da ponta do ponteiro baseada no ângulo (para rotação)
-            import math
-            angulo_rad = math.radians(angulo_graus)
-            ponta_angulo_x = self.velocimetro_centro[0] + comprimento_ponteiro * math.cos(angulo_rad)
-            ponta_angulo_y = self.velocimetro_centro[1] + comprimento_ponteiro * math.sin(angulo_rad)
-
-            # Aplicar offset para orientação do sprite, ângulo inicial e converter para rotação do pygame
-            # O pygame rota no sentido anti-horário, então invertemos o ângulo
-            angulo_desenho = -(angulo_graus + self.ponteiro_offset_graus + self.ponteiro_angulo_inicial)
-
-            # Escala usada no sprite
-            esc = self._escala_atual_sprite()
+            # Desenhar versão colorida como base
+            velocimetro_surface.blit(self.imagem_velocimetro_colorido, (0, 0))
             
-            # Centro no MUNDO = bolinha vermelha já ajustada
-            centro_ponteiro_x = self.velocimetro_centro[0] + self.ponteiro_offset_x
-            centro_ponteiro_y = self.velocimetro_centro[1] + self.ponteiro_offset_y
-
-            # atualize antes de chamar _desenhar_info...
-            self._ultimo_angulo_desenho = angulo_desenho
-
-            # gira/escala tendo o PIVÔ DO SPRITE = (pivo_sprite_x, pivo_sprite_y) (rel. ao centro do sprite)
-            ponteiro_rot, rect_rot = self._rotozoom_com_pivo(
-                self.imagem_ponteiro,
-                angulo_desenho,
-                esc,
-                (self.pivo_sprite_x, self.pivo_sprite_y)
-            )
-
-            # agora é fácil: blita CENTRALIZANDO no ponto vermelho
-            rect_rot.center = (int(centro_ponteiro_x), int(centro_ponteiro_y))
-            superficie.blit(ponteiro_rot, rect_rot.topleft)
-
-        # Texto de velocidade (debug/visual) - otimizado com cache
-        if hasattr(carro, 'velocidade_kmh'):
-            if not hasattr(self, '_fonte_vel_cache'):
-                self._fonte_vel_cache = pygame.font.SysFont("consolas", 24, bold=True)
-                self._fundo_vel_cache = None
-                self._velocidade_texto_cache = None
+            # Calcular largura da área sem cor que "cobre" da direita para esquerda
+            # (similar ao nitro que cobre de cima para baixo)
+            largura_sem_cor = int(largura * (1.0 - porcentagem_velocidade))
             
-            vel_int = int(velocidade_kmh)
-            if self._velocidade_texto_cache != vel_int:
-                txt = self._fonte_vel_cache.render(f"{vel_int} km/h", True, (255, 255, 255))
-                self._fundo_vel_cache = pygame.Surface((txt.get_width() + 10, txt.get_height() + 5), pygame.SRCALPHA)
-                self._fundo_vel_cache.fill((0, 0, 0, 150))
-                self._texto_vel_cache = txt
-                self._velocidade_texto_cache = vel_int
+            if largura_sem_cor > 0:
+                # Criar uma superfície para a área sem cor
+                area_sem_cor = pygame.Surface((largura_sem_cor, altura), pygame.SRCALPHA)
+                
+                # Desenhar a versão sem cor (branco/preto) na área
+                # Cortar apenas a parte direita da imagem sem cor
+                area_sem_cor.blit(self.imagem_velocimetro_sem_cor, (0, 0), 
+                                 (largura - largura_sem_cor, 0, largura_sem_cor, altura))
+                
+                # Aplicar a área sem cor na parte direita do velocímetro
+                velocimetro_surface.blit(area_sem_cor, (largura - largura_sem_cor, 0))
             
-            tx = self.velocimetro_centro[0] - self._texto_vel_cache.get_width() // 2
-            ty = self.velocimetro_centro[1] + self.velocimetro_raio + 20
-            superficie.blit(self._fundo_vel_cache, (tx - 5, ty - 2))
-            superficie.blit(self._texto_vel_cache, (tx, ty))
+            # Desenhar o velocímetro na tela
+            superficie.blit(velocimetro_surface, (x, y))
+        else:
+            # Fallback: desenhar barra simples
+            barra_largura = 300
+            barra_altura = 30
+            largura_preenchida = int(barra_largura * porcentagem_velocidade)
+            
+            pygame.draw.rect(superficie, (40, 40, 40), (x, y, barra_largura, barra_altura))
+            if largura_preenchida > 0:
+                cor = self._obter_cor_por_velocidade(velocidade_suavizada)
+                pygame.draw.rect(superficie, cor, (x, y, largura_preenchida, barra_altura))
     
     def desenhar_informacoes_carro(self, superficie, carro, posicao=(20, 200)):
         """Desenha informações detalhadas do carro"""
@@ -288,8 +315,8 @@ class HUD:
             superficie.blit(texto_freio, (posicao[0], y))
             y += self.espacamento_linhas
     
-    def desenhar_nitro(self, superficie, carro):
-        """Desenha o indicador de nitro ao lado esquerdo do velocímetro"""
+    def desenhar_nitro(self, superficie, carro, posicao_nitro=None):
+        """Desenha o indicador de nitro ao lado do número do velocímetro"""
         if not carro or not hasattr(carro, 'turbo_carga'):
             return
         
@@ -302,9 +329,13 @@ class HUD:
         porcentagem_nitro = nitro_atual / nitro_max if nitro_max > 0 else 0.0
         porcentagem_nitro = max(0.0, min(1.0, porcentagem_nitro))
         
-        # Posição do nitro
-        nitro_x = self.nitro_centro[0] - self.nitro_tamanho[0] // 2
-        nitro_y = self.nitro_centro[1] - self.nitro_tamanho[1] // 2
+        # Posição do nitro (se não fornecida, usar posição padrão)
+        if posicao_nitro:
+            nitro_x, nitro_y = posicao_nitro
+        else:
+            # Posição padrão (fallback)
+            nitro_x = 1000 - self.nitro_tamanho[0] - 10
+            nitro_y = 600
         
         # Desenhar nitro com efeito de "descida" do cinza
         if self.imagem_nitro_cheio and self.imagem_nitro_vazio:
@@ -344,7 +375,7 @@ class HUD:
         
         # Porcentagem removida para HUD mais limpo
     
-    def desenhar_hud_completo(self, superficie, carro):
+    def desenhar_hud_completo(self, superficie, carro, dt=0.016):
         """Desenha o HUD completo - versão limpa"""
         if not carro:
             return
@@ -353,11 +384,31 @@ class HUD:
         if self.imagem_fundo_hud:
             superficie.blit(self.imagem_fundo_hud, (0, 0))
         
-        # Desenhar velocímetro
-        self.desenhar_velocimetro(superficie, carro)
+        # Calcular posição do nitro antes de desenhar (precisa das informações do velocímetro)
+        # Obter velocidade para calcular posição do número
+        if hasattr(carro, 'velocidade_kmh'):
+            velocidade_kmh = float(carro.velocidade_kmh)
+        else:
+            velocidade_kmh = abs(float(getattr(carro, 'velocidade', 0.0))) * 1.0 * (200.0 / 650.0)
+        velocidade_kmh = min(velocidade_kmh, self.velocimetro_vmax)
+        velocidade_kmh = max(0.0, velocidade_kmh)
         
-        # Desenhar nitro
-        self.desenhar_nitro(superficie, carro)
+        # Calcular posição do número do velocímetro
+        x, y = self.velocimetro_posicao
+        vel_texto = f"{int(velocidade_kmh)}"
+        texto_surface = render_text(vel_texto, 48, (255, 255, 255), bold=True, pixel_style=True)
+        texto_x = x
+        texto_y = y - texto_surface.get_height() - 10
+        
+        # Calcular posição do nitro ao lado do número
+        nitro_x = texto_x - self.nitro_tamanho[0] - 10
+        nitro_y = texto_y + (texto_surface.get_height() - self.nitro_tamanho[1]) // 2
+        
+        # Desenhar velocímetro
+        self.desenhar_velocimetro(superficie, carro, dt)
+        
+        # Desenhar nitro na posição calculada
+        self.desenhar_nitro(superficie, carro, (nitro_x, nitro_y))
         
         # HUD limpo - apenas velocímetro e nitro
     
