@@ -26,9 +26,9 @@ Versão: 0.1  |  Data: 2025-09-26
 - Checkpoints e Voltas: validação de sequência e conclusão de volta.
   - Implementação: `src/core/checkpoint_manager.py`
   - Dados de guias/checkpoints: `assets/images/maps/guides/*.json`
-- HUD: velocímetro, nitro, ponteiro e UI de corrida.
+- HUD: velocímetro horizontal, nitro e UI de corrida.
   - Implementação: `src/core/hud.py`
-  - Assets: `assets/images/icons/velocimetro.png`, `assets/images/icons/ponteiro.png`
+  - Assets: `assets/images/icons/velocimetro_colorido.png`, `assets/images/icons/velocimetro_sem_cor.png`, `assets/images/icons/nitro.png`, `assets/images/icons/nitro_vazio.png`
 - Skidmarks e Partículas: efeitos visuais de derrapagem e fumaça.
   - Implementação: `src/core/skidmarks.py`, `src/core/particulas.py`
 - Câmera: follow com suavização.

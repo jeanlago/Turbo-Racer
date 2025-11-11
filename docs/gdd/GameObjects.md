@@ -45,10 +45,10 @@ Este documento descreve as principais entidades do jogo, seus atributos, comport
 
 ## HUD
 - Código: `src/core/hud.py`
-- Assets: `assets/images/icons/velocimetro.png`, `assets/images/icons/ponteiro.png`, `assets/images/icons/nitro.png`, `assets/images/icons/nitro_vazio.png`
+- Assets: `assets/images/icons/velocimetro_colorido.png`, `assets/images/icons/velocimetro_sem_cor.png`, `assets/images/icons/nitro.png`, `assets/images/icons/nitro_vazio.png`
 - Elementos:
-  - velocímetro (ponteiro com rotação baseada na velocidade)
-  - barra de nitro (cheio/vazio)
+  - velocímetro horizontal (número de velocidade + barra animada com PNGs, similar ao nitro)
+  - barra de nitro (cheio/vazio, posicionado ao lado do velocímetro)
   - pontuação de drift (integra `src/core/drift_scoring.py`)
 
 ## Câmera

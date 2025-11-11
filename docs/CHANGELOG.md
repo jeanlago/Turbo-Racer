@@ -7,7 +7,34 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
-## [2.4.0] - 2025-01-XX
+## [2.5.0] - 2025-11-10
+
+### Adicionado
+- **Velocímetro Horizontal com PNGs** - Novo velocímetro horizontal usando imagens PNG (colorido e sem cor) com animação de preenchimento similar ao nitro
+- **Sistema de Notificações Diferenciado** - Popup de notificações com ícones diferentes para música (disco de vinil rotativo) e outras notificações (ícone de notificação com efeito de piscar laranja)
+- **Animação de Piscar para Notificações** - Efeito visual de piscar laranja para notificações não-musicais (borda e ícone)
+
+### Modificado
+- **Velocímetro** - Substituído velocímetro circular antigo por velocímetro horizontal moderno com número de velocidade e barra animada
+- **Sistema de Recompensas** - Recompensas de corrida reduzidas (base: 500 → 150) para melhor balanceamento
+- **Preços dos Carros** - Preços dos carros dobrados para tornar o progresso mais desafiador
+- **Recompensas de Drift** - Reduzidas de pontuação/100 para pontuação/200
+- **Layout da Oficina (Player 2)** - Corrigido espaçamento e posicionamento para corresponder ao layout do Player 1
+- **Posicionamento do Nitro** - Nitro agora posicionado ao lado do número do velocímetro (à esquerda) em vez de embaixo
+- **Posição do Velocímetro** - Movido para posição mais baixa na tela (Y: 600 → 650)
+
+### Corrigido
+- **Layout da Tela do Player 2** - Corrigido sobreposição de textos na seleção de carros do Player 2
+- **Crash ao Pressionar ESC** - Corrigido crash ao pressionar ESC na tela de mudança de carro após terminar corrida
+- **Posicionamento de Elementos HUD** - Ajustado espaçamento entre velocímetro e nitro
+
+### Removido
+- **Velocímetro Circular Antigo** - Removido velocímetro circular com ponteiro e toda lógica relacionada
+- **Métodos Antigos do Velocímetro** - Removidos métodos `_calcular_ponta_ponteiro`, `_escala_atual_sprite`, `_calcular_centro_ponteiro`, `_rotozoom_com_pivo`
+
+---
+
+## [2.4.0] - 2025-11-10
 
 ### Adicionado
 - **Sistema de Economia** - Sistema de dinheiro para desbloquear carros
@@ -220,5 +247,5 @@ chore: atualizar dependências do pygame
 ---
 
 **Última atualização:** Janeiro 2025  
-**Versão atual:** 2.4.0  
-**Próxima versão:** 2.5.0 (planejada)
+**Versão atual:** 2.5.0  
+**Próxima versão:** 2.6.0 (planejada)
