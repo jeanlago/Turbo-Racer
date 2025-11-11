@@ -8,6 +8,9 @@ Um jogo de corrida arcade 2D top-down desenvolvido em **Python** com **Pygame**,
 
 -  **Múltiplos Modos de Jogo** - 1 jogador, 2 jogadores (split-screen) e modo drift
 -  **Menu de Pausa Completo** - Sistema de pausa com opções de continuar, reiniciar e voltar
+-  **Sistema de Economia** - Sistema de dinheiro para desbloquear carros
+-  **Sistema de Troféus** - Troféus baseados em posição ou pontuação de drift
+-  **Tela de Fim de Jogo** - Popup sobre o jogo com resultados e opções
 -  **Sistema de Física Avançado** - 3 tipos de tração (RWD, FWD, AWD) com comportamento único
 -  **IA Inteligente** - Algoritmo Pure Pursuit para navegação suave e realista
 -  **Sistema de Dificuldade Universal** - 3 níveis (Fácil, Médio, Difícil) para corrida e drift

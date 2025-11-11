@@ -98,8 +98,11 @@ class EmissorFumaca:
         self._frame_atual += 1
 
     def draw(self, surface, camera=None):
-        # Otimização: pré-calcular zoom se houver câmera
+        # Otimização: pré-calcular zoom e limites da tela
         zoom = getattr(camera, "zoom", 1.0) if camera else 1.0
+        largura_tela = surface.get_width()
+        altura_tela = surface.get_height()
+        margem = 50
         
         for p in self.ps:
             scale, alpha = p.interp()
@@ -107,15 +110,30 @@ class EmissorFumaca:
             if camera:
                 x, y = camera.mundo_para_tela(x, y)
             
-            # Verificar se a partícula está dentro da tela
-            if x < -50 or x > 1280 + 50 or y < -50 or y > 720 + 50:
+            # Verificar se a partícula está dentro da tela (otimizado)
+            if x < -margem or x > largura_tela + margem or y < -margem or y > altura_tela + margem:
                 continue  # Pular partículas fora da tela
             
             # Usar textura de fumaça se disponível
             if self.tex_fumaca:
                 # Usar índice individual de cada partícula (sem loop global)
                 tex_index = p.tex_index % len(self.tex_fumaca)
-                img = pygame.transform.rotozoom(self.tex_fumaca[tex_index], p.ang, scale * zoom)
+                # Cache de transformações (limitado para não crescer muito)
+                if not hasattr(self, '_transform_cache'):
+                    self._transform_cache = {}
+                    self._cache_size_limit = 50
+                
+                cache_key = (tex_index, int(p.ang), int(scale * zoom * 10))
+                if cache_key not in self._transform_cache:
+                    if len(self._transform_cache) > self._cache_size_limit:
+                        # Limpar cache antigo (FIFO)
+                        oldest_key = next(iter(self._transform_cache))
+                        del self._transform_cache[oldest_key]
+                    img = pygame.transform.rotozoom(self.tex_fumaca[tex_index], p.ang, scale * zoom)
+                    self._transform_cache[cache_key] = img
+                else:
+                    img = self._transform_cache[cache_key]
+                
                 img.set_alpha(alpha)
                 surface.blit(img, img.get_rect(center=(int(x), int(y))))
             else:
@@ -188,15 +206,22 @@ class EmissorNitro:
 
     def draw(self, surface, camera=None):
         zoom = getattr(camera, "zoom", 1.0) if camera else 1.0
+        largura_tela = surface.get_width()
+        altura_tela = surface.get_height()
+        margem = 50
         
         for p in self.ps:
             scale, alpha = p.interp()
-            # Usar textura animada de nitro
-            tex_index = int((self._frame_atual * 0.2) % len(self.tex_nitro))
-            img = pygame.transform.rotozoom(self.tex_nitro[tex_index], p.ang, scale * zoom)
-            img.set_alpha(alpha)
             x, y = p.x, p.y
             if camera:
                 x, y = camera.mundo_para_tela(x, y)
             
+            # Verificar se está visível
+            if x < -margem or x > largura_tela + margem or y < -margem or y > altura_tela + margem:
+                continue
+            
+            # Usar textura animada de nitro
+            tex_index = int((self._frame_atual * 0.2) % len(self.tex_nitro))
+            img = pygame.transform.rotozoom(self.tex_nitro[tex_index], p.ang, scale * zoom)
+            img.set_alpha(alpha)
             surface.blit(img, img.get_rect(center=(int(x), int(y))))

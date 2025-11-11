@@ -7,6 +7,29 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+## [2.4.0] - 2025-01-XX
+
+### Adicionado
+- **Sistema de Economia** - Sistema de dinheiro para desbloquear carros
+- **Sistema de Troféus** - Troféus de ouro, prata, bronze e vazio baseados em posição ou pontuação
+- **Tela de Fim de Jogo Redesenhada** - Popup sobre o jogo com informações de resultado e opções
+- **Sistema de Recompensas** - Ganho de dinheiro por vencer corridas e fazer drift
+- **Sistema de Progresso Persistente** - Salvamento automático de dinheiro e carros desbloqueados
+- **Botões de Compra e Uso** - Interface para comprar e usar carros na oficina
+
+### Modificado
+- **Menu de Seleção de Carros** - Adicionado sistema de compra e desbloqueio de carros
+- **Tela de Fim de Jogo** - Redesenhada para aparecer como popup sobre o jogo em execução
+- **Sistema de Troféus** - Tamanho aumentado para melhor visibilidade (160x160px)
+- **Layout da Oficina** - Melhorias visuais e espaçamento otimizado
+
+### Corrigido
+- **Hitbox dos Botões** - Correção de detecção de hover e clique na tela de fim de jogo
+- **Espaçamento de Elementos** - Ajustes de posicionamento na tela de fim de jogo
+- **Import Circular** - Resolvido problema de importação circular entre main.py e menu.py
+
+---
+
 ## [2.3.0] - 2025-01-XX
 
 ### Adicionado
@@ -197,5 +220,5 @@ chore: atualizar dependências do pygame
 ---
 
 **Última atualização:** Janeiro 2025  
-**Versão atual:** 2.3.0  
-**Próxima versão:** 2.4.0 (planejada)
+**Versão atual:** 2.4.0  
+**Próxima versão:** 2.5.0 (planejada)

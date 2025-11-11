@@ -11,6 +11,7 @@ import main
 from core.musica import gerencIAdor_musica
 from core.popup_musica import popup_musica
 from core.game_modes import ModoJogo, TipoJogo
+from core.progresso import gerenciador_progresso
 
 def scale_to_cover(img_surf, target_w, target_h):
     iw, ih = img_surf.get_size()
@@ -424,7 +425,7 @@ def menu_loop(screen) -> Escolha:
     
     # Variáveis para animação de hover dos botões
     hover_animation = [0.0] * len(itens)  # Progresso da animação para cada botão
-    hover_speed = 3.0  # Velocidade da animação de hover
+    hover_speed = 8.0  # Velocidade da animação de hover (aumentada para mais responsividade)
 
     while True:
         dt = clock.tick(FPS) / 1000.0  # Converter para segundos
@@ -640,7 +641,7 @@ def selecionar_mapas_loop(screen):
     
     # Animações de hover
     hover_animation_mapas = [0.0] * len(mapas)
-    hover_speed = 3.0
+    hover_speed = 8.0  # Velocidade aumentada
     
     while True:
         dt = relogio.tick(FPS) / 1000.0
@@ -797,11 +798,19 @@ def selecionar_carros_loop(screen):
     # Variáveis para transição
     transicao_ativa = False
     transicao_tempo = 0.0
-    transicao_duracao = 0.8  # 800ms - mais lenta
+    transicao_duracao = 0.5  # 500ms - velocidade intermediária
     transicao_direcao = 1  # 1 = direita para esquerda, -1 = esquerda para direita
     carro_atual_pos = 0.0  # Posição X do carro atual (0 = centro)
     carro_proximo_pos = 1.0  # Posição X do próximo carro (1 = fora da tela direita)
     carro_anterior = None  # Carro que estava sendo exibido antes da transição
+    
+    # Carregar ícone de cadeado
+    icone_cadeado = None
+    caminho_cadeado = os.path.join("assets", "images", "icons", "Locked.png")
+    if os.path.exists(caminho_cadeado):
+        icone_cadeado = pygame.image.load(caminho_cadeado).convert_alpha()
+        # Redimensionar para tamanho adequado
+        icone_cadeado = pygame.transform.scale(icone_cadeado, (80, 80))
     
     # Carregar sprites dos carros para seleção (usando pasta car_selection)
     sprites_carros = {}
@@ -870,13 +879,10 @@ def selecionar_carros_loop(screen):
             carro_atual_pos = 0.0
             carro_proximo_pos = 1.0
         else:
-            # Interpolação suave (ease-in-out)
+            # Interpolação suave (ease-out para mais responsividade)
             progresso = transicao_tempo / transicao_duracao
-            # Ease-in-out cubic para movimento mais natural
-            if progresso < 0.5:
-                progresso = 4 * progresso * progresso * progresso
-            else:
-                progresso = 1 - pow(-2 * progresso + 2, 3) / 2
+            # Ease-out cubic: começa rápido e termina suave
+            progresso = 1 - pow(1 - progresso, 3)
             
             # Carro atual sai pela direção oposta
             carro_atual_pos = -transicao_direcao * progresso
@@ -891,9 +897,93 @@ def selecionar_carros_loop(screen):
         # Atualizar transição
         atualizar_transicao(dt)
         
+        # Atualizar popup de música
+        popup_musica.atualizar(dt)
+        
+        # Calcular posições dos botões antes de processar eventos
+        botao_usar_rect_p1 = None
+        botao_comprar_rect_p1 = None
+        botao_usar_rect_p2 = None
+        botao_comprar_rect_p2 = None
+        
+        # Calcular posições dos botões para P1
+        if fase_selecao == 1:
+            carro_atual_p1 = CARROS_DISPONIVEIS[carro_p1]
+            esta_desbloqueado_p1 = gerenciador_progresso.esta_desbloqueado(carro_atual_p1['prefixo_cor'])
+            info_x_p1 = LARGURA - 300
+            info_y_p1 = 180
+            info_altura_p1 = 380
+            botao_y_p1 = info_y_p1 + info_altura_p1 + 20
+            botao_largura_p1 = 130
+            botao_altura_p1 = 45
+            espacamento_botoes_p1 = 15
+            info_largura_p1 = 280
+            botoes_x_inicial_p1 = info_x_p1 + (info_largura_p1 - (botao_largura_p1 * 2 + espacamento_botoes_p1)) // 2
+            
+            if esta_desbloqueado_p1:
+                botao_usar_rect_p1 = pygame.Rect(botoes_x_inicial_p1, botao_y_p1, botao_largura_p1, botao_altura_p1)
+            else:
+                botao_comprar_rect_p1 = pygame.Rect(botoes_x_inicial_p1, botao_y_p1, botao_largura_p1, botao_altura_p1)
+        
+        # Calcular posições dos botões para P2
+        if fase_selecao == 2:
+            carro_atual_p2 = CARROS_DISPONIVEIS[carro_p2]
+            esta_desbloqueado_p2 = gerenciador_progresso.esta_desbloqueado(carro_atual_p2['prefixo_cor'])
+            info_x_p2 = LARGURA - 300
+            info_y_p2 = 180
+            info_altura_p2 = 380
+            botao_y_p2 = info_y_p2 + info_altura_p2 + 20
+            botao_largura_p2 = 130
+            botao_altura_p2 = 45
+            espacamento_botoes_p2 = 15
+            info_largura_p2 = 280
+            botoes_x_inicial_p2 = info_x_p2 + (info_largura_p2 - (botao_largura_p2 * 2 + espacamento_botoes_p2)) // 2
+            
+            if esta_desbloqueado_p2:
+                botao_usar_rect_p2 = pygame.Rect(botoes_x_inicial_p2, botao_y_p2, botao_largura_p2, botao_altura_p2)
+            else:
+                botao_comprar_rect_p2 = pygame.Rect(botoes_x_inicial_p2, botao_y_p2, botao_largura_p2, botao_altura_p2)
+        
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 return None, None
+            elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                # Verificar clique nos botões
+                if not transicao_ativa:
+                    mouse_x, mouse_y = ev.pos
+                    
+                    if fase_selecao == 1:
+                        carro_atual = CARROS_DISPONIVEIS[carro_p1]
+                        esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                        
+                        if esta_desbloqueado:
+                            # Verificar clique no botão USAR
+                            if botao_usar_rect_p1 and botao_usar_rect_p1.collidepoint(mouse_x, mouse_y):
+                                fase_selecao = 2  # P1 confirmou, vai para P2
+                        else:
+                            # Verificar clique no botão COMPRAR
+                            if botao_comprar_rect_p1 and botao_comprar_rect_p1.collidepoint(mouse_x, mouse_y):
+                                preco = carro_atual.get('preco', 0)
+                                if gerenciador_progresso.comprar_carro(carro_atual['prefixo_cor'], preco):
+                                    popup_musica.mostrar(f"Carro {carro_atual['nome']} comprado!")
+                                else:
+                                    popup_musica.mostrar("Dinheiro insuficiente!")
+                    elif fase_selecao == 2:
+                        carro_atual = CARROS_DISPONIVEIS[carro_p2]
+                        esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                        
+                        if esta_desbloqueado:
+                            # Verificar clique no botão USAR
+                            if botao_usar_rect_p2 and botao_usar_rect_p2.collidepoint(mouse_x, mouse_y):
+                                return carro_p1, carro_p2  # P2 confirmou, retorna seleções
+                        else:
+                            # Verificar clique no botão COMPRAR
+                            if botao_comprar_rect_p2 and botao_comprar_rect_p2.collidepoint(mouse_x, mouse_y):
+                                preco = carro_atual.get('preco', 0)
+                                if gerenciador_progresso.comprar_carro(carro_atual['prefixo_cor'], preco):
+                                    popup_musica.mostrar(f"Carro {carro_atual['nome']} comprado!")
+                                else:
+                                    popup_musica.mostrar("Dinheiro insuficiente!")
             if ev.type == pygame.KEYDOWN:
                 if ev.key == pygame.K_ESCAPE:
                     return None, None
@@ -916,9 +1006,29 @@ def selecionar_carros_loop(screen):
                 elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
                     if not transicao_ativa:  # Só permite confirmação se não estiver em transição
                         if fase_selecao == 1:
-                            fase_selecao = 2  # P1 confirmou, vai para P2
+                            carro_atual = CARROS_DISPONIVEIS[carro_p1]
+                            esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                            if esta_desbloqueado:
+                                fase_selecao = 2  # P1 confirmou, vai para P2
                         elif fase_selecao == 2:
-                            return carro_p1, carro_p2  # P2 confirmou, retorna seleções
+                            carro_atual = CARROS_DISPONIVEIS[carro_p2]
+                            esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                            if esta_desbloqueado:
+                                return carro_p1, carro_p2  # P2 confirmou, retorna seleções
+                elif ev.key == pygame.K_b:
+                    # Tentar comprar carro
+                    if not transicao_ativa:
+                        if fase_selecao == 1:
+                            carro_atual = CARROS_DISPONIVEIS[carro_p1]
+                        else:
+                            carro_atual = CARROS_DISPONIVEIS[carro_p2]
+                        esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                        if not esta_desbloqueado:
+                            preco = carro_atual.get('preco', 0)
+                            if gerenciador_progresso.comprar_carro(carro_atual['prefixo_cor'], preco):
+                                popup_musica.mostrar(f"Carro {carro_atual['nome']} comprado!")
+                            else:
+                                popup_musica.mostrar("Dinheiro insuficiente!")
         
         # Desenhar
         screen.blit(bg, (0, 0))
@@ -928,21 +1038,31 @@ def selecionar_carros_loop(screen):
         overlay.fill((0, 0, 0, 80))
         screen.blit(overlay, (0, 0))
         
-        # Título - estilo pixel art
-        titulo = render_text("OFICINA", 48, (255, 100, 255), bold=True, pixel_style=True)
+        # Mostrar dinheiro no topo (dourado suave harmonizado)
+        dinheiro_texto = f"DINHEIRO: ${gerenciador_progresso.dinheiro}"
+        dinheiro_render = render_text(dinheiro_texto, 32, (255, 220, 100), bold=True, pixel_style=True)
+        screen.blit(dinheiro_render, (20, 20))
+        
+        # Título - estilo pixel art (azul ciano harmonizado) - mais espaçado
+        titulo = render_text("OFICINA", 48, (100, 220, 255), bold=True, pixel_style=True)
         titulo_x = (LARGURA - titulo.get_width()) // 2
-        screen.blit(titulo, (titulo_x, 20))
+        screen.blit(titulo, (titulo_x, 30))
         
         if fase_selecao == 1:
-            # FASE 1: Player 1 selecionando
-            subtitulo = render_text("JOGADOR 1 - ESCOLHA SEU CARRO", 32, (100, 200, 255), bold=True, pixel_style=True)
+            # FASE 1: Player 1 selecionando (azul claro harmonizado) - mais espaçado
+            subtitulo = render_text("JOGADOR 1 - ESCOLHA SEU CARRO", 32, (150, 220, 255), bold=True, pixel_style=True)
             subtitulo_x = (LARGURA - subtitulo.get_width()) // 2
-            screen.blit(subtitulo, (subtitulo_x, 50))
+            screen.blit(subtitulo, (subtitulo_x, 90))
             
-            # Instruções
-            instrucoes = render_text("← → navegar | ENTER confirmar | ESC voltar", 20, (255, 255, 255), bold=True, pixel_style=True)
+            # Instruções - mais espaçado
+            carro_atual = CARROS_DISPONIVEIS[carro_p1]
+            esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+            if esta_desbloqueado:
+                instrucoes = render_text("← → navegar | ENTER confirmar | ESC voltar", 20, (255, 255, 255), bold=True, pixel_style=True)
+            else:
+                instrucoes = render_text("← → navegar | B comprar | ESC voltar", 20, (255, 255, 255), bold=True, pixel_style=True)
             instrucoes_x = (LARGURA - instrucoes.get_width()) // 2
-            screen.blit(instrucoes, (instrucoes_x, 80))
+            screen.blit(instrucoes, (instrucoes_x, 130))
             
             # Carro selecionado P1 - Grande e centralizado
             if transicao_ativa:
@@ -958,90 +1078,138 @@ def selecionar_carros_loop(screen):
                 pos_anterior = carro_anterior_obj.get('posicao_oficina', (LARGURA//2 - 300, 380))
                 pos_atual = carro_atual_obj.get('posicao_oficina', (LARGURA//2 - 300, 380))
                 
-                pos_x_anterior = pos_anterior[0] + int(carro_atual_pos * LARGURA)
-                pos_x_atual = pos_atual[0] + int(carro_proximo_pos * LARGURA)
+                # Usar float para suavidade e depois converter para int apenas na renderização
+                pos_x_anterior = pos_anterior[0] + carro_atual_pos * LARGURA
+                pos_x_atual = pos_atual[0] + carro_proximo_pos * LARGURA
                 
-                # Desenhar carro anterior saindo
-                screen.blit(sprite_anterior, (pos_x_anterior, pos_anterior[1]))
+                # Desenhar carro anterior saindo (converter para int apenas na renderização)
+                screen.blit(sprite_anterior, (int(pos_x_anterior), pos_anterior[1]))
                 # Desenhar novo carro entrando
-                screen.blit(sprite_atual, (pos_x_atual, pos_atual[1]))
+                screen.blit(sprite_atual, (int(pos_x_atual), pos_atual[1]))
+                
+                # Desenhar cadeado se o carro atual não estiver desbloqueado
+                esta_desbloqueado_atual = gerenciador_progresso.esta_desbloqueado(carro_atual_obj['prefixo_cor'])
+                if not esta_desbloqueado_atual and icone_cadeado:
+                    cadeado_x = int(pos_x_atual) + (sprite_atual.get_width() - icone_cadeado.get_width()) // 2
+                    cadeado_y = pos_atual[1] + (sprite_atual.get_height() - icone_cadeado.get_height()) // 2
+                    screen.blit(icone_cadeado, (cadeado_x, cadeado_y))
             else:
                 # Sem transição: desenhar carro atual normalmente
                 carro_atual = CARROS_DISPONIVEIS[carro_p1]
                 sprite_atual = sprites_carros[carro_atual['prefixo_cor']]
                 posicao = carro_atual.get('posicao_oficina', (LARGURA//2 - 300, 380))
                 screen.blit(sprite_atual, posicao)
+                
+                # Desenhar cadeado se o carro não estiver desbloqueado
+                esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                if not esta_desbloqueado and icone_cadeado:
+                    # Centralizar cadeado sobre o carro
+                    cadeado_x = posicao[0] + (sprite_atual.get_width() - icone_cadeado.get_width()) // 2
+                    cadeado_y = posicao[1] + (sprite_atual.get_height() - icone_cadeado.get_height()) // 2
+                    screen.blit(icone_cadeado, (cadeado_x, cadeado_y))
             
-            # Nome do carro (abaixo do carro) - estilo pixel art
-            nome_carro = render_text(carro_atual['nome'], 42, (255, 100, 255), bold=True, pixel_style=True)
-            nome_x = (LARGURA - nome_carro.get_width()) // 2
-            screen.blit(nome_carro, (nome_x, 700))
+            # Informações do carro na lateral direita - retângulo otimizado
+            info_x = LARGURA - 300  # Largura reduzida
+            info_y = 180  # Posição ajustada
             
-            # Informações do carro na lateral direita
-            info_x = LARGURA - 350  # 350px da direita (mais largo)
-            info_y = 200
-            
-            # Fundo semi-transparente para as informações
-            info_bg = pygame.Surface((330, 450), pygame.SRCALPHA)
+            # Fundo semi-transparente para as informações - tamanho otimizado
+            info_largura = 280
+            info_altura = 380  # Altura reduzida
+            info_bg = pygame.Surface((info_largura, info_altura), pygame.SRCALPHA)
             info_bg.fill((0, 0, 0, 150))
             screen.blit(info_bg, (info_x, info_y))
             
             # Nome do carro (acima das especificações) - estilo pixel art
-            nome_carro_info = render_text(carro_atual['nome'], 28, (255, 100, 255), bold=True, pixel_style=True)
-            nome_x_info = info_x + (330 - nome_carro_info.get_width()) // 2
-            screen.blit(nome_carro_info, (nome_x_info, info_y + 10))
+            nome_carro_info = render_text(carro_atual['nome'], 24, (100, 220, 255), bold=True, pixel_style=True)
+            nome_x_info = info_x + (info_largura - nome_carro_info.get_width()) // 2
+            screen.blit(nome_carro_info, (nome_x_info, info_y + 15))
             
-            # Título das informações
-            info_titulo = render_text("ESPECIFICAÇÕES", 20, (255, 255, 255), bold=True, pixel_style=True)
-            screen.blit(info_titulo, (info_x + 10, info_y + 50))
+            # Título das informações - mais espaçado
+            info_titulo = render_text("ESPECIFICAÇÕES", 18, (255, 255, 255), bold=True, pixel_style=True)
+            screen.blit(info_titulo, (info_x + 15, info_y + 55))
             
-            # Tipo de tração
+            # Tipo de tração - espaçamento melhorado
             tracao_texto = f"TRAÇÃO: {carro_atual['tipo_tracao'].upper()}"
-            tracao_color = (100, 255, 100) if carro_atual['tipo_tracao'] == 'awd' else (255, 255, 100)
-            tracao_render = render_text(tracao_texto, 18, tracao_color, bold=True, pixel_style=True)
-            screen.blit(tracao_render, (info_x + 10, info_y + 80))
+            tracao_color = (120, 240, 180) if carro_atual['tipo_tracao'] == 'awd' else (150, 220, 255)
+            tracao_render = render_text(tracao_texto, 16, tracao_color, bold=True, pixel_style=True)
+            screen.blit(tracao_render, (info_x + 15, info_y + 90))
             
-            # Velocidade máxima (simulada baseada no tipo de tração)
+            # Velocidade máxima (simulada baseada no tipo de tração) - azul claro harmonizado
             vel_max = {"front": 180, "rear": 200, "awd": 220}.get(carro_atual['tipo_tracao'], 190)
             vel_texto = f"VELOCIDADE: {vel_max} km/h"
-            vel_render = render_text(vel_texto, 18, (100, 200, 255), bold=True, pixel_style=True)
-            screen.blit(vel_render, (info_x + 10, info_y + 110))
+            vel_render = render_text(vel_texto, 16, (120, 200, 255), bold=True, pixel_style=True)
+            screen.blit(vel_render, (info_x + 15, info_y + 120))
             
-            # Dirigibilidade (simulada)
+            # Dirigibilidade (simulada) - azul ciano suave
             dir_valor = {"front": 85, "rear": 70, "awd": 95}.get(carro_atual['tipo_tracao'], 80)
             dir_texto = f"DIRIGIBILIDADE: {dir_valor}%"
-            dir_render = render_text(dir_texto, 18, (255, 200, 100), bold=True, pixel_style=True)
-            screen.blit(dir_render, (info_x + 10, info_y + 140))
+            dir_render = render_text(dir_texto, 16, (140, 210, 255), bold=True, pixel_style=True)
+            screen.blit(dir_render, (info_x + 15, info_y + 150))
             
-            # Frenagem (simulada)
+            # Frenagem (simulada) - azul ciano médio
             fren_valor = {"front": 90, "rear": 75, "awd": 95}.get(carro_atual['tipo_tracao'], 85)
             fren_texto = f"FRENAGEM: {fren_valor}%"
-            fren_render = render_text(fren_texto, 18, (255, 100, 100), bold=True, pixel_style=True)
-            screen.blit(fren_render, (info_x + 10, info_y + 170))
+            fren_render = render_text(fren_texto, 16, (130, 200, 255), bold=True, pixel_style=True)
+            screen.blit(fren_render, (info_x + 15, info_y + 180))
             
-            # Aceleração (simulada)
+            # Aceleração (simulada) - azul ciano claro
             acel_valor = {"front": 80, "rear": 90, "awd": 95}.get(carro_atual['tipo_tracao'], 85)
             acel_texto = f"ACELERAÇÃO: {acel_valor}%"
-            acel_render = render_text(acel_texto, 18, (200, 100, 255), bold=True, pixel_style=True)
-            screen.blit(acel_render, (info_x + 10, info_y + 200))
+            acel_render = render_text(acel_texto, 16, (160, 220, 255), bold=True, pixel_style=True)
+            screen.blit(acel_render, (info_x + 15, info_y + 210))
             
-            # Estabilidade (simulada)
+            # Estabilidade (simulada) - azul ciano suave
             est_valor = {"front": 85, "rear": 70, "awd": 95}.get(carro_atual['tipo_tracao'], 80)
             est_texto = f"ESTABILIDADE: {est_valor}%"
-            est_render = render_text(est_texto, 18, (100, 255, 200), bold=True, pixel_style=True)
-            screen.blit(est_render, (info_x + 10, info_y + 230))
+            est_render = render_text(est_texto, 16, (150, 230, 255), bold=True, pixel_style=True)
+            screen.blit(est_render, (info_x + 15, info_y + 240))
             
-            # Borda da caixa de informações
-            pygame.draw.rect(screen, (255, 255, 255), (info_x, info_y, 330, 450), 2)
+            # Status de desbloqueio e preço (harmonizado) - mais espaçado
+            esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+            preco = carro_atual.get('preco', 0)
             
-            # Botão confirmar - estilo pixel art
-            botao = render_text("ENTER - CONFIRMAR CARRO", 28, (100, 255, 100), bold=True, pixel_style=True)
-            botao_x = (LARGURA - botao.get_width()) // 2
-            screen.blit(botao, (botao_x, 840))
+            if esta_desbloqueado:
+                status_texto = "DESBLOQUEADO"
+                status_color = (120, 240, 180)  # Verde-água harmonizado
+            else:
+                status_texto = f"BLOQUEADO - ${preco}"
+                status_color = (255, 150, 120)  # Laranja suave harmonizado
+            
+            status_render = render_text(status_texto, 20, status_color, bold=True, pixel_style=True)
+            screen.blit(status_render, (info_x + 15, info_y + 280))
+            
+            # Borda da caixa de informações (azul ciano harmonizado)
+            pygame.draw.rect(screen, (100, 220, 255), (info_x, info_y, info_largura, info_altura), 2)
+            
+            # Botões abaixo do retângulo de especificações (usar variáveis já calculadas)
+            if esta_desbloqueado:
+                # Botão USAR (verde)
+                if botao_usar_rect_p1:
+                    pygame.draw.rect(screen, (50, 150, 100), botao_usar_rect_p1)
+                    pygame.draw.rect(screen, (120, 240, 180), botao_usar_rect_p1, 2)
+                    texto_usar = render_text("USAR", 20, (255, 255, 255), bold=True, pixel_style=True)
+                    texto_usar_x = botao_usar_rect_p1.x + (botao_usar_rect_p1.width - texto_usar.get_width()) // 2
+                    texto_usar_y = botao_usar_rect_p1.y + (botao_usar_rect_p1.height - texto_usar.get_height()) // 2
+                    screen.blit(texto_usar, (texto_usar_x, texto_usar_y))
+            else:
+                # Botão COMPRAR (amarelo/dourado se tiver dinheiro, vermelho se não)
+                if botao_comprar_rect_p1:
+                    if gerenciador_progresso.tem_dinheiro(preco):
+                        pygame.draw.rect(screen, (150, 120, 50), botao_comprar_rect_p1)
+                        pygame.draw.rect(screen, (255, 220, 100), botao_comprar_rect_p1, 2)
+                        texto_comprar = render_text("COMPRAR", 18, (255, 255, 255), bold=True, pixel_style=True)
+                    else:
+                        pygame.draw.rect(screen, (100, 50, 50), botao_comprar_rect_p1)
+                        pygame.draw.rect(screen, (255, 150, 120), botao_comprar_rect_p1, 2)
+                        texto_comprar = render_text("COMPRAR", 18, (200, 200, 200), bold=True, pixel_style=True)
+                    
+                    texto_comprar_x = botao_comprar_rect_p1.x + (botao_comprar_rect_p1.width - texto_comprar.get_width()) // 2
+                    texto_comprar_y = botao_comprar_rect_p1.y + (botao_comprar_rect_p1.height - texto_comprar.get_height()) // 2
+                    screen.blit(texto_comprar, (texto_comprar_x, texto_comprar_y))
             
         elif fase_selecao == 2:
             # FASE 2: Player 2 selecionando
-            subtitulo = render_text("JOGADOR 2 - ESCOLHA SEU CARRO", 32, (100, 200, 255), bold=True, pixel_style=True)
+            subtitulo = render_text("JOGADOR 2 - ESCOLHA SEU CARRO", 32, (150, 220, 255), bold=True, pixel_style=True)
             subtitulo_x = (LARGURA - subtitulo.get_width()) // 2
             screen.blit(subtitulo, (subtitulo_x, 50))
             
@@ -1069,86 +1237,138 @@ def selecionar_carros_loop(screen):
                 pos_anterior = carro_anterior_obj.get('posicao_oficina', (LARGURA//2 - 300, 380))
                 pos_atual = carro_atual_obj.get('posicao_oficina', (LARGURA//2 - 300, 380))
                 
-                pos_x_anterior = pos_anterior[0] + int(carro_atual_pos * LARGURA)
-                pos_x_atual = pos_atual[0] + int(carro_proximo_pos * LARGURA)
+                # Usar float para suavidade e depois converter para int apenas na renderização
+                pos_x_anterior = pos_anterior[0] + carro_atual_pos * LARGURA
+                pos_x_atual = pos_atual[0] + carro_proximo_pos * LARGURA
                 
-                # Desenhar carro anterior saindo
-                screen.blit(sprite_anterior, (pos_x_anterior, pos_anterior[1]))
+                # Desenhar carro anterior saindo (converter para int apenas na renderização)
+                screen.blit(sprite_anterior, (int(pos_x_anterior), pos_anterior[1]))
                 # Desenhar novo carro entrando
-                screen.blit(sprite_atual, (pos_x_atual, pos_atual[1]))
+                screen.blit(sprite_atual, (int(pos_x_atual), pos_atual[1]))
+                
+                # Desenhar cadeado se o carro atual não estiver desbloqueado (P2)
+                esta_desbloqueado_atual = gerenciador_progresso.esta_desbloqueado(carro_atual_obj['prefixo_cor'])
+                if not esta_desbloqueado_atual and icone_cadeado:
+                    cadeado_x = int(pos_x_atual) + (sprite_atual.get_width() - icone_cadeado.get_width()) // 2
+                    cadeado_y = pos_atual[1] + (sprite_atual.get_height() - icone_cadeado.get_height()) // 2
+                    screen.blit(icone_cadeado, (cadeado_x, cadeado_y))
             else:
                 # Sem transição: desenhar carro atual normalmente
                 carro_atual = CARROS_DISPONIVEIS[carro_p2]
                 sprite_atual = sprites_carros[carro_atual['prefixo_cor']]
                 posicao = carro_atual.get('posicao_oficina', (LARGURA//2 - 300, 380))
                 screen.blit(sprite_atual, posicao)
+                
+                # Desenhar cadeado se o carro não estiver desbloqueado (P2)
+                esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                if not esta_desbloqueado and icone_cadeado:
+                    cadeado_x = posicao[0] + (sprite_atual.get_width() - icone_cadeado.get_width()) // 2
+                    cadeado_y = posicao[1] + (sprite_atual.get_height() - icone_cadeado.get_height()) // 2
+                    screen.blit(icone_cadeado, (cadeado_x, cadeado_y))
             
-            # Nome do carro (abaixo do carro) - estilo pixel art
-            nome_carro = render_text(carro_atual['nome'], 42, (255, 100, 255), bold=True, pixel_style=True)
-            nome_x = (LARGURA - nome_carro.get_width()) // 2
-            screen.blit(nome_carro, (nome_x, 700))
+            # Informações do carro na lateral direita - retângulo otimizado (P2)
+            carro_atual = CARROS_DISPONIVEIS[carro_p2]  # Garantir que está definido
+            info_x = LARGURA - 300  # Largura reduzida
+            info_y = 180  # Posição ajustada
             
-            # Informações do carro na lateral direita
-            info_x = LARGURA - 350  # 350px da direita (mais largo)
-            info_y = 200
-            
-            # Fundo semi-transparente para as informações
-            info_bg = pygame.Surface((330, 450), pygame.SRCALPHA)
+            # Fundo semi-transparente para as informações - tamanho otimizado
+            info_largura = 280
+            info_altura = 380  # Altura reduzida
+            info_bg = pygame.Surface((info_largura, info_altura), pygame.SRCALPHA)
             info_bg.fill((0, 0, 0, 150))
             screen.blit(info_bg, (info_x, info_y))
             
-            # Nome do carro (acima das especificações) - estilo pixel art
-            nome_carro_info = render_text(carro_atual['nome'], 28, (255, 100, 255), bold=True, pixel_style=True)
-            nome_x_info = info_x + (330 - nome_carro_info.get_width()) // 2
-            screen.blit(nome_carro_info, (nome_x_info, info_y + 10))
+            # Nome do carro (acima das especificações) - estilo pixel art (azul ciano harmonizado)
+            nome_carro_info = render_text(carro_atual['nome'], 24, (100, 220, 255), bold=True, pixel_style=True)
+            nome_x_info = info_x + (info_largura - nome_carro_info.get_width()) // 2
+            screen.blit(nome_carro_info, (nome_x_info, info_y + 15))
             
-            # Título das informações
-            info_titulo = render_text("ESPECIFICAÇÕES", 20, (255, 255, 255), bold=True, pixel_style=True)
-            screen.blit(info_titulo, (info_x + 10, info_y + 50))
+            # Título das informações - mais espaçado
+            info_titulo = render_text("ESPECIFICAÇÕES", 18, (255, 255, 255), bold=True, pixel_style=True)
+            screen.blit(info_titulo, (info_x + 15, info_y + 55))
             
-            # Tipo de tração
+            # Tipo de tração (harmonizado - azul ciano com variações sutis) - espaçamento melhorado
             tracao_texto = f"TRAÇÃO: {carro_atual['tipo_tracao'].upper()}"
-            tracao_color = (100, 255, 100) if carro_atual['tipo_tracao'] == 'awd' else (255, 255, 100)
-            tracao_render = render_text(tracao_texto, 18, tracao_color, bold=True, pixel_style=True)
-            screen.blit(tracao_render, (info_x + 10, info_y + 80))
+            tracao_color = (120, 240, 180) if carro_atual['tipo_tracao'] == 'awd' else (150, 220, 255)
+            tracao_render = render_text(tracao_texto, 16, tracao_color, bold=True, pixel_style=True)
+            screen.blit(tracao_render, (info_x + 15, info_y + 90))
             
-            # Velocidade máxima (simulada baseada no tipo de tração)
+            # Velocidade máxima (simulada baseada no tipo de tração) - azul claro harmonizado
             vel_max = {"front": 180, "rear": 200, "awd": 220}.get(carro_atual['tipo_tracao'], 190)
             vel_texto = f"VELOCIDADE: {vel_max} km/h"
-            vel_render = render_text(vel_texto, 18, (100, 200, 255), bold=True, pixel_style=True)
-            screen.blit(vel_render, (info_x + 10, info_y + 110))
+            vel_render = render_text(vel_texto, 16, (120, 200, 255), bold=True, pixel_style=True)
+            screen.blit(vel_render, (info_x + 15, info_y + 120))
             
-            # Dirigibilidade (simulada)
+            # Dirigibilidade (simulada) - azul ciano suave
             dir_valor = {"front": 85, "rear": 70, "awd": 95}.get(carro_atual['tipo_tracao'], 80)
             dir_texto = f"DIRIGIBILIDADE: {dir_valor}%"
-            dir_render = render_text(dir_texto, 18, (255, 200, 100), bold=True, pixel_style=True)
-            screen.blit(dir_render, (info_x + 10, info_y + 140))
+            dir_render = render_text(dir_texto, 16, (140, 210, 255), bold=True, pixel_style=True)
+            screen.blit(dir_render, (info_x + 15, info_y + 150))
             
-            # Frenagem (simulada)
+            # Frenagem (simulada) - azul ciano médio
             fren_valor = {"front": 90, "rear": 75, "awd": 95}.get(carro_atual['tipo_tracao'], 85)
             fren_texto = f"FRENAGEM: {fren_valor}%"
-            fren_render = render_text(fren_texto, 18, (255, 100, 100), bold=True, pixel_style=True)
-            screen.blit(fren_render, (info_x + 10, info_y + 170))
+            fren_render = render_text(fren_texto, 16, (130, 200, 255), bold=True, pixel_style=True)
+            screen.blit(fren_render, (info_x + 15, info_y + 180))
             
-            # Aceleração (simulada)
+            # Aceleração (simulada) - azul ciano claro
             acel_valor = {"front": 80, "rear": 90, "awd": 95}.get(carro_atual['tipo_tracao'], 85)
             acel_texto = f"ACELERAÇÃO: {acel_valor}%"
-            acel_render = render_text(acel_texto, 18, (200, 100, 255), bold=True, pixel_style=True)
-            screen.blit(acel_render, (info_x + 10, info_y + 200))
+            acel_render = render_text(acel_texto, 16, (160, 220, 255), bold=True, pixel_style=True)
+            screen.blit(acel_render, (info_x + 15, info_y + 210))
             
-            # Estabilidade (simulada)
+            # Estabilidade (simulada) - azul ciano suave
             est_valor = {"front": 85, "rear": 70, "awd": 95}.get(carro_atual['tipo_tracao'], 80)
             est_texto = f"ESTABILIDADE: {est_valor}%"
-            est_render = render_text(est_texto, 18, (100, 255, 200), bold=True, pixel_style=True)
-            screen.blit(est_render, (info_x + 10, info_y + 230))
+            est_render = render_text(est_texto, 16, (150, 230, 255), bold=True, pixel_style=True)
+            screen.blit(est_render, (info_x + 15, info_y + 240))
             
-            # Borda da caixa de informações
-            pygame.draw.rect(screen, (255, 255, 255), (info_x, info_y, 330, 450), 2)
+            # Status de desbloqueio e preço (P2) (harmonizado) - mais espaçado
+            esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+            preco = carro_atual.get('preco', 0)
             
-            # Botão confirmar - estilo pixel art
-            botao = render_text("ENTER - CONFIRMAR CARRO", 28, (100, 255, 100), bold=True, pixel_style=True)
-            botao_x = (LARGURA - botao.get_width()) // 2
-            screen.blit(botao, (botao_x, 840))
+            if esta_desbloqueado:
+                status_texto = "DESBLOQUEADO"
+                status_color = (120, 240, 180)  # Verde-água harmonizado
+            else:
+                status_texto = f"BLOQUEADO - ${preco}"
+                status_color = (255, 150, 120)  # Laranja suave harmonizado
+            
+            status_render = render_text(status_texto, 20, status_color, bold=True, pixel_style=True)
+            screen.blit(status_render, (info_x + 15, info_y + 280))
+            
+            # Borda da caixa de informações (azul ciano harmonizado)
+            pygame.draw.rect(screen, (100, 220, 255), (info_x, info_y, info_largura, info_altura), 2)
+            
+            # Botões abaixo do retângulo de especificações (P2) (usar variáveis já calculadas)
+            if esta_desbloqueado:
+                # Botão USAR (verde)
+                if botao_usar_rect_p2:
+                    pygame.draw.rect(screen, (50, 150, 100), botao_usar_rect_p2)
+                    pygame.draw.rect(screen, (120, 240, 180), botao_usar_rect_p2, 2)
+                    texto_usar = render_text("USAR", 20, (255, 255, 255), bold=True, pixel_style=True)
+                    texto_usar_x = botao_usar_rect_p2.x + (botao_usar_rect_p2.width - texto_usar.get_width()) // 2
+                    texto_usar_y = botao_usar_rect_p2.y + (botao_usar_rect_p2.height - texto_usar.get_height()) // 2
+                    screen.blit(texto_usar, (texto_usar_x, texto_usar_y))
+            else:
+                # Botão COMPRAR (amarelo/dourado se tiver dinheiro, vermelho se não)
+                if botao_comprar_rect_p2:
+                    if gerenciador_progresso.tem_dinheiro(preco):
+                        pygame.draw.rect(screen, (150, 120, 50), botao_comprar_rect_p2)
+                        pygame.draw.rect(screen, (255, 220, 100), botao_comprar_rect_p2, 2)
+                        texto_comprar = render_text("COMPRAR", 18, (255, 255, 255), bold=True, pixel_style=True)
+                    else:
+                        pygame.draw.rect(screen, (100, 50, 50), botao_comprar_rect_p2)
+                        pygame.draw.rect(screen, (255, 150, 120), botao_comprar_rect_p2, 2)
+                        texto_comprar = render_text("COMPRAR", 18, (200, 200, 200), bold=True, pixel_style=True)
+                    
+                    texto_comprar_x = botao_comprar_rect_p2.x + (botao_comprar_rect_p2.width - texto_comprar.get_width()) // 2
+                    texto_comprar_y = botao_comprar_rect_p2.y + (botao_comprar_rect_p2.height - texto_comprar.get_height()) // 2
+                    screen.blit(texto_comprar, (texto_comprar_x, texto_comprar_y))
+        
+        # Atualizar e desenhar popup de música
+        popup_musica.atualizar(dt)
+        popup_musica.desenhar(screen)
         
         pygame.display.flip()
 
@@ -1176,10 +1396,10 @@ def submenu_audio(screen):
     caixa_y = (ALTURA - caixa_altura) // 2
 
     hover_animation = [0.0] * len(opcoes_audio)
-    hover_speed = 3.0
+    hover_speed = 8.0  # Velocidade aumentada
 
     while True:
-        dt = clock.tick(FPS)
+        dt = clock.tick(FPS) / 1000.0  # Converter para segundos
 
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
@@ -1353,7 +1573,7 @@ def submenu_controles(screen):
     caixa_y = (ALTURA - caixa_altura) // 2
 
     hover_animation = [0.0] * len(opcoes_controles)
-    hover_speed = 3.0
+    hover_speed = 8.0  # Velocidade aumentada
 
     # scroll
     scroll_offset = 0
@@ -1525,7 +1745,7 @@ def submenu_video(screen):
     caixa_y = (ALTURA - caixa_altura) // 2
 
     hover_animation = [0.0] * len(opcoes_video)
-    hover_speed = 3.0
+    hover_speed = 8.0  # Velocidade aumentada
 
     # scroll
     scroll_offset = 0
@@ -1535,7 +1755,7 @@ def submenu_video(screen):
     max_scroll = max(0, altura_total_opcoes - altura_area_visivel)
     
     while True:
-        dt = clock.tick(FPS)
+        dt = clock.tick(FPS) / 1000.0  # Converter para segundos
 
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
@@ -1738,10 +1958,10 @@ def submenu_idioma(screen):
     caixa_y = (ALTURA - caixa_altura) // 2
 
     hover_animation = [0.0] * len(opcoes_idioma)
-    hover_speed = 3.0
+    hover_speed = 8.0  # Velocidade aumentada
     
     while True:
-        dt = clock.tick(FPS)
+        dt = clock.tick(FPS) / 1000.0  # Converter para segundos
         
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
@@ -1885,10 +2105,10 @@ def opcoes_loop(screen):
 
     # animação hover
     hover_animation = [0.0] * len(opcoes_principais)
-    hover_speed = 3.0
+    hover_speed = 8.0  # Velocidade aumentada
 
     while True:
-        dt = clock.tick(FPS)
+        dt = clock.tick(FPS) / 1000.0  # Converter para segundos
 
         # eventos
         for ev in pygame.event.get():
@@ -2102,7 +2322,7 @@ def modo_jogo_loop(screen):
     hover_animation_tipo = [0.0] * len(opcoes_tipo)
     hover_animation_voltas = [0.0] * len(opcoes_voltas)
     hover_animation_dificuldade = [0.0] * len(opcoes_dificuldade)
-    hover_speed = 3.0
+    hover_speed = 8.0  # Velocidade aumentada
     
     while True:
         dt = clock.tick(FPS) / 1000.0

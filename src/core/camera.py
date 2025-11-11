@@ -16,6 +16,10 @@ class Camera:
 
         # Suavização (follow "macio") - mais responsivo
         self.follow_rigidez = 20.0  # maior = segue mais "grudado" e responsivo
+        
+        # Cache de visão para evitar recálculos
+        self._visao_cache = None
+        self._visao_cache_key = None
 
     def set_alvo(self, alvo):
         self.alvo = alvo
@@ -29,6 +33,9 @@ class Camera:
         self.cx += (tx - self.cx) * lerp
         self.cy += (ty - self.cy) * lerp
         self._clamp_centro()
+        # Invalidar cache quando a câmera se move
+        self._visao_cache = None
+        self._visao_cache_key = None
 
     def _clamp_centro(self):
         vw = self.largura_tela / self.zoom
@@ -39,7 +46,12 @@ class Camera:
         self.cy = max(half_h, min(self.altura_mundo  - half_h, self.cy))
 
     def ret_visao(self):
-        """Retângulo da visão no MUNDO (não escalado)."""
+        """Retângulo da visão no MUNDO (não escalado) - com cache."""
+        # Cache baseado em cx, cy e zoom
+        cache_key = (int(self.cx), int(self.cy), int(self.zoom * 100))
+        if self._visao_cache_key == cache_key and self._visao_cache is not None:
+            return self._visao_cache
+        
         vw = self.largura_tela / self.zoom
         vh = self.altura_tela  / self.zoom
         left = int(self.cx - vw / 2)
@@ -50,7 +62,10 @@ class Camera:
         # garante que as dimensões não excedem o mundo
         width = min(int(vw), self.largura_mundo - left)
         height = min(int(vh), self.altura_mundo - top)
-        return pygame.Rect(left, top, width, height)
+        
+        self._visao_cache = pygame.Rect(left, top, width, height)
+        self._visao_cache_key = cache_key
+        return self._visao_cache
 
     def mundo_para_tela(self, x, y):
         """Converte coordenadas do mundo para tela (aplica offset e zoom)."""

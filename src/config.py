@@ -12,8 +12,13 @@ DIR_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "cars")
 DIR_CAR_SELECTION = os.path.join(DIR_PROJETO, "assets", "images", "car_selection")
 DIR_MAPS = os.path.join(DIR_PROJETO, "assets", "images", "maps")
 DIR_MAPS_GUIDES = os.path.join(DIR_MAPS, "guides")
+DIR_ICONS = os.path.join(DIR_PROJETO, "assets", "images", "icons")
 CAMINHO_MENU = os.path.join(DIR_PROJETO, "assets", "images", "ui", "Menu.png")
 CAMINHO_OFICINA = os.path.join(DIR_PROJETO, "assets", "images", "ui", "oficina.png")
+CAMINHO_TROFEU_OURO = os.path.join(DIR_ICONS, "trofeu_ouro.png")
+CAMINHO_TROFEU_PRATA = os.path.join(DIR_ICONS, "trofeu_prata.png")
+CAMINHO_TROFEU_BRONZE = os.path.join(DIR_ICONS, "trofeu_bronze.png")
+CAMINHO_TROFEU_VAZIO = os.path.join(DIR_ICONS, "trofeu_vazio.png")
 
 # ---------- Sistema de Mapas ----------
 def escanear_mapas_automaticamente():
