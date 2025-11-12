@@ -48,6 +48,11 @@ class CheckpointManager:
     def salvar_checkpoints(self):
         """Salva checkpoints no arquivo JSON"""
         try:
+            # Criar diretório se não existir
+            diretorio = os.path.dirname(self.arquivo_checkpoints)
+            if diretorio and not os.path.exists(diretorio):
+                os.makedirs(diretorio, exist_ok=True)
+            
             with open(self.arquivo_checkpoints, 'w', encoding='utf-8') as f:
                 json.dump(self.checkpoints, f, indent=2, ensure_ascii=False)
             print(f"Salvos {len(self.checkpoints)} checkpoints no arquivo")
@@ -82,7 +87,8 @@ class CheckpointManager:
         melhor_indice = -1
         menor_distancia = float('inf')
         
-        for i, (cx, cy) in enumerate(self.checkpoints):
+        for i, cp in enumerate(self.checkpoints):
+            cx, cy = cp[0], cp[1] if len(cp) >= 2 else (cp[0], cp[1])
             dist = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
             if dist <= raio and dist < menor_distancia:
                 melhor_indice = i
@@ -190,7 +196,9 @@ class CheckpointManager:
         
         fonte = pygame.font.SysFont("consolas", 14, bold=True)
         
-        for i, (cx, cy) in enumerate(self.checkpoints):
+        for i, cp in enumerate(self.checkpoints):
+            # Suportar formato (x, y) ou (x, y, angulo)
+            cx, cy = cp[0], cp[1] if len(cp) >= 2 else (cp[0], cp[1])
             # Converter coordenadas do mundo para tela
             screen_x, screen_y = camera.mundo_para_tela(cx, cy)
             
@@ -254,10 +262,12 @@ class CheckpointManager:
         
         # Checkpoint selecionado/em arraste
         if self.checkpoint_em_arraste >= 0:
-            cx, cy = self.checkpoints[self.checkpoint_em_arraste]
+            cp = self.checkpoints[self.checkpoint_em_arraste]
+            cx, cy = cp[0], cp[1] if len(cp) >= 2 else (cp[0], cp[1])
             texto_arraste = f"ARRÁSTANDO: {self.checkpoint_em_arraste + 1} ({cx:.1f}, {cy:.1f})"
             superficie.blit(fonte.render(texto_arraste, True, (255, 165, 0)), (15, 135))
         elif self.checkpoint_selecionado >= 0:
-            cx, cy = self.checkpoints[self.checkpoint_selecionado]
+            cp = self.checkpoints[self.checkpoint_selecionado]
+            cx, cy = cp[0], cp[1] if len(cp) >= 2 else (cp[0], cp[1])
             texto_selecionado = f"Selecionado: {self.checkpoint_selecionado + 1} ({cx:.1f}, {cy:.1f})"
             superficie.blit(fonte.render(texto_selecionado, True, (255, 255, 0)), (15, 135))

@@ -37,7 +37,7 @@ class DriftScoring:
         # Clipping zones (para compatibilidade)
         self.clipping_zones = []
         
-    def update(self, dt, angle_deg, speed_kmh, car_x, car_y, drift_activated=False, drifting=False, collision_force=0.0, has_skidmarks=False):
+    def update(self, dt, angle_deg, speed_kmh, car_x, car_y, drift_activated=False, drifting=False, collision_force=0.0, has_skidmarks=False, na_grama=False):
         """
         Atualiza o sistema de pontuação baseado em skidmarks
         
@@ -50,7 +50,15 @@ class DriftScoring:
             drifting: Se está atualmente derrapando (baseado nas marcas de pneu)
             collision_force: Força da colisão (0-1)
             has_skidmarks: Se há skidmarks sendo criados (base para pontuação)
+            na_grama: Se está na grama (estilo GRIP - não conta pontuação)
         """
+        
+        # Se está na grama, não conta pontuação (estilo GRIP)
+        if na_grama:
+            # Resetar combo se estiver na grama
+            if self.is_drifting:
+                self._reset_combo()
+            return
         
         # Detectar se está derrapando - baseado APENAS em skidmarks + velocidade + ângulo
         self.is_drifting = has_skidmarks and speed_kmh >= self.SPEED_MIN and angle_deg >= self.ANGLE_MIN

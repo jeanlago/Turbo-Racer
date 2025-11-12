@@ -6,7 +6,7 @@ from config import (
     VEL_MAX, ACEL_BASE,
     TURBO_FORCA_IMPULSO, TURBO_FATOR, TURBO_DURACAO_S, TURBO_COOLDOWN_S
 )
-from core.pista import eh_pixel_transitavel
+from core.pista_grip import eh_pixel_transitavel_grip, verificar_colisao_grip, verificar_na_grama_grip
 from core.particulas import EmissorNitro
 from core.skidmarks import GerenciadorSkidmarks
 
@@ -23,6 +23,9 @@ class CarroFisica:
         self.angulo = 0.0
         self.vx = 0.0; self.vy = 0.0
         self.r  = 0.0
+        
+        # Flag para indicar se está na grama (estilo GRIP)
+        self.na_grama = False
 
         # --- Estado no frame do carro ---
         self.v_long = 0.0
@@ -142,13 +145,14 @@ class CarroFisica:
         self._vetor_direita_cache = None
         self._angulo_cache = None
         self._sprite_rot_cache = None
-        self._sprite_angulo_cache = None
+        self._sprite_angulo_cache = None  # Inicializar como None para forçar primeiro cálculo
 
     # ---------------- Sprites ----------------
     def _carregar_sprite(self, prefixo_cor):
         caminho_sprite = os.path.join(DIR_SPRITES, f"{prefixo_cor}.png")
         sprite = pygame.image.load(caminho_sprite).convert_alpha()
         w0, h0 = sprite.get_size()
+        # Tamanho original mantido
         area_max = 48 * 48
         aspect = w0 / max(1, h0)
         if aspect >= 1.0:
@@ -156,7 +160,8 @@ class CarroFisica:
         else:
             h = int((area_max / aspect) ** 0.5); w = int(h * aspect)
         w = min(w, 64); h = min(h, 64)
-        self.sprite_base = pygame.transform.scale(sprite, (w, h))
+        # Usar smoothscale ao invés de scale para melhor qualidade de interpolação
+        self.sprite_base = pygame.transform.smoothscale(sprite, (w, h))
 
     # ---------------- Bases / transformações ---------------- 
     def _vetor_frente(self):
@@ -246,7 +251,7 @@ class CarroFisica:
         return x_corrigido, y_corrigido
 
     # ---------------- Loop principal ----------------
-    def atualizar(self, teclas, superficie_mascara, dt, camera=None):
+    def atualizar(self, teclas, superficie_mascara, dt, camera=None, superficie_pista_renderizada=None):
         acelerar = teclas[self.controles[0]]
         direita  = teclas[self.controles[1]]
         esquerda = teclas[self.controles[2]]
@@ -256,9 +261,9 @@ class CarroFisica:
         if self.turbo_key is not None:
             turbo_pressed = bool(teclas[self.turbo_key])
 
-        self._step(acelerar, direita, esquerda, frear_re, turbo_pressed, superficie_mascara, dt, camera)
+        self._step(acelerar, direita, esquerda, frear_re, turbo_pressed, superficie_mascara, dt, camera, superficie_pista_renderizada)
 
-    def _step(self, acelerar, direita, esquerda, frear_re, turbo_pressed, superficie_mascara, dt, camera=None):
+    def _step(self, acelerar, direita, esquerda, frear_re, turbo_pressed, superficie_mascara, dt, camera=None, superficie_pista_renderizada=None):
         # Escalas arcade
         TIME_SCALE        = 2.9
         ARCADE_SPEED_MULT = 2.5
@@ -348,7 +353,13 @@ class CarroFisica:
         thr = 1.0 if acelerar else 0.0
         brk = 1.0 if frear_re else 0.0
 
-        Fx_long = self.engine_force_fwd * thr * (TURBO_FATOR if self.turbo_ativo else 1.0)
+        # Turbo: aumentar significativamente a força do motor
+        turbo_multiplier = TURBO_FATOR if self.turbo_ativo else 1.0
+        Fx_long = self.engine_force_fwd * thr * turbo_multiplier
+        
+        # Boost adicional: reduzir resistência do arrasto quando turbo está ativo
+        # Isso permite que o carro acelere mais e atinja velocidades maiores
+        # A resistência será aplicada mais abaixo no código, mas aqui podemos ajustar
 
         # freio sempre contra o movimento
         if brk > 0.0:
@@ -380,7 +391,9 @@ class CarroFisica:
 
         # resistências
         Fy += - self.stability_k * v_lat * (1.0 + 0.6*abs(v_long))
-        Fx += - self.drag * v_long * abs(v_long) - self.roll_res * v_long
+        # Reduzir arrasto quando turbo está ativo para permitir velocidades maiores
+        drag_multiplier = 0.7 if self.turbo_ativo else 1.0  # 30% menos arrasto com turbo
+        Fx += - self.drag * v_long * abs(v_long) * drag_multiplier - self.roll_res * v_long
 
         # integra (no frame do carro)
         v_long += (Fx / self.m + v_lat * r) * dt_fis
@@ -457,59 +470,100 @@ class CarroFisica:
         # recompor mundo e avançar posição
         self._recomp_vel(v_long, v_lat)
         speed_mult = ARCADE_SPEED_MULT * (0.88 if escapando else 1.0)
-        self.x += self.vx * dt_fis * speed_mult
-        self.y += self.vy * dt_fis * speed_mult
+        # Limitar movimento máximo por frame para evitar "blip" ou teleporte
+        # Calcular movimento desejado
+        dx = self.vx * dt_fis * speed_mult
+        dy = self.vy * dt_fis * speed_mult
+        # Limitar movimento máximo por frame (evitar saltos grandes)
+        max_move_per_frame = 200.0 * dt_fis  # Limite razoável baseado em dt
+        dist_movimento = math.sqrt(dx*dx + dy*dy)
+        if dist_movimento > max_move_per_frame:
+            # Normalizar e limitar
+            scale = max_move_per_frame / dist_movimento
+            dx *= scale
+            dy *= scale
+        self.x += dx
+        self.y += dy
 
 
-        # Colisão com a pista - melhorada para evitar carro preso e considerar câmera
-        # Usar cache de vetores
-        fx, fy = self._vetor_frente()
-        dir_frente_x, dir_frente_y = fx, fy
-        dir_direita_x, dir_direita_y = self._vetor_direita()
-
-        cx, cy = int(self.x), int(self.y)
+        # Sistema estilo GRIP - verificar se está na grama
+        # No GRIP, você pode andar em qualquer lugar, mas na grama fica mais lento
+        na_grama = False
+        
+        if superficie_pista_renderizada is not None:
+            # Sistema GRIP: verificar se está na grama
+            cx, cy = int(self.x), int(self.y)
+            na_grama = verificar_na_grama_grip(superficie_pista_renderizada, cx, cy, raio=15)
+            
+            # Armazenar flag de grama para uso em pontuação
+            self.na_grama = na_grama
+            
+            # Se está na grama, reduzir velocidade levemente (estilo GRIP)
+            if na_grama:
+                # Reduzir velocidade quando está na grama, mas não muito (usuário pediu um pouco mais rápido)
+                # Aplicar leve redução de velocidade na grama
+                v_long, v_lat = self._decomp_vel()
+                
+                # Reduzir velocidade longitudinal na grama (mas menos que antes)
+                if v_long > 0:
+                    v_long *= 0.97  # Reduzir velocidade em apenas 3% na grama (antes era 8%)
+                elif v_long < 0:
+                    v_long *= 0.97
+                
+                # Reduzir velocidade lateral também (menos que antes)
+                v_lat *= 0.95  # Reduzir velocidade lateral em 5% (antes era 10%)
+                
+                self._recomp_vel(v_long, v_lat)
+        
+        # Colisão com a pista - Sistema antigo (compatibilidade)
+        # No sistema GRIP, não há colisão, apenas redução de velocidade na grama
         houve_colisao = False
-        colisao_count = 0
-        total_amostras = 0
         
-        # Mais amostras para melhor detecção, especialmente nas bordas
-        amostras_local = [
-            (0, 0),      # Centro
-            (10, 0), (-10, 0), (0, 6), (0, -6),  # Pontos principais
-            (6, 3), (-6, 3), (6, -3), (-6, -3),  # Pontos diagonais
-            (15, 0), (-15, 0), (0, 9), (0, -9)   # Pontos externos
-        ]
-        
-        for ox, oy in amostras_local:
-            px = int(cx + ox * dir_frente_x + oy * dir_direita_x)
-            py = int(cy + ox * dir_frente_y + oy * dir_direita_y)
+        if superficie_pista_renderizada is None:
+            # Sistema antigo: usar mask para compatibilidade
+            fx, fy = self._vetor_frente()
+            dir_frente_x, dir_frente_y = fx, fy
+            dir_direita_x, dir_direita_y = self._vetor_direita()
+
+            cx, cy = int(self.x), int(self.y)
+            colisao_count = 0
+            total_amostras = 0
             
-            # Aplicar correção de coordenadas baseada na câmera se disponível
-            if camera is not None:
-                px, py = self._corrigir_coordenadas_para_guide(px, py, camera, superficie_mascara)
+            # Mais amostras para melhor detecção, especialmente nas bordas
+            amostras_local = [
+                (0, 0),      # Centro
+                (10, 0), (-10, 0), (0, 6), (0, -6),  # Pontos principais
+                (6, 3), (-6, 3), (6, -3), (-6, -3),  # Pontos diagonais
+                (15, 0), (-15, 0), (0, 9), (0, -9)   # Pontos externos
+            ]
             
-            total_amostras += 1
-            if not eh_pixel_transitavel(superficie_mascara, px, py):
-                colisao_count += 1
-                # Se mais de 30% dos pontos estão em colisão, considera colisão
-                if colisao_count > total_amostras * 0.3:
-                    houve_colisao = True
-                    break
+            for ox, oy in amostras_local:
+                px = int(cx + ox * dir_frente_x + oy * dir_direita_x)
+                py = int(cy + ox * dir_frente_y + oy * dir_direita_y)
+                
+                # Aplicar correção de coordenadas baseada na câmera se disponível
+                if camera is not None:
+                    px, py = self._corrigir_coordenadas_para_guide(px, py, camera, superficie_mascara)
+                
+                total_amostras += 1
+                pass
 
         if houve_colisao:
-            # Sistema de "push" para evitar carro preso
-            # Calcular direção de escape baseada na posição da colisão
             escape_x, escape_y = 0, 0
+            fx, fy = self._vetor_frente()
+            dir_frente_x, dir_frente_y = fx, fy
+            dir_direita_x, dir_direita_y = self._vetor_direita()
+            cx, cy = int(self.x), int(self.y)
             
-            # Verificar qual lado tem mais espaço livre
             for ox, oy in [(10, 0), (-10, 0), (0, 6), (0, -6)]:
                 px = int(cx + ox * dir_frente_x + oy * dir_direita_x)
                 py = int(cy + ox * dir_frente_y + oy * dir_direita_y)
-                if eh_pixel_transitavel(superficie_mascara, px, py):
-                    escape_x += ox * 0.1
-                    escape_y += oy * 0.1
+                
+                if superficie_pista_renderizada is not None:
+                    if eh_pixel_transitavel_grip(superficie_pista_renderizada, px, py):
+                        escape_x += ox * 0.1
+                        escape_y += oy * 0.1
             
-            # Aplicar push de escape
             if escape_x != 0 or escape_y != 0:
                 self.x += escape_x
                 self.y += escape_y
@@ -517,26 +571,31 @@ class CarroFisica:
                 # Se não há direção de escape clara, voltar à posição anterior
                 self.x, self.y = x_ant, y_ant
             
-            # Reduzir velocidade de forma mais suave
-            self.vx *= -0.2  # Reduzido de -0.3 para -0.2
-            self.vy *= -0.2  # Reduzido de -0.3 para -0.2
+            # Reduzir velocidade de forma mais suave (estilo GRIP)
+            # No GRIP, quando está na grama, a velocidade é reduzida
+            self.vx *= -0.2
+            self.vy *= -0.2
             
             # Aplicar damping adicional para evitar oscilações
             self.vx *= 0.8
             self.vy *= 0.8
             
             v_long, v_lat = self._decomp_vel()
-            if v_long < -1.5:  # Reduzido de -2.0 para -1.5
+            if v_long < -1.5:
                 v_long = -1.5
             self._recomp_vel(v_long, v_lat)
 
         # Limites da área
-        self.x = max(0.0, min(LARGURA * 1.0, self.x))
-        self.y = max(0.0, min(ALTURA * 1.0, self.y))
+        # Se estamos usando tiles (superfície grande), não limitar aos limites da tela
+        # Os limites só se aplicam quando não estamos usando o sistema de tiles GRIP
+        if superficie_pista_renderizada is None:
+            # Sistema antigo: limitar aos limites da tela
+            self.x = max(0.0, min(LARGURA * 1.0, self.x))
+            self.y = max(0.0, min(ALTURA * 1.0, self.y))
+        # Se usar tiles, não limitar (a pista é maior que a tela)
 
         # HUD - velocímetro mais fiel ao que anda na tela
         # v_long está em pixels/segundo (antes do multiplicador arcade)
-        # V_TOP = 750 px/s é a velocidade máxima
         # O movimento aplica ARCADE_SPEED_MULT = 2.5, mas para o velocímetro
         # queremos mostrar a velocidade "real" que o jogador vê na tela
         # Calcular velocidade considerando o multiplicador arcade aplicado no movimento
@@ -544,11 +603,15 @@ class CarroFisica:
         velocidade_com_mult = abs(v_long) * ARCADE_SPEED_MULT
         
         # Converter para km/h: 
-        # Se V_TOP = 750 px/s * 2.5 = 1875 px/s máximo
-        # Queremos que isso corresponda a ~250 km/h no velocímetro
-        # Fator de conversão: 250 / 1875 = 0.1333...
-        # Mas vamos usar um fator mais realista baseado na escala do jogo
-        PXPS_TO_KMH = 0.133  # 1875 px/s * 0.133 = ~250 km/h
+        # v_long está em px/s, e V_TOP = 750 px/s é o limite máximo teórico
+        # Na prática, v_long real chega a valores menores devido às limitações físicas
+        # Se o velocímetro está mostrando apenas 40 km/h como máxima, precisamos aumentar muito o fator
+        # Ajustar para que velocidades típicas resultem em valores de 0-180 km/h
+        # Se velocidade_com_mult típica é ~200 px/s e queremos mostrar até 180 km/h:
+        # PXPS_TO_KMH = 180 / 200 = 0.9
+        # Mas vamos usar um valor maior para garantir que chegue a 180 km/h mesmo em velocidades menores
+        PXPS_TO_KMH = 1.0  # Aumentado drasticamente para que o velocímetro mostre valores corretos
+        # Isso faz com que velocidade_com_mult de ~180 px/s resulte em 180 km/h
         self.velocidade_kmh = velocidade_com_mult * PXPS_TO_KMH
         self.velocidade = v_long  # mantém a telemetria longitudinal se precisar
 
@@ -568,22 +631,11 @@ class CarroFisica:
         else:
             self.turbo_carga = min(100.0, self.turbo_carga + 12.0 * dt_fis)
 
-        # Velocímetro
-        self._atualizar_velocimetro(v_long, dt_fis)
 
-    # ---------------- Colisão auxiliar ----------------
     def _verificar_colisao(self, superficie_mascara):
-        fx, fy = self._vetor_frente(); rx, ry = self._vetor_direita()
-        for ox, oy in [(0,0), (12,0), (-12,0), (0,6), (0,-6)]:
-            px = int(self.x + ox * fx + oy * rx)
-            py = int(self.y + ox * fy + oy * ry)
-            if not eh_pixel_transitavel(superficie_mascara, px, py):
-                return False
         return True
 
-    # ---------------- HUD/FX extras ----------------
     def _atualizar_estado_drift(self, u, v, dt):
-        # Otimização: evitar hypot
         vel_sq = u*u + v*v
         vel = math.sqrt(vel_sq) if vel_sq > 0.01 else 0.0
         slip = abs(math.degrees(math.atan2(v, max(0.1, abs(u)))))
@@ -608,12 +660,12 @@ class CarroFisica:
                 # Pneu traseiro esquerdo
                 pos_x_esq = self.x - fx * offset_tras - fy * offset_lateral
                 pos_y_esq = self.y - fy * offset_tras + fx * offset_lateral
-                self.skidmarks.adicionar_skidmark(pos_x_esq, pos_y_esq, self.angulo, self.drift_intensidade, "traseiro_esq")
+                self.skidmarks.adicionar_skidmark(pos_x_esq, pos_y_esq, self.angulo, self.drift_intensidade, "traseiro_esq", na_grama=self.na_grama)
                 
                 # Pneu traseiro direito
                 pos_x_dir = self.x - fx * offset_tras + fy * offset_lateral
                 pos_y_dir = self.y - fy * offset_tras - fx * offset_lateral
-                self.skidmarks.adicionar_skidmark(pos_x_dir, pos_y_dir, self.angulo, self.drift_intensidade, "traseiro_dir")
+                self.skidmarks.adicionar_skidmark(pos_x_dir, pos_y_dir, self.angulo, self.drift_intensidade, "traseiro_dir", na_grama=self.na_grama)
                 
                 # Se muito angular, criar marcas dos pneus dianteiros também
                 if abs(self.angulo) > 0.5:  # Ângulo restaurado para marcas em todas as 4 rodas
@@ -622,12 +674,12 @@ class CarroFisica:
                     # Pneu dianteiro esquerdo
                     pos_x_frente_esq = self.x + fx * offset_frente - fy * offset_lateral
                     pos_y_frente_esq = self.y + fy * offset_frente + fx * offset_lateral
-                    self.skidmarks.adicionar_skidmark(pos_x_frente_esq, pos_y_frente_esq, self.angulo, self.drift_intensidade * 0.7, "dianteiro_esq")
+                    self.skidmarks.adicionar_skidmark(pos_x_frente_esq, pos_y_frente_esq, self.angulo, self.drift_intensidade * 0.7, "dianteiro_esq", na_grama=self.na_grama)
                     
                     # Pneu dianteiro direito
                     pos_x_frente_dir = self.x + fx * offset_frente + fy * offset_lateral
                     pos_y_frente_dir = self.y + fy * offset_frente - fx * offset_lateral
-                    self.skidmarks.adicionar_skidmark(pos_x_frente_dir, pos_y_frente_dir, self.angulo, self.drift_intensidade * 0.7, "dianteiro_dir")
+                    self.skidmarks.adicionar_skidmark(pos_x_frente_dir, pos_y_frente_dir, self.angulo, self.drift_intensidade * 0.7, "dianteiro_dir", na_grama=self.na_grama)
                 
                 self._ultimo_skidmark = 0.0
         else:
@@ -660,9 +712,12 @@ class CarroFisica:
     def desenhar(self, superficie, camera=None):
         if camera is None:
             # Cache de sprite rotacionado
-            if self._sprite_angulo_cache != self.angulo:
-                self._sprite_rot_cache = pygame.transform.rotate(self.sprite_base, self.angulo)
-                self._sprite_angulo_cache = self.angulo
+            # Arredondar ângulo para evitar recálculos frequentes que causam "flicando"
+            angulo_arredondado = round(self.angulo, 1)  # Arredondar para 1 casa decimal
+            if self._sprite_angulo_cache is None or self._sprite_angulo_cache != angulo_arredondado:
+                # Usar rotozoom com zoom=1.0 para melhor qualidade na rotação
+                self._sprite_rot_cache = pygame.transform.rotozoom(self.sprite_base, self.angulo, 1.0)
+                self._sprite_angulo_cache = angulo_arredondado
             sprite_rot = self._sprite_rot_cache
             rect = sprite_rot.get_rect(center=(self.x, self.y))
             superficie.blit(sprite_rot, rect.topleft)
@@ -670,12 +725,20 @@ class CarroFisica:
             return
         sx, sy = camera.mundo_para_tela(self.x, self.y)
         # Cache com zoom (mais complexo, mas ainda vale a pena)
-        cache_key = (int(self.angulo), int(camera.zoom * 10))
-        if self._sprite_angulo_cache != cache_key:
+        # Usar precisão menor no cache para evitar recálculos frequentes que causam "flicando"
+        # Arredondar ângulo e zoom para reduzir recálculos
+        angulo_arredondado = round(self.angulo, 1)  # Arredondar para 1 casa decimal
+        zoom_arredondado = round(camera.zoom, 2)  # Arredondar para 2 casas decimais
+        cache_key = (angulo_arredondado, zoom_arredondado)
+        if self._sprite_angulo_cache is None or self._sprite_angulo_cache != cache_key:
+            # rotozoom já usa interpolação suave, mas vamos garantir qualidade
+            # Se o zoom for muito diferente de 1.0, pode causar perda de qualidade
+            # Vamos usar rotozoom que já tem boa qualidade
             self._sprite_rot_cache = pygame.transform.rotozoom(self.sprite_base, self.angulo, camera.zoom)
             self._sprite_angulo_cache = cache_key
         sprite_rot = self._sprite_rot_cache
         rect = sprite_rot.get_rect(center=(sx, sy))
+        # Usar blit com flags para melhor qualidade (se disponível)
         superficie.blit(sprite_rot, rect.topleft)
         self.emissor_nitro.draw(superficie, camera)
 

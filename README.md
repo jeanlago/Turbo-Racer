@@ -15,7 +15,10 @@ Um jogo de corrida arcade 2D top-down desenvolvido em **Python** com **Pygame**,
 -  **IA Inteligente** - Algoritmo Pure Pursuit para navegação suave e realista
 -  **Sistema de Dificuldade Universal** - 3 níveis (Fácil, Médio, Difícil) para corrida e drift
 -  **Sistema de Mapas Escalável** - Detecção automática de mapas sem configuração manual
+-  **Sistema de Pistas GRIP** - 9 pistas estilo GRIP com tiles dinâmicos e colisão pixel-based
 -  **Editor Visual de Checkpoints** - Crie e edite checkpoints arrastando e soltando
+-  **Editor de Garagem** - Ajuste posição e tamanho dos carros na oficina visualmente
+-  **Sistema de Recordes e Troféus** - Salve seus melhores tempos e conquiste troféus
 -  **Sistema de Áudio Completo** - Múltiplas faixas musicais com controles independentes
 -  **Modo Drift** - Sistema de pontuação automática baseado em derrapagem real com tempo limitado e combos
 -  **HUD Dinâmico** - Interface adaptativa com câmera inteligente
@@ -80,19 +83,28 @@ Turbo-Racer/
 │  └─ CHANGELOG.md                # Histórico de versões
 ├─ data/                          # Dados e configurações
 │  ├─ config.json                 # Configurações do usuário
+│  ├─ progresso.json               # Progresso do jogador (dinheiro, carros, recordes, troféus)
+│  ├─ garage_config.json           # Configurações da garagem (posições dos carros)
 │  └─ *.json                      # Checkpoints e dados de mapas
+├─ tools/                         # Ferramentas de desenvolvimento
+│  ├─ checkpoint_editor.py        # Editor visual de checkpoints
+│  ├─ garage_editor.py            # Editor visual de garagem
+│  └─ aplicar_config_garagem.py   # Script para aplicar configurações da garagem
 ├─ src/                           # Código fonte
 │  ├─ main.py                     # Ponto de entrada principal
 │  ├─ config.py                   # Configurações e constantes
 │  └─ core/                       # Módulos principais
 │     ├─ carro_fisica.py          # Sistema de física avançada
-│     ├─ pista.py                 # Carregamento e detecção de pista
 │     ├─ camera.py                # Sistema de câmera dinâmica
 │     ├─ corrida.py               # Gerenciador de corrida
 │     ├─ ia.py                    # Inteligência artificial (Pure Pursuit)
 │     ├─ checkpoint_manager.py    # Editor visual de checkpoints
+│     ├─ pista_tiles.py           # Sistema de pistas estilo GRIP (tiles dinâmicos)
+│     ├─ pista_grip.py            # Colisão pixel-based estilo GRIP
+│     ├─ laps_grip.py             # Checkpoints e dados das pistas GRIP
+│     ├─ progresso.py             # Gerenciador de progresso (dinheiro, recordes, troféus)
 │     ├─ menu.py                  # Sistema de menus
-│     ├─ hud.py                   # Interface de jogo
+│     ├─ hud.py                   # Interface de jogo (velocímetro, nitro, minimapa, tempos)
 │     ├─ musica.py                # Gerenciador de música
 │     ├─ particulas.py            # Efeitos de partículas
 │     ├─ skidmarks.py             # Sistema de marcas de pneu
@@ -149,14 +161,31 @@ Turbo-Racer/
 
 ### **Editor de Checkpoints**
 - **F7** - Ativar/desativar modo edição
-- **F5** - Salvar checkpoints
+- **F5** - Salvar checkpoints (JSON backup)
 - **F6** - Carregar checkpoints
 - **F8** - Limpar todos os checkpoints
-- **F10** - Mostrar todos os checkpoints
+- **F10** - Exportar para `laps_grip.py`
+- **R** - Rotacionar checkpoint selecionado (90°)
+- **Q/E** - Rotacionar checkpoint selecionado (-15°/+15°)
 - **Clique em checkpoint** - Selecionar/mover checkpoint
 - **Ctrl+Clique** - Adicionar novo checkpoint
 - **Arrastar área vazia** - Mover câmera
 - **DEL** - Remover checkpoint selecionado
+- **Mouse Wheel** - Zoom in/out
+
+### **Editor de Garagem**
+- **F7** - Ativar/desativar modo edição
+- **F5** - Salvar configurações em `data/garage_config.json`
+- **F6** - Carregar configurações
+- **← →** - Navegar entre carros
+- **W/A/S/D** - Mover posição (modo edição)
+- **Q/E** - Ajustar largura (modo edição)
+- **Z/X** - Ajustar altura (modo edição)
+- **Mouse** - Arrastar para mover, cantos para redimensionar
+- **H** - Mostrar/Ocultar ajuda
+- **ESC** - Sair
+
+Veja mais detalhes em: [tools/README_GARAGE_EDITOR.md](tools/README_GARAGE_EDITOR.md)
 
 ---
 
@@ -204,52 +233,33 @@ python src/main.py
 
 ---
 
-##  Sistema de Mapas Escalável
+## Sistema de Pistas GRIP
 
-### ** Adicionar Novo Mapa (AUTOMÁTICO)**
+O jogo utiliza **exclusivamente** o sistema de pistas GRIP com tiles dinâmicos. O sistema antigo de mapas baseado em imagens PNG foi removido para melhor performance e consistência.
 
-#### **1. Preparar Assets**
-```
-assets/images/maps/
-├── MeuMapa.png                    # OBRIGATÓRIO
-└── guides/
-    ├── MeuMapa_guides.png         # OPCIONAL
-    └── MeuMapa_checkpoints.json   # OPCIONAL (criado automaticamente)
-```
+### **Características das Pistas GRIP**
 
-#### **2. Ativar o Mapa**
-1. **Execute** o jogo
-2. **Vá para "Selecionar Mapas"**
-3. **Pressione R** para recarregar mapas (se necessário)
-4. **Selecione** o novo mapa na lista
+- **9 Pistas Disponíveis** - Pistas numeradas de 1 a 9, cada uma com seu próprio layout de tiles
+- **Tiles Dinâmicos** - Pista renderizada dinamicamente baseada na posição do jogador
+- **Colisão Pixel-Based** - Detecção baseada em cores dos pixels (estilo GRIP original)
+- **Grama Transitável** - Carro pode andar na grama, mas fica mais lento e não ganha pontos de drift
+- **Checkpoints Retangulares** - Checkpoints perpendiculares à direção da pista, rotacionáveis
+- **Spawn Points** - Múltiplos pontos de spawn configuráveis por pista
+- **Minimapas** - Cada pista tem seu próprio minimapa (`track1.png` a `track9.png`)
 
-#### **3. Criar Checkpoints (Opcional)**
-1. **Entre** no mapa
-2. **Pressione F7** para modo edição
-3. **Posicione** checkpoints clicando na pista
-4. **Mova** checkpoints arrastando
-5. **Salve** com F5
+### **Editor de Checkpoints**
 
-### **Recursos do Sistema Escalável**
+Para editar checkpoints e spawn points de uma pista:
 
-- **Detecção automática** - Mapas aparecem automaticamente
-- **Nomes inteligentes** - "MeuMapa" vira "Meu Mapa"
-- **Recarregamento dinâmico** - Adicione mapas sem reiniciar
-- **Fallback robusto** - Funciona mesmo sem guias/checkpoints
-- **Zero configuração** - Apenas coloque os arquivos
-
-### **Especificações de Mapas**
-
-#### **Cores Padrão**
-- **Laranja (255, 165, 0)** - Pista transitável
-- **Verde (0, 255, 0)** - Limites não transitáveis
-- **Magenta (255, 0, 255)** - Checkpoints/área transitável
-- **Amarelo (255, 255, 0)** - Linha de largada (guias)
-
-#### **Resolução Recomendada**
-- **Mínimo:** 1280x720
-- **Recomendado:** 1920x1080
-- **Máximo:** 2560x1440 (para performance)
+1. **Execute** `python tools/checkpoint_editor.py`
+2. **Selecione** a pista (1-9) com **F9** ou setas
+3. **Pressione F7** para ativar modo edição
+4. **Clique** para adicionar checkpoints
+5. **Arraste** para mover checkpoints
+6. **R/Q/E** para rotacionar checkpoints selecionados
+7. **Shift+F7** para alternar modo spawn points
+8. **F10** para exportar para `src/core/laps_grip.py`
+9. **F5** para salvar backup em JSON
 
 ---
 
@@ -314,6 +324,13 @@ assets/images/maps/
 
 ## Funcionalidades Avançadas
 
+### **Sistema de Progresso**
+- **Dinheiro** - Ganhe dinheiro completando corridas e desbloqueie novos carros
+- **Recordes** - Seus melhores tempos são salvos automaticamente por pista
+- **Troféus** - Sistema de troféus (Ouro, Prata, Bronze) baseado na posição final
+- **Persistência** - Todo progresso é salvo em `data/progresso.json`
+- **Menu Recordes** - Visualize seus recordes e troféus conquistados
+
 ### **Sistema de IA**
 - **Algoritmo Pure Pursuit** - Navegação suave e realista
 - **Detecção Inteligente** - Evita obstáculos e recupera de situações problemáticas
@@ -357,10 +374,19 @@ assets/images/maps/
 
 ### **Sistema de Performance**
 - **100+ FPS** - Otimizações agressivas mantendo qualidade visual
-- **Marcas de Pneu em 4 Rodas** - Skidmarks completos durante drift
-- **Câmera Dinâmica** - Zoom adaptativo baseado na velocidade para sensação de aceleração
-- **Renderização Otimizada** - HUD suave sem flickering
+- **Marcas de Pneu em 4 Rodas** - Skidmarks completos durante drift (pretas na pista, marrons na grama)
+- **Câmera Dinâmica** - Zoom adaptativo baseado na velocidade com suavização avançada
+- **Renderização Otimizada** - HUD suave sem flickering, cache de sprites otimizado
 - **Sistema de Partículas Inteligente** - Controle de densidade para melhor performance
+- **Tiles Dinâmicos** - Renderização eficiente de pistas grandes (5000x5000) com tiles
+- **Cache de Imagens** - Minimapas e troféus são cacheados para melhor performance
+
+### **HUD Completo**
+- **Velocímetro** - Mostra velocidade em km/h (até 180 km/h) com oscilação visual no limite
+- **Nitro** - Indicador visual de carga do nitro (preenche de baixo para cima)
+- **Minimapa** - Mostra posição do jogador, checkpoints e outros carros
+- **Tempos** - Exibe tempo total, tempo desde último checkpoint e número de voltas
+- **Aviso Contra Mão** - Alerta visual quando o jogador está indo na direção errada
 
 ---
 
@@ -384,13 +410,24 @@ assets/images/maps/
 2. **Configure** em `CARROS_DISPONIVEIS` no `main.py`
 3. **Adicione** sprite de seleção em `assets/images/car_selection/`
 4. **Defina** tipo de tração (RWD/FWD/AWD)
-5. **Teste** física e comportamento
+5. **Use o Editor de Garagem** para ajustar posição e tamanho na oficina
+6. **Teste** física e comportamento
 
 ### **Adicionando Novos Mapas**
 1. **Coloque** o arquivo PNG em `assets/images/maps/`
 2. **Execute** o jogo - detecção automática
 3. **Use** o editor visual (F7) para checkpoints
 4. **Teste** navegação da IA
+
+### **Adicionando Checkpoints em Pistas GRIP**
+1. **Execute** `python tools/checkpoint_editor.py`
+2. **Selecione** a pista (1-9) com F9
+3. **Pressione F7** para ativar modo edição
+4. **Clique** para adicionar checkpoints
+5. **Arraste** para mover checkpoints
+6. **R/Q/E** para rotacionar checkpoints
+7. **F10** para exportar para `src/core/laps_grip.py`
+8. **F5** para salvar backup em JSON
 
 ### **Personalizando Física**
 - **Ajuste** constantes em `config.py`
@@ -411,7 +448,7 @@ assets/images/maps/
 
 ### **Áreas de Contribuição**
 - ** Novos Carros** - Adicione sprites e configurações
-- ** Novos Mapas** - Crie pistas e checkpoints
+- ** Novas Pistas GRIP** - Adicione tiles e defina layouts de pistas
 - ** Melhorias de IA** - Otimize algoritmos de navegação
 - ** Efeitos Visuais** - Adicione partículas e animações
 - ** Interface** - Melhore menus e HUD
@@ -461,5 +498,25 @@ Este projeto é de código aberto e está disponível sob a **licença MIT**.
 ---
 
 **Desenvolvido com por Jean Marins e Jayson Sales**  
-**Versão atual:** 2.5.0  
+**Versão atual:** 3.1.0  
 **Última atualização:** Novembro 2025
+
+### **Novidades da Versão 3.1.0 (Novembro 2025)**
+- **Sistema GRIP Completo** - Removido sistema antigo de pistas, agora 100% baseado em tiles GRIP
+- **Otimizações de Código** - Removido código não utilizado, melhor performance e manutenibilidade
+- **IA com Múltiplos Oponentes** - 3 IAs no modo 1 jogador, 2 IAs no modo 2 jogadores, com seleção aleatória de carros
+- **HUD Split-Screen Melhorado** - Velocímetros individuais e minimapa centralizado no modo 2 jogadores
+- **Sistema de Spawn Points** - Editor permite definir múltiplos pontos de spawn por pista
+- **Checkpoints Retangulares Rotacionáveis** - Checkpoints perpendiculares à pista com rotação manual
+- **Correções e Melhorias** - Correção de bugs, melhor posicionamento de HUD, otimizações de renderização
+
+### **Novidades da Versão 3.0.0**
+- Sistema de pistas GRIP (9 pistas com tiles dinâmicos)
+- Editor de garagem para ajustar posição e tamanho dos carros
+- Sistema de recordes e troféus com persistência
+- Minimapa com checkpoints e outros jogadores
+- Velocímetro e nitro com indicadores visuais PNG
+- Sistema de tempos (total, checkpoint, volta)
+- Aviso "Contra Mão" quando jogador vai na direção errada
+- Melhorias de performance e otimizações
+- Menu de recordes para visualizar conquistas

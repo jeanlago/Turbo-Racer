@@ -1,6 +1,10 @@
 {
-  "dinheiro": 225,
+  "dinheiro": 0,
   "carros_desbloqueados": [
     "Car1"
-  ]
+  ],
+  "recordes": {
+  },
+  "trofeus": {
+  }
 }

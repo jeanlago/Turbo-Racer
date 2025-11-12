@@ -7,6 +7,65 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+## [3.1.0] - 2025-11-XX
+
+### Adicionado
+- **Sistema GRIP Completo** - Migração completa para sistema de pistas GRIP com tiles dinâmicos
+- **IA com Múltiplos Oponentes** - 3 IAs no modo 1 jogador, 2 IAs no modo 2 jogadores, com seleção aleatória de carros
+- **Sistema de Spawn Points** - Editor permite definir múltiplos pontos de spawn por pista
+- **Checkpoints Retangulares Rotacionáveis** - Checkpoints perpendiculares à pista com rotação manual (R, Q, E)
+- **HUD Split-Screen Melhorado** - Velocímetros individuais e minimapa centralizado no modo 2 jogadores
+- **Sistema de Posição e Voltas** - Exibição de posição (1st, 2nd) e voltas (1/2) para cada jogador no split-screen
+
+### Modificado
+- **Sistema de Pistas** - Removido sistema antigo baseado em imagens PNG, agora 100% baseado em tiles GRIP
+- **Sistema de Colisão** - Simplificado para sistema GRIP (sem colisão hard, apenas redução de velocidade na grama)
+- **Editor de Checkpoints** - Suporte completo para rotação de checkpoints e edição de spawn points
+- **Sistema de IA** - Melhorado para encontrar checkpoint mais próximo quando travado, em vez de resetar
+- **HUD 2 Jogadores** - Layout redesenhado com linha divisória preta, minimapa centralizado e posição/voltas individuais
+- **Sistema de Spawn** - Seleção aleatória de spawn points para players e IAs
+
+### Corrigido
+- **Bots Resetando para Checkpoint 1** - IA agora encontra checkpoint mais próximo quando travado
+- **Checkpoints Não Visíveis** - Melhorada visibilidade e detecção de checkpoints retangulares
+- **Posicionamento HUD** - Corrigido alinhamento de posição/voltas no modo 2 jogadores
+- **Minimapa Inconsistente** - Corrigido mapeamento de coordenadas do mundo para minimapa
+- **Teleporte de Carros** - Prevenção de teleportes ao trocar de tiles
+
+### Removido
+- **Sistema Antigo de Pistas** - Removido `src/core/pista.py` e toda lógica relacionada
+- **Sistema de Mapas PNG** - Removido suporte para mapas baseados em imagens PNG
+- **Código Não Utilizado** - Limpeza completa de imports e funções não utilizadas
+- **Classe PistaGrip** - Removida classe não utilizada de `pista_grip.py`
+- **Fallbacks Antigos** - Removidos todos os fallbacks para sistema antigo de pistas
+
+### Otimizado
+- **Código Limpo** - Removido código não utilizado, melhor manutenibilidade
+- **Imports** - Limpeza de imports não utilizados em todos os módulos
+- **Performance** - Otimizações de renderização e detecção de colisão
+
+---
+
+## [3.0.0] - 2025-11-XX
+
+### Adicionado
+- **Sistema de Pistas GRIP** - 9 pistas estilo GRIP com tiles dinâmicos e colisão pixel-based
+- **Editor de Garagem** - Ferramenta visual para ajustar posição e tamanho dos carros na oficina
+- **Sistema de Recordes e Troféus** - Persistência de melhores tempos e troféus por pista
+- **Minimapa Completo** - Mostra posição do jogador, checkpoints e outros carros
+- **Velocímetro e Nitro PNG** - Indicadores visuais usando imagens PNG com animação
+- **Sistema de Tempos** - Tempo total, tempo por checkpoint e tempo por volta
+- **Aviso "Contra Mão"** - Alerta visual quando jogador vai na direção errada
+- **Menu de Recordes** - Visualização de recordes e troféus conquistados
+
+### Modificado
+- **Sistema de Checkpoints** - Agora retangulares e perpendiculares à pista
+- **Sistema de Colisão** - Migrado para detecção pixel-based estilo GRIP
+- **Sistema de Renderização** - Tiles dinâmicos baseados na posição do jogador
+- **HUD** - Adicionado velocímetro, nitro, minimapa e tempos
+
+---
+
 ## [2.5.0] - 2025-11-10
 
 ### Adicionado
@@ -246,6 +305,6 @@ chore: atualizar dependências do pygame
 
 ---
 
-**Última atualização:** Janeiro 2025  
-**Versão atual:** 2.5.0  
-**Próxima versão:** 2.6.0 (planejada)
+**Última atualização:** Novembro 2025  
+**Versão atual:** 3.1.0  
+**Próxima versão:** 3.2.0 (planejada)

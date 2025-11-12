@@ -169,12 +169,7 @@ def atualizar_caminhos_mapa():
     CAMINHO_GUIAS = obter_caminho_guias()
     CAMINHO_WAYPOINTS_JSON = obter_caminho_checkpoints()
     
-    # Limpar cache de checkpoints quando trocar de mapa
-    try:
-        from core.pista import limpar_cache_checkpoints
-        limpar_cache_checkpoints()
-    except ImportError:
-        pass  # Se o módulo não estiver disponível, ignorar
+    # Sistema antigo de pista removido - cache não é mais necessário
 
 # ---------- Pista (cores aceitas) / HSV ----------
 CORES_PISTA = [(31, 23, 38), (0, 0, 0), (240, 224, 0), (144, 105, 0)]
@@ -259,8 +254,8 @@ VEL_MAX                  = 3.0  # Reduzido para velocidade mais realista
 ACEL_BASE                = 0.06  # Reduzido para aceleração mais suave
 
 # ---------- Turbo ----------
-TURBO_FORCA_IMPULSO = 2.5  # Reduzido de 4.2 para 2.5 (mais realista)
-TURBO_FATOR        = 1.15  # Reduzido de 1.25 para 1.15 (mais realista)
+TURBO_FORCA_IMPULSO = 4.0  # Aumentado para dar mais impulso
+TURBO_FATOR        = 1.6  # Aumentado significativamente (60% de boost) para dar ganho real
 TURBO_DURACAO_S    = 1.2   # Aumentado de 0.9 para 1.2 (dura mais tempo)
 TURBO_COOLDOWN_S   = 3.0   # Aumentado de 2.5 para 3.0 (cooldown maior)
 

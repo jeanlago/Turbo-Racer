@@ -1,14 +1,12 @@
 import os
 import math
+import random
 import pygame
 from config import (
     LARGURA, ALTURA, FPS, TURBO_P1, TURBO_P2,
     USAR_IA_NO_CARRO_2, CONFIGURACOES,
-    MAPAS_DISPONIVEIS, MAPA_ATUAL, obter_caminho_mapa, obter_caminho_guias,
+    MAPAS_DISPONIVEIS, MAPA_ATUAL, obter_caminho_mapa,
     obter_lista_mapas, CAMINHO_TROFEU_OURO, CAMINHO_TROFEU_PRATA, CAMINHO_TROFEU_BRONZE, CAMINHO_TROFEU_VAZIO
-)
-from core.pista import (
-    carregar_pista, eh_pixel_transitavel, calcular_posicoes_iniciais, extrair_checkpoints
 )
 from core.checkpoint_manager import CheckpointManager
 from core.carro_fisica import CarroFisica
@@ -23,22 +21,21 @@ from core.progresso import gerenciador_progresso
 from config import CAMINHO_MENU
 
 CARROS_DISPONIVEIS = [
-    {"nome": "Nissan 350Z", "prefixo_cor": "Car1", "posicao": (570, 145), "sprite_selecao": "Car1", "tipo_tracao": "rear", "tamanho_oficina": (850, 550), "posicao_oficina": (LARGURA//2 - 430, 170), "preco": 0},  # Gratuito (primeiro carro)
-    {"nome": "BMW M3 95' ", "prefixo_cor": "Car2", "posicao": (570, 190), "sprite_selecao": "Car2", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380), "preco": 3000},
-    {"nome": "Chevrolet Camaro", "prefixo_cor": "Car3", "posicao": (560, 210), "sprite_selecao": "Car3", "tipo_tracao": "rear", "tamanho_oficina": (580, 550), "posicao_oficina": (LARGURA//2 - 320, 200), "preco": 4000},
-    {"nome": "Toyota Supra", "prefixo_cor": "Car4", "posicao": (570, 190), "sprite_selecao": "Car4", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380), "preco": 5000},
-    {"nome": "Toyota Trueno", "prefixo_cor": "Car5", "posicao": (590, 175), "sprite_selecao": "Car5", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380), "preco": 3600},
-    {"nome": "Nissan Skyline", "prefixo_cor": "Car6", "posicao": (550, 200), "sprite_selecao": "Car6", "tipo_tracao": "front", "tamanho_oficina": (900, 650), "posicao_oficina": (LARGURA//2 - 490, 215), "preco": 6000},
-    {"nome": "Nissan Silvia S13", "prefixo_cor": "Car7", "posicao": (600, 185), "sprite_selecao": "Car7", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380), "preco": 4400},
-    {"nome": "Mazda RX-7", "prefixo_cor": "Car8", "posicao": (540, 220), "sprite_selecao": "Car8", "tipo_tracao": "awd", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 300, 380), "preco": 7000},
-    {"nome": "Toyota Celica", "prefixo_cor": "Car9", "posicao": (610, 195), "sprite_selecao": "Car9", "tipo_tracao": "rear", "tamanho_oficina": (600, 300), "posicao_oficina": (LARGURA//2 - 350, 380), "preco": 4000},
-    {"nome": "Volkswagem Fusca", "prefixo_cor": "Car10", "posicao": (530, 240), "sprite_selecao": "Car10", "tipo_tracao": "front", "tamanho_oficina": (750, 550), "posicao_oficina": (LARGURA//2 - 400, 250), "preco": 2400},
-    {"nome": "Mitsubishi Lancer", "prefixo_cor": "Car11", "posicao": (620, 205), "sprite_selecao": "Car11", "tipo_tracao": "rear", "tamanho_oficina": (900, 650), "posicao_oficina": (LARGURA//2 - 490, 150), "preco": 5600},
-    {"nome": "Porsche 911 77'", "prefixo_cor": "Car12", "posicao": (520, 260), "sprite_selecao": "Car12", "tipo_tracao": "rear", "tamanho_oficina": (900, 650), "posicao_oficina": (LARGURA//2 - 490, 215), "preco": 8000},
+    {"nome": "Nissan 350Z", "prefixo_cor": "Car1", "posicao": (570, 145), "sprite_selecao": "Car1", "tipo_tracao": "rear", "tamanho_oficina": (850, 550), "posicao_oficina": (203, 183), "preco": 0},  # Gratuito (primeiro carro)
+    {"nome": "BMW M3 95' ", "prefixo_cor": "Car2", "posicao": (570, 190), "sprite_selecao": "Car2", "tipo_tracao": "rear", "tamanho_oficina": (770, 415), "posicao_oficina": (233, 298), "preco": 3000},
+    {"nome": "Chevrolet Camaro", "prefixo_cor": "Car3", "posicao": (560, 210), "sprite_selecao": "Car3", "tipo_tracao": "rear", "tamanho_oficina": (720, 470), "posicao_oficina": (263, 281), "preco": 4000},
+    {"nome": "Toyota Supra", "prefixo_cor": "Car4", "posicao": (570, 190), "sprite_selecao": "Car4", "tipo_tracao": "rear", "tamanho_oficina": (755, 400), "posicao_oficina": (242, 326), "preco": 5000},
+    {"nome": "Toyota Trueno", "prefixo_cor": "Car5", "posicao": (590, 175), "sprite_selecao": "Car5", "tipo_tracao": "rear", "tamanho_oficina": (740, 495), "posicao_oficina": (231, 240), "preco": 5600},
+    {"nome": "Nissan Skyline", "prefixo_cor": "Car6", "posicao": (550, 200), "sprite_selecao": "Car6", "tipo_tracao": "front", "tamanho_oficina": (730, 400), "posicao_oficina": (244, 329), "preco": 6000},
+    {"nome": "Nissan Silvia S13", "prefixo_cor": "Car7", "posicao": (600, 185), "sprite_selecao": "Car7", "tipo_tracao": "rear", "tamanho_oficina": (855, 470), "posicao_oficina": (179, 318), "preco": 6400},
+    {"nome": "Mazda RX-7", "prefixo_cor": "Car8", "posicao": (540, 220), "sprite_selecao": "Car8", "tipo_tracao": "awd", "tamanho_oficina": (805, 505), "posicao_oficina": (197, 240), "preco": 7000},
+    {"nome": "Toyota Celica", "prefixo_cor": "Car9", "posicao": (610, 195), "sprite_selecao": "Car9", "tipo_tracao": "rear", "tamanho_oficina": (730, 425), "posicao_oficina": (240, 308), "preco": 9000},
+    {"nome": "Volkswagem Fusca", "prefixo_cor": "Car10", "posicao": (530, 240), "sprite_selecao": "Car10", "tipo_tracao": "front", "tamanho_oficina": (720, 485), "posicao_oficina": (242, 230), "preco": 12400},
+    {"nome": "Mitsubishi Lancer", "prefixo_cor": "Car11", "posicao": (620, 205), "sprite_selecao": "Car11", "tipo_tracao": "rear", "tamanho_oficina": (955, 705), "posicao_oficina": (147, 86), "preco": 15600},
+    {"nome": "Porsche 911 77'", "prefixo_cor": "Car12", "posicao": (520, 260), "sprite_selecao": "Car12", "tipo_tracao": "rear", "tamanho_oficina": (935, 675), "posicao_oficina": (153, 196), "preco": 25000},
 ]
 
 def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=None, modo_jogo=ModoJogo.UM_JOGADOR, tipo_jogo=TipoJogo.CORRIDA, voltas=1, dificuldade_ia="medio"):
-    # Resetar flag de recompensa de drift
     if hasattr(principal, '_recompensa_drift_calculada'):
         delattr(principal, '_recompensa_drift_calculada')
     
@@ -89,26 +86,38 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         config.MAPA_ATUAL = mapa_atual
         config.atualizar_caminhos_mapa()
 
-    img_pista, mask_pista, mask_guias = carregar_pista()
-
-    checkpoint_manager = CheckpointManager(mapa_atual)
-
-    if checkpoint_manager.checkpoints:
-        checkpoints = checkpoint_manager.checkpoints
+    from core.pista_tiles import PistaTiles
+    numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+    
+    pista_tiles = PistaTiles(largura=5000, altura=5000)
+    superficie_pista_renderizada = pista_tiles.construir_pista(numero_pista, posicao_centro=(2500, 2500))
+    print(f"Pista {numero_pista} construída usando tiles estilo GRIP ({superficie_pista_renderizada.get_width()}x{superficie_pista_renderizada.get_height()})")
+    
+    img_pista = superficie_pista_renderizada.copy()
+    mask_pista = superficie_pista_renderizada.copy()
+    from core.laps_grip import carregar_checkpoints_grip, carregar_spawn_points
+    checkpoints_grip = carregar_checkpoints_grip(numero_pista)
+    
+    if checkpoints_grip:
+        checkpoints = checkpoints_grip
+        print(f"Checkpoints do GRIP carregados: {len(checkpoints)}")
     else:
-        checkpoints = extrair_checkpoints(mask_guias)
-        if checkpoints:
-            checkpoint_manager.checkpoints = checkpoints
-            checkpoint_manager.salvar_checkpoints()
-        else:
-            checkpoints = [(640, 360)]
+        pos_inicial_tiles = pista_tiles.obter_posicao_inicial()
+        centro_x, centro_y = 2500, 2500
+        checkpoints = [(centro_x + pos_inicial_tiles[0], centro_y + pos_inicial_tiles[1])]
+        print(f"Usando checkpoint padrão baseado em tiles: {checkpoints[0]}")
+    
+    minimapa_imagem = pista_tiles.carregar_minimapa(numero_pista)
+    
+    checkpoint_manager = CheckpointManager(mapa_atual)
+    checkpoint_manager.checkpoints = checkpoints
 
     largura_atual, altura_atual = resolucao
-    camera = Camera(largura_atual, altura_atual, *img_pista.get_size(), zoom=1.8)  # Zoom inicial mais próximo
-
-    largura_pista, altura_pista = img_pista.get_size()
-    camera.cx = largura_pista // 2
-    camera.cy = altura_pista // 2
+    largura_pista, altura_pista = superficie_pista_renderizada.get_size()
+    
+    camera = Camera(largura_atual, altura_atual, largura_pista, altura_pista, zoom=1.8)
+    camera.cx = 2500
+    camera.cy = 2500
 
     modo_drift_atual = CONFIGURACOES["jogo"]["modo_drift"]
     mostrar_fps = CONFIGURACOES["video"]["mostrar_fps"]
@@ -136,7 +145,15 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         trofeu_ouro = trofeu_prata = trofeu_bronze = trofeu_vazio = None
 
     voltas_objetivo = voltas
+    print(f"Checkpoints para corrida: {len(checkpoints)} checkpoints")
+    if checkpoints:
+        print(f"Checkpoints: {checkpoints}")
+    
     corrida = GerencIAdorCorrida(fonte, checkpoints, voltas_objetivo)
+    
+    print(f"Checkpoints na corrida: {len(corrida.checkpoints)} checkpoints")
+    if corrida.checkpoints:
+        print(f"Checkpoints na corrida: {corrida.checkpoints}")
     
     def obter_posicao_jogador(carro_jogador, todos_carros):
         """Retorna a posição do jogador (1, 2, 3, etc.) baseado nos tempos finais"""
@@ -369,10 +386,117 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     carro_p1 = CARROS_DISPONIVEIS[carro_selecionado_p1]
     carro_p2 = CARROS_DISPONIVEIS[carro_selecionado_p2]
 
-    posicoes_iniciais = calcular_posicoes_iniciais(mask_guias)
-    pos_inicial_p1 = posicoes_iniciais['p1']
-    pos_inicial_p2 = posicoes_iniciais['p2']
-    pos_inicial_IA = posicoes_iniciais['IA']
+    if pista_tiles is not None:
+        pos_inicial_tiles = pista_tiles.obter_posicao_inicial()
+        centro_x, centro_y = 2500, 2500
+        pos_inicial_p1 = (centro_x + pos_inicial_tiles[0], centro_y + pos_inicial_tiles[1])
+        
+        if superficie_pista_renderizada is not None:
+            if not pista_tiles.verificar_se_na_pista(pos_inicial_p1[0], pos_inicial_p1[1]):
+                print(f"AVISO: Posição inicial {pos_inicial_p1} está na grama! Tentando ajustar...")
+                for offset_x in range(-50, 51, 10):
+                    for offset_y in range(-50, 51, 10):
+                        test_x = pos_inicial_p1[0] + offset_x
+                        test_y = pos_inicial_p1[1] + offset_y
+                        if pista_tiles.verificar_se_na_pista(test_x, test_y):
+                            pos_inicial_p1 = (test_x, test_y)
+                            print(f"Posição ajustada para: {pos_inicial_p1}")
+                            break
+                    else:
+                        continue
+                    break
+        
+        spawn_points_editor = carregar_spawn_points(numero_pista)
+        
+        if spawn_points_editor and len(spawn_points_editor) > 0:
+            print(f"Carregados {len(spawn_points_editor)} spawn points do editor")
+            
+            num_ias_1_jogador = 3
+            num_ias_2_jogadores = 2
+            
+            spawn_disponiveis = list(spawn_points_editor)
+            random.shuffle(spawn_disponiveis)
+            
+            if modo_jogo == ModoJogo.DOIS_JOGADORES:
+                if len(spawn_disponiveis) >= 2:
+                    pos_inicial_p1 = spawn_disponiveis.pop(0)
+                    pos_inicial_p2 = spawn_disponiveis.pop(0)
+                else:
+                    pos_base = spawn_disponiveis[0]
+                    offset_lateral = 50
+                    pos_inicial_p1 = (pos_base[0] - offset_lateral, pos_base[1])
+                    pos_inicial_p2 = (pos_base[0] + offset_lateral, pos_base[1])
+                    spawn_disponiveis = []
+                
+                num_ias = num_ias_2_jogadores
+                posicoes_ia = []
+                for i in range(num_ias):
+                    if len(spawn_disponiveis) > 0:
+                        posicoes_ia.append(spawn_disponiveis.pop(0))
+                    else:
+                        pos_base_x, pos_base_y = pos_inicial_p2
+                        offset_lateral = 50 * (i + 1)
+                        posicoes_ia.append((pos_base_x + offset_lateral, pos_base_y))
+                
+                pos_inicial_IA = None
+            else:
+                if len(spawn_disponiveis) >= 1:
+                    pos_inicial_p1 = spawn_disponiveis.pop(0)
+                    pos_inicial_p2 = None
+                else:
+                    pos_inicial_p1 = spawn_points_editor[0]
+                    pos_inicial_p2 = None
+                    spawn_disponiveis = []
+                
+                num_ias = num_ias_1_jogador
+                posicoes_ia = []
+                for i in range(num_ias):
+                    if len(spawn_disponiveis) > 0:
+                        posicoes_ia.append(spawn_disponiveis.pop(0))
+                    else:
+                        pos_base_x, pos_base_y = pos_inicial_p1
+                        offset_lateral = 50 * (i + 1)
+                        posicoes_ia.append((pos_base_x + offset_lateral, pos_base_y))
+                
+                pos_inicial_IA = None
+            
+            print(f"Spawn points selecionados aleatoriamente:")
+            print(f"  P1: {pos_inicial_p1}")
+            if pos_inicial_p2:
+                print(f"  P2: {pos_inicial_p2}")
+            for i, pos_ia in enumerate(posicoes_ia):
+                print(f"  IA-{i+1}: {pos_ia}")
+        else:
+            offset_lateral = 50
+            pos_base_x, pos_base_y = pos_inicial_p1
+            
+            num_ias_1_jogador = 3
+            num_ias_2_jogadores = 2
+            
+            if modo_jogo == ModoJogo.DOIS_JOGADORES:
+                pos_inicial_p1 = (pos_base_x - offset_lateral, pos_base_y)
+                pos_inicial_p2 = (pos_base_x + offset_lateral, pos_base_y)
+                posicoes_ia = [
+                    (pos_base_x + offset_lateral * 2, pos_base_y),
+                    (pos_base_x + offset_lateral * 3, pos_base_y)
+                ]
+                pos_inicial_IA = None
+            else:
+                pos_inicial_p1 = (pos_base_x, pos_base_y)
+                pos_inicial_p2 = None
+                posicoes_ia = [
+                    (pos_base_x - offset_lateral, pos_base_y),
+                    (pos_base_x + offset_lateral, pos_base_y),
+                    (pos_base_x + offset_lateral * 2, pos_base_y)
+                ]
+                pos_inicial_IA = None
+        
+        print(f"Posição inicial P1 (tiles): {pos_inicial_p1}")
+        if pos_inicial_p2:
+            print(f"Posição inicial P2 (tiles): {pos_inicial_p2}")
+        if 'posicoes_ia' in locals():
+            for i, pos in enumerate(posicoes_ia):
+                print(f"Posição inicial IA-{i+1} (tiles): {pos}")
 
     carros = []
 
@@ -385,9 +509,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         tipo_tracao=carro_p1.get("tipo_tracao", CarroFisica.TRACAO_TRASEIRA)
     )
     carros.append(carro1)
+    
+    camera.cx = carro1.x
+    camera.cy = carro1.y
+    print(f"Câmera inicializada na posição do carro: ({camera.cx}, {camera.cy})")
 
     carro2 = None
-    if modo_jogo == ModoJogo.DOIS_JOGADORES and tipo_jogo != TipoJogo.DRIFT:
+    if modo_jogo == ModoJogo.DOIS_JOGADORES and tipo_jogo != TipoJogo.DRIFT and pos_inicial_p2 is not None:
         carro2 = CarroFisica(
             pos_inicial_p2[0], pos_inicial_p2[1],
             carro_p2["prefixo_cor"],
@@ -398,17 +526,33 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         )
         carros.append(carro2)
 
-    carro3 = None
-    if tipo_jogo != TipoJogo.DRIFT and modo_jogo != ModoJogo.DOIS_JOGADORES:
-        carro3 = CarroFisica(
-            pos_inicial_IA[0], pos_inicial_IA[1],
-            "Car3",
-            (0, 0, 0, 0),
-            turbo_key=pygame.K_t,
-            nome="IA-1",
-            tipo_tracao=CarroFisica.TRACAO_TRASEIRA
-        )
-        carros.append(carro3)
+    carros_ia = []
+    if tipo_jogo != TipoJogo.DRIFT:
+        if modo_jogo == ModoJogo.DOIS_JOGADORES:
+            num_ias = 2
+        else:
+            num_ias = 3
+        
+        carros_disponiveis_ia = CARROS_DISPONIVEIS.copy()
+        if carro_p1 in carros_disponiveis_ia:
+            carros_disponiveis_ia.remove(carro_p1)
+        if modo_jogo == ModoJogo.DOIS_JOGADORES and carro_p2 in carros_disponiveis_ia:
+            carros_disponiveis_ia.remove(carro_p2)
+        
+        carros_selecionados_ia = random.sample(carros_disponiveis_ia, min(num_ias, len(carros_disponiveis_ia)))
+        
+        for i, (pos_ia, carro_data) in enumerate(zip(posicoes_ia, carros_selecionados_ia)):
+            carro_ia = CarroFisica(
+                pos_ia[0], pos_ia[1],
+                carro_data["prefixo_cor"],
+                (0, 0, 0, 0),
+                turbo_key=pygame.K_t,
+                nome=f"IA-{i+1}",
+                tipo_tracao=carro_data.get("tipo_tracao", CarroFisica.TRACAO_TRASEIRA)
+            )
+            carros_ia.append(carro_ia)
+            carros.append(carro_ia)
+            print(f"IA-{i+1} usando carro: {carro_data['nome']} ({carro_data['prefixo_cor']})")
 
     for c in carros:
         corrida.registrar_carro(c)
@@ -433,10 +577,27 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         camera_p2.cy = altura_pista // 2
 
     def is_on_track(x, y):
-        return eh_pixel_transitavel(mask_guias, x, y)
+        return True
 
-    IA2 = IA(checkpoints, nome="IA-1", dificuldade=dificuldade_ia)
-    IA3 = IA(checkpoints, nome="IA-2", dificuldade=dificuldade_ia)
+    checkpoints_ia = []
+    if checkpoints:
+        for cp in checkpoints:
+            if isinstance(cp, (list, tuple)) and len(cp) >= 2:
+                checkpoints_ia.append((float(cp[0]), float(cp[1])))
+    
+    print(f"Checkpoints passados para IA: {len(checkpoints_ia)}")
+    if checkpoints_ia:
+        print(f"Primeiro checkpoint da IA: {checkpoints_ia[0]}")
+    
+    instancias_ia = []
+    for i, carro_ia in enumerate(carros_ia):
+        instancia_ia = IA(checkpoints_ia, nome=carro_ia.nome, dificuldade=dificuldade_ia)
+        instancias_ia.append(instancia_ia)
+        print(f"Criada {instancia_ia.nome} com {len(checkpoints_ia)} checkpoints")
+    
+    IA2 = instancias_ia[0] if len(instancias_ia) > 0 else None
+    IA3 = instancias_ia[1] if len(instancias_ia) > 1 else None
+    IA4 = instancias_ia[2] if len(instancias_ia) > 2 else None
     debug_IA = True
 
     if tipo_jogo == TipoJogo.DRIFT:
@@ -528,7 +689,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 elif ev.key == pygame.K_3:
                     dificuldade_ia = "dificil"
                 
-                # Atualizar dificuldade das IAs
                 if ev.key in (pygame.K_1, pygame.K_2, pygame.K_3):
                     if IA2:
                         IA2.dificuldade = dificuldade_ia
@@ -546,17 +706,47 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     carro2.drift_hold = True
                 
                 if jogo_pausado:
-                    if ev.key == pygame.K_UP:
+                    if ev.key == pygame.K_UP or ev.key == pygame.K_w:
                         opcao_pausa_selecionada = (opcao_pausa_selecionada - 1) % len(opcoes_pausa)
-                    elif ev.key == pygame.K_DOWN:
+                    elif ev.key == pygame.K_DOWN or ev.key == pygame.K_s:
                         opcao_pausa_selecionada = (opcao_pausa_selecionada + 1) % len(opcoes_pausa)
                     elif ev.key == pygame.K_RETURN or ev.key == pygame.K_SPACE:
                         if opcao_pausa_selecionada == 0:
                             jogo_pausado = False
                         elif opcao_pausa_selecionada == 1:
-                            return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas)
+                            return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
                         elif opcao_pausa_selecionada == 2:
                             return
+
+            elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                # Processar clique do mouse no pause
+                if jogo_pausado:
+                    caixa_largura = 500
+                    caixa_altura = 400
+                    caixa_x = (LARGURA - caixa_largura) // 2
+                    caixa_y = (ALTURA - caixa_altura) // 2
+                    mouse_x, mouse_y = ev.pos
+                    mouse_in_caixa = (caixa_x <= mouse_x <= caixa_x + caixa_largura and
+                                    caixa_y <= mouse_y <= caixa_y + caixa_altura)
+                    if mouse_in_caixa:
+                        altura_total_opcoes = 3 * 60
+                        offset_opcoes = caixa_y + caixa_altura - altura_total_opcoes - 20
+                        opcoes_pausa_formatadas = [
+                            ("CONTINUAR", "continuar"),
+                            ("REINICIAR JOGO", "reiniciar"),
+                            ("MENU PRINCIPAL", "menu")
+                        ]
+                        for i, (nome, chave) in enumerate(opcoes_pausa_formatadas):
+                            y_opcao = offset_opcoes + i * 60
+                            opcao_rect = pygame.Rect(caixa_x + 20, y_opcao - 5, caixa_largura - 40, 60)
+                            if opcao_rect.collidepoint(mouse_x, mouse_y):
+                                if i == 0:
+                                    jogo_pausado = False
+                                elif i == 1:
+                                    return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                                elif i == 2:
+                                    return
+                                break
 
             elif ev.type == pygame.KEYUP:
                 if ev.key == pygame.K_SPACE:
@@ -565,6 +755,9 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     carro2.drift_hold = False
 
             elif ev.type == pygame.MOUSEBUTTONDOWN:
+                # Se estiver pausado, não processar outros eventos de mouse
+                if jogo_pausado:
+                    continue
                 if ev.button == 1 and checkpoint_manager.modo_edicao:
                     tempo_atual = pygame.time.get_ticks()
                     if tempo_atual - ultimo_clique_tempo >= debounce_tempo:
@@ -609,7 +802,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
         if not corrida.inicIAda:
             corrida.atualizar_contagem(dt)
-        corrida.atualizar_tempo(dt)
+        corrida.atualizar_tempo(dt, jogo_pausado)
 
         if tipo_jogo == TipoJogo.DRIFT and not jogo_pausado and not jogo_terminado and corrida.inicIAda:
             tempo_restante -= dt
@@ -622,20 +815,38 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
         while acumulador_dt >= dt_fixo:
             if corrida.pode_controlar() and not jogo_pausado and estado_fim_jogo is None:
-                carro1.atualizar(teclas, mask_guias, dt_fixo, camera)
+                pos_antes = (carro1.x, carro1.y)
+                carro1.atualizar(teclas, None, dt_fixo, camera, superficie_pista_renderizada)
+                pos_depois = (carro1.x, carro1.y)
+                dist_movimento = ((pos_depois[0] - pos_antes[0])**2 + (pos_depois[1] - pos_antes[1])**2)**0.5
+                if dist_movimento > 100:
+                    print(f"AVISO: Possível teleporte detectado! De {pos_antes} para {pos_depois} (distância: {dist_movimento})")
+                    if pista_tiles is not None:
+                        carro1.x, carro1.y = pos_antes
+                        print(f"Posição restaurada para: {pos_antes}")
 
                 if carro2 is not None:
                     if modo_jogo == ModoJogo.DOIS_JOGADORES:
-                        carro2.atualizar(teclas, mask_guias, dt_fixo, camera)
-                    elif USAR_IA_NO_CARRO_2 and not alguem_venceu:
-                        IA2.controlar(carro2, mask_guias, is_on_track, dt_fixo)
+                        carro2.atualizar(teclas, None, dt_fixo, camera, superficie_pista_renderizada)
+                    elif USAR_IA_NO_CARRO_2 and not alguem_venceu and corrida.inicIAda:
+                        IA2.controlar(carro2, None, is_on_track, dt_fixo, superficie_pista_renderizada, corrida_iniciada=corrida.inicIAda)
                     else:
-                        carro2.atualizar(teclas, mask_guias, dt_fixo, camera)
+                        carro2.atualizar(teclas, None, dt_fixo, camera, superficie_pista_renderizada)
 
-                if carro3 is not None and not alguem_venceu:
-                    IA3.controlar(carro3, mask_guias, is_on_track, dt_fixo)
+            if not jogo_pausado and estado_fim_jogo is None and corrida.inicIAda:
+                for i, (carro_ia, instancia_ia) in enumerate(zip(carros_ia, instancias_ia)):
+                    if not alguem_venceu:
+                        pos_antes_bot = (carro_ia.x, carro_ia.y)
+                        instancia_ia.controlar(carro_ia, None, is_on_track, dt_fixo, superficie_pista_renderizada, corrida_iniciada=corrida.inicIAda)
+                        pos_depois_bot = (carro_ia.x, carro_ia.y)
+                        dist_movimento_bot = ((pos_depois_bot[0] - pos_antes_bot[0])**2 + (pos_depois_bot[1] - pos_antes_bot[1])**2)**0.5
+                        if dist_movimento_bot > 100:
+                            print(f"AVISO: Teleporte do bot {carro_ia.nome} detectado! De {pos_antes_bot} para {pos_depois_bot} (distância: {dist_movimento_bot})")
+                            if pista_tiles is not None:
+                                carro_ia.x, carro_ia.y = pos_antes_bot
+                                print(f"Posição do bot {carro_ia.nome} restaurada para: {pos_antes_bot}")
 
-                if len(carros) <= 3 and tipo_jogo != TipoJogo.DRIFT:
+                if tipo_jogo != TipoJogo.DRIFT:
                     for c in carros:
                         corrida.atualizar_progresso_carro(c)
 
@@ -647,6 +858,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     derrapando = getattr(carro1, 'drifting', False)
                     has_skidmarks = derrapando and getattr(carro1, 'drift_intensidade', 0) > 0.05
 
+                    na_grama = getattr(carro1, 'na_grama', False)
+                    
                     drift_scoring.update(
                         dt_fixo,
                         angulo_drift,
@@ -656,7 +869,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         drift_ativado,
                         derrapando,
                         collision_force=0.0,
-                        has_skidmarks=has_skidmarks
+                        has_skidmarks=has_skidmarks,
+                        na_grama=na_grama
                     )
 
             acumulador_dt -= dt_fixo
@@ -681,10 +895,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     zoom = 1.1 - min((velocidade - 100) / 150, 1.0) * 0.2
                 
                 zoom = max(0.9, min(1.8, zoom))
-                camera.zoom += (zoom - camera.zoom) * dt * 2.0
+                # Suavizar zoom para evitar saltos
+                camera.zoom += (zoom - camera.zoom) * min(dt * 2.0, 0.1)  # Limitar mudança máxima
                 offset_y = (1.0 - camera.zoom) * 60
-                camera.cy += (carro1.y + offset_y - camera.cy) * dt * 2.5
-                camera.cx += (carro1.x - camera.cx) * dt * 3.0
+                # Suavizar movimento da câmera para evitar "blip"
+                dt_smooth = max(dt, 0.001)
+                # Remover suavização manual adicional - deixar a câmera fazer seu próprio trabalho
+                # A câmera já tem suavização interna melhorada
 
         if modo_jogo == ModoJogo.DOIS_JOGADORES and carro2 is not None:
             metade_largura = LARGURA // 2
@@ -715,13 +932,37 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             checkpoint_atual_p1 = corrida.proximo_checkpoint.get(carro1, 0) 
             if not corrida.finalizou.get(carro1, False) and checkpoints and tipo_jogo != TipoJogo.DRIFT:
                 idx_cp = checkpoint_atual_p1 % len(checkpoints)
-                cx, cy = checkpoints[idx_cp]
+                cp = checkpoints[idx_cp]
+                # Suportar formato (x, y) ou (x, y, angulo)
+                if len(cp) >= 3:
+                    cx, cy, angulo = cp[0], cp[1], cp[2]
+                else:
+                    cx, cy = cp[0], cp[1]
+                    angulo = 0
                 screen_x, screen_y = camera_p1.mundo_para_tela(cx, cy)
-                pygame.draw.circle(superficie_p1, (0, 255, 255), (int(screen_x), int(screen_y)), 20, 4)
-                pygame.draw.circle(superficie_p1, (0, 200, 255), (int(screen_x), int(screen_y)), 16)
-                texto_checkpoint = fonte_checkpoint.render(str(idx_cp + 1), True, (255, 255, 255))
-                texto_rect = texto_checkpoint.get_rect(center=(int(screen_x), int(screen_y)))
-                superficie_p1.blit(texto_checkpoint, texto_rect)
+                
+                if 0 <= screen_x <= metade_largura and 0 <= screen_y <= ALTURA:
+                    CHECKPOINT_LARGURA = 300
+                    CHECKPOINT_ESPESSURA = 4
+                    superficie_rect = pygame.Surface((CHECKPOINT_LARGURA, CHECKPOINT_ESPESSURA), pygame.SRCALPHA)
+                    cor_checkpoint = (0, 255, 255, 80)
+                    superficie_rect.fill(cor_checkpoint)
+                    pygame.draw.rect(superficie_rect, (0, 255, 255), 
+                                    pygame.Rect(0, 0, CHECKPOINT_LARGURA, CHECKPOINT_ESPESSURA), 1)
+                    
+                    if angulo != 0:
+                        superficie_rect = pygame.transform.rotate(superficie_rect, -angulo)
+                    
+                    rect_rotacionado = superficie_rect.get_rect(center=(int(screen_x), int(screen_y)))
+                    
+                    superficie_p1.blit(superficie_rect, rect_rotacionado)
+                    
+                    texto_checkpoint = fonte_checkpoint.render(str(idx_cp + 1), True, (255, 255, 255))
+                    texto_rect = texto_checkpoint.get_rect(center=(int(screen_x), int(screen_y)))
+                    fundo_texto = pygame.Surface((texto_rect.width + 8, texto_rect.height + 4), pygame.SRCALPHA)
+                    fundo_texto.fill((0, 0, 0, 200))
+                    superficie_p1.blit(fundo_texto, (texto_rect.x - 4, texto_rect.y - 2))
+                    superficie_p1.blit(texto_checkpoint, texto_rect)
 
             camera_p2.set_alvo(carro2)
             
@@ -748,21 +989,50 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             checkpoint_atual_p2 = corrida.proximo_checkpoint.get(carro2, 0)
             if not corrida.finalizou.get(carro2, False) and checkpoints and tipo_jogo != TipoJogo.DRIFT:
                 idx_cp2 = checkpoint_atual_p2 % len(checkpoints)
-                cx2, cy2 = checkpoints[idx_cp2]
+                cp2 = checkpoints[idx_cp2]
+                # Suportar formato (x, y) ou (x, y, angulo)
+                if len(cp2) >= 3:
+                    cx2, cy2, angulo2 = cp2[0], cp2[1], cp2[2]
+                else:
+                    cx2, cy2 = cp2[0], cp2[1]
+                    angulo2 = 0
                 screen_x2, screen_y2 = camera_p2.mundo_para_tela(cx2, cy2)
-                pygame.draw.circle(superficie_p2, (255, 255, 0), (int(screen_x2), int(screen_y2)), 20, 4)
-                pygame.draw.circle(superficie_p2, (255, 200, 0), (int(screen_x2), int(screen_y2)), 16)
-                texto_checkpoint2 = fonte_checkpoint.render(str(idx_cp2 + 1), True, (0, 0, 0))
-                texto_rect2 = texto_checkpoint2.get_rect(center=(int(screen_x2), int(screen_y2)))
-                superficie_p2.blit(texto_checkpoint2, texto_rect2)
+                
+                if 0 <= screen_x2 <= metade_largura and 0 <= screen_y2 <= ALTURA:
+                    CHECKPOINT_LARGURA = 300
+                    CHECKPOINT_ESPESSURA = 4
+                    superficie_rect2 = pygame.Surface((CHECKPOINT_LARGURA, CHECKPOINT_ESPESSURA), pygame.SRCALPHA)
+                    cor_checkpoint2 = (255, 255, 0, 80)
+                    superficie_rect2.fill(cor_checkpoint2)
+                    pygame.draw.rect(superficie_rect2, (255, 255, 0), 
+                                    pygame.Rect(0, 0, CHECKPOINT_LARGURA, CHECKPOINT_ESPESSURA), 1)
+                    
+                    # Rotacionar se necessário
+                    if angulo2 != 0:
+                        superficie_rect2 = pygame.transform.rotate(superficie_rect2, -angulo2)
+                    
+                    rect_rotacionado2 = superficie_rect2.get_rect(center=(int(screen_x2), int(screen_y2)))
+                    
+                    superficie_p2.blit(superficie_rect2, rect_rotacionado2)
+                    
+                    texto_checkpoint2 = fonte_checkpoint.render(str(idx_cp2 + 1), True, (255, 255, 255))
+                    texto_rect2 = texto_checkpoint2.get_rect(center=(int(screen_x2), int(screen_y2)))
+                    fundo_texto2 = pygame.Surface((texto_rect2.width + 8, texto_rect2.height + 4), pygame.SRCALPHA)
+                    fundo_texto2.fill((0, 0, 0, 200))
+                    superficie_p2.blit(fundo_texto2, (texto_rect2.x - 4, texto_rect2.y - 2))
+                    superficie_p2.blit(texto_checkpoint2, texto_rect2)
 
             tela.blit(superficie_p1, (0, 0))
             tela.blit(superficie_p2, (metade_largura, 0))
-            pygame.draw.line(tela, (255, 255, 255), (metade_largura, 0), (metade_largura, ALTURA), 2)
+            
+            pygame.draw.line(tela, (0, 0, 0), (metade_largura, 0), (metade_largura, ALTURA), 2)
             camera.set_alvo(carro1)
 
         else:
-            camera.desenhar_fundo(tela, img_pista)
+            if pista_tiles is not None:
+                camera.desenhar_fundo(tela, superficie_pista_renderizada)
+            else:
+                camera.desenhar_fundo(tela, img_pista)
             carro1.skidmarks.desenhar(tela, camera)
             carros_visiveis = [carro for carro in carros if camera.esta_visivel(carro.x, carro.y, 40)]
             if len(carros_visiveis) > 2:
@@ -775,10 +1045,11 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 carro.desenhar(tela, camera=camera)
 
         if debug_IA or mostrar_debug:
-            if modo_jogo != ModoJogo.DOIS_JOGADORES and carro2 is not None:
+            if modo_jogo != ModoJogo.DOIS_JOGADORES and carro2 is not None and IA2:
                 IA2.desenhar_debug(tela, camera=camera, mostrar_todos_checkpoints=False)
-            if carro3 is not None:
-                IA3.desenhar_debug(tela, camera=camera, mostrar_todos_checkpoints=False)
+            for instancia_ia in instancias_ia:
+                if instancia_ia:
+                    instancia_ia.desenhar_debug(tela, camera=camera, mostrar_todos_checkpoints=False)
 
         if checkpoint_manager.modo_edicao:
             checkpoint_manager.desenhar(tela, camera)
@@ -788,20 +1059,92 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 checkpoint_atual = corrida.proximo_checkpoint.get(carro1, 0)
                 if not corrida.finalizou.get(carro1, False):
                     idx_cp = checkpoint_atual % len(checkpoints)
-                    cx, cy = checkpoints[idx_cp]
+                    # Obter coordenadas e ângulo do checkpoint
+                    cp = checkpoints[idx_cp]
+                    if len(cp) >= 3:
+                        cx, cy, angulo = cp[0], cp[1], cp[2]
+                    else:
+                        cx, cy = cp[0], cp[1]
+                        angulo = 0
+                    
                     screen_x, screen_y = camera.mundo_para_tela(cx, cy)
-                    pygame.draw.circle(tela, (0, 255, 255), (int(screen_x), int(screen_y)), 20, 4)
-                    pygame.draw.circle(tela, (0, 200, 255), (int(screen_x), int(screen_y)), 16)
-                    texto_checkpoint = fonte_checkpoint.render(str(idx_cp + 1), True, (255, 255, 255))
-                    texto_rect = texto_checkpoint.get_rect(center=(int(screen_x), int(screen_y)))
-                    tela.blit(texto_checkpoint, texto_rect)
+                    
+                    if 0 <= screen_x <= LARGURA and 0 <= screen_y <= ALTURA:
+                        CHECKPOINT_LARGURA = 300
+                        CHECKPOINT_ESPESSURA = 4
+                        superficie_rect = pygame.Surface((CHECKPOINT_LARGURA, CHECKPOINT_ESPESSURA), pygame.SRCALPHA)
+                        cor_checkpoint = (0, 255, 255, 80)
+                        superficie_rect.fill(cor_checkpoint)
+                        pygame.draw.rect(superficie_rect, (0, 255, 255), 
+                                       pygame.Rect(0, 0, CHECKPOINT_LARGURA, CHECKPOINT_ESPESSURA), 1)
+                        
+                        if angulo != 0:
+                            superficie_rect = pygame.transform.rotate(superficie_rect, -angulo)
+                        
+                        rect_rotacionado = superficie_rect.get_rect(center=(int(screen_x), int(screen_y)))
+                        
+                        tela.blit(superficie_rect, rect_rotacionado)
+                        
+                        texto_checkpoint = fonte_checkpoint.render(str(idx_cp + 1), True, (255, 255, 255))
+                        texto_rect = texto_checkpoint.get_rect(center=(int(screen_x), int(screen_y)))
+                        fundo_texto = pygame.Surface((texto_rect.width + 8, texto_rect.height + 4), pygame.SRCALPHA)
+                        fundo_texto.fill((0, 0, 0, 200))
+                        tela.blit(fundo_texto, (texto_rect.x - 4, texto_rect.y - 2))
+                        tela.blit(texto_checkpoint, texto_rect)
 
         if mostrar_hud:
             if modo_jogo == ModoJogo.DOIS_JOGADORES and carro2 is not None:
-                hud.desenhar_hud_completo(tela, carro1, dt)
-                hud.desenhar_hud_completo(tela, carro2, dt)
+                metade_largura = LARGURA // 2
+                
+                superficie_hud_p1 = pygame.Surface((metade_largura, ALTURA), pygame.SRCALPHA)
+                hud.desenhar_hud_completo(superficie_hud_p1, carro1, dt, offset_x=0)
+                tela.blit(superficie_hud_p1, (0, 0))
+                
+                hud.desenhar_posicao_voltas(tela, corrida, carro1, carros, posicao=(10, 10))
+                
+                superficie_hud_p2 = pygame.Surface((metade_largura, ALTURA), pygame.SRCALPHA)
+                hud.desenhar_hud_completo(superficie_hud_p2, carro2, dt, offset_x=0)
+                tela.blit(superficie_hud_p2, (metade_largura, 0))
+                
+                hud.desenhar_posicao_voltas(tela, corrida, carro2, carros, posicao=(LARGURA - 10, 10), alinhar_direita=True)
+                
+                if pista_tiles is not None:
+                    limites_pista = pista_tiles.calcular_limites_reais_pista(numero_pista)
+                    checkpoints_para_minimapa = corrida.checkpoints if corrida.checkpoints else checkpoints
+                    
+                    minimapa_tamanho = 180
+                    minimapa_x = (LARGURA - minimapa_tamanho) // 2
+                    minimapa_y = 10
+                    
+                    hud.desenhar_minimapa(tela, carro1, checkpoints_para_minimapa, camera_p1, 
+                                        posicao=(minimapa_x, minimapa_y), 
+                                        imagem_minimapa=minimapa_imagem, 
+                                        limites_pista=limites_pista,
+                                        todos_carros=carros)
+                else:
+                    minimapa_tamanho = 180
+                    minimapa_x = (LARGURA - minimapa_tamanho) // 2
+                    minimapa_y = 10
+                    hud.desenhar_minimapa(tela, carro1, checkpoints, camera_p1, 
+                                        posicao=(minimapa_x, minimapa_y),
+                                        todos_carros=carros)
             else:
                 hud.desenhar_hud_completo(tela, carro1, dt)
+                
+                if pista_tiles is not None:
+                    limites_pista = pista_tiles.calcular_limites_reais_pista(numero_pista)
+                    minimapa_tamanho = 200
+                    minimapa_x = 10
+                    minimapa_y = resolucao[1] - minimapa_tamanho - 10
+                    checkpoints_para_minimapa = corrida.checkpoints if corrida.checkpoints else checkpoints
+                    hud.desenhar_minimapa(tela, carro1, checkpoints_para_minimapa, camera, 
+                                        posicao=(minimapa_x, minimapa_y), 
+                                        imagem_minimapa=minimapa_imagem, 
+                                        limites_pista=limites_pista,
+                                        todos_carros=carros)
+                    hud.desenhar_tempos(tela, corrida, carro1, posicao=(20, 20))
+                
+                hud.desenhar_aviso_contra_mao(tela, carro1, dt)
 
             if tipo_jogo == TipoJogo.DRIFT:
                 minutos = int(tempo_restante // 60)
@@ -846,17 +1189,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 texto_rect = texto_tempo.get_rect(center=(LARGURA//2, timer_y + timer_height//2))
                 tela.blit(texto_tempo, texto_rect)
 
-            if jogo_pausado:
-                if not hasattr(principal, '_fonte_pause_cache'):
-                    principal._fonte_pause_cache = pygame.font.Font(None, 72)
-                    principal._fonte_instrucao_cache = pygame.font.Font(None, 36)
-                    principal._texto_pause_cache = principal._fonte_pause_cache.render("PAUSADO", True, (255, 255, 255))
-                    principal._texto_instrucao_cache = principal._fonte_instrucao_cache.render("Pressione ESC para continuar", True, (200, 200, 200))
-                
-                texto_pause_rect = principal._texto_pause_cache.get_rect(center=(LARGURA//2, ALTURA//2))
-                tela.blit(principal._texto_pause_cache, texto_pause_rect)
-                texto_instrucao_rect = principal._texto_instrucao_cache.get_rect(center=(LARGURA//2, ALTURA//2 + 50))
-                tela.blit(principal._texto_instrucao_cache, texto_instrucao_rect)
+            # Pause agora é desenhado no final do loop principal (mesmo estilo da tela de fim)
 
             if jogo_terminado and tipo_jogo == TipoJogo.DRIFT and not tela_fim_mostrada:
                 if not hasattr(principal, '_recompensa_drift_calculada'):
@@ -939,7 +1272,14 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro)
                 todos_carros = [c for c in carros if c is not None]
                 posicao_jogador = obter_posicao_jogador(carro1, todos_carros)
-            elif carro3 and corrida.finalizou.get(carro3, False):
+            # Verificar se alguma IA venceu
+            ia_vencedora = None
+            for carro_ia in carros_ia:
+                if corrida.finalizou.get(carro_ia, False):
+                    ia_vencedora = carro_ia
+                    break
+            
+            if ia_vencedora:
                 vencedor = "IA VENCEU!"
                 recompensa_dinheiro = 30  # Reduzido de 100 para 30
                 gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro)
@@ -948,6 +1288,24 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             if vencedor:
                 tela_fim_mostrada = True
                 trofeu = obter_trofeu_por_posicao(posicao_jogador) if posicao_jogador else trofeu_vazio
+                
+                # Salvar recorde e troféu se o jogador terminou a corrida
+                if corrida.finalizou.get(carro1, False) and posicao_jogador is not None:
+                    tempo_final = corrida.tempo_final.get(carro1)
+                    if tempo_final is not None:
+                        numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                        
+                        # Registrar recorde (só se for melhor tempo)
+                        if gerenciador_progresso.registrar_recorde(numero_pista, tempo_final):
+                            print(f"Novo recorde na pista {numero_pista}: {tempo_final:.2f}s")
+                        
+                        # Registrar troféu baseado na posição
+                        if posicao_jogador == 1:
+                            gerenciador_progresso.registrar_trofeu(numero_pista, "ouro")
+                        elif posicao_jogador == 2:
+                            gerenciador_progresso.registrar_trofeu(numero_pista, "prata")
+                        elif posicao_jogador == 3:
+                            gerenciador_progresso.registrar_trofeu(numero_pista, "bronze")
                 
                 estado_fim_jogo = [
                     vencedor,
@@ -961,37 +1319,101 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 ]
 
         if jogo_pausado:
-            if not hasattr(principal, '_overlay_pausa_cache'):
-                principal._overlay_pausa_cache = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
-                principal._overlay_pausa_cache.fill((0, 0, 0, 180))
-                principal._fonte_titulo_pausa_cache = pygame.font.Font(None, 72)
-                principal._fonte_opcoes_pausa_cache = pygame.font.Font(None, 48)
-                principal._fonte_instrucoes_pausa_cache = pygame.font.Font(None, 24)
-                principal._texto_titulo_pausa_cache = principal._fonte_titulo_pausa_cache.render("JOGO PAUSADO", True, (255, 255, 255))
-                principal._texto_instrucoes_pausa_cache = principal._fonte_instrucoes_pausa_cache.render("Use ↑↓ para navegar, ENTER/SPACE para selecionar", True, (200, 200, 200))
-                principal._textos_opcoes_cache = {}
+            # Usar o mesmo estilo da tela de fim de jogo
+            from core.menu import render_text
             
-            tela.blit(principal._overlay_pausa_cache, (0, 0))
-            texto_titulo_rect = principal._texto_titulo_pausa_cache.get_rect(center=(LARGURA//2, ALTURA//2 - 150))
-            tela.blit(principal._texto_titulo_pausa_cache, texto_titulo_rect)
+            # Overlay escuro sobre o jogo (mesmo estilo da tela de fim)
+            overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 150))
+            tela.blit(overlay, (0, 0))
             
-            for i, opcao in enumerate(opcoes_pausa):
-                cor = (255, 255, 255) if i == opcao_pausa_selecionada else (150, 150, 150)
-                seta = "► " if i == opcao_pausa_selecionada else "  "
-                cache_key = (i, opcao, cor)
+            # Caixa centralizada (mesmo estilo da tela de fim)
+            caixa_largura = 500
+            caixa_altura = 400
+            caixa_x = (LARGURA - caixa_largura) // 2
+            caixa_y = (ALTURA - caixa_altura) // 2
+            
+            # Fundo da caixa
+            caixa_fundo = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+            caixa_fundo.fill((0, 0, 0, 200))
+            tela.blit(caixa_fundo, (caixa_x, caixa_y))
+            pygame.draw.rect(tela, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
+            
+            # Título (mesmo estilo da tela de fim)
+            titulo_texto = render_text("JOGO PAUSADO", 48, (255, 255, 255), bold=True, pixel_style=True)
+            titulo_x = caixa_x + (caixa_largura - titulo_texto.get_width()) // 2
+            tela.blit(titulo_texto, (titulo_x, caixa_y + 20))
+            
+            # Opções (mesmo estilo da tela de fim)
+            opcoes_pausa_formatadas = [
+                ("CONTINUAR", "continuar"),
+                ("REINICIAR JOGO", "reiniciar"),
+                ("MENU PRINCIPAL", "menu")
+            ]
+            
+            # Calcular offset das opções - posicionar no inferior do retângulo
+            altura_total_opcoes = len(opcoes_pausa_formatadas) * 60
+            offset_opcoes = caixa_y + caixa_altura - altura_total_opcoes - 20
+            
+            # Hover animation (mesmo estilo da tela de fim)
+            if not hasattr(principal, '_hover_animation_pause'):
+                principal._hover_animation_pause = [0.0] * len(opcoes_pausa_formatadas)
+            
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+            mouse_in_caixa = (caixa_x <= mouse_x <= caixa_x + caixa_largura and
+                            caixa_y <= mouse_y <= caixa_y + caixa_altura)
+            
+            hover_speed = 8.0
+            opcao_hover = -1
+            if mouse_in_caixa:
+                for i, (nome, chave) in enumerate(opcoes_pausa_formatadas):
+                    y_opcao = offset_opcoes + i * 60
+                    opcao_rect = pygame.Rect(caixa_x + 20, y_opcao - 5, caixa_largura - 40, 60)
+                    if opcao_rect.collidepoint(mouse_x, mouse_y):
+                        opcao_hover = i
+                        break
+            
+            # Atualizar hover animation
+            for i in range(len(opcoes_pausa_formatadas)):
+                if i == opcao_hover or i == opcao_pausa_selecionada:
+                    principal._hover_animation_pause[i] = min(1.0, principal._hover_animation_pause[i] + hover_speed * dt)
+                else:
+                    principal._hover_animation_pause[i] = max(0.0, principal._hover_animation_pause[i] - hover_speed * dt)
+            
+            if not mouse_in_caixa:
+                for i in range(len(opcoes_pausa_formatadas)):
+                    if i != opcao_pausa_selecionada:
+                        principal._hover_animation_pause[i] = max(0.0, principal._hover_animation_pause[i] - hover_speed * dt * 1.5)
+            
+            for i, (nome, chave) in enumerate(opcoes_pausa_formatadas):
+                y_opcao = offset_opcoes + i * 60
+                hover_progress = principal._hover_animation_pause[i]
                 
-                if cache_key not in principal._textos_opcoes_cache:
-                    principal._textos_opcoes_cache[cache_key] = principal._fonte_opcoes_pausa_cache.render(seta + opcao, True, cor)
+                if i == opcao_pausa_selecionada:
+                    cor = (255, 255, 255)
+                elif hover_progress > 0.1:
+                    cor = (200, 200, 255)
+                else:
+                    cor = (150, 150, 150)
                 
-                texto_opcao = principal._textos_opcoes_cache[cache_key]
-                texto_opcao_rect = texto_opcao.get_rect(center=(LARGURA//2, ALTURA//2 - 50 + i * 60))
-                tela.blit(texto_opcao, texto_opcao_rect)
+                # Efeito de hover (mesmo estilo da tela de fim)
+                if hover_progress > 0:
+                    hover_alpha = int(30 * hover_progress)
+                    hover_rect = pygame.Rect(caixa_x + 20, y_opcao - 5, caixa_largura - 40, 60)
+                    hover_surface = pygame.Surface((hover_rect.width, hover_rect.height), pygame.SRCALPHA)
+                    hover_surface.fill((0, 200, 255, hover_alpha))
+                    tela.blit(hover_surface, hover_rect.topleft)
+                
+                # Texto da opção
+                opcao_texto = render_text(nome, 32, cor, bold=True, pixel_style=True)
+                opcao_x = caixa_x + (caixa_largura - opcao_texto.get_width()) // 2
+                tela.blit(opcao_texto, (opcao_x, y_opcao))
             
-            texto_instrucoes_rect = principal._texto_instrucoes_pausa_cache.get_rect(center=(LARGURA//2, ALTURA//2 + 150))
-            tela.blit(principal._texto_instrucoes_pausa_cache, texto_instrucoes_rect)
+            # Instruções removidas conforme solicitado
 
         pygame.display.update()
 
 if __name__ == "__main__":
     from core.menu import run
     run()
+
