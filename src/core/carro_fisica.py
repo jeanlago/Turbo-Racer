@@ -651,7 +651,9 @@ class CarroFisica:
                 self.drift_intensidade = min(1.0, abs(v) / 40.0)  # Mais sensível para intensidade
             
             # Criar skidmark quando derrapando (com controle de frequência otimizado)
-            if self._ultimo_skidmark > 0.1:  # A cada 0.1 segundos para marcas contínuas em todas as 4 rodas
+            # Para bots, usar frequência menor para evitar lag (0.2s ao invés de 0.1s)
+            frequencia_skidmark = 0.2 if hasattr(self, 'eh_bot') and self.eh_bot else 0.1
+            if self._ultimo_skidmark > frequencia_skidmark:
                 # Criar skidmarks dos 2 pneus traseiros paralelos
                 fx, fy = self._vetor_frente()
                 offset_tras = 12  # pixels atrás do carro (bem próximo)
@@ -668,7 +670,9 @@ class CarroFisica:
                 self.skidmarks.adicionar_skidmark(pos_x_dir, pos_y_dir, self.angulo, self.drift_intensidade, "traseiro_dir", na_grama=self.na_grama)
                 
                 # Se muito angular, criar marcas dos pneus dianteiros também
-                if abs(self.angulo) > 0.5:  # Ângulo restaurado para marcas em todas as 4 rodas
+                # Para bots, apenas criar pneus dianteiros em ângulos muito grandes (otimização)
+                angulo_minimo_dianteiro = 1.0 if (hasattr(self, 'eh_bot') and self.eh_bot) else 0.5
+                if abs(self.angulo) > angulo_minimo_dianteiro:
                     offset_frente = 10  # pixels na frente do carro (bem próximo)
                     
                     # Pneu dianteiro esquerdo
