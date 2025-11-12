@@ -435,63 +435,90 @@ class HUD:
             pygame.draw.line(superficie, cor_carro, (int(outro_carro_x_visivel), int(outro_carro_y_visivel)), 
                            (int(dir_x), int(dir_y)), 2)
     
-    def desenhar_posicao_voltas(self, superficie, corrida, carro, todos_carros, posicao=(10, 10), alinhar_direita=False):
+    def desenhar_posicao_voltas(self, superficie, corrida, carro, todos_carros, posicao=(10, 10), alinhar_direita=False, tipo_jogo=None, drift_scoring=None, pontuacoes_alvo=None, trofeu_ouro=None, trofeu_prata=None, trofeu_bronze=None, trofeu_vazio=None):
         """
         Desenha a posição (1st, 2nd, etc) e voltas (1/2, 2/2, etc) no canto da tela
         estilo Mario Kart com blur/fundo por trás
+        No modo drift, mostra pontuação ao invés de posição
         """
         if not carro or not corrida:
             return
         
-        # Calcular posição atual do carro em tempo real
-        def calcular_posicao_atual(carro_alvo, todos_carros):
-            """Calcula a posição atual baseada no progresso (checkpoints + voltas)"""
-            if not corrida.checkpoints:
+        # No modo drift, mostrar pontuação ao invés de posição
+        from core.game_modes import TipoJogo
+        trofeu_atual = None
+        if tipo_jogo == TipoJogo.DRIFT:
+            if drift_scoring:
+                pontuacao_atual = int(drift_scoring.points)
+                texto_posicao = f"{pontuacao_atual:,}".replace(",", ".")  # Sem "Score:"
+                
+                # Determinar troféu baseado na pontuação atual
+                if pontuacoes_alvo:
+                    if pontuacao_atual >= pontuacoes_alvo['ouro']:
+                        trofeu_atual = trofeu_ouro
+                    elif pontuacao_atual >= pontuacoes_alvo['prata']:
+                        trofeu_atual = trofeu_prata
+                    elif pontuacao_atual >= pontuacoes_alvo['bronze']:
+                        trofeu_atual = trofeu_bronze
+                    else:
+                        trofeu_atual = trofeu_vazio
+            else:
+                texto_posicao = "0"
+                trofeu_atual = trofeu_vazio
+            
+            voltas_atual = corrida.voltas.get(carro, 0)
+            voltas_objetivo = corrida.voltas_objetivo
+            texto_voltas = f"Voltas: {voltas_atual}/{voltas_objetivo}"
+        else:
+            # Calcular posição atual do carro em tempo real
+            def calcular_posicao_atual(carro_alvo, todos_carros):
+                """Calcula a posição atual baseada no progresso (checkpoints + voltas)"""
+                if not corrida.checkpoints:
+                    return None
+                
+                # Calcular progresso de cada carro
+                progressos = []
+                for c in todos_carros:
+                    if c not in corrida.proximo_checkpoint:
+                        continue
+                    
+                    checkpoint_atual = corrida.proximo_checkpoint.get(c, 0)
+                    voltas_completas = corrida.voltas.get(c, 0)
+                    total_checkpoints = len(corrida.checkpoints)
+                    
+                    # Progresso total = voltas completas * total_checkpoints + checkpoint_atual
+                    progresso_total = voltas_completas * total_checkpoints + checkpoint_atual
+                    progressos.append((c, progresso_total))
+                
+                # Ordenar por progresso (maior = na frente)
+                progressos.sort(key=lambda x: x[1], reverse=True)
+                
+                # Encontrar posição do carro alvo
+                for pos, (c, _) in enumerate(progressos, start=1):
+                    if c == carro_alvo:
+                        return pos
+                
                 return None
             
-            # Calcular progresso de cada carro
-            progressos = []
-            for c in todos_carros:
-                if c not in corrida.proximo_checkpoint:
-                    continue
-                
-                checkpoint_atual = corrida.proximo_checkpoint.get(c, 0)
-                voltas_completas = corrida.voltas.get(c, 0)
-                total_checkpoints = len(corrida.checkpoints)
-                
-                # Progresso total = voltas completas * total_checkpoints + checkpoint_atual
-                progresso_total = voltas_completas * total_checkpoints + checkpoint_atual
-                progressos.append((c, progresso_total))
+            posicao_atual = calcular_posicao_atual(carro, todos_carros)
+            voltas_atual = corrida.voltas.get(carro, 0)
+            voltas_objetivo = corrida.voltas_objetivo
             
-            # Ordenar por progresso (maior = na frente)
-            progressos.sort(key=lambda x: x[1], reverse=True)
-            
-            # Encontrar posição do carro alvo
-            for pos, (c, _) in enumerate(progressos, start=1):
-                if c == carro_alvo:
-                    return pos
-            
-            return None
-        
-        posicao_atual = calcular_posicao_atual(carro, todos_carros)
-        voltas_atual = corrida.voltas.get(carro, 0)
-        voltas_objetivo = corrida.voltas_objetivo
-        
-        # Converter posição para texto (1st, 2nd, 3rd, 4th, etc)
-        if posicao_atual:
-            if posicao_atual == 1:
-                texto_posicao = "1st"
-            elif posicao_atual == 2:
-                texto_posicao = "2nd"
-            elif posicao_atual == 3:
-                texto_posicao = "3rd"
+            # Converter posição para texto (1st, 2nd, 3rd, 4th, etc)
+            if posicao_atual:
+                if posicao_atual == 1:
+                    texto_posicao = "1st"
+                elif posicao_atual == 2:
+                    texto_posicao = "2nd"
+                elif posicao_atual == 3:
+                    texto_posicao = "3rd"
+                else:
+                    texto_posicao = f"{posicao_atual}th"
             else:
-                texto_posicao = f"{posicao_atual}th"
-        else:
-            texto_posicao = "?"
-        
-        # Texto de voltas
-        texto_voltas = f"{voltas_atual}/{voltas_objetivo}"
+                texto_posicao = "?"
+            
+            # Texto de voltas
+            texto_voltas = f"Voltas: {voltas_atual}/{voltas_objetivo}"
         
         # Fontes menores ainda
         fonte_posicao = pygame.font.SysFont("Arial", 28, bold=True)
@@ -503,7 +530,14 @@ class HUD:
         
         # Calcular tamanho do fundo (com padding menor)
         padding = 8
-        largura_fundo = max(texto_pos_surf.get_width(), texto_voltas_surf.get_width()) + padding * 2
+        # Se tiver troféu, adicionar espaço para ele (à direita da pontuação)
+        largura_trofeu = 0
+        if trofeu_atual is not None:
+            largura_trofeu = 35  # Tamanho do troféu (30px) + espaçamento (5px)
+        
+        # Largura total = pontuação + troféu (se houver) ou voltas, o que for maior
+        largura_conteudo = max(texto_pos_surf.get_width() + largura_trofeu, texto_voltas_surf.get_width())
+        largura_fundo = largura_conteudo + padding * 2
         altura_fundo = texto_pos_surf.get_height() + texto_voltas_surf.get_height() + padding * 2 + 3
         
         # Ajustar posição se alinhar à direita
@@ -519,13 +553,83 @@ class HUD:
         # Desenhar fundo na superfície
         superficie.blit(fundo_surface, (x_fundo, posicao[1]))
         
-        # Desenhar textos
+        # Desenhar textos e troféu
         x_texto = x_fundo + padding
         y_posicao = posicao[1] + padding
+        
+        # Desenhar pontuação primeiro
+        superficie.blit(texto_pos_surf, (x_texto, y_posicao))
+        
+        # Desenhar troféu ao lado da pontuação (se existir)
+        if trofeu_atual is not None:
+            # Redimensionar troféu para tamanho menor
+            tamanho_trofeu_hud = (30, 30)
+            trofeu_redimensionado = pygame.transform.scale(trofeu_atual, tamanho_trofeu_hud)
+            trofeu_rect = trofeu_redimensionado.get_rect()
+            trofeu_rect.centery = y_posicao + texto_pos_surf.get_height() // 2
+            # Posicionar troféu à direita da pontuação
+            trofeu_rect.x = x_texto + texto_pos_surf.get_width() + 5
+            superficie.blit(trofeu_redimensionado, trofeu_rect)
+        
         y_voltas = y_posicao + texto_pos_surf.get_height() + 5
         
-        superficie.blit(texto_pos_surf, (x_texto, y_posicao))
         superficie.blit(texto_voltas_surf, (x_texto, y_voltas))
+    
+    def desenhar_pontuacoes_alvo(self, superficie, pontuacoes_alvo, posicao=(10, 10), alinhar_direita=False):
+        """
+        Desenha as pontuações alvo (ouro, prata, bronze) no modo drift
+        """
+        if not pontuacoes_alvo:
+            return
+        
+        fonte_titulo = pygame.font.SysFont("Arial", 18, bold=True)
+        fonte_item = pygame.font.SysFont("Arial", 16)
+        
+        # Título
+        texto_titulo = fonte_titulo.render("Pontuação Alvo", True, (255, 255, 255))
+        
+        # Itens
+        texto_ouro = fonte_item.render(f"Ouro: {int(pontuacoes_alvo['ouro']):,}".replace(",", "."), True, (255, 215, 0))
+        texto_prata = fonte_item.render(f"Prata: {int(pontuacoes_alvo['prata']):,}".replace(",", "."), True, (192, 192, 192))
+        texto_bronze = fonte_item.render(f"Bronze: {int(pontuacoes_alvo['bronze']):,}".replace(",", "."), True, (205, 127, 50))
+        
+        # Calcular tamanho do fundo
+        padding = 8
+        largura_fundo = max(
+            texto_titulo.get_width(),
+            texto_ouro.get_width(),
+            texto_prata.get_width(),
+            texto_bronze.get_width()
+        ) + padding * 2
+        altura_fundo = texto_titulo.get_height() + texto_ouro.get_height() + texto_prata.get_height() + texto_bronze.get_height() + padding * 2 + 10
+        
+        # Ajustar posição se alinhar à direita
+        if alinhar_direita:
+            x_fundo = posicao[0] - largura_fundo
+        else:
+            x_fundo = posicao[0]
+        
+        # Criar superfície com blur/fundo semi-transparente
+        fundo_surface = pygame.Surface((largura_fundo, altura_fundo), pygame.SRCALPHA)
+        fundo_surface.fill((0, 0, 0, 180))
+        
+        # Desenhar fundo na superfície
+        superficie.blit(fundo_surface, (x_fundo, posicao[1]))
+        
+        # Desenhar textos
+        x_texto = x_fundo + padding
+        y_atual = posicao[1] + padding
+        
+        superficie.blit(texto_titulo, (x_texto, y_atual))
+        y_atual += texto_titulo.get_height() + 5
+        
+        superficie.blit(texto_ouro, (x_texto, y_atual))
+        y_atual += texto_ouro.get_height() + 3
+        
+        superficie.blit(texto_prata, (x_texto, y_atual))
+        y_atual += texto_prata.get_height() + 3
+        
+        superficie.blit(texto_bronze, (x_texto, y_atual))
     
     def desenhar_tempos(self, superficie, corrida, carro, posicao=(20, 20)):
         """

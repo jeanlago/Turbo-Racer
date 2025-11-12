@@ -31,8 +31,8 @@ class DriftScoring:
         self.is_drifting = False
         self.last_drift_activated = False
         
-        # Taxa de pontos base (centenas por padrão)
-        self.base_point_rate = 500.0  # Pontos por segundo no nível 1 - centenas por padrão
+        # Taxa de pontos base (aumentada significativamente)
+        self.base_point_rate = 2000.0  # Pontos por segundo no nível 1 - aumentado de 500 para 2000
         
         # Clipping zones (para compatibilidade)
         self.clipping_zones = []
@@ -170,10 +170,13 @@ class DriftScoring:
         self.drift_timer = 0.0
         self.no_drift_timer = 0.0
     
-    def draw_hud(self, surface, x, y, font):
+    def draw_hud(self, surface, x, y, font, mostrar_score_texto=True):
         """Desenha o HUD do drift scoring estilo CarX"""
         # Pontuação
-        text_points = font.render(f"Score: {int(self.points)}", True, (255, 255, 255))
+        if mostrar_score_texto:
+            text_points = font.render(f"Score: {int(self.points)}", True, (255, 255, 255))
+        else:
+            text_points = font.render(f"{int(self.points):,}".replace(",", "."), True, (255, 255, 255))
         surface.blit(text_points, (x, y))
         y += text_points.get_height() + 8
         

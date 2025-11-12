@@ -478,9 +478,31 @@ def menu_loop(screen) -> Escolha:
                 return Escolha.SAIR
             if ev.type == pygame.KEYDOWN:
                 if ev.key in (pygame.K_LEFT, pygame.K_a):
-                    idx = (idx - 1) % len(itens)
+                    # Navegação baseada na ordem visual: RECORDES (2), SELECIONAR CARROS (0), JOGAR (1), OPÇÕES (3), SAIR (4)
+                    # Ordem visual da esquerda para direita: 2, 0, 1, 3, 4
+                    # Mapeamento: idx -> esquerda
+                    navegacao_esquerda = {
+                        0: 2,     # SELECIONAR CARROS -> RECORDES
+                        1: 0,     # JOGAR -> SELECIONAR CARROS
+                        2: None,  # RECORDES -> não tem esquerda (primeiro)
+                        3: 1,     # OPÇÕES -> JOGAR
+                        4: 3      # SAIR -> OPÇÕES
+                    }
+                    novo_idx = navegacao_esquerda.get(idx)
+                    if novo_idx is not None:
+                        idx = novo_idx
                 elif ev.key in (pygame.K_RIGHT, pygame.K_d):
-                    idx = (idx + 1) % len(itens)
+                    # Mapeamento: idx -> direita
+                    navegacao_direita = {
+                        0: 1,     # SELECIONAR CARROS -> JOGAR
+                        1: 3,     # JOGAR -> OPÇÕES
+                        2: 0,     # RECORDES -> SELECIONAR CARROS
+                        3: 4,     # OPÇÕES -> SAIR
+                        4: None   # SAIR -> não tem direita (último)
+                    }
+                    novo_idx = navegacao_direita.get(idx)
+                    if novo_idx is not None:
+                        idx = novo_idx
                 elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
                     return Escolha(idx)
                 elif ev.key == pygame.K_ESCAPE:
@@ -2415,8 +2437,8 @@ def modo_jogo_loop(screen):
                             opcao_tipo_atual = i
                             tipo_jogo_atual = tipo
                     
-                    # Verificar clique em voltas (apenas se for corrida) - layout horizontal
-                    if tipo_jogo_atual == TipoJogo.CORRIDA:
+                    # Verificar clique em voltas (para corrida e drift) - layout horizontal
+                    if tipo_jogo_atual in (TipoJogo.CORRIDA, TipoJogo.DRIFT):
                         for i, (nome, voltas) in enumerate(opcoes_voltas):
                             x = caixa_x + 50 + i * 180  # Espaçamento horizontal aumentado
                             y = caixa_y + 380
@@ -2425,8 +2447,8 @@ def modo_jogo_loop(screen):
                                 opcao_voltas_atual = i
                                 voltas_atual = voltas
                     
-                    # Verificar clique em dificuldade (1 jogador)
-                    if modo_jogo_atual == ModoJogo.UM_JOGADOR:
+                    # Verificar clique em dificuldade (1 e 2 jogadores)
+                    if modo_jogo_atual == ModoJogo.UM_JOGADOR or modo_jogo_atual == ModoJogo.DOIS_JOGADORES:
                         for i, (nome, dificuldade) in enumerate(opcoes_dificuldade):
                             x = caixa_x + 50 + i * 180  # Espaçamento horizontal
                             y = caixa_y + 480
@@ -2461,11 +2483,32 @@ def modo_jogo_loop(screen):
                         opcao_modo_atual += 1
                         modo_jogo_atual = opcoes_modo[opcao_modo_atual][1]
                 elif ev.key in (pygame.K_LEFT, pygame.K_a):
-                    if opcao_tipo_atual > 0:
+                    # Se estiver em voltas ou dificuldade, navegar neles primeiro
+                    # Verificar se está focado em voltas (se voltas estão visíveis)
+                    if tipo_jogo_atual in (TipoJogo.CORRIDA, TipoJogo.DRIFT):
+                        if opcao_voltas_atual > 0:
+                            opcao_voltas_atual -= 1
+                            voltas_atual = opcoes_voltas[opcao_voltas_atual][1]
+                        else:
+                            # Se já está no primeiro, mudar tipo de jogo
+                            if opcao_tipo_atual > 0:
+                                opcao_tipo_atual -= 1
+                                tipo_jogo_atual = opcoes_tipo[opcao_tipo_atual][1]
+                    elif opcao_tipo_atual > 0:
                         opcao_tipo_atual -= 1
                         tipo_jogo_atual = opcoes_tipo[opcao_tipo_atual][1]
                 elif ev.key in (pygame.K_RIGHT, pygame.K_d):
-                    if opcao_tipo_atual < len(opcoes_tipo) - 1:
+                    # Se estiver em voltas ou dificuldade, navegar neles primeiro
+                    if tipo_jogo_atual in (TipoJogo.CORRIDA, TipoJogo.DRIFT):
+                        if opcao_voltas_atual < len(opcoes_voltas) - 1:
+                            opcao_voltas_atual += 1
+                            voltas_atual = opcoes_voltas[opcao_voltas_atual][1]
+                        else:
+                            # Se já está no último, mudar tipo de jogo
+                            if opcao_tipo_atual < len(opcoes_tipo) - 1:
+                                opcao_tipo_atual += 1
+                                tipo_jogo_atual = opcoes_tipo[opcao_tipo_atual][1]
+                    elif opcao_tipo_atual < len(opcoes_tipo) - 1:
                         opcao_tipo_atual += 1
                         tipo_jogo_atual = opcoes_tipo[opcao_tipo_atual][1]
                 elif ev.key == pygame.K_RETURN:
@@ -2636,8 +2679,8 @@ def modo_jogo_loop(screen):
             texto = render_text(nome, 20, cor_texto, bold=True, pixel_style=True)
             screen.blit(texto, (caixa_x + 60, y))
         
-        # Opções de voltas (apenas se for corrida) - layout horizontal
-        if tipo_jogo_atual == TipoJogo.CORRIDA:
+        # Opções de voltas (para corrida e drift) - layout horizontal
+        if tipo_jogo_atual in (TipoJogo.CORRIDA, TipoJogo.DRIFT):
             voltas_titulo = render_text("NÚMERO DE VOLTAS:", 24, (255, 255, 255), bold=True, pixel_style=True)
             screen.blit(voltas_titulo, (caixa_x + 50, caixa_y + 350))
             
@@ -2681,13 +2724,14 @@ def modo_jogo_loop(screen):
                 texto_x = x + (140 - texto.get_width()) // 2  # Centralizar horizontalmente
                 screen.blit(texto, (texto_x, y))
         
-        # Opções de dificuldade (1 jogador + corrida = IA, 1 jogador + drift = tempo)
-        if modo_jogo_atual == ModoJogo.UM_JOGADOR:
+        # Opções de dificuldade (corrida = IA, drift = pontuação necessária)
+        # Agora disponível para 1 e 2 jogadores (2 jogadores tem IA também)
+        if modo_jogo_atual == ModoJogo.UM_JOGADOR or modo_jogo_atual == ModoJogo.DOIS_JOGADORES:
             # Título baseado no tipo de jogo
             if tipo_jogo_atual == TipoJogo.CORRIDA:
                 titulo_dificuldade = "DIFICULDADE DA IA:"
             else:  # DRIFT
-                titulo_dificuldade = "DIFICULDADE (TEMPO):"
+                titulo_dificuldade = "DIFICULDADE (PONTUAÇÃO):"
             dificuldade_titulo = render_text(titulo_dificuldade, 24, (255, 255, 255), bold=True, pixel_style=True)
             screen.blit(dificuldade_titulo, (caixa_x + 50, caixa_y + 440))
             
@@ -2990,7 +3034,7 @@ def selecionar_fase_loop(screen):
         pygame.display.flip()
 
 def recordes_loop(screen):
-    """Tela de recordes mostrando melhores tempos por pista"""
+    """Tela de recordes mostrando melhores tempos por pista (corrida e drift)"""
     from core.progresso import gerenciador_progresso
     from config import CAMINHO_TROFEU_OURO, CAMINHO_TROFEU_PRATA, CAMINHO_TROFEU_BRONZE, CAMINHO_TROFEU_VAZIO
     
@@ -3013,9 +3057,9 @@ def recordes_loop(screen):
     
     clock = pygame.time.Clock()
     
-    # Layout
-    caixa_largura = 700
-    caixa_altura = 550
+    # Layout - aumentar altura para duas seções
+    caixa_largura = 900
+    caixa_altura = 650
     caixa_x = (LARGURA - caixa_largura) // 2
     caixa_y = (ALTURA - caixa_altura) // 2
     
@@ -3027,6 +3071,16 @@ def recordes_loop(screen):
         segundos = int(tempo % 60)
         centesimos = int((tempo % 1) * 100)
         return f"{minutos:02d}:{segundos:02d}.{centesimos:02d}"
+    
+    def formatar_score(score):
+        """Formata score para exibição"""
+        if score is None:
+            return "--"
+        score_int = int(score)
+        # Formatar com separador de milhares (ponto)
+        if score_int >= 1000:
+            return f"{score_int:,}".replace(",", ".")
+        return str(score_int)
     
     while True:
         dt = clock.tick(FPS) / 1000.0
@@ -3071,31 +3125,37 @@ def recordes_loop(screen):
         titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
         screen.blit(titulo, (titulo_x, caixa_y + 20))
         
-        # Cabeçalho da tabela
+        # Fonte
         fonte_cabecalho = pygame.font.SysFont("consolas", 18, bold=True)
         fonte_item = pygame.font.SysFont("consolas", 16)
+        fonte_secao = pygame.font.SysFont("consolas", 20, bold=True)
         
-        y_inicial = caixa_y + 80
+        # === SEÇÃO CORRIDA ===
+        y_secao_corrida = caixa_y + 70
+        titulo_corrida = fonte_secao.render("CORRIDA", True, (0, 200, 255))
+        screen.blit(titulo_corrida, (caixa_x + 30, y_secao_corrida))
+        
+        y_inicial_corrida = y_secao_corrida + 35
         x_pista = caixa_x + 30
         x_trofeu = caixa_x + 150
         x_tempo = caixa_x + 220
         
-        # Cabeçalhos
+        # Cabeçalhos corrida
         cabecalho_pista = fonte_cabecalho.render("PISTA", True, (255, 255, 255))
         cabecalho_trofeu = fonte_cabecalho.render("TROFÉU", True, (255, 255, 255))
         cabecalho_tempo = fonte_cabecalho.render("MELHOR TEMPO", True, (255, 255, 255))
         
-        screen.blit(cabecalho_pista, (x_pista, y_inicial))
-        screen.blit(cabecalho_trofeu, (x_trofeu, y_inicial))
-        screen.blit(cabecalho_tempo, (x_tempo, y_inicial))
+        screen.blit(cabecalho_pista, (x_pista, y_inicial_corrida))
+        screen.blit(cabecalho_trofeu, (x_trofeu, y_inicial_corrida))
+        screen.blit(cabecalho_tempo, (x_tempo, y_inicial_corrida))
         
         # Linha separadora
         pygame.draw.line(screen, (128, 128, 128), 
-                        (caixa_x + 20, y_inicial + 30), 
-                        (caixa_x + caixa_largura - 20, y_inicial + 30), 2)
+                        (caixa_x + 20, y_inicial_corrida + 30), 
+                        (caixa_x + caixa_largura // 2 - 20, y_inicial_corrida + 30), 2)
         
-        # Listar recordes das 9 pistas
-        y_atual = y_inicial + 45
+        # Listar recordes de corrida das 9 pistas
+        y_atual = y_inicial_corrida + 45
         for pista_num in range(1, 10):
             # Nome da pista
             texto_pista = fonte_item.render(f"Pista {pista_num}", True, (255, 255, 255))
@@ -3110,7 +3170,6 @@ def recordes_loop(screen):
             elif trofeu_tipo == "bronze" and trofeu_bronze:
                 screen.blit(trofeu_bronze, (x_trofeu, y_atual - 5))
             else:
-                # Sempre mostrar troféu vazio se não ganhou troféu
                 if trofeu_vazio:
                     screen.blit(trofeu_vazio, (x_trofeu, y_atual - 5))
             
@@ -3121,6 +3180,73 @@ def recordes_loop(screen):
             screen.blit(texto_tempo, (x_tempo, y_atual))
             
             y_atual += 35
+        
+        # === SEÇÃO DRIFT ===
+        y_secao_drift = caixa_y + 70
+        x_drift = caixa_x + caixa_largura // 2 + 30
+        titulo_drift = fonte_secao.render("DRIFT", True, (255, 200, 0))
+        screen.blit(titulo_drift, (x_drift, y_secao_drift))
+        
+        y_inicial_drift = y_secao_drift + 35
+        x_pista_drift = x_drift
+        x_trofeu_drift = x_drift + 120
+        x_score_drift = x_drift + 200
+        
+        # Cabeçalhos drift
+        cabecalho_pista_drift = fonte_cabecalho.render("PISTA", True, (255, 255, 255))
+        cabecalho_trofeu_drift = fonte_cabecalho.render("TROFÉU", True, (255, 255, 255))
+        cabecalho_score = fonte_cabecalho.render("MELHOR SCORE", True, (255, 255, 255))
+        
+        screen.blit(cabecalho_pista_drift, (x_pista_drift, y_inicial_drift))
+        screen.blit(cabecalho_trofeu_drift, (x_trofeu_drift, y_inicial_drift))
+        screen.blit(cabecalho_score, (x_score_drift, y_inicial_drift))
+        
+        # Linha separadora
+        pygame.draw.line(screen, (128, 128, 128), 
+                        (x_drift - 10, y_inicial_drift + 30), 
+                        (caixa_x + caixa_largura - 20, y_inicial_drift + 30), 2)
+        
+        # Função para determinar troféu por pontuação
+        def obter_trofeu_por_pontuacao(pontuacao):
+            """Retorna o tipo de troféu baseado na pontuação de drift"""
+            if pontuacao is None:
+                return None
+            if pontuacao >= 50000:  # Alta pontuação = ouro
+                return "ouro"
+            elif pontuacao >= 20000:  # Média pontuação = prata
+                return "prata"
+            elif pontuacao >= 5000:  # Baixa pontuação = bronze
+                return "bronze"
+            else:
+                return None
+        
+        # Listar recordes de drift das 9 pistas
+        y_atual_drift = y_inicial_drift + 45
+        for pista_num in range(1, 10):
+            # Nome da pista
+            texto_pista = fonte_item.render(f"Pista {pista_num}", True, (255, 255, 255))
+            screen.blit(texto_pista, (x_pista_drift, y_atual_drift))
+            
+            # Troféu baseado na pontuação
+            recorde_drift = gerenciador_progresso.obter_recorde_drift(pista_num)
+            trofeu_tipo_drift = obter_trofeu_por_pontuacao(recorde_drift)
+            if trofeu_tipo_drift == "ouro" and trofeu_ouro:
+                screen.blit(trofeu_ouro, (x_trofeu_drift, y_atual_drift - 5))
+            elif trofeu_tipo_drift == "prata" and trofeu_prata:
+                screen.blit(trofeu_prata, (x_trofeu_drift, y_atual_drift - 5))
+            elif trofeu_tipo_drift == "bronze" and trofeu_bronze:
+                screen.blit(trofeu_bronze, (x_trofeu_drift, y_atual_drift - 5))
+            else:
+                # Sempre mostrar troféu vazio se não ganhou troféu
+                if trofeu_vazio:
+                    screen.blit(trofeu_vazio, (x_trofeu_drift, y_atual_drift - 5))
+            
+            # Score
+            texto_score = fonte_item.render(formatar_score(recorde_drift), True, 
+                                          (255, 200, 0) if recorde_drift else (128, 128, 128))
+            screen.blit(texto_score, (x_score_drift, y_atual_drift))
+            
+            y_atual_drift += 35
         
         # Botão voltar
         voltar_largura = 120

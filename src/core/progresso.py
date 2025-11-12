@@ -11,7 +11,8 @@ class GerenciadorProgresso:
     def __init__(self):
         self.dinheiro = 0
         self.carros_desbloqueados = set()  # Set de prefixos de carros desbloqueados
-        self.recordes = {}  # {numero_pista: melhor_tempo}
+        self.recordes_corrida = {}  # {numero_pista: melhor_tempo}
+        self.recordes_drift = {}  # {numero_pista: melhor_score}
         self.trofeus = {}  # {numero_pista: "ouro"/"prata"/"bronze"/None}
         self.carregar()
     
@@ -27,11 +28,18 @@ class GerenciadorProgresso:
                     if 'Car1' not in self.carros_desbloqueados:
                         self.carros_desbloqueados.add('Car1')
                     # Recordes e troféus (garantir que são dicionários)
-                    self.recordes = data.get('recordes', {})
+                    # Compatibilidade: se existir 'recordes' antigo, migrar para 'recordes_corrida'
+                    if 'recordes' in data and 'recordes_corrida' not in data:
+                        self.recordes_corrida = data.get('recordes', {})
+                    else:
+                        self.recordes_corrida = data.get('recordes_corrida', {})
+                    self.recordes_drift = data.get('recordes_drift', {})
                     self.trofeus = data.get('trofeus', {})
                     # Converter chaves numéricas para strings se necessário (compatibilidade)
-                    if self.recordes:
-                        self.recordes = {str(k): v for k, v in self.recordes.items()}
+                    if self.recordes_corrida:
+                        self.recordes_corrida = {str(k): v for k, v in self.recordes_corrida.items()}
+                    if self.recordes_drift:
+                        self.recordes_drift = {str(k): v for k, v in self.recordes_drift.items()}
                     if self.trofeus:
                         self.trofeus = {str(k): v for k, v in self.trofeus.items()}
             except Exception as e:
@@ -51,7 +59,8 @@ class GerenciadorProgresso:
             data = {
                 'dinheiro': self.dinheiro,
                 'carros_desbloqueados': list(self.carros_desbloqueados),
-                'recordes': self.recordes,
+                'recordes_corrida': self.recordes_corrida,
+                'recordes_drift': self.recordes_drift,
                 'trofeus': self.trofeus
             }
             with open(CAMINHO_PROGRESSO, 'w', encoding='utf-8') as f:
@@ -96,22 +105,40 @@ class GerenciadorProgresso:
         return False
     
     def registrar_recorde(self, numero_pista, tempo):
-        """Registra um novo recorde para uma pista (se for melhor)"""
+        """Registra um novo recorde de corrida para uma pista (se for melhor)"""
         # Converter numero_pista para string para consistência no JSON
         pista_key = str(numero_pista)
         # Verificar se é um novo recorde (menor tempo = melhor)
-        if pista_key not in self.recordes or tempo < self.recordes[pista_key]:
-            self.recordes[pista_key] = tempo
+        if pista_key not in self.recordes_corrida or tempo < self.recordes_corrida[pista_key]:
+            self.recordes_corrida[pista_key] = tempo
             self.salvar()  # Salvar imediatamente
-            print(f"Recorde salvo para pista {pista_key}: {tempo:.2f}s")
+            print(f"Recorde de corrida salvo para pista {pista_key}: {tempo:.2f}s")
             return True
         return False
     
     def obter_recorde(self, numero_pista):
-        """Obtém o melhor tempo de uma pista"""
+        """Obtém o melhor tempo de corrida de uma pista"""
         # Converter numero_pista para string para buscar no dicionário
         pista_key = str(numero_pista)
-        return self.recordes.get(pista_key, None)
+        return self.recordes_corrida.get(pista_key, None)
+    
+    def registrar_recorde_drift(self, numero_pista, score):
+        """Registra um novo recorde de drift para uma pista (se for melhor)"""
+        # Converter numero_pista para string para consistência no JSON
+        pista_key = str(numero_pista)
+        # Verificar se é um novo recorde (maior score = melhor)
+        if pista_key not in self.recordes_drift or score > self.recordes_drift[pista_key]:
+            self.recordes_drift[pista_key] = score
+            self.salvar()  # Salvar imediatamente
+            print(f"Recorde de drift salvo para pista {pista_key}: {score:.0f} pontos")
+            return True
+        return False
+    
+    def obter_recorde_drift(self, numero_pista):
+        """Obtém o melhor score de drift de uma pista"""
+        # Converter numero_pista para string para buscar no dicionário
+        pista_key = str(numero_pista)
+        return self.recordes_drift.get(pista_key, None)
     
     def registrar_trofeu(self, numero_pista, tipo_trofeu):
         """Registra o troféu ganho em uma pista (ouro, prata, bronze)"""

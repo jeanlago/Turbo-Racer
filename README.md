@@ -6,22 +6,23 @@ Um jogo de corrida arcade 2D top-down desenvolvido em **Python** com **Pygame**,
 
 ## Funcionalidades Principais
 
--  **Múltiplos Modos de Jogo** - 1 jogador, 2 jogadores (split-screen) e modo drift
+-  **Múltiplos Modos de Jogo** - 1 jogador, 2 jogadores (split-screen), modo corrida e modo drift
+-  **Modo Drift Completo** - Sistema baseado em checkpoints com pontuação dinâmica e multiplicador de voltas
 -  **Menu de Pausa Completo** - Sistema de pausa com opções de continuar, reiniciar e voltar
 -  **Sistema de Economia** - Sistema de dinheiro para desbloquear carros
--  **Sistema de Troféus** - Troféus baseados em posição ou pontuação de drift
--  **Tela de Fim de Jogo** - Popup sobre o jogo com resultados e opções
+-  **Sistema de Troféus** - Troféus baseados em posição (corrida) ou pontuação (drift)
+-  **Tela de Fim de Jogo** - Popup sobre o jogo com resultados e opções (separado por jogador no modo 2 jogadores)
 -  **Sistema de Física Avançado** - 3 tipos de tração (RWD, FWD, AWD) com comportamento único
 -  **IA Inteligente** - Algoritmo Pure Pursuit para navegação suave e realista
--  **Sistema de Dificuldade Universal** - 3 níveis (Fácil, Médio, Difícil) para corrida e drift
+-  **Sistema de Dificuldade Universal** - 3 níveis (Fácil, Médio, Difícil) para corrida (IA) e drift (pontuação necessária)
 -  **Sistema de Mapas Escalável** - Detecção automática de mapas sem configuração manual
 -  **Sistema de Pistas GRIP** - 9 pistas estilo GRIP com tiles dinâmicos e colisão pixel-based
 -  **Editor Visual de Checkpoints** - Crie e edite checkpoints arrastando e soltando
 -  **Editor de Garagem** - Ajuste posição e tamanho dos carros na oficina visualmente
--  **Sistema de Recordes e Troféus** - Salve seus melhores tempos e conquiste troféus
+-  **Sistema de Recordes Separados** - Recordes de corrida (tempo) e drift (pontuação) salvos separadamente
 -  **Sistema de Áudio Completo** - Múltiplas faixas musicais com controles independentes
--  **Modo Drift** - Sistema de pontuação automática baseado em derrapagem real com tempo limitado e combos
--  **HUD Dinâmico** - Interface adaptativa com câmera inteligente
+-  **HUD Dinâmico** - Interface adaptativa com posição/voltas ou score/voltas e troféu indicativo
+-  **Skidmarks em Todos os Carros** - Marcas de pneu visíveis para jogadores e bots (otimizado)
 -  **Performance Otimizada** - 100+ FPS com qualidade visual mantida
 -  **Configurações Avançadas** - Resolução, fullscreen, controles e qualidade personalizáveis
 
@@ -153,11 +154,12 @@ Turbo-Racer/
   - **Voltar ao Menu** - Sai do jogo e volta ao menu principal
 
 ### **Navegação no Menu**
-- **Setas ←→ ou A/D** - Navegar entre opções do menu principal
-- **Setas ↑↓ ou W/S** - Navegar entre opções verticais (ex: número de jogadores)
+- **Setas ←→ ou A/D** - Navegar entre opções do menu principal (ordem visual: RECORDES → SELECIONAR CARROS → JOGAR → OPÇÕES → SAIR)
+- **Setas ↑↓ ou W/S** - Navegar entre opções verticais (ex: número de jogadores, tipo de jogo)
 - **ENTER ou ESPAÇO** - Confirmar seleção
 - **ESC** - Voltar ao menu anterior
 - **R** - Recarregar mapas (na seleção de mapas)
+- **Seleção de Modo de Jogo** - Escolha modo (1/2 jogadores), tipo (Corrida/Drift), voltas (1-3) e dificuldade (Fácil/Médio/Difícil)
 
 ### **Editor de Checkpoints**
 - **F7** - Ativar/desativar modo edição
@@ -196,7 +198,7 @@ Veja mais detalhes em: [tools/README_GARAGE_EDITOR.md](tools/README_GARAGE_EDITO
 - **Pygame 2.5+** - Biblioteca de jogos
 - **Windows 10+** (testado) / Linux / macOS
 
-### **⚙️ Instalação**
+### **Instalação**
 
 #### **Método 1: Instalação Rápida**
 ```bash
@@ -338,17 +340,21 @@ Para editar checkpoints e spawn points de uma pista:
 
 ### **Sistema de Dificuldade**
 - **Modo Corrida** - Ajusta comportamento da IA (Fácil: conservadora, Médio: equilibrada, Difícil: agressiva)
-- **Modo Drift** - Ajusta tempo disponível (Fácil: 1:30, Médio: 1:00, Difícil: 0:30)
-- **Seleção Intuitiva** - Escolha no submenu "JOGAR" para 1 jogador
-- **Feedback Visual** - Exibição da dificuldade atual no HUD
+- **Modo Drift** - Ajusta pontuação necessária para troféus (Fácil: 60% do médio, Médio: 100%, Difícil: 150%)
+- **Disponível em Todos os Modos** - Dificuldade pode ser selecionada em modo 1 e 2 jogadores
+- **Seleção Intuitiva** - Escolha no submenu "JOGAR" antes de iniciar
+- **Feedback Visual** - Exibição da dificuldade atual no menu
 
 ### **Sistema de Pontuação de Drift**
 - **Pontuação Automática** - Baseada em derrapagem real (marcas de pneu), não em teclas
-- **Sistema de Combo** - Multiplicadores progressivos (x1, x1.5, x2, x3, x5)
-- **Tolerância Inteligente** - 3 segundos para manter combo sem derrapagem
-- **Parâmetros Sensíveis** - Velocidade mínima 8 km/h, ângulo mínimo 2°
-- **Taxa Generosa** - 80 pontos/segundo no nível base
-- **Debug Visual** - Ative com F1 para ver o comportamento da IA
+- **Sistema de Combo** - Multiplicadores progressivos (x1, x2, x3, x4, x5)
+- **Tolerância Inteligente** - 4 segundos para manter combo sem derrapagem
+- **Parâmetros Sensíveis** - Velocidade mínima 3 km/h, ângulo mínimo 0.5°
+- **Taxa Aumentada** - 2000 pontos/segundo no nível base (aumentado significativamente)
+- **Baseado em Checkpoints** - Modo drift termina ao completar todos os checkpoints (não por tempo)
+- **Multiplicador de Voltas** - Pontuação alvo multiplicada pelo número de voltas selecionadas
+- **Pontuação Alvo Dinâmica** - Baseada no número de checkpoints da pista e dificuldade selecionada
+- **Troféu Indicativo** - Troféu ao lado da pontuação indica classificação atual (ouro, prata, bronze)
 
 ### **Física Realista**
 - **3 Tipos de Tração:**
@@ -366,27 +372,37 @@ Para editar checkpoints e spawn points de uma pista:
 - **Interface Visual** - Controles de música integrados
 
 ### **Modo Drift**
-- **Tempo Limitado** - 2 minutos para acumular pontos
-- **Sistema de Combo** - Multiplicador por derrapagens consecutivas
-- **Pontuação Inteligente** - Baseada em velocidade e ângulo de derrapagem
-- **Efeitos Visuais** - Fumaça e partículas durante o drift
-- **Decay Automático** - Pontos diminuem se não houver drift contínuo
+- **Baseado em Checkpoints** - Termina ao completar todos os checkpoints (igual ao modo corrida)
+- **Sistema de Combo** - Multiplicador por derrapagens consecutivas (x1 a x5)
+- **Pontuação Inteligente** - Baseada em velocidade, ângulo e marcas de pneu
+- **Multiplicador de Voltas** - Escolha 1, 2 ou 3 voltas - pontuação alvo multiplicada proporcionalmente
+- **Pontuação Alvo Dinâmica** - Calculada baseada no número de checkpoints da pista
+- **Dificuldade Ajustável** - Fácil (60% do médio), Médio (100%), Difícil (150% do médio)
+- **Efeitos Visuais** - Fumaça, partículas e skidmarks durante o drift
+- **HUD Unificado** - Mostra pontuação e voltas com troféu indicativo da classificação atual
+- **Recordes Separados** - Recordes de drift salvos separadamente dos recordes de corrida
 
 ### **Sistema de Performance**
 - **100+ FPS** - Otimizações agressivas mantendo qualidade visual
 - **Marcas de Pneu em 4 Rodas** - Skidmarks completos durante drift (pretas na pista, marrons na grama)
+- **Skidmarks nos Bots** - Bots também deixam marcas de pneu (otimizado para evitar lag)
+- **Otimizações de Skidmarks** - Bots criam skidmarks com frequência reduzida e limite menor
 - **Câmera Dinâmica** - Zoom adaptativo baseado na velocidade com suavização avançada
 - **Renderização Otimizada** - HUD suave sem flickering, cache de sprites otimizado
 - **Sistema de Partículas Inteligente** - Controle de densidade para melhor performance
 - **Tiles Dinâmicos** - Renderização eficiente de pistas grandes (5000x5000) com tiles
 - **Cache de Imagens** - Minimapas e troféus são cacheados para melhor performance
+- **Renderização Condicional** - Skidmarks dos bots só são desenhados se estiverem visíveis
 
 ### **HUD Completo**
 - **Velocímetro** - Mostra velocidade em km/h (até 180 km/h) com oscilação visual no limite
 - **Nitro** - Indicador visual de carga do nitro (preenche de baixo para cima)
 - **Minimapa** - Mostra posição do jogador, checkpoints e outros carros
-- **Tempos** - Exibe tempo total, tempo desde último checkpoint e número de voltas
+- **Modo Corrida** - Exibe posição (1st, 2nd, etc.) e voltas
+- **Modo Drift** - Exibe pontuação (sem "Score:") e voltas com troféu indicativo ao lado
+- **Tempos** - Exibe tempo total, tempo desde último checkpoint e número de voltas (apenas modo corrida)
 - **Aviso Contra Mão** - Alerta visual quando o jogador está indo na direção errada
+- **HUD Unificado** - Modo 1 e 2 jogadores usam o mesmo sistema de exibição
 
 ---
 
@@ -497,18 +513,24 @@ Este projeto é de código aberto e está disponível sob a **licença MIT**.
 
 ---
 
-**Desenvolvido com por Jean Marins e Jayson Sales**  
-**Versão atual:** 3.1.0  
+**Desenvolvido por Jean Marins e Jayson Sales**  
+**Versão atual:** 3.2.0  
 **Última atualização:** Novembro 2025
 
-### **Novidades da Versão 3.1.0 (Novembro 2025)**
-- **Sistema GRIP Completo** - Removido sistema antigo de pistas, agora 100% baseado em tiles GRIP
-- **Otimizações de Código** - Removido código não utilizado, melhor performance e manutenibilidade
-- **IA com Múltiplos Oponentes** - 3 IAs no modo 1 jogador, 2 IAs no modo 2 jogadores, com seleção aleatória de carros
-- **HUD Split-Screen Melhorado** - Velocímetros individuais e minimapa centralizado no modo 2 jogadores
-- **Sistema de Spawn Points** - Editor permite definir múltiplos pontos de spawn por pista
-- **Checkpoints Retangulares Rotacionáveis** - Checkpoints perpendiculares à pista com rotação manual
-- **Correções e Melhorias** - Correção de bugs, melhor posicionamento de HUD, otimizações de renderização
+### **Novidades da Versão 3.2.0 (Novembro 2025)**
+- **Modo Drift Reformulado** - Agora baseado em checkpoints ao invés de tempo, termina ao completar todos os checkpoints
+- **Sistema de Pontuação Dinâmica** - Pontuação alvo calculada baseada no número de checkpoints da pista e voltas selecionadas
+- **Dificuldade no Modo Drift** - Ajusta pontuação necessária para troféus (Fácil: 60%, Médio: 100%, Difícil: 150%)
+- **Dificuldade no Modo 2 Jogadores** - Agora é possível escolher dificuldade também no modo 2 jogadores
+- **Voltas no Modo Drift** - Escolha 1, 2 ou 3 voltas - pontuação alvo multiplicada proporcionalmente
+- **HUD Unificado** - Modo 1 e 2 jogadores usam o mesmo sistema de exibição (posição/voltas ou score/voltas)
+- **Troféu Indicativo** - Troféu ao lado da pontuação indica classificação atual no modo drift
+- **Recordes Separados** - Recordes de corrida (tempo) e drift (pontuação) salvos separadamente no menu Recordes
+- **Fim de Jogo Independente** - No modo 2 jogadores, cada jogador tem seu próprio popup de fim de jogo no lado da tela
+- **Jogo Não Congela** - No modo 2 jogadores, quando um jogador termina, o outro continua jogando normalmente
+- **Skidmarks nos Bots** - Bots agora deixam marcas de pneu ao derrapar (otimizado para evitar lag)
+- **Navegação do Menu Corrigida** - Navegação com A/D ou setas segue a ordem visual correta dos botões
+- **Correções de Bugs** - Corrigido bug de pontuação infinita no modo drift e ajustes de pontuação alvo
 
 ### **Novidades da Versão 3.0.0**
 - Sistema de pistas GRIP (9 pistas com tiles dinâmicos)
