@@ -1,160 +1,173 @@
-# 🗺️ Como Adicionar Mapas - Turbo Racer
+# 🗺️ Como Adicionar Pistas GRIP - Turbo Racer
 
-Guia completo para adicionar novos mapas ao Turbo Racer usando o sistema de detecção automática.
+**⚠️ IMPORTANTE:** A partir da versão 3.1.0, o Turbo Racer utiliza **exclusivamente** o sistema de pistas GRIP com tiles dinâmicos. O sistema antigo de mapas baseado em imagens PNG foi removido.
+
+Guia completo para adicionar novas pistas GRIP ao Turbo Racer.
 
 ## 📋 Pré-requisitos
 
-- **Editor de imagens** (GIMP, Photoshop, Paint.NET, etc.)
+- **Editor de imagens** (GIMP, Photoshop, Paint.NET, etc.) para criar tiles
 - **Acesso aos arquivos** do jogo
-- **Conhecimento básico** de design de pistas
-- **NÃO é necessário conhecimento de Python!** ✅
+- **Conhecimento básico** de Python (para editar código)
+- **Tiles do GRIP** - Arquivos de tiles de pista (b-x-x.png, st-h-3-*.png, etc.)
 
 ## 🎯 Passo a Passo
 
-### 1. Preparar Assets
+### 1. Preparar Tiles
 
-#### **🗺️ Mapa Principal (OBRIGATÓRIO)**
-- **Formato:** PNG com transparência
-- **Resolução:** 
-  - Mínimo: 1280x720
-  - Recomendado: 1920x1080
-  - Máximo: 2560x1440 (para performance)
-- **Cores Padrão:**
-  - **🟠 Laranja (255, 165, 0)** - Pista transitável
-  - **🟢 Verde (0, 255, 0)** - Limites não transitáveis
-  - **🟣 Magenta (255, 0, 255)** - Checkpoints/área transitável
-
-#### **🎯 Guias de Navegação (OPCIONAL)**
-- **Formato:** PNG com transparência
-- **Resolução:** Mesma do mapa principal
-- **Cores:**
-  - **🟡 Amarelo (255, 255, 0)** - Linha de largada
-  - **🔵 Azul (0, 0, 255)** - Guias de navegação
-
-### 2. Adicionar Arquivos (ZERO CONFIGURAÇÃO)
-
-#### **📁 Estrutura de Arquivos**
+#### **📁 Estrutura de Tiles**
 ```
-assets/images/maps/
-├── MeuMapa.png                    # OBRIGATÓRIO
-└── guides/
-    ├── MeuMapa_guides.png         # OPCIONAL
-    └── MeuMapa_checkpoints.json   # OPCIONAL (criado automaticamente)
+assets/images/pistas/
+├── b-x-x.png              # Tiles de pista (vários)
+├── st-h-3-ch.png          # Linha de largada/chegada
+├── st-h-3-kX.png          # Tiles de pista horizontais
+├── st-v-3-kX.png          # Tiles de pista verticais
+├── overhead_tile.png      # Tile de grama (fundo)
+└── trackX.png             # Minimapa da pista (1-9)
 ```
 
-#### **📝 Convenção de Nomes**
-- **Arquivo principal:** `NomeDoMapa.png`
-- **Guias:** `NomeDoMapa_guides.png`
-- **Checkpoints:** `NomeDoMapa_checkpoints.json`
+### 2. Definir Layout da Pista
 
-#### **✨ Nomes Inteligentes**
-O sistema converte automaticamente:
-- `MeuMapa` → "Meu Mapa"
-- `Pista_Circuito` → "Pista Circuito"
-- `Mapa_Teste_01` → "Mapa Teste 01"
+#### **📝 Editar `src/core/pista_tiles.py`**
 
-### 3. Ativar o Mapa (AUTOMÁTICO)
+Adicione um novo método `_definicao_pista_X()` (onde X é o número da pista):
 
-1. **🚀 Executar** o jogo
-2. **📋 Ir para "Selecionar Mapas"**
-3. **🔄 Pressionar R** para recarregar mapas (se necessário)
-4. **✅ Selecionar** o novo mapa na lista
+```python
+def _definicao_pista_10(self):
+    """Definição da Pista 10"""
+    self.numero_pista = 10
+    self.posicao_inicial_relativa = (0, -50)  # Posição inicial do carro
+    
+    # Lista de tiles: (tipo_tile, offset_x, offset_y)
+    self.tiles = [
+        ("st-h-3-ch", 0, -50),      # Linha de largada
+        ("b-x-x", 300, -50),        # Pista continua
+        # ... adicione mais tiles
+    ]
+```
 
-### 4. Criar Checkpoints (OPCIONAL)
+### 3. Adicionar Checkpoints
 
-#### **✏️ Usando o Editor Visual**
-1. **🎮 Entrar** no mapa
-2. **⌨️ Pressionar F7** para entrar no modo edição
-3. **🖱️ Posicionar** checkpoints clicando na pista
-4. **🔄 Mover** checkpoints arrastando
-5. **💾 Pressionar F5** para salvar
+#### **📝 Editar `src/core/laps_grip.py`**
 
-#### **🎯 Dicas de Posicionamento**
-- **Coloque checkpoints** em curvas importantes
-- **Mantenha distância** adequada entre eles
-- **Evite áreas** muito estreitas
-- **Teste a navegação** da IA (F1 para debug)
+Adicione checkpoints na função `carregar_checkpoints_grip()`:
 
-### 5. Testar o Mapa
+```python
+if numero_pista == 10:
+    centro_x, centro_y = 2500, 2500
+    checkpoint_1 = (centro_x + 0, centro_y + -50, 90)  # (x, y, angulo)
+    checkpoint_2 = (centro_x + 300, centro_y + -50, 90)
+    # ... adicione mais checkpoints
+    
+    checkpoints = [
+        checkpoint_1,
+        checkpoint_2,
+        # ...
+    ]
+```
+
+### 4. Usar o Editor Visual
+
+#### **✏️ Editor de Checkpoints e Spawn Points**
+
+1. **🚀 Executar** `python tools/checkpoint_editor.py`
+2. **⌨️ Pressionar F9** ou setas para selecionar a pista
+3. **⌨️ Pressionar F7** para ativar modo edição
+4. **🖱️ Clique** para adicionar checkpoints
+5. **🔄 Arraste** para mover checkpoints
+6. **⌨️ R/Q/E** para rotacionar checkpoints selecionados
+7. **⌨️ Shift+F7** para alternar modo spawn points
+8. **⌨️ F10** para exportar para `laps_grip.py`
+9. **⌨️ F5** para salvar backup em JSON
+
+### 5. Adicionar Minimapa
+
+#### **🖼️ Criar Minimapa**
+
+1. **Criar** imagem `track10.png` (exemplo: 200x200px)
+2. **Colocar** em `assets/images/pistas/`
+3. **O minimapa** será carregado automaticamente
+
+### 6. Testar a Pista
 
 1. **🎮 Executar** o jogo
-2. **🗺️ Selecionar** o novo mapa
+2. **🗺️ Selecionar** a nova pista na tela de seleção de fase
 3. **🤖 Testar** navegação da IA (F1 para debug)
-4. **✅ Verificar** checkpoints
+4. **✅ Verificar** checkpoints e spawn points
 5. **🔧 Ajustar** se necessário
-
-## 🚀 Vantagens do Sistema Escalável
-
-- ✅ **Zero configuração manual** - apenas coloque os arquivos
-- ✅ **Detecção automática** - mapas aparecem automaticamente
-- ✅ **Nomes inteligentes** - "MeuMapa" vira "Meu Mapa"
-- ✅ **Fallback robusto** - funciona mesmo sem guias/checkpoints
-- ✅ **Recarregamento dinâmico** - adicione mapas sem reiniciar
 
 ## 🎨 Dicas de Design
 
 ### Layout da Pista
-- **Curvas suaves** - Evite ângulos muito fechados
-- **Largura adequada** - Pista deve acomodar 2 carros
-- **Obstáculos** - Use verde para criar desafios
-- **Checkpoints** - Posicione em pontos estratégicos
+- **Use tiles existentes** - Reutilize tiles do GRIP
+- **Curvas suaves** - Combine tiles horizontais e verticais
+- **Largura adequada** - Pista deve acomodar múltiplos carros
+- **Checkpoints estratégicos** - Posicione em curvas importantes
 
-### Cores e Contraste
-- **Alto contraste** entre pista e limites
-- **Cores consistentes** com o padrão do jogo
-- **Transparência** para sobreposições
+### Checkpoints
+- **Perpendiculares à pista** - Use rotação (R, Q, E) para alinhar
+- **Largura de 300px** - Mesma largura dos tiles de pista
+- **Distância adequada** - Não muito próximos nem muito distantes
 
-### Performance
-- **Resolução otimizada** - Não muito alta
-- **Áreas simples** - Evite detalhes desnecessários
-- **Teste de performance** - Verificar FPS
+### Spawn Points
+- **Múltiplos pontos** - Defina 4+ pontos para variedade
+- **Na linha de largada** - Posicione na área de largada
+- **Lado a lado** - Para permitir largada simultânea
 
 ## 🔧 Troubleshooting
 
 ### Problemas Comuns
 
-**IA não segue o mapa:**
-- Verificar cores das guias
-- Verificar se arquivo de guias existe
-- Usar fallback waypoints
+**Tiles não aparecem:**
+- Verificar se arquivos estão em `assets/images/pistas/`
+- Verificar nomes dos arquivos (case-sensitive)
+- Verificar definição em `pista_tiles.py`
 
 **Checkpoints não funcionam:**
-- Verificar formato JSON
-- Verificar posições válidas
-- Testar com F1 (debug)
+- Verificar se foram exportados para `laps_grip.py` (F10)
+- Verificar formato (x, y, angulo)
+- Testar com editor visual
 
-**Mapa não aparece:**
-- Verificar caminhos dos arquivos
-- Verificar formato das imagens
-- Verificar configuração no config.py
+**IA não segue checkpoints:**
+- Verificar se checkpoints estão na ordem correta
+- Verificar se ângulos estão corretos
+- Usar F1 para debug visual
 
 ### Debug
 
-- **F1** - Ativar debug da IA
-- **F7** - Modo edição de checkpoints
-- **F9** - Próximo mapa
-- **F10** - Mostrar todos os checkpoints
+- **F1** - Ativar debug da IA (no jogo)
+- **F7** - Modo edição de checkpoints (no editor)
+- **F9** - Trocar de pista (no editor)
+- **F10** - Exportar checkpoints para `laps_grip.py`
 
 ## 📁 Estrutura de Arquivos
 
 ```
-assets/
-├── maps/
-│   └── Mapa_Novo.png
-└── maps_guides/
-    ├── Mapa_Novo_guides.png
-    └── Mapa_Novo_checkpoints.json
+assets/images/pistas/
+├── b-x-x.png              # Tiles de pista
+├── st-h-3-ch.png          # Linha de largada
+├── overhead_tile.png      # Tile de grama
+└── trackX.png             # Minimapas (1-9)
+
+src/core/
+├── pista_tiles.py         # Definições de pistas
+└── laps_grip.py            # Checkpoints e spawn points
+
+data/
+└── checkpoints_pista_X.json # Backup de checkpoints
 ```
 
 ## ✅ Checklist
 
-- [ ] Mapa principal criado
-- [ ] Guias de navegação criadas
-- [ ] Configuração adicionada ao config.py
-- [ ] Checkpoints posicionados
+- [ ] Tiles criados/obtidos
+- [ ] Layout definido em `pista_tiles.py`
+- [ ] Checkpoints adicionados em `laps_grip.py`
+- [ ] Spawn points definidos
+- [ ] Minimapa criado (`trackX.png`)
 - [ ] Teste de navegação da IA
-- [ ] Teste de performance
-- [ ] Documentação atualizada
+- [ ] Teste de checkpoints
+- [ ] Teste de spawn points
+- [ ] Exportação para `laps_grip.py` (F10)
 
 ---
 

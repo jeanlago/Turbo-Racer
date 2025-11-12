@@ -328,9 +328,9 @@ def render_text(text, size, color=(255,255,255), bold=True, pixel_style=True):
         return font.render(text, True, color)
 
 class Escolha(Enum):
-    SELECIONAR_MAPAS = 0
-    SELECIONAR_CARROS = 1
-    JOGAR = 2
+    SELECIONAR_CARROS = 0
+    JOGAR = 1
+    RECORDES = 2
     OPCOES = 3
     SAIR = 4
 
@@ -386,18 +386,19 @@ def menu_loop(screen) -> Escolha:
     bg = scale_to_cover(bg_raw, LARGURA, ALTURA)
 
     # Ordem visual (da esquerda para a direita)
-    itens = ["SELECIONAR MAPAS", "SELECIONAR CARROS", "JOGAR", "OPÇÕES", "SAIR"]
-    idx = 2  # Começar no JOGAR (centro)
+    itens = ["SELECIONAR CARROS", "JOGAR", "RECORDES", "OPÇÕES", "SAIR"]
+    idx = 1  # Começar no JOGAR (centro)
     clock = pygame.time.Clock()
 
     # Layout com botão JOGAR centralizado na linha inferior, mas em destaque
-    itens_completos = ["SELECIONAR MAPAS", "SELECIONAR CARROS", "JOGAR", "OPÇÕES", "SAIR"]
+    itens_completos = ["SELECIONAR CARROS", "JOGAR", "RECORDES", "OPÇÕES", "SAIR"]
     base_y = int(ALTURA * 0.85)
     
     # Tamanhos dos botões
     jogar_largura = 280  # Maior que os outros
     jogar_altura = 70    # Maior que os outros
     botao_largura = 180  # Menor que o JOGAR
+    botao_sel_carros_largura = 220  # Maior para "SELECIONAR CARROS"
     botao_altura = 50    # Menor que o JOGAR
     espacamento = 15
     
@@ -409,19 +410,24 @@ def menu_loop(screen) -> Escolha:
     # JOGAR fica no centro, então calculamos as posições dos outros
     jogar_x = (LARGURA - jogar_largura) // 2
     
-    # Posições dos outros botões (2 de cada lado do JOGAR)
+    # Posições dos outros botões
+    # Ordem: RECORDES (mais à esquerda), SELECIONAR CARROS, JOGAR (centro), OPÇÕES, SAIR (direita)
     outros_posicoes = []
-    outros_itens = ["SELECIONAR MAPAS", "SELECIONAR CARROS", "OPÇÕES", "SAIR"]
+    outros_itens = ["RECORDES", "SELECIONAR CARROS", "OPÇÕES", "SAIR"]
     
     # Calcular espaço total necessário
     espaco_esquerda = jogar_x - espacamento
     espaco_direita = LARGURA - (jogar_x + jogar_largura) - espacamento
     
-    # Distribuir 2 botões à esquerda e 2 à direita (ordem visual)
-    outros_posicoes.append((jogar_x - espacamento - 2 * botao_largura - espacamento, base_y))  # SELECIONAR MAPAS (mais à esquerda)
-    outros_posicoes.append((jogar_x - espacamento - botao_largura, base_y))  # SELECIONAR CARROS
-    outros_posicoes.append((jogar_x + jogar_largura + espacamento, base_y))  # OPÇÕES
-    outros_posicoes.append((jogar_x + jogar_largura + espacamento + botao_largura + espacamento, base_y))  # SAIR (mais à direita)
+    # Distribuir botões ao redor do JOGAR (ordem visual)
+    # RECORDES (mais à esquerda)
+    outros_posicoes.append((jogar_x - espacamento - botao_sel_carros_largura - espacamento - botao_largura, base_y))
+    # SELECIONAR CARROS (à esquerda do JOGAR)
+    outros_posicoes.append((jogar_x - espacamento - botao_sel_carros_largura, base_y))
+    # OPÇÕES (à direita do JOGAR)
+    outros_posicoes.append((jogar_x + jogar_largura + espacamento, base_y))
+    # SAIR (mais à direita)
+    outros_posicoes.append((jogar_x + jogar_largura + espacamento + botao_largura + espacamento, base_y))
     
     # Variáveis para animação de hover dos botões
     hover_animation = [0.0] * len(itens)  # Progresso da animação para cada botão
@@ -441,14 +447,22 @@ def menu_loop(screen) -> Escolha:
         # Atualizar animação de hover dos botões
         for i in range(len(itens)):
             # Usar a mesma lógica de posicionamento que na renderização
-            if i == 2:  # Botão JOGAR (terceiro na nova ordem)
+            if i == 1:  # Botão JOGAR (segundo na nova ordem)
                 rect = pygame.Rect(jogar_x, jogar_y, jogar_largura, jogar_altura)
             else:  # Outros botões
-                if i < 2:  # SELECIONAR MAPAS, SELECIONAR CARROS
-                    x, y = outros_posicoes[i]
-                else:  # OPÇÕES, SAIR
-                    x, y = outros_posicoes[i - 1]
-                rect = pygame.Rect(x, y, botao_largura, botao_altura)
+                if i == 0:  # SELECIONAR CARROS
+                    x, y = outros_posicoes[1]  # Segundo na lista outros_posicoes
+                    largura = botao_sel_carros_largura
+                elif i == 2:  # RECORDES
+                    x, y = outros_posicoes[0]  # Primeiro na lista outros_posicoes
+                    largura = botao_largura
+                elif i == 3:  # OPÇÕES
+                    x, y = outros_posicoes[2]
+                    largura = botao_largura
+                else:  # SAIR (i == 4)
+                    x, y = outros_posicoes[3]
+                    largura = botao_largura
+                rect = pygame.Rect(x, y, largura, botao_altura)
             
             is_hovering = rect.collidepoint(mouse_x, mouse_y)
             
@@ -485,14 +499,22 @@ def menu_loop(screen) -> Escolha:
                 mx, my = ev.pos
                 # detecta hover do mouse nas opções
                 for i in range(len(itens)):
-                    if i == 2:  # Botão JOGAR (terceiro na nova ordem)
+                    if i == 1:  # Botão JOGAR (segundo na nova ordem)
                         rect = pygame.Rect(jogar_x, jogar_y, jogar_largura, jogar_altura)
                     else:  # Outros botões
-                        if i < 2:  # SELECIONAR MAPAS, SELECIONAR CARROS
-                            x, y = outros_posicoes[i]
-                        else:  # OPÇÕES, SAIR
-                            x, y = outros_posicoes[i - 1]
-                        rect = pygame.Rect(x, y, botao_largura, botao_altura)
+                        if i == 0:  # SELECIONAR CARROS
+                            x, y = outros_posicoes[1]
+                            largura = botao_sel_carros_largura
+                        elif i == 2:  # RECORDES
+                            x, y = outros_posicoes[0]
+                            largura = botao_largura
+                        elif i == 3:  # OPÇÕES
+                            x, y = outros_posicoes[2]
+                            largura = botao_largura
+                        else:  # SAIR (i == 4)
+                            x, y = outros_posicoes[3]
+                            largura = botao_largura
+                        rect = pygame.Rect(x, y, largura, botao_altura)
                     if rect.collidepoint(mx, my):
                         idx = i
             if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
@@ -510,14 +532,22 @@ def menu_loop(screen) -> Escolha:
                     # Se não clicou no popup, verificar se clicou em algum botão
                     mouse_x, mouse_y = ev.pos
                     for i, txt in enumerate(itens):
-                        if i == 2:  # Botão JOGAR (terceiro na nova ordem)
+                        if i == 1:  # Botão JOGAR (segundo na nova ordem)
                             botao_rect = pygame.Rect(jogar_x, jogar_y, jogar_largura, jogar_altura)
                         else:  # Outros botões
-                            if i < 2:  # SELECIONAR MAPAS, SELECIONAR CARROS
-                                x, y = outros_posicoes[i]
-                            else:  # OPÇÕES, SAIR
-                                x, y = outros_posicoes[i - 1]
-                            botao_rect = pygame.Rect(x, y, botao_largura, botao_altura)
+                            if i == 0:  # SELECIONAR CARROS
+                                x, y = outros_posicoes[1]
+                                largura = botao_sel_carros_largura
+                            elif i == 2:  # RECORDES
+                                x, y = outros_posicoes[0]
+                                largura = botao_largura
+                            elif i == 3:  # OPÇÕES
+                                x, y = outros_posicoes[2]
+                                largura = botao_largura
+                            else:  # SAIR (i == 4)
+                                x, y = outros_posicoes[3]
+                                largura = botao_largura
+                            botao_rect = pygame.Rect(x, y, largura, botao_altura)
                         if botao_rect.collidepoint(mouse_x, mouse_y):
                             return Escolha(i)
 
@@ -530,17 +560,25 @@ def menu_loop(screen) -> Escolha:
             hover_progress = hover_animation[i]  # Progresso da animação de hover (0.0 a 1.0)
             
             # Posição e tamanho do botão
-            if i == 2:  # Botão JOGAR (terceiro na nova ordem)
+            if i == 1:  # Botão JOGAR (segundo na nova ordem)
                 x, y = jogar_x, jogar_y
                 largura, altura = jogar_largura, jogar_altura
                 fonte_tamanho = 24  # Fonte maior para JOGAR
                 borda_espessura = 4  # Borda mais espessa para JOGAR
             else:  # Outros botões
-                if i < 2:  # SELECIONAR MAPAS, SELECIONAR CARROS
-                    x, y = outros_posicoes[i]
-                else:  # OPÇÕES, SAIR
-                    x, y = outros_posicoes[i - 1]
-                largura, altura = botao_largura, botao_altura
+                if i == 0:  # SELECIONAR CARROS
+                    x, y = outros_posicoes[1]
+                    largura = botao_sel_carros_largura
+                elif i == 2:  # RECORDES
+                    x, y = outros_posicoes[0]
+                    largura = botao_largura
+                elif i == 3:  # OPÇÕES
+                    x, y = outros_posicoes[2]
+                    largura = botao_largura
+                else:  # SAIR (i == 4)
+                    x, y = outros_posicoes[3]
+                    largura = botao_largura
+                altura = botao_altura
                 fonte_tamanho = 16  # Fonte menor para outros
                 borda_espessura = 3  # Borda normal para outros
             
@@ -786,7 +824,8 @@ def selecionar_mapas_loop(screen):
 def selecionar_carros_loop(screen):
     from config import CAMINHO_OFICINA, DIR_SPRITES, DIR_CAR_SELECTION
     bg_raw = pygame.image.load(CAMINHO_OFICINA).convert_alpha()
-    bg = scale_to_cover(bg_raw, LARGURA, ALTURA)
+    # Usar scale simples (como no editor) para mostrar a imagem completa sem cortar
+    bg = pygame.transform.scale(bg_raw, (LARGURA, ALTURA))
     
     # Importar a lista de carros do main
     from main import CARROS_DISPONIVEIS
@@ -2396,10 +2435,15 @@ def modo_jogo_loop(screen):
                                 opcao_dificuldade_atual = i
                                 dificuldade_ia_atual = dificuldade
                     
-                    # Verificar clique no botão iniciar jogo
-                    iniciar_rect = pygame.Rect(caixa_x + 50, caixa_y + caixa_altura - 40, 200, 40)
+                    # Verificar clique no botão iniciar jogo (mesma hitbox aumentada)
+                    iniciar_rect = pygame.Rect(caixa_x + 50, caixa_y + caixa_altura - 60, 200, 50)
                     if iniciar_rect.collidepoint(mouse_x, mouse_y):
-                        return (modo_jogo_atual, tipo_jogo_atual, voltas_atual, dificuldade_ia_atual)
+                        # Abrir seleção de fase antes de iniciar o jogo
+                        fase_selecionada = selecionar_fase_loop(screen)
+                        if fase_selecionada is not None:
+                            return (modo_jogo_atual, tipo_jogo_atual, voltas_atual, dificuldade_ia_atual, fase_selecionada)
+                        # Se cancelou a seleção de fase, continuar no menu
+                        continue
                     
                     # Verificar clique no botão voltar
                     voltar_rect = pygame.Rect(caixa_x + 270, caixa_y + caixa_altura - 40, 200, 40)
@@ -2425,7 +2469,12 @@ def modo_jogo_loop(screen):
                         opcao_tipo_atual += 1
                         tipo_jogo_atual = opcoes_tipo[opcao_tipo_atual][1]
                 elif ev.key == pygame.K_RETURN:
-                    return (modo_jogo_atual, tipo_jogo_atual, voltas_atual, dificuldade_ia_atual)
+                    # Abrir seleção de fase antes de iniciar o jogo
+                    fase_selecionada = selecionar_fase_loop(screen)
+                    if fase_selecionada is not None:
+                        return (modo_jogo_atual, tipo_jogo_atual, voltas_atual, dificuldade_ia_atual, fase_selecionada)
+                    # Se cancelou a seleção de fase, continuar no menu
+                    continue
                 elif ev.key == pygame.K_m:
                     # Próxima música
                     gerencIAdor_musica.proxima_musica()
@@ -2683,7 +2732,8 @@ def modo_jogo_loop(screen):
                 screen.blit(texto, (texto_x, y))
         
         # Botão iniciar jogo (descido para não sobrepor dificuldade)
-        iniciar_rect = pygame.Rect(caixa_x + 50, caixa_y + caixa_altura - 53, 200, 40)
+        # Aumentar hitbox para cima para melhorar detecção de clique
+        iniciar_rect = pygame.Rect(caixa_x + 50, caixa_y + caixa_altura - 60, 200, 50)
         iniciar_hover = iniciar_rect.collidepoint(mouse_x, mouse_y)
         if iniciar_hover:
             pygame.draw.rect(screen, (0, 255, 0, 50), iniciar_rect)
@@ -2698,6 +2748,393 @@ def modo_jogo_loop(screen):
         voltar_texto = render_text("VOLTAR", 24, (0, 200, 255) if voltar_hover else (255, 255, 255), bold=True, pixel_style=True)
         screen.blit(voltar_texto, (caixa_x + 280, caixa_y + caixa_altura - 53))
         
+        
+        # Desenhar popup de música
+        popup_musica.desenhar(screen)
+        
+        pygame.display.flip()
+
+def selecionar_fase_loop(screen):
+    """Menu de seleção de fase com minimapas"""
+    bg_raw = pygame.image.load(CAMINHO_MENU).convert_alpha()
+    bg = scale_to_cover(bg_raw, LARGURA, ALTURA)
+    
+    # Carregar e redimensionar minimapas das 9 pistas (fazer apenas uma vez)
+    from core.pista_tiles import PistaTiles
+    minimapas = {}
+    minimapas_redimensionados = {}  # Cache das versões redimensionadas
+    minimapa_tamanho_display = 110  # Tamanho final para exibição (minimapa_tamanho - 10)
+    
+    # Carregar imagens de troféus uma vez (cache)
+    from core.progresso import gerenciador_progresso
+    from config import CAMINHO_TROFEU_OURO, CAMINHO_TROFEU_PRATA, CAMINHO_TROFEU_BRONZE, CAMINHO_TROFEU_VAZIO
+    trofeus_cache = {}
+    try:
+        trofeu_ouro = pygame.image.load(CAMINHO_TROFEU_OURO).convert_alpha()
+        trofeu_prata = pygame.image.load(CAMINHO_TROFEU_PRATA).convert_alpha()
+        trofeu_bronze = pygame.image.load(CAMINHO_TROFEU_BRONZE).convert_alpha()
+        trofeu_vazio = pygame.image.load(CAMINHO_TROFEU_VAZIO).convert_alpha()
+        tamanho_trofeu = (25, 25)
+        trofeus_cache["ouro"] = pygame.transform.scale(trofeu_ouro, tamanho_trofeu)
+        trofeus_cache["prata"] = pygame.transform.scale(trofeu_prata, tamanho_trofeu)
+        trofeus_cache["bronze"] = pygame.transform.scale(trofeu_bronze, tamanho_trofeu)
+        trofeus_cache["vazio"] = pygame.transform.scale(trofeu_vazio, tamanho_trofeu)
+    except Exception as e:
+        print(f"Erro ao carregar troféus: {e}")
+        trofeus_cache = {}
+    
+    print("Carregando minimapas...")
+    pista_temp = PistaTiles()  # Criar apenas uma instância
+    for i in range(1, 10):
+        try:
+            minimapa = pista_temp.carregar_minimapa(i)
+            if minimapa:
+                minimapas[i] = minimapa
+                # Redimensionar apenas uma vez e cachear
+                minimapas_redimensionados[i] = pygame.transform.smoothscale(
+                    minimapa, 
+                    (minimapa_tamanho_display, minimapa_tamanho_display)
+                )
+        except Exception as e:
+            print(f"Erro ao carregar minimapa {i}: {e}")
+    print(f"Minimapas carregados: {len(minimapas_redimensionados)}")
+    
+    fase_selecionada = 1
+    clock = pygame.time.Clock()
+    
+    # Layout
+    caixa_largura = 700
+    caixa_altura = 550
+    caixa_x = (LARGURA - caixa_largura) // 2
+    caixa_y = (ALTURA - caixa_altura) // 2
+    
+    # Grid de minimapas (3x3) - diminuído e centralizado
+    minimapa_tamanho = 120
+    espacamento = 15
+    # Calcular posição do grid para centralizar
+    largura_total_grid = 3 * minimapa_tamanho + 2 * espacamento
+    altura_total_grid = 3 * minimapa_tamanho + 2 * espacamento
+    grid_x = caixa_x + (caixa_largura - largura_total_grid) // 2
+    grid_y = caixa_y + 80
+    colunas = 3
+    
+    # Animações de hover
+    hover_animation = [0.0] * 9
+    hover_speed = 8.0
+    
+    while True:
+        dt = clock.tick(FPS) / 1000.0
+        
+        gerencIAdor_musica.verificar_fim_musica()
+        popup_musica.atualizar(dt)
+        
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        popup_musica.verificar_hover(mouse_x, mouse_y)
+        
+        # Atualizar animações de hover
+        for i in range(9):
+            fase_num = i + 1
+            col = i % colunas
+            linha = i // colunas
+            x = grid_x + col * (minimapa_tamanho + espacamento)
+            y = grid_y + linha * (minimapa_tamanho + espacamento)
+            rect = pygame.Rect(x, y, minimapa_tamanho, minimapa_tamanho)
+            
+            is_hovering = rect.collidepoint(mouse_x, mouse_y)
+            if is_hovering:
+                hover_animation[i] = min(1.0, hover_animation[i] + hover_speed * dt)
+            else:
+                hover_animation[i] = max(0.0, hover_animation[i] - hover_speed * dt)
+        
+        for ev in pygame.event.get():
+            if ev.type == pygame.QUIT:
+                return None
+            if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                # Verificar clique em minimapa
+                for i in range(9):
+                    fase_num = i + 1
+                    col = i % colunas
+                    linha = i // colunas
+                    x = grid_x + col * (minimapa_tamanho + espacamento)
+                    y = grid_y + linha * (minimapa_tamanho + espacamento)
+                    rect = pygame.Rect(x, y, minimapa_tamanho, minimapa_tamanho)
+                    
+                    if rect.collidepoint(ev.pos[0], ev.pos[1]):
+                        fase_selecionada = fase_num
+                        return fase_selecionada
+                
+                # Verificar clique no botão voltar
+                voltar_largura_temp = 120
+                voltar_altura_temp = 40
+                voltar_x_temp = caixa_x + (caixa_largura - voltar_largura_temp) // 2
+                voltar_y_temp = caixa_y + caixa_altura - 50
+                voltar_rect = pygame.Rect(voltar_x_temp, voltar_y_temp, voltar_largura_temp, voltar_altura_temp)
+                if voltar_rect.collidepoint(ev.pos[0], ev.pos[1]):
+                    return None
+            elif ev.type == pygame.KEYDOWN:
+                if ev.key == pygame.K_ESCAPE:
+                    return None
+                elif ev.key in (pygame.K_LEFT, pygame.K_a):
+                    fase_selecionada = max(1, fase_selecionada - 1)
+                elif ev.key in (pygame.K_RIGHT, pygame.K_d):
+                    fase_selecionada = min(9, fase_selecionada + 1)
+                elif ev.key in (pygame.K_UP, pygame.K_w):
+                    fase_selecionada = max(1, fase_selecionada - 3)
+                elif ev.key in (pygame.K_DOWN, pygame.K_s):
+                    fase_selecionada = min(9, fase_selecionada + 3)
+                elif ev.key == pygame.K_RETURN or ev.key == pygame.K_SPACE:
+                    return fase_selecionada
+                elif ev.key == pygame.K_m:
+                    gerencIAdor_musica.proxima_musica()
+                    if gerencIAdor_musica.musica_tocando:
+                        popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
+        
+        # Desenhar
+        screen.blit(bg, (0, 0))
+        
+        # Overlay
+        overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 100))
+        screen.blit(overlay, (0, 0))
+        
+        # Caixa principal
+        caixa_fundo = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+        caixa_fundo.fill((0, 0, 0, 150))
+        screen.blit(caixa_fundo, (caixa_x, caixa_y))
+        pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
+        
+        # Título
+        titulo = render_text("SELECIONAR FASE", 36, (255, 255, 255), bold=True, pixel_style=True)
+        titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
+        screen.blit(titulo, (titulo_x, caixa_y + 20))
+        
+        # Desenhar grid de minimapas
+        for i in range(9):
+            fase_num = i + 1
+            col = i % colunas
+            linha = i // colunas
+            x = grid_x + col * (minimapa_tamanho + espacamento)
+            y = grid_y + linha * (minimapa_tamanho + espacamento)
+            
+            # Cores baseadas na seleção e hover
+            is_selected = (fase_num == fase_selecionada)
+            hover_progress = hover_animation[i]
+            
+            if is_selected:
+                cor_borda = (0, 200, 255)
+                espessura_borda = 4
+            else:
+                cor_borda = (128, 128, 128)
+                espessura_borda = 2
+            
+            # Aplicar hover
+            if hover_progress > 0:
+                cor_borda_hover = (0, 255, 0)
+                cor_borda = (
+                    int(cor_borda[0] + (cor_borda_hover[0] - cor_borda[0]) * hover_progress),
+                    int(cor_borda[1] + (cor_borda_hover[1] - cor_borda[1]) * hover_progress),
+                    int(cor_borda[2] + (cor_borda_hover[2] - cor_borda[2]) * hover_progress)
+                )
+            
+            # Desenhar fundo do minimapa
+            pygame.draw.rect(screen, (0, 0, 0), (x, y, minimapa_tamanho, minimapa_tamanho))
+            pygame.draw.rect(screen, cor_borda, (x, y, minimapa_tamanho, minimapa_tamanho), espessura_borda)
+            
+            # Desenhar minimapa se disponível (usar versão já redimensionada do cache)
+            if fase_num in minimapas_redimensionados:
+                screen.blit(minimapas_redimensionados[fase_num], (x + 5, y + 5))
+            else:
+                # Fallback: desenhar número da fase
+                texto_fase = render_text(f"FASE {fase_num}", 24, (255, 255, 255), bold=True, pixel_style=True)
+                texto_x = x + (minimapa_tamanho - texto_fase.get_width()) // 2
+                texto_y = y + (minimapa_tamanho - texto_fase.get_height()) // 2
+                screen.blit(texto_fase, (texto_x, texto_y))
+            
+            # Desenhar número da fase abaixo do minimapa
+            texto_num = render_text(f"FASE {fase_num}", 14, (255, 255, 255), bold=True, pixel_style=True)
+            texto_num_x = x + (minimapa_tamanho - texto_num.get_width()) // 2
+            screen.blit(texto_num, (texto_num_x, y + minimapa_tamanho + 3))
+            
+            # Desenhar troféu no canto superior direito do minimapa (usar cache)
+            try:
+                trofeu_tipo = gerenciador_progresso.obter_trofeu(fase_num)
+                if trofeu_tipo in trofeus_cache:
+                    trofeu_img = trofeus_cache[trofeu_tipo]
+                else:
+                    trofeu_img = trofeus_cache.get("vazio")
+                
+                if trofeu_img:
+                    trofeu_x = x + minimapa_tamanho - 30
+                    trofeu_y = y + 5
+                    screen.blit(trofeu_img, (trofeu_x, trofeu_y))
+            except:
+                pass
+        
+        # Botão voltar (centralizado na parte inferior)
+        voltar_largura = 120
+        voltar_altura = 40
+        voltar_x = caixa_x + (caixa_largura - voltar_largura) // 2
+        voltar_y = caixa_y + caixa_altura - 50
+        voltar_rect = pygame.Rect(voltar_x, voltar_y, voltar_largura, voltar_altura)
+        voltar_hover = voltar_rect.collidepoint(mouse_x, mouse_y)
+        if voltar_hover:
+            pygame.draw.rect(screen, (0, 200, 255, 50), voltar_rect)
+        voltar_texto = render_text("VOLTAR", 20, (0, 200, 255) if voltar_hover else (255, 255, 255), bold=True, pixel_style=True)
+        voltar_texto_x = voltar_x + (voltar_largura - voltar_texto.get_width()) // 2
+        voltar_texto_y = voltar_y + (voltar_altura - voltar_texto.get_height()) // 2
+        screen.blit(voltar_texto, (voltar_texto_x, voltar_texto_y))
+        
+        # Desenhar popup de música
+        popup_musica.desenhar(screen)
+        
+        pygame.display.flip()
+
+def recordes_loop(screen):
+    """Tela de recordes mostrando melhores tempos por pista"""
+    from core.progresso import gerenciador_progresso
+    from config import CAMINHO_TROFEU_OURO, CAMINHO_TROFEU_PRATA, CAMINHO_TROFEU_BRONZE, CAMINHO_TROFEU_VAZIO
+    
+    bg_raw = pygame.image.load(CAMINHO_MENU).convert_alpha()
+    bg = scale_to_cover(bg_raw, LARGURA, ALTURA)
+    
+    # Carregar imagens de troféus
+    try:
+        trofeu_ouro = pygame.image.load(CAMINHO_TROFEU_OURO).convert_alpha()
+        trofeu_prata = pygame.image.load(CAMINHO_TROFEU_PRATA).convert_alpha()
+        trofeu_bronze = pygame.image.load(CAMINHO_TROFEU_BRONZE).convert_alpha()
+        trofeu_vazio = pygame.image.load(CAMINHO_TROFEU_VAZIO).convert_alpha()
+        tamanho_trofeu = (40, 40)
+        trofeu_ouro = pygame.transform.scale(trofeu_ouro, tamanho_trofeu)
+        trofeu_prata = pygame.transform.scale(trofeu_prata, tamanho_trofeu)
+        trofeu_bronze = pygame.transform.scale(trofeu_bronze, tamanho_trofeu)
+        trofeu_vazio = pygame.transform.scale(trofeu_vazio, tamanho_trofeu)
+    except:
+        trofeu_ouro = trofeu_prata = trofeu_bronze = trofeu_vazio = None
+    
+    clock = pygame.time.Clock()
+    
+    # Layout
+    caixa_largura = 700
+    caixa_altura = 550
+    caixa_x = (LARGURA - caixa_largura) // 2
+    caixa_y = (ALTURA - caixa_altura) // 2
+    
+    def formatar_tempo(tempo):
+        """Formata tempo em segundos para MM:SS.CC"""
+        if tempo is None:
+            return "--:--.--"
+        minutos = int(tempo // 60)
+        segundos = int(tempo % 60)
+        centesimos = int((tempo % 1) * 100)
+        return f"{minutos:02d}:{segundos:02d}.{centesimos:02d}"
+    
+    while True:
+        dt = clock.tick(FPS) / 1000.0
+        
+        gerencIAdor_musica.verificar_fim_musica()
+        popup_musica.atualizar(dt)
+        
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        popup_musica.verificar_hover(mouse_x, mouse_y)
+        
+        for ev in pygame.event.get():
+            if ev.type == pygame.QUIT:
+                return False
+            elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                voltar_largura = 120
+                voltar_altura = 40
+                voltar_x = caixa_x + (caixa_largura - voltar_largura) // 2
+                voltar_y = caixa_y + caixa_altura - 50
+                voltar_rect = pygame.Rect(voltar_x, voltar_y, voltar_largura, voltar_altura)
+                if voltar_rect.collidepoint(ev.pos[0], ev.pos[1]):
+                    return True
+            elif ev.type == pygame.KEYDOWN:
+                if ev.key == pygame.K_ESCAPE:
+                    return True
+        
+        # Desenhar
+        screen.blit(bg, (0, 0))
+        
+        # Overlay
+        overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 100))
+        screen.blit(overlay, (0, 0))
+        
+        # Caixa principal
+        caixa_fundo = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+        caixa_fundo.fill((0, 0, 0, 150))
+        screen.blit(caixa_fundo, (caixa_x, caixa_y))
+        pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
+        
+        # Título
+        titulo = render_text("RECORDES", 36, (255, 255, 255), bold=True, pixel_style=True)
+        titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
+        screen.blit(titulo, (titulo_x, caixa_y + 20))
+        
+        # Cabeçalho da tabela
+        fonte_cabecalho = pygame.font.SysFont("consolas", 18, bold=True)
+        fonte_item = pygame.font.SysFont("consolas", 16)
+        
+        y_inicial = caixa_y + 80
+        x_pista = caixa_x + 30
+        x_trofeu = caixa_x + 150
+        x_tempo = caixa_x + 220
+        
+        # Cabeçalhos
+        cabecalho_pista = fonte_cabecalho.render("PISTA", True, (255, 255, 255))
+        cabecalho_trofeu = fonte_cabecalho.render("TROFÉU", True, (255, 255, 255))
+        cabecalho_tempo = fonte_cabecalho.render("MELHOR TEMPO", True, (255, 255, 255))
+        
+        screen.blit(cabecalho_pista, (x_pista, y_inicial))
+        screen.blit(cabecalho_trofeu, (x_trofeu, y_inicial))
+        screen.blit(cabecalho_tempo, (x_tempo, y_inicial))
+        
+        # Linha separadora
+        pygame.draw.line(screen, (128, 128, 128), 
+                        (caixa_x + 20, y_inicial + 30), 
+                        (caixa_x + caixa_largura - 20, y_inicial + 30), 2)
+        
+        # Listar recordes das 9 pistas
+        y_atual = y_inicial + 45
+        for pista_num in range(1, 10):
+            # Nome da pista
+            texto_pista = fonte_item.render(f"Pista {pista_num}", True, (255, 255, 255))
+            screen.blit(texto_pista, (x_pista, y_atual))
+            
+            # Troféu (sempre mostrar, vazio se não ganhou)
+            trofeu_tipo = gerenciador_progresso.obter_trofeu(pista_num)
+            if trofeu_tipo == "ouro" and trofeu_ouro:
+                screen.blit(trofeu_ouro, (x_trofeu, y_atual - 5))
+            elif trofeu_tipo == "prata" and trofeu_prata:
+                screen.blit(trofeu_prata, (x_trofeu, y_atual - 5))
+            elif trofeu_tipo == "bronze" and trofeu_bronze:
+                screen.blit(trofeu_bronze, (x_trofeu, y_atual - 5))
+            else:
+                # Sempre mostrar troféu vazio se não ganhou troféu
+                if trofeu_vazio:
+                    screen.blit(trofeu_vazio, (x_trofeu, y_atual - 5))
+            
+            # Tempo
+            recorde = gerenciador_progresso.obter_recorde(pista_num)
+            texto_tempo = fonte_item.render(formatar_tempo(recorde), True, 
+                                          (0, 255, 0) if recorde else (128, 128, 128))
+            screen.blit(texto_tempo, (x_tempo, y_atual))
+            
+            y_atual += 35
+        
+        # Botão voltar
+        voltar_largura = 120
+        voltar_altura = 40
+        voltar_x = caixa_x + (caixa_largura - voltar_largura) // 2
+        voltar_y = caixa_y + caixa_altura - 50
+        voltar_rect = pygame.Rect(voltar_x, voltar_y, voltar_largura, voltar_altura)
+        voltar_hover = voltar_rect.collidepoint(mouse_x, mouse_y)
+        if voltar_hover:
+            pygame.draw.rect(screen, (0, 200, 255, 50), voltar_rect)
+        voltar_texto = render_text("VOLTAR", 20, (0, 200, 255) if voltar_hover else (255, 255, 255), bold=True, pixel_style=True)
+        voltar_texto_x = voltar_x + (voltar_largura - voltar_texto.get_width()) // 2
+        voltar_texto_y = voltar_y + (voltar_altura - voltar_texto.get_height()) // 2
+        screen.blit(voltar_texto, (voltar_texto_x, voltar_texto_y))
         
         # Desenhar popup de música
         popup_musica.desenhar(screen)
@@ -2757,17 +3194,22 @@ def run():
             # Abrir tela de seleção de modo de jogo primeiro
             resultado_modo = modo_jogo_loop(screen)
             if resultado_modo is not None and isinstance(resultado_modo, tuple):  # Se não cancelou e é uma tupla
-                if len(resultado_modo) == 4:  # Novo formato com voltas e dificuldade
+                if len(resultado_modo) == 5:  # Novo formato com voltas, dificuldade e fase
+                    modo_jogo, tipo_jogo, voltas, dificuldade_ia, fase_selecionada = resultado_modo
+                elif len(resultado_modo) == 4:  # Formato com voltas e dificuldade (sem fase)
                     modo_jogo, tipo_jogo, voltas, dificuldade_ia = resultado_modo
+                    fase_selecionada = 1  # Padrão: fase 1
                 else:  # Formato antigo (compatibilidade)
                     modo_jogo, tipo_jogo = resultado_modo
                     voltas = 1  # Padrão
+                    dificuldade_ia = "medio"  # Padrão
+                    fase_selecionada = 1  # Padrão
                 
                 # Parar música do menu se não deve tocar no jogo
                 if not CONFIGURACOES["audio"]["musica_no_jogo"]:
                     gerencIAdor_musica.parar_musica()
                 # inicIA seu jogo original com carros selecionados e modos
-                main.principal(carro_p1, carro_p2, modo_jogo=modo_jogo, tipo_jogo=tipo_jogo, voltas=voltas, dificuldade_ia=dificuldade_ia)
+                main.principal(carro_p1, carro_p2, mapa_selecionado=fase_selecionada, modo_jogo=modo_jogo, tipo_jogo=tipo_jogo, voltas=voltas, dificuldade_ia=dificuldade_ia)
                 # Após o jogo, volta para o menu (não fecha a janela)
                 # ReinicIAr música do menu se habilitada
                 if CONFIGURACOES["audio"]["musica_habilitada"] and CONFIGURACOES["audio"]["musica_no_menu"]:
@@ -2783,9 +3225,9 @@ def run():
             resultado = selecionar_carros_loop(screen)
             if resultado[0] is not None and resultado[1] is not None:
                 carro_p1, carro_p2 = resultado
-        elif escolha == Escolha.SELECIONAR_MAPAS:
-            # Abre tela de seleção de mapas
-            selecionar_mapas_loop(screen)
+        elif escolha == Escolha.RECORDES:
+            # Abre tela de recordes
+            recordes_loop(screen)
         elif escolha == Escolha.OPCOES:
             # Abre tela de opções
             opcoes_loop(screen)

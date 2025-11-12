@@ -1,0 +1,184 @@
+{
+  "carros": [
+    {
+      "prefixo_cor": "Car1",
+      "posicao": [
+        570,
+        145
+      ],
+      "tamanho_oficina": [
+        850,
+        550
+      ],
+      "posicao_oficina": [
+        203,
+        183
+      ]
+    },
+    {
+      "prefixo_cor": "Car2",
+      "posicao": [
+        570,
+        190
+      ],
+      "tamanho_oficina": [
+        770,
+        415
+      ],
+      "posicao_oficina": [
+        233,
+        298
+      ]
+    },
+    {
+      "prefixo_cor": "Car3",
+      "posicao": [
+        560,
+        210
+      ],
+      "tamanho_oficina": [
+        720,
+        470
+      ],
+      "posicao_oficina": [
+        263,
+        281
+      ]
+    },
+    {
+      "prefixo_cor": "Car4",
+      "posicao": [
+        570,
+        190
+      ],
+      "tamanho_oficina": [
+        755,
+        400
+      ],
+      "posicao_oficina": [
+        242,
+        326
+      ]
+    },
+    {
+      "prefixo_cor": "Car5",
+      "posicao": [
+        590,
+        175
+      ],
+      "tamanho_oficina": [
+        740,
+        495
+      ],
+      "posicao_oficina": [
+        231,
+        240
+      ]
+    },
+    {
+      "prefixo_cor": "Car6",
+      "posicao": [
+        550,
+        200
+      ],
+      "tamanho_oficina": [
+        730,
+        400
+      ],
+      "posicao_oficina": [
+        244,
+        329
+      ]
+    },
+    {
+      "prefixo_cor": "Car7",
+      "posicao": [
+        600,
+        185
+      ],
+      "tamanho_oficina": [
+        855,
+        470
+      ],
+      "posicao_oficina": [
+        179,
+        318
+      ]
+    },
+    {
+      "prefixo_cor": "Car8",
+      "posicao": [
+        540,
+        220
+      ],
+      "tamanho_oficina": [
+        805,
+        505
+      ],
+      "posicao_oficina": [
+        197,
+        240
+      ]
+    },
+    {
+      "prefixo_cor": "Car9",
+      "posicao": [
+        610,
+        195
+      ],
+      "tamanho_oficina": [
+        730,
+        425
+      ],
+      "posicao_oficina": [
+        240,
+        308
+      ]
+    },
+    {
+      "prefixo_cor": "Car10",
+      "posicao": [
+        530,
+        240
+      ],
+      "tamanho_oficina": [
+        720,
+        485
+      ],
+      "posicao_oficina": [
+        242,
+        230
+      ]
+    },
+    {
+      "prefixo_cor": "Car11",
+      "posicao": [
+        620,
+        205
+      ],
+      "tamanho_oficina": [
+        955,
+        705
+      ],
+      "posicao_oficina": [
+        147,
+        86
+      ]
+    },
+    {
+      "prefixo_cor": "Car12",
+      "posicao": [
+        520,
+        260
+      ],
+      "tamanho_oficina": [
+        935,
+        675
+      ],
+      "posicao_oficina": [
+        153,
+        196
+      ]
+    }
+  ]
+}

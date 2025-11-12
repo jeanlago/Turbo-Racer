@@ -1,6 +1,6 @@
 # 🔧 API Reference - Turbo Racer
 
-Referência completa da API do Turbo Racer v2.1.0.
+Referência completa da API do Turbo Racer v3.1.0 (Novembro 2025).
 
 ## 📋 Índice
 
@@ -21,10 +21,12 @@ O Turbo Racer é um jogo de corrida arcade 2D desenvolvido em Python com Pygame,
 - **Física realista** de veículos com 3 tipos de tração (RWD, FWD, AWD)
 - **IA inteligente** usando algoritmo Pure Pursuit para navegação
 - **Múltiplos modos** de jogo (1 jogador, 2 jogadores split-screen, drift)
-- **Sistema escalável** de mapas com detecção automática
+- **Sistema de pistas GRIP** com tiles dinâmicos e colisão pixel-based
+- **9 pistas disponíveis** estilo GRIP com layouts únicos
 - **Interface modular** e altamente configurável
 - **Sistema de drift** com pontuação e combos
-- **Editor visual** de checkpoints integrado
+- **Editor visual** de checkpoints e spawn points integrado
+- **Sistema de recordes e troféus** com persistência
 
 ### Tecnologias
 - **Python 3.10+** - Linguagem principal
@@ -44,7 +46,9 @@ src/
 ├── config.py              # Configurações globais e constantes
 └── core/
     ├── carro_fisica.py    # Sistema de física avançada (principal)
-    ├── pista.py           # Detecção de pista e colisões
+    ├── pista_tiles.py     # Sistema de pistas GRIP (tiles dinâmicos)
+    ├── pista_grip.py      # Colisão pixel-based estilo GRIP
+    ├── laps_grip.py       # Checkpoints e dados das pistas GRIP
     ├── camera.py          # Sistema de câmera dinâmica
     ├── corrida.py         # Gerenciamento de corrida
     ├── ia.py              # Inteligência artificial (Pure Pursuit)
@@ -55,8 +59,11 @@ src/
     ├── particulas.py      # Efeitos de partículas
     ├── skidmarks.py       # Sistema de marcas de pneu
     ├── drift_scoring.py   # Sistema de pontuação de drift
+    ├── progresso.py       # Gerenciador de progresso (dinheiro, recordes, troféus)
     └── game_modes.py      # Enums para modos de jogo
 ```
+
+**⚠️ Nota:** O sistema antigo de pistas (`pista.py`) foi removido na versão 3.1.0. Agora o jogo utiliza exclusivamente o sistema GRIP com tiles dinâmicos.
 
 ---
 

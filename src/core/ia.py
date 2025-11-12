@@ -15,12 +15,18 @@ class IA:
     _trig_cache = {}
     
     def __init__(self, checkpoints, nome="IA-Melhorada-V2", dificuldade="medio"):
-        self.checkpoints = checkpoints
+        self.checkpoints = checkpoints if checkpoints else []
         self.nome = nome
         self.checkpoint_atual = 0
         self.chegou = False
         self.debug = False
         self.dificuldade = dificuldade
+        
+        # Debug: verificar se checkpoints foram recebidos
+        if not self.checkpoints or len(self.checkpoints) == 0:
+            print(f"AVISO: IA {self.nome} não recebeu checkpoints válidos!")
+        else:
+            print(f"IA {self.nome} inicializada com {len(self.checkpoints)} checkpoints")
         
         # Sistema de navegação melhorado
         self.pontos_navegacao = []
@@ -234,28 +240,10 @@ class IA:
             self.tempo_na_curva += dt
     
     def detectar_colisao(self, carro, superficie_mascara):
-        """Detecta colisão com a pista (otimizado)"""
-        from core.pista import eh_pixel_transitavel
-        
-        fx, fy = self._vetor_frente(carro)
-        rx, ry = self._vetor_direita(carro)
-        
-        # Reduzir ainda mais pontos de verificação para melhor performance
-        pontos_verificacao = [
-            (0, 0), (6, 0), (-6, 0)  # Apenas centro e frente/trás
-        ]
-        
-        for ox, oy in pontos_verificacao:
-            px = int(carro.x + ox * fx + oy * rx)
-            py = int(carro.y + ox * fy + oy * ry)
-            if not eh_pixel_transitavel(superficie_mascara, px, py):
-                return True
         return False
     
     def _vetor_frente(self, carro):
-        """Vetor unitário da direção frontal (com cache)"""
-        # Usar cache para evitar recálculos
-        angulo_key = int(carro.angulo * 10) / 10  # Arredondar para 1 casa decimal
+        angulo_key = int(carro.angulo * 10) / 10
         if angulo_key not in self._trig_cache:
             rad = math.radians(angulo_key)
             self._trig_cache[angulo_key] = {
@@ -277,11 +265,15 @@ class IA:
         """Limpa o cache de cálculos trigonométricos"""
         cls._trig_cache.clear()
     
-    def controlar(self, carro, superficie_mascara, is_on_track, dt):
+    def controlar(self, carro, superficie_mascara, is_on_track, dt, superficie_pista_renderizada=None, corrida_iniciada=True):
         """Controla o carro com sistema inteligente baseado no jogo_antigo"""
         
-        if not self.checkpoints:
-            self.chegou = True
+        # Não controlar se a corrida ainda não iniciou
+        if not corrida_iniciada:
+            return
+        
+        if not self.checkpoints or len(self.checkpoints) == 0:
+            # Se não há checkpoints, não fazer nada (mas não marcar como chegou)
             return
         
         # Calcular velocidade atual (otimizado - evitar sqrt quando possível)
@@ -289,21 +281,45 @@ class IA:
         velocidade_atual = math.sqrt(vel_sq) if vel_sq > 0.01 else 0.0
         
         # DETECÇÃO DE TRAVAMENTO (baseado no jogo_antigo) - otimizado
+        # Verificar se o bot está na grama (pode estar lento mas não travado)
+        na_grama = getattr(carro, 'na_grama', False)
+        
         posicao_atual = (carro.x, carro.y)
         if self.ultima_posicao is not None:
             # Usar distância ao quadrado para evitar sqrt
             dx = posicao_atual[0] - self.ultima_posicao[0]
             dy = posicao_atual[1] - self.ultima_posicao[1]
             dist_movimento_sq = dx*dx + dy*dy
-            if dist_movimento_sq < 9.0:  # 3.0^2 = 9.0
-                self.tempo_travado += dt
+            
+            # Se está na grama, ser mais tolerante com o movimento (grama reduz velocidade)
+            # Na grama, o bot pode estar se movendo lentamente mas ainda progredindo
+            if na_grama:
+                # Na grama: considerar travado apenas se não se moveu quase nada
+                limite_travamento_grama = 1.0  # 1.0^2 = 1.0 (muito mais tolerante)
+                if dist_movimento_sq < limite_travamento_grama:
+                    self.tempo_travado += dt
+                else:
+                    # Se está se movendo na grama, resetar travamento mais rapidamente
+                    self.tempo_travado = max(0.0, self.tempo_travado - dt * 2.0)  # Reduzir travamento mais rápido
             else:
-                self.tempo_travado = 0.0
+                # Na pista: usar limite normal
+                if dist_movimento_sq < 9.0:  # 3.0^2 = 9.0
+                    self.tempo_travado += dt
+                else:
+                    self.tempo_travado = 0.0
         self.ultima_posicao = posicao_atual
         
+        # Se está na grama mas ainda tem velocidade, não considerar totalmente travado
+        if na_grama and velocidade_atual > 0.5:
+            # Reduzir o tempo de travamento se está se movendo (mesmo que lentamente)
+            self.tempo_travado = max(0.0, self.tempo_travado - dt * 0.5)
+        
         # DETECÇÃO DE COLISÃO
+        # Se estamos usando tiles do GRIP, não usar detecção de colisão baseada em máscara
+        # (o sistema GRIP não tem colisão hard, apenas redução de velocidade na grama)
         colidiu = False
-        if superficie_mascara is not None:
+        if superficie_mascara is not None and superficie_pista_renderizada is None:
+            # Só detectar colisão se não estamos usando o sistema de tiles do GRIP
             colidiu = self.detectar_colisao(carro, superficie_mascara)
         
         if colidiu:
@@ -315,17 +331,121 @@ class IA:
             # Recuperação simples: dar ré e tentar se reposicionar
             if self.tempo_batido > self.max_tempo_batido:
                 # Dar ré por um tempo
-                carro._step(False, False, False, True, False, superficie_mascara, dt)
+                carro._step(False, False, False, True, False, superficie_mascara, dt, None, superficie_pista_renderizada)
                 return
             else:
                 # Parar e tentar se reposicionar
-                carro._step(False, False, False, True, False, superficie_mascara, dt)
+                carro._step(False, False, False, True, False, superficie_mascara, dt, None, superficie_pista_renderizada)
                 return
         else:
             if self.tempo_batido > 0.0:
                 self.tempo_batido = 0.0
         
         # NAVEGAÇÃO
+        if not self.checkpoints or len(self.checkpoints) == 0:
+            # Se não há checkpoints, não fazer nada
+            return
+        
+        checkpoint_idx = self.checkpoint_atual % len(self.checkpoints)
+        self.alvo_x = self.checkpoints[checkpoint_idx][0]
+        self.alvo_y = self.checkpoints[checkpoint_idx][1]
+        
+        # Debug periódico (apenas a cada segundo para não spammar)
+        if not hasattr(self, '_ultimo_debug_tempo'):
+            self._ultimo_debug_tempo = 0.0
+        if pygame.time.get_ticks() / 1000.0 - self._ultimo_debug_tempo > 2.0:  # A cada 2 segundos
+            print(f"[IA {self.nome}] Checkpoint atual: {checkpoint_idx}/{len(self.checkpoints)}")
+            print(f"[IA {self.nome}] Alvo: ({self.alvo_x:.1f}, {self.alvo_y:.1f})")
+            print(f"[IA {self.nome}] Carro pos: ({carro.x:.1f}, {carro.y:.1f})")
+            self._ultimo_debug_tempo = pygame.time.get_ticks() / 1000.0
+        
+        # DETECÇÃO DE CHECKPOINTS - usando retângulo (como no GRIP)
+        # Verificar se o carro está dentro do retângulo do checkpoint
+        checkpoint_idx = self.checkpoint_atual % len(self.checkpoints)
+        if checkpoint_idx < len(self.checkpoints):
+            cp = self.checkpoints[checkpoint_idx]
+            # Suportar formato (x, y) ou (x, y, angulo)
+            if len(cp) >= 3:
+                cx, cy, angulo_salvo = cp[0], cp[1], cp[2]
+                usar_angulo_salvo = True
+            else:
+                cx, cy = cp[0], cp[1]
+                angulo_salvo = None
+                usar_angulo_salvo = False
+            
+            CHECKPOINT_LARGURA = 300  # Largura dos tiles de pista
+            CHECKPOINT_ESPESSURA = 1
+            
+            if usar_angulo_salvo:
+                # Usar ângulo salvo (mesma lógica de _obter_retangulo_checkpoint)
+                angulo = angulo_salvo % 360
+                rad = math.radians(angulo)
+                cos_a = math.cos(rad)
+                sin_a = math.sin(rad)
+                
+                w_half = CHECKPOINT_LARGURA // 2
+                h_half = CHECKPOINT_ESPESSURA // 2
+                vertices = [
+                    (-w_half, -h_half),
+                    (w_half, -h_half),
+                    (w_half, h_half),
+                    (-w_half, h_half)
+                ]
+                
+                vertices_rot = []
+                for vx, vy in vertices:
+                    rx = vx * cos_a - vy * sin_a
+                    ry = vx * sin_a + vy * cos_a
+                    vertices_rot.append((rx, ry))
+                
+                xs = [v[0] for v in vertices_rot]
+                ys = [v[1] for v in vertices_rot]
+                min_x, max_x = min(xs), max(xs)
+                min_y, max_y = min(ys), max(ys)
+                
+                checkpoint_rect = pygame.Rect(
+                    cx + int(min_x),
+                    cy + int(min_y),
+                    int(max_x - min_x),
+                    int(max_y - min_y)
+                )
+            else:
+                # Fallback: calcular baseado na direção
+                if checkpoint_idx < len(self.checkpoints) - 1:
+                    proximo_cp = self.checkpoints[checkpoint_idx + 1]
+                    proximo_cx, proximo_cy = proximo_cp[0], proximo_cp[1]
+                else:
+                    proximo_cp = self.checkpoints[0]
+                    proximo_cx, proximo_cy = proximo_cp[0], proximo_cp[1]
+                
+                dx_checkpoint = proximo_cx - cx
+                dy_checkpoint = proximo_cy - cy
+                
+                if abs(dx_checkpoint) > abs(dy_checkpoint):
+                    checkpoint_rect = pygame.Rect(
+                        cx - 1,
+                        cy - CHECKPOINT_LARGURA // 2,
+                        2,
+                        CHECKPOINT_LARGURA
+                    )
+                else:
+                    checkpoint_rect = pygame.Rect(
+                        cx - CHECKPOINT_LARGURA // 2,
+                        cy - 1,
+                        CHECKPOINT_LARGURA,
+                        2
+                    )
+            
+            # Expandir ligeiramente para melhor detecção
+            checkpoint_rect = checkpoint_rect.inflate(10, 10)
+            
+            # Verificar se o carro está dentro do retângulo
+            if checkpoint_rect.collidepoint(carro.x, carro.y):
+                self.checkpoint_atual = (self.checkpoint_atual + 1) % len(self.checkpoints)
+                self.tempo_travado = 0.0
+                self.tentativas_recuperacao = 0
+        
+        # Atualizar alvo para o checkpoint atual (sempre, mesmo se não passou)
         checkpoint_idx = self.checkpoint_atual % len(self.checkpoints)
         self.alvo_x = self.checkpoints[checkpoint_idx][0]
         self.alvo_y = self.checkpoints[checkpoint_idx][1]
@@ -340,26 +460,41 @@ class IA:
         angulo_alvo = math.degrees(math.atan2(dy, -dx))  # -dx porque 0° aponta para -X
         diff_angulo = (angulo_alvo - carro.angulo + 180) % 360 - 180
         
-        # DETECÇÃO DE CHECKPOINTS (baseado no jogo_antigo) - otimizado
-        if distancia_sq < 3600:  # 60^2 = 3600
-            self.checkpoint_atual += 1
-            self.tempo_travado = 0.0
-            self.tentativas_recuperacao = 0
-            
-            # Atualizar para o próximo checkpoint
-            checkpoint_idx = self.checkpoint_atual % len(self.checkpoints)
-            self.alvo_x = self.checkpoints[checkpoint_idx][0]
-            self.alvo_y = self.checkpoints[checkpoint_idx][1]
-            dx = self.alvo_x - carro.x
-            dy = self.alvo_y - carro.y
-        
         # LÓGICA DE RECUPERAÇÃO (baseada no jogo_antigo)
-        elif self.tempo_travado > self.max_tempo_travado:
+        # Só considerar travado se realmente parado (não apenas lento na grama)
+        realmente_travado = self.tempo_travado > self.max_tempo_travado and velocidade_atual < 0.3
+        
+        # Debug: log quando está quase travado
+        if self.tempo_travado > 2.0 and self.debug:
+            print(f"IA {self.nome}: Quase travado - tempo: {self.tempo_travado:.1f}s, velocidade: {velocidade_atual:.2f}, na_grama: {na_grama}, checkpoint: {self.checkpoint_atual + 1}")
+        
+        if realmente_travado:
+            print(f"IA {self.nome}: TRAVADO detectado - tempo: {self.tempo_travado:.1f}s, velocidade: {velocidade_atual:.2f}, checkpoint atual: {self.checkpoint_atual + 1}, tentativas: {self.tentativas_recuperacao}")
             if self.tentativas_recuperacao < self.max_tentativas_recuperacao:
                 self.tentativas_recuperacao += 1
                 
-                # EstratégIA de recuperação: pular para o próximo checkpoint
-                self.checkpoint_atual += 1
+                # EstratégIA de recuperação: encontrar o checkpoint mais próximo ao invés de pular
+                # Calcular distância para todos os checkpoints
+                checkpoint_mais_proximo = self.checkpoint_atual
+                distancia_minima = float('inf')
+                
+                for i, cp in enumerate(self.checkpoints):
+                    cx, cy = cp[0], cp[1]
+                    dist_sq = (carro.x - cx)**2 + (carro.y - cy)**2
+                    if dist_sq < distancia_minima:
+                        distancia_minima = dist_sq
+                        checkpoint_mais_proximo = i
+                
+                # Se encontrou um checkpoint mais próximo, usar ele
+                # Caso contrário, avançar para o próximo
+                if checkpoint_mais_proximo != self.checkpoint_atual:
+                    self.checkpoint_atual = checkpoint_mais_proximo
+                    print(f"IA {self.nome}: Recuperação - mudou para checkpoint mais próximo: {checkpoint_mais_proximo + 1}")
+                else:
+                    # Avançar para o próximo checkpoint
+                    self.checkpoint_atual = (self.checkpoint_atual + 1) % len(self.checkpoints)
+                    print(f"IA {self.nome}: Recuperação - avançou para próximo checkpoint: {(self.checkpoint_atual % len(self.checkpoints)) + 1}")
+                
                 self.tempo_travado = 0.0
                 
                 # Atualizar alvo
@@ -369,22 +504,37 @@ class IA:
                 dx = self.alvo_x - carro.x
                 dy = self.alvo_y - carro.y
             else:
-                # Se esgotou tentativas, resetar para o início
-                self.checkpoint_atual = 0
+                # Se esgotou tentativas, encontrar o checkpoint mais próximo ao invés de resetar para 0
+                checkpoint_mais_proximo = 0
+                distancia_minima = float('inf')
+                
+                for i, cp in enumerate(self.checkpoints):
+                    cx, cy = cp[0], cp[1]
+                    dist_sq = (carro.x - cx)**2 + (carro.y - cy)**2
+                    if dist_sq < distancia_minima:
+                        distancia_minima = dist_sq
+                        checkpoint_mais_proximo = i
+                
+                # Usar o checkpoint mais próximo (não necessariamente o 0)
+                self.checkpoint_atual = checkpoint_mais_proximo
                 self.tentativas_recuperacao = 0
                 self.tempo_travado = 0.0
-                self.alvo_x = self.checkpoints[0][0]
-                self.alvo_y = self.checkpoints[0][1]
+                self.alvo_x = self.checkpoints[checkpoint_mais_proximo][0]
+                self.alvo_y = self.checkpoints[checkpoint_mais_proximo][1]
                 dx = self.alvo_x - carro.x
                 dy = self.alvo_y - carro.y
+                print(f"IA {self.nome}: Recuperação final - mudou para checkpoint mais próximo: {checkpoint_mais_proximo + 1} (não resetou para 0)")
         
         # SISTEMA INTELIGENTE DE CURVAS
         self.velocidade_alvo = self.calcular_velocidade_alvo(carro)
         self.atualizar_estado_curva(carro, dt)
         
         # CONTROLE DE VELOCIDADE baseado na dificuldade
+        # Garantir que o bot sempre tente acelerar inicialmente
         acelerar = True
         frear_re = False
+        
+        # Remover verificação duplicada - já foi feita no início da função
         
         # 1. Frear se estiver muito próximo do checkpoint (baseado na dificuldade)
         if distancia < self.distancia_freio_checkpoint and velocidade_atual > 1.2:
@@ -487,8 +637,13 @@ class IA:
                 acelerar = True
                 frear_re = False
         
+        # Debug: verificar controles antes de aplicar (apenas a cada 2 segundos)
+        if pygame.time.get_ticks() / 1000.0 - self._ultimo_debug_tempo > 2.0:
+            print(f"[IA {self.nome}] Controles: acelerar={acelerar}, frear={frear_re}, direita={direita}, esquerda={esquerda}, turbo={turbo_pressed}")
+            print(f"[IA {self.nome}] Velocidade: {velocidade_atual:.2f}, diff_angulo: {diff_angulo:.1f}°, distancia: {distancia:.1f}")
+        
         # Aplicar controles (usando sistema antigo que funciona)
-        carro._step(acelerar, direita, esquerda, frear_re, turbo_pressed, superficie_mascara, dt)
+        carro._step(acelerar, direita, esquerda, frear_re, turbo_pressed, superficie_mascara, dt, None, superficie_pista_renderizada)
         
         # Armazenar estado para debug
         self.estado_freio = frear_re
@@ -510,7 +665,8 @@ class IA:
             fonte_debug_bold = pygame.font.SysFont("consolas", 16, bold=True)
             
             # Desenhar checkpoints
-            for i, (cx, cy) in enumerate(self.checkpoints):
+            for i, cp in enumerate(self.checkpoints):
+                cx, cy = cp[0], cp[1] if len(cp) >= 2 else (cp[0], cp[1])
                 screen_x, screen_y = camera.mundo_para_tela(cx, cy)
                 
                 # Mostrar apenas o próximo checkpoint por padrão, ou todos se solicitado
