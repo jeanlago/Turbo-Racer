@@ -7,14 +7,14 @@ from config import (
 )
 
 
-class GerencIAdorCorrida:
+class GerenciadorCorrida:
     def __init__(self, fonte=None, checkpoints=None, voltas_objetivo=1):
         self.fonte = fonte or pygame.font.SysFont("consolas", 26)
         self.fonte_grande = pygame.font.SysFont("consolas", 64, bold=True)
 
         # Semáforo 3-2-1-VAI
         self.contagem_regressiva = 3.0
-        self.inicIAda = False
+        self.iniciada = False
 
         # Progresso/estado por carro
         self.proximo_checkpoint = {}   # carro -> idx próximo CP
@@ -52,22 +52,22 @@ class GerencIAdorCorrida:
 
     # --- Semáforo e tempo global ---
     def atualizar_contagem(self, dt):
-        if self.inicIAda:
+        if self.iniciada:
             return
         self.contagem_regressiva -= dt
         if self.contagem_regressiva <= 0:
-            self.inicIAda = True
+            self.iniciada = True
 
     def atualizar_tempo(self, dt, jogo_pausado=False):
         # Parar o tempo quando pausado ou quando todos finalizaram
-        if self.inicIAda and not jogo_pausado and not self.todos_finalizados():
+        if self.iniciada and not jogo_pausado and not self.todos_finalizados():
             self.tempo_global += dt
 
     def pode_controlar(self):
-        return self.inicIAda
+        return self.iniciada
 
     def desenhar_semaforo(self, tela, largura, altura):
-        if self.inicIAda:
+        if self.iniciada:
             return
         val = max(0, int(self.contagem_regressiva) + 1)
         texto = "VAI!" if val <= 0 else str(val)
@@ -368,35 +368,3 @@ class GerencIAdorCorrida:
         tela.blit(sombra, (rect.x+3, rect.y+3))
         tela.blit(texto, rect)
 
-class GerencIAdorDrift:
-    def __init__(self, fonte=None):
-        self.fonte = fonte or pygame.font.SysFont("consolas", 26)
-        self.score = 0.0
-        self.combo = 1.0
-        self.chain_timer = 0.0  # tempo "vivo" de drift p/ manter o combo
-
-    def atualizar(self, carro, dt):
-        # pontos por “tick” enquanto estiver derrapando
-        v = abs(carro.velocidade) * 60.0  # px/s
-        if carro.drifting and carro.drift_intensidade > 0.05:
-            ganho = (DRIFT_PONTOS_BASE + v * DRIFT_PONTOS_VEL_FACTOR) * self.combo * carro.drift_intensidade
-            self.score += ganho * dt * 60.0
-            # combo sobe com tempo em drift
-            self.combo = min(DRIFT_COMBO_MAX, self.combo + DRIFT_COMBO_STEP * dt)
-            self.chain_timer = 0.0
-        else:
-            # decai “cadeIA” e pontuação "quente"
-            self.chain_timer += dt
-            self.score = max(0.0, self.score - DRIFT_DECAY_POR_SEG * dt)
-            # combo cai devagar se ficar muito tempo sem drift
-            if self.chain_timer > 1.2:
-                self.combo = max(1.0, self.combo - 2.0 * dt)
-
-    def desenhar_hud(self, tela, x=8, y=8):
-        s = int(self.score)
-        c = f"x{self.combo:.1f}" if self.combo > 1.01 else "x1"
-        msg = f"DRIFT SCORE: {s}   COMBO: {c}"
-        sombra = self.fonte.render(msg, True, COR_SOMBRA)
-        texto  = self.fonte.render(msg, True, COR_TEXTO)
-        tela.blit(sombra, (x+2, y+2))
-        tela.blit(texto, (x, y))

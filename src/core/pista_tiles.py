@@ -512,54 +512,101 @@ class PistaTiles:
         if posicao_centro is None:
             posicao_centro = (self.largura // 2, self.altura // 2)
         
-        # Criar superfície grande para a pista
-        self.surface_pista = pygame.Surface((self.largura, self.altura))
+        # Carregar definição da pista primeiro para calcular limites reais
+        self.definicao_pista = self.carregar_definicao_pista(numero_pista)
+        print(f"Definição da pista {numero_pista} carregada: {len(self.definicao_pista)} tiles")
+        
+        # Calcular limites reais das tiles para expandir a superfície se necessário
+        centro_x, centro_y = posicao_centro
+        min_x = float('inf')
+        max_x = float('-inf')
+        min_y = float('inf')
+        max_y = float('-inf')
+        
+        for nome_tile, offset_x, offset_y in self.definicao_pista:
+            tile = self.gerenciador_tiles.obter_tile(nome_tile)
+            if tile:
+                tile_w, tile_h = tile.get_size()
+                x = centro_x + offset_x
+                y = centro_y + offset_y
+                min_x = min(min_x, x)
+                max_x = max(max_x, x + tile_w)
+                min_y = min(min_y, y)
+                max_y = max(max_y, y + tile_h)
+        
+        # Adicionar margem de segurança
+        margem = 500
+        min_x = min(0, min_x - margem)
+        max_x = max(self.largura, max_x + margem)
+        min_y = min(0, min_y - margem)
+        max_y = max(self.altura, max_y + margem)
+        
+        # Calcular dimensões expandidas
+        largura_expandida = int(max_x - min_x)
+        altura_expandida = int(max_y - min_y)
+        
+        # Limitar tamanho máximo para evitar problemas de memória (pygame tem limite de ~32767 pixels)
+        tamanho_maximo = 30000
+        if largura_expandida > tamanho_maximo or altura_expandida > tamanho_maximo:
+            print(f"AVISO: Pista muito grande ({largura_expandida}x{altura_expandida}), limitando a {tamanho_maximo}")
+            largura_expandida = min(largura_expandida, tamanho_maximo)
+            altura_expandida = min(altura_expandida, tamanho_maximo)
+        
+        # Atualizar dimensões da superfície
+        self.largura = largura_expandida
+        self.altura = altura_expandida
+        
+        # Ajustar centro para o novo sistema de coordenadas
+        offset_x_superficie = -min_x
+        offset_y_superficie = -min_y
+        centro_x_ajustado = centro_x + offset_x_superficie
+        centro_y_ajustado = centro_y + offset_y_superficie
+        
+        # Armazenar offset para uso externo
+        self.offset_x_superficie = offset_x_superficie
+        self.offset_y_superficie = offset_y_superficie
+        
+        print(f"Superfície expandida: {largura_expandida}x{altura_expandida} (original: {self.largura}x{self.altura})")
+        print(f"Limites das tiles: min_x={min_x:.0f}, max_x={max_x:.0f}, min_y={min_y:.0f}, max_y={max_y:.0f}")
+        print(f"Offset da superfície: ({offset_x_superficie:.0f}, {offset_y_superficie:.0f})")
+        
+        # Criar superfície expandida para a pista
+        self.surface_pista = pygame.Surface((largura_expandida, altura_expandida))
         
         # Preencher com fundo verde usando overhead_tile repetida (estilo GRIP)
         overhead = self.gerenciador_tiles.obter_overhead()
         if overhead:
             tile_w, tile_h = overhead.get_size()
             print(f"Desenhando fundo com tile {tile_w}x{tile_h}")
-            # Preencher toda a superfície com tiles de fundo
-            for y in range(0, self.altura + tile_h, tile_h):
-                for x in range(0, self.largura + tile_w, tile_w):
+            # Preencher toda a superfície expandida com tiles de fundo
+            for y in range(0, altura_expandida + tile_h, tile_h):
+                for x in range(0, largura_expandida + tile_w, tile_w):
                     self.surface_pista.blit(overhead, (x, y))
-            print(f"Fundo verde desenhado em superfície {self.largura}x{self.altura}")
+            print(f"Fundo verde desenhado em superfície {largura_expandida}x{altura_expandida}")
         else:
             # Fallback: preencher com verde sólido
             print("AVISO: Usando verde sólido (overhead_tile não encontrada)")
             self.surface_pista.fill((0, 200, 0))
         
-        # Carregar definição da pista
-        self.definicao_pista = self.carregar_definicao_pista(numero_pista)
-        print(f"Definição da pista {numero_pista} carregada: {len(self.definicao_pista)} tiles")
-        
-        # Renderizar todas as tiles da pista
-        # No GRIP, as posições são relativas à posição do jogador (position[0], position[1])
-        # No nosso sistema, vamos usar o centro como referência (equivalente ao position inicial do GRIP)
-        # No GRIP, position inicial é aproximadamente (650, 250), mas no nosso sistema usamos (2500, 2500)
-        # Então precisamos ajustar os offsets para que as tiles apareçam no lugar certo
-        centro_x, centro_y = posicao_centro
+        # Renderizar todas as tiles da pista no novo sistema de coordenadas
         tiles_desenhadas = 0
         tiles_fora_limites = 0
         
         for nome_tile, offset_x, offset_y in self.definicao_pista:
             tile = self.gerenciador_tiles.obter_tile(nome_tile)
             if tile:
-                # Calcular posição absoluta na superfície grande
-                # No GRIP: tile em (position[0] + offset_x, position[1] + offset_y)
-                # No nosso sistema: tile em (centro_x + offset_x, centro_y + offset_y)
-                x = centro_x + offset_x
-                y = centro_y + offset_y
+                # Calcular posição absoluta na superfície expandida
+                # Ajustar para o novo sistema de coordenadas
+                x = centro_x_ajustado + offset_x
+                y = centro_y_ajustado + offset_y
                 
-                # Desenhar mesmo se estiver um pouco fora dos limites (pode ser visível na câmera)
-                # Mas vamos registrar se está muito fora
-                if -500 <= x < self.largura + 500 and -500 <= y < self.altura + 500:
-                    self.surface_pista.blit(tile, (x, y))
+                # Verificar se está dentro dos limites da superfície expandida
+                if 0 <= x < largura_expandida and 0 <= y < altura_expandida:
+                    self.surface_pista.blit(tile, (int(x), int(y)))
                     tiles_desenhadas += 1
                 else:
                     tiles_fora_limites += 1
-                    print(f"AVISO: Tile {nome_tile} muito fora dos limites: ({x}, {y})")
+                    print(f"AVISO: Tile {nome_tile} fora dos limites expandidos: ({x}, {y})")
             else:
                 print(f"ERRO: Tile não encontrada: {nome_tile}")
         

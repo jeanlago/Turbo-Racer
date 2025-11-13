@@ -17,11 +17,14 @@ class Particula:
 
     def alive(self): return self.t < self.life
     def update(self, dt):
+        if not self.alive():
+            return False  # Retornar False se já morreu para evitar atualizações desnecessárias
         self.t += dt
         self.x += self.vx * dt
         self.y += self.vy * dt
         # Atualizar índice de textura individual (animação mais lenta)
         self.tex_index = int((self.t * 0.05) % 12)  # 12 texturas disponíveis
+        return True  # Retornar True se ainda está vivo
     def interp(self):
         k = max(0.0, min(1.0, self.t / self.life))
         scale = self.scale0 + (self.scale1 - self.scale0) * k
@@ -170,38 +173,50 @@ class EmissorNitro:
         
         self.ps = []
         self._accum = 0.0
-        self.max_particulas = 20  # Equilibrado para boa performance e efeitos visuais
-        self._particulas_por_frame = 1  # 1 partícula por frame para nitro
+        self.max_particulas = 30  # Aumentado para mais partículas visíveis
+        self._particulas_por_frame = 2  # 2 partículas por frame para nitro mais visível
         self._frame_atual = 0
 
     def spawn(self, x, y, dirx, diry, taxa_qps, dt):
+        # Para nitro, sempre spawnar pelo menos uma partícula se chamado
+        # Garantir que partículas sempre apareçam quando turbo está ativo
         if len(self.ps) >= self.max_particulas:
-            return
+            # Se está cheio, remover partículas antigas para fazer espaço
+            # Manter apenas as mais recentes
+            self.ps = self.ps[-self.max_particulas//2:]  # Manter metade das mais recentes
             
+        # Sistema de acumulação melhorado para garantir spawn consistente
         self._accum += taxa_qps * dt
         n = int(self._accum)
-        if n <= 0: return
-        self._accum -= n
         
-        n = min(n, self._particulas_por_frame)
+        # Garantir que pelo menos 1 partícula seja spawnada se acumulou algo
+        if n <= 0 and self._accum > 0.01:
+            n = 1
+            self._accum = 0.0
         
-        base_ang = math.atan2(diry, dirx)
-        for _ in range(n):
-            if len(self.ps) >= self.max_particulas:
-                break
-                
-            ang = base_ang + random.uniform(-0.3, 0.3)  # Menos dispersão para nitro
-            v = random.uniform(60, 150)  # Mais rápido que fumaça
-            vx, vy = math.cos(ang)*v, math.sin(ang)*v
-            life = random.uniform(0.3, 0.8)  # Vida um pouco mais longa
-            scale0 = random.uniform(0.4, 0.7)  # Tamanho maior
-            scale1 = scale0 * random.uniform(1.2, 2.0)  # Crescimento menor
-            alpha0 = random.randint(200, 255)  # Muito opaco
-            p = Particula(x, y, vx, vy, life, random.uniform(0,360), scale0, scale1, alpha0, 0, "nitro")
-            self.ps.append(p)
+        if n > 0:
+            self._accum -= n
+            n = min(n, self._particulas_por_frame * 3)  # Permitir mais partículas por frame
+            
+            base_ang = math.atan2(diry, dirx)
+            for _ in range(n):
+                if len(self.ps) >= self.max_particulas:
+                    break
+                    
+                ang = base_ang + random.uniform(-0.2, 0.2)  # Menos dispersão para nitro mais concentrado
+                v = random.uniform(100, 200)  # Mais rápido que fumaça (aumentado)
+                vx, vy = math.cos(ang)*v, math.sin(ang)*v
+                life = random.uniform(0.3, 0.7)  # Vida um pouco menor para desaparecer mais rápido
+                scale0 = random.uniform(0.6, 1.0)  # Tamanho maior para melhor visibilidade
+                scale1 = scale0 * random.uniform(1.5, 2.5)  # Crescimento maior
+                alpha0 = random.randint(220, 255)  # Muito opaco para melhor visibilidade
+                p = Particula(x, y, vx, vy, life, random.uniform(0,360), scale0, scale1, alpha0, 0, "nitro")
+                self.ps.append(p)
 
     def update(self, dt):
-        self.ps = [p for p in self.ps if p.alive() and p.update(dt)]
+        # Atualizar partículas e remover as que morreram
+        # Usar list comprehension que já filtra partículas mortas
+        self.ps = [p for p in self.ps if p.update(dt)]
         self._frame_atual += 1
 
     def draw(self, surface, camera=None):

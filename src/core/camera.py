@@ -29,7 +29,10 @@ class Camera:
             return
         # segue o alvo com suavização exponencial simples
         # Melhorar suavização para evitar tremulação, mas manter responsividade
-        tx, ty = float(self.alvo.x), float(self.alvo.y)
+        # Ajustar coordenadas do alvo se houver offset
+        offset_x = getattr(self, 'offset_x', 0)
+        offset_y = getattr(self, 'offset_y', 0)
+        tx, ty = float(self.alvo.x) - offset_x, float(self.alvo.y) - offset_y
         # Usar dt mínimo para evitar saltos quando dt é muito pequeno
         dt_smooth = max(dt, 0.001)
         
@@ -124,29 +127,106 @@ class Camera:
         self._visao_cache = pygame.Rect(left, top, width, height)
         self._visao_cache_key = cache_key
         return self._visao_cache
+    
+    def ret_visao_original(self):
+        """Retorna o retângulo de visão no sistema de coordenadas original (considerando offset)."""
+        r = self.ret_visao()
+        offset_x = getattr(self, 'offset_x', 0)
+        offset_y = getattr(self, 'offset_y', 0)
+        # Converter do sistema da câmera para o sistema original
+        return pygame.Rect(r.left + offset_x, r.top + offset_y, r.width, r.height)
 
     def mundo_para_tela(self, x, y):
         """Converte coordenadas do mundo para tela (aplica offset e zoom)."""
+        # Converter coordenadas do mundo original para o sistema da câmera
+        offset_x = getattr(self, 'offset_x', 0)
+        offset_y = getattr(self, 'offset_y', 0)
+        x_camera = x - offset_x
+        y_camera = y - offset_y
+        
         r = self.ret_visao()
-        sx = int((x - r.left) * self.zoom)
-        sy = int((y - r.top ) * self.zoom)
+        sx = int((x_camera - r.left) * self.zoom)
+        sy = int((y_camera - r.top ) * self.zoom)
         return sx, sy
     
     def tela_para_mundo(self, sx, sy):
         """Converte coordenadas da tela para mundo (remove offset e zoom)."""
         r = self.ret_visao()
-        x = (sx / self.zoom) + r.left
-        y = (sy / self.zoom) + r.top
+        x_camera = (sx / self.zoom) + r.left
+        y_camera = (sy / self.zoom) + r.top
+        
+        # Converter do sistema da câmera para o mundo original
+        offset_x = getattr(self, 'offset_x', 0)
+        offset_y = getattr(self, 'offset_y', 0)
+        x = x_camera + offset_x
+        y = y_camera + offset_y
         return x, y
 
     def desenhar_fundo(self, superficie_tela, superficie_mundo):
         """Recorta a visão do mundo e escala para preencher a tela."""
-        r = self.ret_visao()
-        # Otimização: usar subsurface diretamente em vez de copy()
-        recorte = superficie_mundo.subsurface(r)
-        # Usar scale em vez de smoothscale para melhor performance
-        amplIAdo = pygame.transform.scale(recorte, (self.largura_tela, self.altura_tela))
-        superficie_tela.blit(amplIAdo, (0, 0))
+        # Obter retângulo de visão no sistema original
+        r_original = self.ret_visao_original()
+        r_camera = self.ret_visao()
+        
+        # Obter dimensões da superfície original
+        mundo_w, mundo_h = superficie_mundo.get_size()
+        
+        # Calcular escala para preencher a tela
+        escala_x = self.largura_tela / r_camera.width if r_camera.width > 0 else 1.0
+        escala_y = self.altura_tela / r_camera.height if r_camera.height > 0 else 1.0
+        
+        # Preencher a tela com preto primeiro (para áreas fora da pista)
+        superficie_tela.fill((0, 0, 0))
+        
+        # Calcular a parte do retângulo que está dentro dos limites da superfície
+        clip_left = max(0, min(mundo_w, r_original.left))
+        clip_top = max(0, min(mundo_h, r_original.top))
+        clip_right = max(0, min(mundo_w, r_original.right))
+        clip_bottom = max(0, min(mundo_h, r_original.bottom))
+        
+        clip_width = clip_right - clip_left
+        clip_height = clip_bottom - clip_top
+        
+        if clip_width > 0 and clip_height > 0:
+            # Recortar a parte visível da superfície
+            try:
+                recorte_original = superficie_mundo.subsurface(
+                    (int(clip_left), int(clip_top), int(clip_width), int(clip_height))
+                )
+                
+                # Escalar o recorte para o tamanho da tela
+                recorte_escalado = pygame.transform.scale(
+                    recorte_original,
+                    (int(clip_width * escala_x), int(clip_height * escala_y))
+                )
+                
+                # Calcular onde desenhar na tela
+                # Se o retângulo original está parcialmente fora, ajustar a posição
+                offset_x_tela = 0
+                offset_y_tela = 0
+                
+                # Se parte do retângulo está à esquerda da pista (r_original.left < 0),
+                # a parte visível deve ser desenhada mais à direita na tela
+                if r_original.left < 0:
+                    # Calcular quanto está fora (em pixels do mundo)
+                    pixels_fora_x = -r_original.left
+                    # Converter para pixels da tela
+                    offset_x_tela = int(pixels_fora_x * escala_x)
+                
+                # Mesmo para Y
+                if r_original.top < 0:
+                    pixels_fora_y = -r_original.top
+                    offset_y_tela = int(pixels_fora_y * escala_y)
+                
+                # Se parte do retângulo está à direita ou abaixo da pista,
+                # não precisa ajustar (já está na posição correta)
+                
+                # Desenhar o recorte na posição correta
+                superficie_tela.blit(recorte_escalado, (offset_x_tela, offset_y_tela))
+                
+            except (ValueError, pygame.error) as e:
+                # Se houver erro ao recortar, apenas não desenhar (já está preto)
+                pass
     
     def esta_visivel(self, x_mundo, y_mundo, margem=0):
         """Verificar se um objeto está visível na tela (com margem)."""

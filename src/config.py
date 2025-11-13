@@ -116,10 +116,6 @@ def obter_caminho_checkpoints():
         return MAPAS_DISPONIVEIS[MAPA_ATUAL]["arquivo_checkpoints"]
     return os.path.join(DIR_MAPS_GUIDES, "Map_1_checkpoints.json")
 
-def obter_waypoints_fallback():
-    if MAPA_ATUAL in MAPAS_DISPONIVEIS:
-        return MAPAS_DISPONIVEIS[MAPA_ATUAL]["waypoints_fallback"]
-    return [(640, 360), (800, 200), (1000, 400), (800, 600), (400, 600), (200, 400), (400, 200), (600, 300)]
 
 def recarregar_mapas():
     """Recarrega a lista de mapas escaneando novamente a pasta"""
@@ -255,7 +251,7 @@ ACEL_BASE                = 0.06  # Reduzido para aceleração mais suave
 
 # ---------- Turbo ----------
 TURBO_FORCA_IMPULSO = 4.0  # Aumentado para dar mais impulso
-TURBO_FATOR        = 1.6  # Aumentado significativamente (60% de boost) para dar ganho real
+TURBO_FATOR        = 200.0  # Aumentado para 200.0x (19900% de boost) - EXTREMAMENTE PODEROSO
 TURBO_DURACAO_S    = 1.2   # Aumentado de 0.9 para 1.2 (dura mais tempo)
 TURBO_COOLDOWN_S   = 3.0   # Aumentado de 2.5 para 3.0 (cooldown maior)
 
@@ -270,12 +266,12 @@ CONFIGURACOES = {
         "musica_habilitada": True,
         "musica_no_menu": True,
         "musica_no_jogo": True,
-        "musica_aleatorIA": False
+        "musica_aleatoria": False
     },
     "video": {
         "resolucao": (1280, 720),
         "fullscreen": False,
-        "tela_cheIA_sem_bordas": False,
+        "tela_cheia_sem_bordas": False,
         "vsync": False,  # Desabilitado para melhor FPS
         "fps_max": 120,  # Reduzido para 120 FPS para melhor performance
         "qualidade_alta": False,  # Padrão para melhor performance

@@ -132,7 +132,7 @@
       ],
       "posicao_oficina": [
         240,
-        308
+        310
       ]
     },
     {
@@ -142,12 +142,12 @@
         240
       ],
       "tamanho_oficina": [
-        720,
+        705,
         485
       ],
       "posicao_oficina": [
-        242,
-        230
+        244,
+        236
       ]
     },
     {
@@ -161,8 +161,8 @@
         705
       ],
       "posicao_oficina": [
-        147,
-        86
+        148,
+        102
       ]
     },
     {
@@ -176,8 +176,23 @@
         675
       ],
       "posicao_oficina": [
-        153,
-        196
+        163,
+        204
+      ]
+    },
+    {
+      "prefixo_cor": "Car13",
+      "posicao": [
+        520,
+        260
+      ],
+      "tamanho_oficina": [
+        725,
+        480
+      ],
+      "posicao_oficina": [
+        246,
+        266
       ]
     }
   ]
