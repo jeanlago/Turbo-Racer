@@ -999,6 +999,120 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     jogo_terminado = True
                     pontuacao_final = drift_scoring.points
 
+        if tipo_jogo == TipoJogo.CORRIDA and corrida.iniciada:
+            if modo_jogo == ModoJogo.DOIS_JOGADORES:
+                if not tela_fim_mostrada_p1 and corrida.finalizou.get(carro1, False):
+                    vencedor_p1 = None
+                    recompensa_dinheiro_p1 = 0
+                    posicao_jogador_p1 = None
+                    
+                    todos_carros = [c for c in carros if c is not None]
+                    posicao_jogador_p1 = obter_posicao_jogador(carro1, todos_carros)
+                    
+                    if posicao_jogador_p1 == 1:
+                        vencedor_p1 = "JOGADOR 1 VENCEU!"
+                        recompensa_base = 150
+                        if dificuldade_ia == "facil":
+                            recompensa_dinheiro_p1 = recompensa_base
+                        elif dificuldade_ia == "medio":
+                            recompensa_dinheiro_p1 = int(recompensa_base * 1.5)
+                        else:
+                            recompensa_dinheiro_p1 = int(recompensa_base * 2.0)
+                    else:
+                        vencedor_p1 = "CORRIDA FINALIZADA!"
+                        recompensa_dinheiro_p1 = 30
+                    
+                    if not hasattr(principal, '_recompensa_corrida_p1_calculada'):
+                        gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro_p1)
+                        principal._recompensa_corrida_p1_calculada = recompensa_dinheiro_p1
+                    else:
+                        recompensa_dinheiro_p1 = principal._recompensa_corrida_p1_calculada
+                    
+                    tela_fim_mostrada_p1 = True
+                    trofeu_p1 = obter_trofeu_por_posicao(posicao_jogador_p1) if posicao_jogador_p1 else trofeu_vazio
+                    
+                    if posicao_jogador_p1 is not None:
+                        tempo_final_p1 = corrida.tempo_final.get(carro1)
+                        if tempo_final_p1 is not None:
+                            numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                            
+                            if gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p1):
+                                print(f"Novo recorde na pista {numero_pista}: {tempo_final_p1:.2f}s")
+                            
+                            if posicao_jogador_p1 == 1:
+                                gerenciador_progresso.registrar_trofeu(numero_pista, "ouro")
+                            elif posicao_jogador_p1 == 2:
+                                gerenciador_progresso.registrar_trofeu(numero_pista, "prata")
+                            elif posicao_jogador_p1 == 3:
+                                gerenciador_progresso.registrar_trofeu(numero_pista, "bronze")
+                    
+                    estado_fim_jogo_p1 = [
+                        vencedor_p1,
+                        "CORRIDA FINALIZADA!",
+                        trofeu_p1,
+                        posicao_jogador_p1,
+                        None,
+                        recompensa_dinheiro_p1,
+                        0,
+                        [0.0, 0.0, 0.0]
+                    ]
+                
+                if carro2 is not None and not tela_fim_mostrada_p2 and corrida.finalizou.get(carro2, False):
+                    vencedor_p2 = None
+                    recompensa_dinheiro_p2 = 0
+                    posicao_jogador_p2 = None
+                    
+                    todos_carros = [c for c in carros if c is not None]
+                    posicao_jogador_p2 = obter_posicao_jogador(carro2, todos_carros)
+                    
+                    if posicao_jogador_p2 == 1:
+                        vencedor_p2 = "JOGADOR 2 VENCEU!"
+                        recompensa_base = 150
+                        if dificuldade_ia == "facil":
+                            recompensa_dinheiro_p2 = recompensa_base
+                        elif dificuldade_ia == "medio":
+                            recompensa_dinheiro_p2 = int(recompensa_base * 1.5)
+                        else:
+                            recompensa_dinheiro_p2 = int(recompensa_base * 2.0)
+                    else:
+                        vencedor_p2 = "CORRIDA FINALIZADA!"
+                        recompensa_dinheiro_p2 = 30
+                    
+                    if not hasattr(principal, '_recompensa_corrida_p2_calculada'):
+                        gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro_p2)
+                        principal._recompensa_corrida_p2_calculada = recompensa_dinheiro_p2
+                    else:
+                        recompensa_dinheiro_p2 = principal._recompensa_corrida_p2_calculada
+                    
+                    tela_fim_mostrada_p2 = True
+                    trofeu_p2 = obter_trofeu_por_posicao(posicao_jogador_p2) if posicao_jogador_p2 else trofeu_vazio
+                    
+                    if posicao_jogador_p2 is not None:
+                        tempo_final_p2 = corrida.tempo_final.get(carro2)
+                        if tempo_final_p2 is not None:
+                            numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                            
+                            if gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p2):
+                                print(f"Novo recorde na pista {numero_pista}: {tempo_final_p2:.2f}s")
+                            
+                            if posicao_jogador_p2 == 1:
+                                gerenciador_progresso.registrar_trofeu(numero_pista, "ouro")
+                            elif posicao_jogador_p2 == 2:
+                                gerenciador_progresso.registrar_trofeu(numero_pista, "prata")
+                            elif posicao_jogador_p2 == 3:
+                                gerenciador_progresso.registrar_trofeu(numero_pista, "bronze")
+                    
+                    estado_fim_jogo_p2 = [
+                        vencedor_p2,
+                        "CORRIDA FINALIZADA!",
+                        trofeu_p2,
+                        posicao_jogador_p2,
+                        None,
+                        recompensa_dinheiro_p2,
+                        0,
+                        [0.0, 0.0, 0.0]
+                    ]
+
         alguem_venceu = corrida.alguem_finalizou()
 
         while acumulador_dt >= dt_fixo:
@@ -1318,15 +1432,15 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         tela.blit(fundo_texto, (texto_rect.x - 4, texto_rect.y - 2))
                         tela.blit(texto_checkpoint, texto_rect)
 
-            if mostrar_hud:
-                if modo_jogo == ModoJogo.DOIS_JOGADORES and carro2 is not None:
-                    metade_largura = LARGURA // 2
-                    
-                    superficie_hud_p1 = pygame.Surface((metade_largura, ALTURA), pygame.SRCALPHA)
-                    hud.desenhar_hud_completo(superficie_hud_p1, carro1, dt, offset_x=0)
-                    tela.blit(superficie_hud_p1, (0, 0))
-                    
-                    pontuacoes_alvo = None
+        if mostrar_hud:
+            if modo_jogo == ModoJogo.DOIS_JOGADORES and carro2 is not None:
+                metade_largura = LARGURA // 2
+                
+                superficie_hud_p1 = pygame.Surface((metade_largura, ALTURA), pygame.SRCALPHA)
+                hud.desenhar_hud_completo(superficie_hud_p1, carro1, dt, offset_x=0)
+                tela.blit(superficie_hud_p1, (0, 0))
+                
+                pontuacoes_alvo = None
                 if tipo_jogo == TipoJogo.DRIFT:
                     num_checkpoints = len(checkpoints) if checkpoints else 19
                     pontuacoes_alvo = obter_pontuacoes_alvo(num_checkpoints, voltas_objetivo, dificuldade_ia)
@@ -1389,36 +1503,35 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 
                 hud.desenhar_aviso_contra_mao(tela, carro1, dt)
 
-
-            if jogo_terminado and tipo_jogo == TipoJogo.DRIFT and not tela_fim_mostrada:
-                if not hasattr(principal, '_recompensa_drift_calculada'):
-                    recompensa_drift = int(pontuacao_final / 200)
-                    gerenciador_progresso.adicionar_dinheiro(recompensa_drift)
-                    
-                    numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
-                    chave_recorde = f"{numero_pista}_{voltas_objetivo}"
-                    if gerenciador_progresso.registrar_recorde_drift(chave_recorde, pontuacao_final):
-                        print(f"Novo recorde de drift na pista {numero_pista} ({voltas_objetivo} voltas): {pontuacao_final:.0f} pontos")
-                    
-                    principal._recompensa_drift_calculada = recompensa_drift
-                else:
-                    recompensa_drift = principal._recompensa_drift_calculada
+        if jogo_terminado and tipo_jogo == TipoJogo.DRIFT and not tela_fim_mostrada:
+            if not hasattr(principal, '_recompensa_drift_calculada'):
+                recompensa_drift = int(pontuacao_final / 200)
+                gerenciador_progresso.adicionar_dinheiro(recompensa_drift)
                 
-                tela_fim_mostrada = True
-                num_checkpoints = len(checkpoints) if checkpoints else 19
-                pontuacoes_alvo = obter_pontuacoes_alvo(num_checkpoints, voltas_objetivo, dificuldade_ia)
-                trofeu_drift = obter_trofeu_por_pontuacao(pontuacao_final, pontuacoes_alvo)
+                numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                chave_recorde = f"{numero_pista}_{voltas_objetivo}"
+                if gerenciador_progresso.registrar_recorde_drift(chave_recorde, pontuacao_final):
+                    print(f"Novo recorde de drift na pista {numero_pista} ({voltas_objetivo} voltas): {pontuacao_final:.0f} pontos")
                 
-                estado_fim_jogo = [
-                    "DRIFT FINALIZADO!",
-                    "TODOS OS CHECKPOINTS COLETADOS!",
-                    trofeu_drift,
-                    None,
-                    pontuacao_final,
-                    recompensa_drift,
-                    0,
-                    [0.0, 0.0, 0.0]
-                ]
+                principal._recompensa_drift_calculada = recompensa_drift
+            else:
+                recompensa_drift = principal._recompensa_drift_calculada
+            
+            tela_fim_mostrada = True
+            num_checkpoints = len(checkpoints) if checkpoints else 19
+            pontuacoes_alvo = obter_pontuacoes_alvo(num_checkpoints, voltas_objetivo, dificuldade_ia)
+            trofeu_drift = obter_trofeu_por_pontuacao(pontuacao_final, pontuacoes_alvo)
+            
+            estado_fim_jogo = [
+                "DRIFT FINALIZADO!",
+                "TODOS OS CHECKPOINTS COLETADOS!",
+                trofeu_drift,
+                None,
+                pontuacao_final,
+                recompensa_drift,
+                0,
+                [0.0, 0.0, 0.0]
+            ]
 
             if mostrar_drift_hud and tipo_jogo == TipoJogo.DRIFT:
                 fonte_drift = pygame.font.Font(None, 24)

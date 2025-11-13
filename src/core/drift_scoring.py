@@ -7,9 +7,9 @@ class DriftScoring:
     """
     
     def __init__(self):
-        # Parâmetros básicos (muito mais permissivos)
-        self.SPEED_MIN = 3.0   # Velocidade mínima para drift (km/h) - muito mais sensível
-        self.ANGLE_MIN = 0.5   # Ângulo mínimo para drift (graus) - extremamente sensível
+        # Parâmetros básicos
+        self.SPEED_MIN = 8.0   # Velocidade mínima para drift (km/h) - otimizado para permitir drift normal
+        self.ANGLE_MIN = 0.5   # Ângulo mínimo para drift (graus)
         
         # Sistema de combo estilo CarX Drift Racing
         self.MULTIPLIERS = [1.0, 2.0, 3.0, 4.0, 5.0]  # x1, x2, x3, x4, x5
@@ -32,7 +32,7 @@ class DriftScoring:
         self.last_drift_activated = False
         
         # Taxa de pontos base (aumentada significativamente)
-        self.base_point_rate = 2000.0  # Pontos por segundo no nível 1 - aumentado de 500 para 2000
+        self.base_point_rate = 10000.0  # Pontos por segundo no nível 1 - aumentado para 10000
         
         # Clipping zones (para compatibilidade)
         self.clipping_zones = []
@@ -60,7 +60,8 @@ class DriftScoring:
                 self._reset_combo()
             return
         
-        # Detectar se está derrapando - baseado APENAS em skidmarks + velocidade + ângulo
+        # Detectar se está derrapando - baseado em skidmarks + velocidade + ângulo
+        # Exige velocidade mínima para evitar ganhar pontos apenas fazendo "zerinho"
         self.is_drifting = has_skidmarks and speed_kmh >= self.SPEED_MIN and angle_deg >= self.ANGLE_MIN
         
         # Mecânicas de perda de combo estilo CarX

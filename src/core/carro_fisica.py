@@ -58,15 +58,15 @@ class CarroFisica:
         self.engine_force    = 12000.0
         self.brake_force     = 11000.0
         self.handbrake_force = 12000.0
-        self.drag            = 0.0009
-        self.roll_res        = 0.10
+        self.drag            = 0.0002  # Reduzido de 0.0009 para permitir velocidades maiores
+        self.roll_res        = 0.02    # Reduzido de 0.10 para permitir velocidades maiores
         self.downforce_k     = 0.0
         # Atrito de rolamento base (sempre ativo, faz o carro desacelerar naturalmente)
         # Reduzido para não limitar velocidade máxima
-        self.friction_base   = 0.05  # Força de atrito base (5% da velocidade por segundo)
+        self.friction_base   = 0.02  # Reduzido de 0.05 para 0.02 para permitir velocidades maiores
 
         # forças separadas p/ frente e ré + limite de ré
-        self.engine_force_fwd = 90000.0
+        self.engine_force_fwd = 250000.0  # Aumentado para permitir velocidades de ~200 km/h
         self.engine_force_rev = 8000.0  # Reduzido para acelerar mais devagar na ré
         # V_TOP_REV em px/s: para ~40 km/h máximo com ARCADE_SPEED_MULT=2.5 e PXPS_TO_KMH=1.0
         # 40 km/h / (2.5 * 1.0) = 16 px/s
@@ -77,8 +77,8 @@ class CarroFisica:
         self.min_speed_oversteer = 100.0
 
         # limites de velocidade
-        self.V_TOP  = 750.0
-        self.V_SOFT = 0.95 * self.V_TOP
+        self.V_TOP  = 1200.0  # Aumentado para permitir velocidades de ~200 km/h
+        self.V_SOFT = 0.98 * self.V_TOP  # Aumentado de 0.95 para 0.98 para ser menos restritivo
 
         # direção e estabilidade
         self.steer_rad_max = math.radians(42.0)  # ★ antes 46: menos lock → mais estável
@@ -539,10 +539,10 @@ class CarroFisica:
             # Reduzir atrito em velocidades altas para não limitar velocidade máxima
             # Em baixas velocidades: atrito normal, em altas: atrito reduzido
             speed_factor = 1.0
-            if abs(v_long) > 200.0:  # Acima de ~200 km/h (200 px/s * 2.5 = 500 km/h, mas vamos usar 200 px/s como referência)
-                # Reduzir atrito progressivamente em velocidades muito altas
-                excesso = abs(v_long) - 200.0
-                speed_factor = max(0.3, 1.0 - (excesso / 300.0) * 0.7)  # Reduzir até 30% do atrito
+            if abs(v_long) > 100.0:  # Acima de ~100 px/s (começar a reduzir atrito mais cedo)
+                # Reduzir atrito progressivamente em velocidades altas
+                excesso = abs(v_long) - 100.0
+                speed_factor = max(0.2, 1.0 - (excesso / 200.0) * 0.8)  # Reduzir até 20% do atrito
             
             # Com turbo ativo, reduzir atrito ainda mais (95% menos atrito)
             if self.turbo_ativo:
@@ -615,8 +615,8 @@ class CarroFisica:
             # Sem turbo: limite normal
             if speed > self.V_SOFT:
                 cut = (speed - self.V_SOFT) / max(1e-6, self.V_TOP - self.V_SOFT)
-                v_long *= (1.0 - 0.25*cut)
-                v_lat  *= (1.0 - 0.25*cut)
+                v_long *= (1.0 - 0.10*cut)  # Reduzido de 0.25 para 0.10 para ser menos restritivo
+                v_lat  *= (1.0 - 0.10*cut)
             if speed > self.V_TOP:
                 esc = self.V_TOP / speed
                 v_long *= esc
@@ -896,15 +896,10 @@ class CarroFisica:
         velocidade_com_mult = abs(v_long) * ARCADE_SPEED_MULT
         
         # Converter para km/h: 
-        # v_long está em px/s, e V_TOP = 750 px/s é o limite máximo teórico
-        # Na prática, v_long real chega a valores menores devido às limitações físicas
-        # Se o velocímetro está mostrando apenas 40 km/h como máxima, precisamos aumentar muito o fator
-        # Ajustar para que velocidades típicas resultem em valores de 0-180 km/h
-        # Se velocidade_com_mult típica é ~200 px/s e queremos mostrar até 180 km/h:
-        # PXPS_TO_KMH = 180 / 200 = 0.9
-        # Mas vamos usar um valor maior para garantir que chegue a 180 km/h mesmo em velocidades menores
-        PXPS_TO_KMH = 1.0  # Aumentado drasticamente para que o velocímetro mostre valores corretos
-        # Isso faz com que velocidade_com_mult de ~180 px/s resulte em 180 km/h
+        # v_long está em px/s, e V_TOP = 1000 px/s é o limite máximo teórico
+        # Com as otimizações (mais potência, menos arrasto), o carro pode atingir velocidades maiores
+        # PXPS_TO_KMH = 1.0 faz com que velocidade_com_mult de ~200 px/s resulte em ~200 km/h
+        PXPS_TO_KMH = 1.0
         self.velocidade_kmh = velocidade_com_mult * PXPS_TO_KMH
         self.velocidade = v_long  # mantém a telemetria longitudinal se precisar
 
