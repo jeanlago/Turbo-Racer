@@ -1,6 +1,6 @@
 # 🔧 API Reference - Turbo Racer
 
-Referência completa da API do Turbo Racer v3.1.0 (Novembro 2025).
+Referência completa da API do Turbo Racer v3.2.1 (Novembro 2025).
 
 ## 📋 Índice
 
@@ -50,12 +50,12 @@ src/
     ├── pista_grip.py      # Colisão pixel-based estilo GRIP
     ├── laps_grip.py       # Checkpoints e dados das pistas GRIP
     ├── camera.py          # Sistema de câmera dinâmica
-    ├── corrida.py         # Gerenciamento de corrida
+    ├── corrida.py         # Gerenciamento de corrida (GerenciadorCorrida)
     ├── ia.py              # Inteligência artificial (Pure Pursuit)
     ├── checkpoint_manager.py # Editor visual de checkpoints
     ├── menu.py            # Sistema de menus completo
     ├── hud.py             # Sistema de HUD dinâmico
-    ├── musica.py          # Gerenciador de música
+    ├── musica.py          # Gerenciador de música (GerenciadorMusica)
     ├── particulas.py      # Efeitos de partículas
     ├── skidmarks.py       # Sistema de marcas de pneu
     ├── drift_scoring.py   # Sistema de pontuação de drift
@@ -111,20 +111,71 @@ class Camera:
 - `largura_tela`, `altura_tela` - Dimensões da tela
 - `largura_mundo`, `altura_mundo` - Dimensões do mundo
 
+### `GerenciadorCorrida` - Gerenciamento de Corrida
+
+```python
+class GerenciadorCorrida:
+    def __init__(self, fonte=None, checkpoints=None, voltas_objetivo=1)
+    def registrar_carro(self, carro)
+    def atualizar_progresso_carro(self, carro)
+    def atualizar_contagem(self, dt)
+    def atualizar_tempo(self, dt, jogo_pausado=False)
+    def pode_controlar(self)
+    def finalizou(self, carro)
+    def desenhar_semaforo(self, tela, largura, altura)
+```
+
+**Propriedades:**
+- `iniciada` - Se a corrida foi iniciada (após contagem regressiva)
+- `checkpoints` - Lista de checkpoints da corrida
+- `voltas_objetivo` - Número de voltas necessárias
+- `proximo_checkpoint` - Dicionário carro -> índice do próximo checkpoint
+- `voltas` - Dicionário carro -> número de voltas completadas
+- `finalizou` - Dicionário carro -> se finalizou a corrida
+- `tempo_final` - Dicionário carro -> tempo final da corrida
+
+### `GerenciadorMusica` - Gerenciador de Música
+
+```python
+class GerenciadorMusica:
+    def __init__(self)
+    def carregar_musicas(self)
+    def tocar_musica(self, indice=None)
+    def parar_musica(self)
+    def proxima_musica(self)
+    def musica_anterior(self)
+    def musica_aleatoria(self)
+    def definir_volume(self, volume)
+    def verificar_fim_musica(self)
+    def obter_nome_musica_atual(self)
+```
+
+**Propriedades:**
+- `musicas` - Lista de músicas disponíveis
+- `musica_atual` - Índice da música atual
+- `volume` - Volume atual (0.0 - 1.0)
+- `musica_tocando` - Se há música tocando
+- `nome_musica_atual` - Nome da música atual
+
+**Instância Global:**
+- `gerenciador_musica` - Instância global do gerenciador de música
+
 ### `IA` - Inteligência Artificial (Pure Pursuit)
 
 ```python
 class IA:
-    def __init__(self, checkpoints, nome="IA")
-    def controlar(self, carro, mask_guias, is_on_track, dt)
+    def __init__(self, checkpoints, nome="IA", dificuldade="medio")
+    def controlar(self, carro, mask_guias, is_on_track, dt, superficie_pista_renderizada, corrida_iniciada=True)
     def desenhar_debug(self, superficie, camera=None, mostrar_todos_checkpoints=False)
     def _calcular_steering_angle(self, carro, ponto_alvo)
     def _encontrar_ponto_lookahead(self, carro, checkpoints)
+    def _configurar_dificuldade(self)
 ```
 
 **Propriedades:**
 - `checkpoints` - Lista de pontos de navegação
 - `nome` - Nome identificador da IA
+- `dificuldade` - Dificuldade da IA ("facil", "medio", "dificil")
 - `debug` - Modo de debug visual
 - `ponto_alvo` - Ponto atual de destino
 - `lookahead_distance` - Distância de antecipação
@@ -308,7 +359,7 @@ checkpoints = [(100, 100), (200, 200), (300, 300)]
 ia = IA(checkpoints, nome="IA-1")
 
 # Controlar carro
-ia.controlar(carro, mask_guias, is_on_track, dt)
+ia.controlar(carro, mask_guias, None, dt, superficie_pista_renderizada, corrida_iniciada=True)
 ```
 
 ### Sistema de Câmera Dinâmica
@@ -439,6 +490,6 @@ tela.blit(superficie_p2, (metade_largura, 0))
 
 ---
 
-**Versão:** 2.1.0  
-**Última atualização:** Dezembro 2024  
+**Versão:** 3.2.1  
+**Última atualização:** Novembro 2025  
 **Desenvolvedores:** Jean Marins e Jayson Sales

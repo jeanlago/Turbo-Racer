@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import LARGURA, ALTURA, FPS, CAMINHO_MENU, CONFIGURACOES, MAPAS_DISPONIVEIS
 import main
-from core.musica import gerencIAdor_musica
+from core.musica import gerenciador_musica
 from core.popup_musica import popup_musica
 from core.game_modes import ModoJogo, TipoJogo
 from core.progresso import gerenciador_progresso
@@ -302,15 +302,15 @@ def render_text(text, size, color=(255,255,255), bold=True, pixel_style=True):
                 except:
                     continue
     else:
-        font = pygame.font.SysFont("arIAl", size, bold=bold)
+        font = pygame.font.SysFont("arial", size, bold=bold)
     
     # Renderizar texto com contorno para estilo pixel art
     if pixel_style and size >= 16:
-        # CrIAr contorno preto para texto pixel art
+        # Criar contorno preto para texto pixel art
         text_surface = font.render(text, True, color)
         outline_surface = font.render(text, True, (0, 0, 0))
         
-        # CrIAr superfície maior para o contorno
+        # Criar superfície maior para o contorno
         outline_width = 2 if size < 32 else 3
         final_surface = pygame.Surface((text_surface.get_width() + outline_width * 2, text_surface.get_height() + outline_width * 2), pygame.SRCALPHA)
         
@@ -350,7 +350,7 @@ def splash_screen(screen) -> bool:
         dt = clock.tick(FPS) / 1000.0
         
         # Atualizar música (sem popup)
-        gerencIAdor_musica.verificar_fim_musica()
+        gerenciador_musica.verificar_fim_musica()
         
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
@@ -437,7 +437,7 @@ def menu_loop(screen) -> Escolha:
         dt = clock.tick(FPS) / 1000.0  # Converter para segundos
         
         # Atualizar música
-        gerencIAdor_musica.verificar_fim_musica()
+        gerenciador_musica.verificar_fim_musica()
         popup_musica.atualizar(dt)
         
         # Verificar hover do pop-up
@@ -509,14 +509,14 @@ def menu_loop(screen) -> Escolha:
                     return Escolha.SAIR
                 elif ev.key == pygame.K_m:
                     # Próxima música
-                    gerencIAdor_musica.proxima_musica()
-                    if gerencIAdor_musica.musica_tocando:
-                        popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
+                    gerenciador_musica.proxima_musica()
+                    if gerenciador_musica.musica_tocando:
+                        popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
                 elif ev.key == pygame.K_n:
                     # Música anterior
-                    gerencIAdor_musica.musica_anterior()
-                    if gerencIAdor_musica.musica_tocando:
-                        popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
+                    gerenciador_musica.musica_anterior()
+                    if gerenciador_musica.musica_tocando:
+                        popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
             if ev.type == pygame.MOUSEMOTION:
                 mx, my = ev.pos
                 # detecta hover do mouse nas opções
@@ -543,13 +543,13 @@ def menu_loop(screen) -> Escolha:
                 # Verificar clique no pop-up de música primeiro
                 clique_popup = popup_musica.verificar_clique(ev.pos[0], ev.pos[1])
                 if clique_popup == "anterior":
-                    gerencIAdor_musica.musica_anterior()
-                    if gerencIAdor_musica.musica_tocando:
-                        popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
+                    gerenciador_musica.musica_anterior()
+                    if gerenciador_musica.musica_tocando:
+                        popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
                 elif clique_popup == "proximo":
-                    gerencIAdor_musica.proxima_musica()
-                    if gerencIAdor_musica.musica_tocando:
-                        popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
+                    gerenciador_musica.proxima_musica()
+                    if gerenciador_musica.musica_tocando:
+                        popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
                 else:
                     # Se não clicou no popup, verificar se clicou em algum botão
                     mouse_x, mouse_y = ev.pos
@@ -607,8 +607,8 @@ def menu_loop(screen) -> Escolha:
             # Cores base do botão
             if sel:
                 # Botão selecionado (teclado)
-                base_cor_fundo = (0, 150, 255, 120)  # Azul cIAno vibrante
-                base_cor_borda = (0, 200, 255)  # Borda azul cIAno
+                base_cor_fundo = (0, 150, 255, 120)  # Azul ciano vibrante
+                base_cor_borda = (0, 200, 255)  # Borda azul ciano
                 base_cor_texto = (255, 255, 255)  # Texto branco
             else:
                 # Botão normal
@@ -618,9 +618,9 @@ def menu_loop(screen) -> Escolha:
             
             # Aplicar animação de hover
             if hover_progress > 0:
-                # Cores de hover (azul cIAno vibrante)
-                hover_cor_fundo = (0, 150, 255, 120)  # Azul cIAno
-                hover_cor_borda = (0, 200, 255)  # Borda azul cIAno
+                # Cores de hover (azul ciano vibrante)
+                hover_cor_fundo = (0, 150, 255, 120)  # Azul ciano
+                hover_cor_borda = (0, 200, 255)  # Borda azul ciano
                 hover_cor_texto = (255, 255, 255)  # Texto branco
                 
                 # Interpolar entre cores base e hover
@@ -670,7 +670,7 @@ def menu_loop(screen) -> Escolha:
             if hover_progress > 0:
                 glow_intensity = int(30 * hover_progress)
                 glow_surface = pygame.Surface((scaled_width + 10, scaled_height + 10), pygame.SRCALPHA)
-                glow_surface.fill((0, 200, 255, glow_intensity))  # Glow azul cIAno
+                glow_surface.fill((0, 200, 255, glow_intensity))  # Glow azul ciano
                 screen.blit(glow_surface, (x - offset_x - 5, y - offset_y - 5))
             
             if sel:
@@ -706,7 +706,7 @@ def selecionar_mapas_loop(screen):
     while True:
         dt = relogio.tick(FPS) / 1000.0
         
-        gerencIAdor_musica.verificar_fim_musica()
+        gerenciador_musica.verificar_fim_musica()
         popup_musica.atualizar(dt)
         
         # Verificar hover do pop-up
@@ -720,13 +720,13 @@ def selecionar_mapas_loop(screen):
                 # Verificar clique no pop-up de música primeiro
                 clique_popup = popup_musica.verificar_clique(event.pos[0], event.pos[1])
                 if clique_popup == "anterior":
-                    gerencIAdor_musica.musica_anterior()
-                    if gerencIAdor_musica.musica_tocando:
-                        popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
+                    gerenciador_musica.musica_anterior()
+                    if gerenciador_musica.musica_tocando:
+                        popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
                 elif clique_popup == "proximo":
-                    gerencIAdor_musica.proxima_musica()
-                    if gerencIAdor_musica.musica_tocando:
-                        popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
+                    gerenciador_musica.proxima_musica()
+                    if gerenciador_musica.musica_tocando:
+                        popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
                 else:
                     # Verificar clique nos mapas
                     mouse_x, mouse_y = event.pos
@@ -757,9 +757,9 @@ def selecionar_mapas_loop(screen):
                     return None
                 elif event.key == pygame.K_m:
                     # Próxima música
-                    gerencIAdor_musica.proxima_musica()
-                    if gerencIAdor_musica.musica_tocando:
-                        popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
+                    gerenciador_musica.proxima_musica()
+                    if gerenciador_musica.musica_tocando:
+                        popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
                 elif event.key == pygame.K_r:
                     # Recarregar mapas
                     if recarregar_mapas():
@@ -899,7 +899,7 @@ def selecionar_carros_loop(screen):
             nova_altura = int(sprite_original.get_height() * escala)
             sprite_redimensionado = pygame.transform.scale(sprite_original, (nova_largura, nova_altura))
             
-            # CrIAr canvas com tamanho individual
+            # Criar canvas com tamanho individual
             sprite = pygame.Surface((canvas_largura, canvas_altura), pygame.SRCALPHA)
             
             # Centralizar horizontalmente e posicionar na parte inferior (encostado no chão)
@@ -909,14 +909,14 @@ def selecionar_carros_loop(screen):
             
             sprites_carros[carro['prefixo_cor']] = sprite
         except:
-            # Se não conseguir carregar, crIAr um retângulo como fallback
+            # Se não conseguir carregar, criar um retângulo como fallback
             tamanho_oficina = carro.get('tamanho_oficina', (600, 300))
             sprite = pygame.Surface(tamanho_oficina, pygame.SRCALPHA)
             pygame.draw.rect(sprite, (100, 100, 100), (0, 0, tamanho_oficina[0], tamanho_oficina[1]))
             sprites_carros[carro['prefixo_cor']] = sprite
     
-    def inicIAr_transicao(direcao, carro_atual_idx):
-        """InicIA uma transição entre carros"""
+    def iniciar_transicao(direcao, carro_atual_idx):
+        """Inicia uma transição entre carros"""
         nonlocal transicao_ativa, transicao_tempo, transicao_direcao, carro_atual_pos, carro_proximo_pos, carro_anterior
         transicao_ativa = True
         transicao_tempo = 0.0
@@ -1051,18 +1051,18 @@ def selecionar_carros_loop(screen):
                 elif ev.key in (pygame.K_LEFT, pygame.K_a):
                     if not transicao_ativa:  # Só permite navegação se não estiver em transição
                         if fase_selecao == 1:
-                            inicIAr_transicao(-1, carro_p1)  # Esquerda para direita
+                            iniciar_transicao(-1, carro_p1)  # Esquerda para direita
                             carro_p1 = (carro_p1 - 1) % len(CARROS_DISPONIVEIS)
                         elif fase_selecao == 2:
-                            inicIAr_transicao(-1, carro_p2)  # Esquerda para direita
+                            iniciar_transicao(-1, carro_p2)  # Esquerda para direita
                             carro_p2 = (carro_p2 - 1) % len(CARROS_DISPONIVEIS)
                 elif ev.key in (pygame.K_RIGHT, pygame.K_d):
                     if not transicao_ativa:  # Só permite navegação se não estiver em transição
                         if fase_selecao == 1:
-                            inicIAr_transicao(1, carro_p1)  # Direita para esquerda
+                            iniciar_transicao(1, carro_p1)  # Direita para esquerda
                             carro_p1 = (carro_p1 + 1) % len(CARROS_DISPONIVEIS)
                         elif fase_selecao == 2:
-                            inicIAr_transicao(1, carro_p2)  # Direita para esquerda
+                            iniciar_transicao(1, carro_p2)  # Direita para esquerda
                             carro_p2 = (carro_p2 + 1) % len(CARROS_DISPONIVEIS)
                 elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
                     if not transicao_ativa:  # Só permite confirmação se não estiver em transição
@@ -1450,7 +1450,7 @@ def submenu_audio(screen):
         ("MÚSICA HABILITADA", "musica_habilitada"),
         ("MÚSICA NO MENU", "musica_no_menu"),
         ("MÚSICA NO JOGO", "musica_no_jogo"),
-        ("MÚSICA ALEATÓRIA", "musica_aleatorIA"),
+        ("MÚSICA ALEATÓRIA", "musica_aleatoria"),
         ("VOLUME MÚSICA", "volume_musica")
     ]
     opcao_voltar = ("VOLTAR", "voltar")
@@ -1488,7 +1488,7 @@ def submenu_audio(screen):
                     if idx >= 0:
                         opcao_atual = idx
                         chave = opcoes_audio[opcao_atual][1]
-                        if chave in ["musica_habilitada", "musica_no_menu", "musica_no_jogo", "musica_aleatorIA"]:
+                        if chave in ["musica_habilitada", "musica_no_menu", "musica_no_jogo", "musica_aleatoria"]:
                             CONFIGURACOES["audio"][chave] = not CONFIGURACOES["audio"][chave]
                             salvar_configuracoes()
             elif ev.type == pygame.KEYDOWN:
@@ -1502,7 +1502,7 @@ def submenu_audio(screen):
                     chave = opcoes_audio[opcao_atual][1]
                     if chave == "voltar":
                         return True
-                    elif chave in ["musica_habilitada", "musica_no_menu", "musica_no_jogo", "musica_aleatorIA"]:
+                    elif chave in ["musica_habilitada", "musica_no_menu", "musica_no_jogo", "musica_aleatoria"]:
                         CONFIGURACOES["audio"][chave] = not CONFIGURACOES["audio"][chave]
                         salvar_configuracoes()
                 elif ev.key in (pygame.K_LEFT, pygame.K_a):
@@ -1796,7 +1796,7 @@ def submenu_video(screen):
     opcoes_video = [
         ("RESOLUÇÃO", "resolucao"),
         ("TELA CHEIA", "fullscreen"),
-        ("SEM BORDAS", "tela_cheIA_sem_bordas"),
+        ("SEM BORDAS", "tela_cheia_sem_bordas"),
         ("QUALIDADE ALTA", "qualidade_alta"),
         ("VSYNC", "vsync"),
         ("FPS MÁXIMO", "fps_max"),
@@ -1842,7 +1842,7 @@ def submenu_video(screen):
                     if idx >= 0:
                         opcao_atual = idx
                         chave = opcoes_video[opcao_atual][1]
-                        if chave in ["fullscreen", "tela_cheIA_sem_bordas", "qualidade_alta", "vsync", "mostrar_fps"]:
+                        if chave in ["fullscreen", "tela_cheia_sem_bordas", "qualidade_alta", "vsync", "mostrar_fps"]:
                             CONFIGURACOES["video"][chave] = not CONFIGURACOES["video"][chave]
                             salvar_configuracoes()
             elif ev.type == pygame.MOUSEWHEEL:
@@ -1858,7 +1858,7 @@ def submenu_video(screen):
                     chave = opcoes_video[opcao_atual][1]
                     if chave == "voltar":
                         return True
-                    elif chave in ["fullscreen", "tela_cheIA_sem_bordas", "qualidade_alta", "vsync", "mostrar_fps"]:
+                    elif chave in ["fullscreen", "tela_cheia_sem_bordas", "qualidade_alta", "vsync", "mostrar_fps"]:
                         CONFIGURACOES["video"][chave] = not CONFIGURACOES["video"][chave]
                         salvar_configuracoes()
                 elif ev.key in (pygame.K_LEFT, pygame.K_a):
@@ -2057,7 +2057,7 @@ def submenu_idioma(screen):
                 elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
                     if opcoes_idioma[opcao_atual][1] == "voltar":
                         return True
-                    # aqui entrarIA a troca de idioma
+                    # aqui entraria a troca de idioma
         
         # fundo/overlay/caixa
         screen.blit(bg, (0, 0))
@@ -2396,7 +2396,7 @@ def modo_jogo_loop(screen):
         dt = clock.tick(FPS) / 1000.0
         
         # Atualizar música
-        gerencIAdor_musica.verificar_fim_musica()
+        gerenciador_musica.verificar_fim_musica()
         popup_musica.atualizar(dt)
         
         # Verificar hover do pop-up
@@ -2410,13 +2410,13 @@ def modo_jogo_loop(screen):
                 # Verificar clique no pop-up de música primeiro
                 clique_popup = popup_musica.verificar_clique(ev.pos[0], ev.pos[1])
                 if clique_popup == "anterior":
-                    gerencIAdor_musica.musica_anterior()
-                    if gerencIAdor_musica.musica_tocando:
-                        popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
+                    gerenciador_musica.musica_anterior()
+                    if gerenciador_musica.musica_tocando:
+                        popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
                 elif clique_popup == "proximo":
-                    gerencIAdor_musica.proxima_musica()
-                    if gerencIAdor_musica.musica_tocando:
-                        popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
+                    gerenciador_musica.proxima_musica()
+                    if gerenciador_musica.musica_tocando:
+                        popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
                 else:
                     # Verificar clique nas opções
                     mouse_x, mouse_y = ev.pos
@@ -2520,14 +2520,14 @@ def modo_jogo_loop(screen):
                     continue
                 elif ev.key == pygame.K_m:
                     # Próxima música
-                    gerencIAdor_musica.proxima_musica()
-                    if gerencIAdor_musica.musica_tocando:
-                        popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
+                    gerenciador_musica.proxima_musica()
+                    if gerenciador_musica.musica_tocando:
+                        popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
                 elif ev.key == pygame.K_n:
                     # Música anterior
-                    gerencIAdor_musica.musica_anterior()
-                    if gerencIAdor_musica.musica_tocando:
-                        popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
+                    gerenciador_musica.musica_anterior()
+                    if gerenciador_musica.musica_tocando:
+                        popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
         
         # Atualizar animações de hover
         for i in range(len(opcoes_modo)):
@@ -2869,7 +2869,7 @@ def selecionar_fase_loop(screen):
     while True:
         dt = clock.tick(FPS) / 1000.0
         
-        gerencIAdor_musica.verificar_fim_musica()
+        gerenciador_musica.verificar_fim_musica()
         popup_musica.atualizar(dt)
         
         mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -2929,9 +2929,9 @@ def selecionar_fase_loop(screen):
                 elif ev.key == pygame.K_RETURN or ev.key == pygame.K_SPACE:
                     return fase_selecionada
                 elif ev.key == pygame.K_m:
-                    gerencIAdor_musica.proxima_musica()
-                    if gerencIAdor_musica.musica_tocando:
-                        popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
+                    gerenciador_musica.proxima_musica()
+                    if gerenciador_musica.musica_tocando:
+                        popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
         
         # Desenhar
         screen.blit(bg, (0, 0))
@@ -3085,7 +3085,7 @@ def recordes_loop(screen):
     while True:
         dt = clock.tick(FPS) / 1000.0
         
-        gerencIAdor_musica.verificar_fim_musica()
+        gerenciador_musica.verificar_fim_musica()
         popup_musica.atualizar(dt)
         
         mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -3278,14 +3278,14 @@ def run():
     # Aplicar configurações de vídeo
     resolucao = CONFIGURACOES["video"]["resolucao"]
     fullscreen = CONFIGURACOES["video"]["fullscreen"]
-    tela_cheIA_sem_bordas = CONFIGURACOES["video"]["tela_cheIA_sem_bordas"]
+    tela_cheia_sem_bordas = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
     qualidade_alta = CONFIGURACOES["video"]["qualidade_alta"]
     
     # Configurar flags de display
     display_flags = 0
     if fullscreen:
         display_flags |= pygame.FULLSCREEN
-    elif tela_cheIA_sem_bordas:
+    elif tela_cheia_sem_bordas:
         display_flags |= pygame.NOFRAME
     
     # Configurar qualidade
@@ -3298,16 +3298,16 @@ def run():
     # Loop principal que mantém a janela aberta
     carro_p1, carro_p2 = 0, 1  # Valores padrão
     
-    # InicIAr música no menu se habilitada
+    # Iniciar música no menu se habilitada
     if CONFIGURACOES["audio"]["musica_habilitada"] and CONFIGURACOES["audio"]["musica_no_menu"]:
-        gerencIAdor_musica.definir_volume(CONFIGURACOES["audio"]["volume_musica"])
-        if not gerencIAdor_musica.musica_tocando:
-            if CONFIGURACOES["audio"]["musica_aleatorIA"]:
-                gerencIAdor_musica.musica_aleatorIA()
+        gerenciador_musica.definir_volume(CONFIGURACOES["audio"]["volume_musica"])
+        if not gerenciador_musica.musica_tocando:
+            if CONFIGURACOES["audio"]["musica_aleatoria"]:
+                gerenciador_musica.musica_aleatoria()
             else:
-                gerencIAdor_musica.tocar_musica()
-            if gerencIAdor_musica.musica_tocando:
-                popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
+                gerenciador_musica.tocar_musica()
+            if gerenciador_musica.musica_tocando:
+                popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
     
     # Mostrar tela de splash primeiro
     if not splash_screen(screen):
@@ -3333,19 +3333,19 @@ def run():
                 
                 # Parar música do menu se não deve tocar no jogo
                 if not CONFIGURACOES["audio"]["musica_no_jogo"]:
-                    gerencIAdor_musica.parar_musica()
-                # inicIA seu jogo original com carros selecionados e modos
+                    gerenciador_musica.parar_musica()
+                # inicia seu jogo original com carros selecionados e modos
                 main.principal(carro_p1, carro_p2, mapa_selecionado=fase_selecionada, modo_jogo=modo_jogo, tipo_jogo=tipo_jogo, voltas=voltas, dificuldade_ia=dificuldade_ia)
                 # Após o jogo, volta para o menu (não fecha a janela)
-                # ReinicIAr música do menu se habilitada
+                # Reiniciar música do menu se habilitada
                 if CONFIGURACOES["audio"]["musica_habilitada"] and CONFIGURACOES["audio"]["musica_no_menu"]:
-                    if not gerencIAdor_musica.musica_tocando:
-                        if CONFIGURACOES["audio"]["musica_aleatorIA"]:
-                            gerencIAdor_musica.musica_aleatorIA()
+                    if not gerenciador_musica.musica_tocando:
+                        if CONFIGURACOES["audio"]["musica_aleatoria"]:
+                            gerenciador_musica.musica_aleatoria()
                         else:
-                            gerencIAdor_musica.tocar_musica()
-                        if gerencIAdor_musica.musica_tocando:
-                            popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
+                            gerenciador_musica.tocar_musica()
+                        if gerenciador_musica.musica_tocando:
+                            popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
         elif escolha == Escolha.SELECIONAR_CARROS:
             # Abre tela de seleção de carros
             resultado = selecionar_carros_loop(screen)
@@ -3358,16 +3358,16 @@ def run():
             # Abre tela de opções
             opcoes_loop(screen)
             # Atualizar configurações de música após sair das opções
-            gerencIAdor_musica.definir_volume(CONFIGURACOES["audio"]["volume_musica"])
+            gerenciador_musica.definir_volume(CONFIGURACOES["audio"]["volume_musica"])
             if not CONFIGURACOES["audio"]["musica_habilitada"]:
-                gerencIAdor_musica.parar_musica()
-            elif CONFIGURACOES["audio"]["musica_habilitada"] and CONFIGURACOES["audio"]["musica_no_menu"] and not gerencIAdor_musica.musica_tocando:
-                if CONFIGURACOES["audio"]["musica_aleatorIA"]:
-                    gerencIAdor_musica.musica_aleatorIA()
+                gerenciador_musica.parar_musica()
+            elif CONFIGURACOES["audio"]["musica_habilitada"] and CONFIGURACOES["audio"]["musica_no_menu"] and not gerenciador_musica.musica_tocando:
+                if CONFIGURACOES["audio"]["musica_aleatoria"]:
+                    gerenciador_musica.musica_aleatoria()
                 else:
-                    gerencIAdor_musica.tocar_musica()
-                if gerencIAdor_musica.musica_tocando:
-                    popup_musica.mostrar(gerencIAdor_musica.obter_nome_musica_atual())
+                    gerenciador_musica.tocar_musica()
+                if gerenciador_musica.musica_tocando:
+                    popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
         elif escolha == Escolha.SAIR:
             break
     

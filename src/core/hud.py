@@ -642,7 +642,7 @@ class HUD:
         linha_altura = 25
         
         # Tempo total
-        if corrida.inicIAda:
+        if corrida.iniciada:
             tempo_total = corrida.tempo_global
             minutos = int(tempo_total // 60)
             segundos = int(tempo_total % 60)

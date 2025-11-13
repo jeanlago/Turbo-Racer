@@ -7,7 +7,33 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
-## [3.1.0] - 2025-11-XX
+## [3.2.1] - 2025-11-13
+
+### Modificado
+- **Nomenclatura de Classes e Variáveis** - Corrigidos nomes com "IA" no meio de palavras:
+  - `GerencIAdorCorrida` → `GerenciadorCorrida`
+  - `GerencIAdorMusica` → `GerenciadorMusica`
+  - `gerencIAdor_musica` → `gerenciador_musica`
+  - `inicIAda` → `iniciada`
+  - `musica_aleatorIA` → `musica_aleatoria`
+  - `tela_cheIA_sem_bordas` → `tela_cheia_sem_bordas`
+  - E outras correções similares em todo o código
+
+### Removido
+- **Código Não Utilizado** - Removidas funções e classes não utilizadas:
+  - Função `is_on_track()` (sempre retornava True)
+  - Função `obter_waypoints_fallback()` (não utilizada)
+  - Função `carregar_tempos_recorde_grip()` (não utilizada)
+  - Classe `GerencIAdorDrift` (não utilizada)
+- **Comentários Desnecessários** - Removidos comentários excessivos e docstrings redundantes
+
+### Corrigido
+- **Consistência de Nomenclatura** - Todo o código agora usa nomenclatura consistente em português
+- **Manutenibilidade** - Código mais limpo e fácil de manter
+
+---
+
+## [3.1.0] - 2025-11-11
 
 ### Adicionado
 - **Sistema GRIP Completo** - Migração completa para sistema de pistas GRIP com tiles dinâmicos
@@ -46,7 +72,7 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
-## [3.0.0] - 2025-11-XX
+## [3.0.0] - 2025-11-10
 
 ### Adicionado
 - **Sistema de Pistas GRIP** - 9 pistas estilo GRIP com tiles dinâmicos e colisão pixel-based

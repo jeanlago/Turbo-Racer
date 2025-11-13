@@ -4,7 +4,7 @@ import pygame
 from config import DIR_PROJETO, MAPAS_DISPONIVEIS, MAPA_ATUAL, obter_caminho_checkpoints
 
 class CheckpointManager:
-    """GerencIAdor de checkpoints com edição em tempo real para múltiplos mapas"""
+    """Gerenciador de checkpoints com edição em tempo real para múltiplos mapas"""
     
     def __init__(self, mapa_atual=None):
         self.checkpoints = []
@@ -39,7 +39,7 @@ class CheckpointManager:
                     self.checkpoints = json.load(f)
                 print(f"Carregados {len(self.checkpoints)} checkpoints do arquivo")
             else:
-                print("Arquivo de checkpoints não encontrado, usando lista vazIA")
+                print("Arquivo de checkpoints não encontrado, usando lista vazia")
                 self.checkpoints = []
         except Exception as e:
             print(f"Erro ao carregar checkpoints: {e}")

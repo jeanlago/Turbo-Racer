@@ -118,7 +118,7 @@ class PopupMusica:
             y2 = 15 + 14 * math.sin(math.radians(angulo))
             pygame.draw.line(self.disco_original, (255, 255, 255), (x1, y1), (x2, y2), 1)
     
-    def limpar_caracteres_especIAis(self, texto):
+    def limpar_caracteres_especiais(self, texto):
         """Remove ou substitui caracteres que causam quadradinhos"""
         if not texto:
             return texto
@@ -159,7 +159,7 @@ class PopupMusica:
                 # Tentar manter acentos comuns que funcionam
                 try:
                     # Testar se o caractere pode ser renderizado
-                    teste = pygame.font.SysFont("arIAl", 16).render(char, True, (255, 255, 255))
+                    teste = pygame.font.SysFont("arial", 16).render(char, True, (255, 255, 255))
                     texto_final += char
                 except:
                     texto_final += '?'
@@ -221,10 +221,10 @@ class PopupMusica:
         # Atualizar animação do texto deslizante
         if hasattr(self, 'nome_musica') and self.nome_musica:
             # Limpar caracteres problemáticos do nome da música
-            nome_limpo = self.limpar_caracteres_especIAis(self.nome_musica)
+            nome_limpo = self.limpar_caracteres_especiais(self.nome_musica)
             
             # Usar fonte do sistema com tamanho maior
-            fonte = pygame.font.SysFont("arIAl", 16, bold=True)
+            fonte = pygame.font.SysFont("arial", 16, bold=True)
             texto_teste = fonte.render("♪ " + nome_limpo, True, (255, 255, 255))
             self.texto_largura_total = texto_teste.get_width()
             self.texto_largura_disponivel = self.largura - 120  # Espaço disponível para o texto
@@ -369,15 +369,15 @@ class PopupMusica:
         
         # Desenhar texto com animação deslizante
         # Limpar caracteres problemáticos do texto
-        nome_limpo = self.limpar_caracteres_especIAis(self.nome_musica)
+        nome_limpo = self.limpar_caracteres_especiais(self.nome_musica)
         
         # Usar fonte do sistema com tamanho maior
-        fonte = pygame.font.SysFont("arIAl", 16, bold=True)
+        fonte = pygame.font.SysFont("arial", 16, bold=True)
         # Adicionar símbolo de música apenas para notificações de música
         prefixo = "♪ " if self.tipo_notificacao == "musica" else ""
         texto_musica = fonte.render(prefixo + nome_limpo, True, self.cor_texto)
         
-        # CrIAr uma superfície de clipping para o texto (mais espaço)
+        # Criar uma superfície de clipping para o texto (mais espaço)
         area_texto = pygame.Rect(50, 25, self.largura - 100, 20)
         clip_surface = pygame.Surface((area_texto.width, area_texto.height), pygame.SRCALPHA)
         
@@ -389,14 +389,14 @@ class PopupMusica:
         # Aplicar o clipping
         self.surface.blit(clip_surface, (area_texto.x, area_texto.y))
         
-        # Desenhar na tela principal com transparêncIA
+        # Desenhar na tela principal com transparência
         if self.alpha < 255:
-            # CrIAr uma cópIA da superfície com alpha
+            # Criar uma cópia da superfície com alpha
             surface_alpha = self.surface.copy()
             surface_alpha.set_alpha(self.alpha)
             tela.blit(surface_alpha, (self.posicao_x, self.posicao_y))
         else:
             tela.blit(self.surface, (self.posicao_x, self.posicao_y))
 
-# InstâncIA global do pop-up
+# Instância global do pop-up
 popup_musica = PopupMusica()
