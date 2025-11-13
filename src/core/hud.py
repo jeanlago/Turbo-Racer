@@ -447,10 +447,30 @@ class HUD:
         # No modo drift, mostrar pontuação ao invés de posição
         from core.game_modes import TipoJogo
         trofeu_atual = None
+        texto_multiplicador = None
+        cor_multiplicador = (200, 200, 200)
         if tipo_jogo == TipoJogo.DRIFT:
             if drift_scoring:
                 pontuacao_atual = int(drift_scoring.points)
                 texto_posicao = f"{pontuacao_atual:,}".replace(",", ".")  # Sem "Score:"
+                
+                # Calcular multiplicador com progresso
+                if drift_scoring.current_multiplier > 0:
+                    current_mult = drift_scoring.MULTIPLIERS[drift_scoring.current_multiplier] + (drift_scoring.multiplier_progress * 0.2)
+                    texto_multiplicador = f"x{current_mult:.1f}"
+                    
+                    # Cores baseadas no nível do multiplicador
+                    if drift_scoring.current_multiplier == len(drift_scoring.MULTIPLIERS) - 1:  # Max combo (5x)
+                        cor_multiplicador = (255, 100, 0)  # Laranja vibrante
+                    elif drift_scoring.current_multiplier >= 3:  # 4x+
+                        cor_multiplicador = (255, 200, 0)  # Amarelo dourado
+                    elif drift_scoring.current_multiplier >= 2:  # 3x+
+                        cor_multiplicador = (0, 255, 100)  # Verde
+                    else:  # 2x
+                        cor_multiplicador = (0, 200, 255)  # Azul
+                else:
+                    texto_multiplicador = "x1.0"
+                    cor_multiplicador = (200, 200, 200)  # Cinza
                 
                 # Determinar troféu baseado na pontuação atual
                 if pontuacoes_alvo:
@@ -465,6 +485,7 @@ class HUD:
             else:
                 texto_posicao = "0"
                 trofeu_atual = trofeu_vazio
+                texto_multiplicador = "x1.0"
             
             voltas_atual = corrida.voltas.get(carro, 0)
             voltas_objetivo = corrida.voltas_objetivo
@@ -523,10 +544,16 @@ class HUD:
         # Fontes menores ainda
         fonte_posicao = pygame.font.SysFont("Arial", 28, bold=True)
         fonte_voltas = pygame.font.SysFont("Arial", 20, bold=True)
+        fonte_multiplicador = pygame.font.SysFont("Arial", 24, bold=True)
         
         # Renderizar textos
         texto_pos_surf = fonte_posicao.render(texto_posicao, True, (255, 255, 255))
         texto_voltas_surf = fonte_voltas.render(texto_voltas, True, (255, 255, 255))
+        
+        # Renderizar multiplicador se existir (modo drift)
+        texto_mult_surf = None
+        if texto_multiplicador:
+            texto_mult_surf = fonte_multiplicador.render(texto_multiplicador, True, cor_multiplicador)
         
         # Calcular tamanho do fundo (com padding menor)
         padding = 8
@@ -535,10 +562,14 @@ class HUD:
         if trofeu_atual is not None:
             largura_trofeu = 35  # Tamanho do troféu (30px) + espaçamento (5px)
         
-        # Largura total = pontuação + troféu (se houver) ou voltas, o que for maior
-        largura_conteudo = max(texto_pos_surf.get_width() + largura_trofeu, texto_voltas_surf.get_width())
+        # Largura total = pontuação + troféu (se houver) ou voltas ou multiplicador, o que for maior
+        largura_mult = texto_mult_surf.get_width() if texto_mult_surf else 0
+        largura_conteudo = max(texto_pos_surf.get_width() + largura_trofeu, texto_voltas_surf.get_width(), largura_mult)
         largura_fundo = largura_conteudo + padding * 2
-        altura_fundo = texto_pos_surf.get_height() + texto_voltas_surf.get_height() + padding * 2 + 3
+        
+        # Altura total = pontuação + multiplicador (se houver) + voltas
+        altura_extra = texto_mult_surf.get_height() + 3 if texto_mult_surf else 0
+        altura_fundo = texto_pos_surf.get_height() + altura_extra + texto_voltas_surf.get_height() + padding * 2 + 3
         
         # Ajustar posição se alinhar à direita
         if alinhar_direita:
@@ -571,7 +602,12 @@ class HUD:
             trofeu_rect.x = x_texto + texto_pos_surf.get_width() + 5
             superficie.blit(trofeu_redimensionado, trofeu_rect)
         
-        y_voltas = y_posicao + texto_pos_surf.get_height() + 5
+        # Desenhar multiplicador (modo drift)
+        y_mult = y_posicao + texto_pos_surf.get_height() + 3
+        if texto_mult_surf:
+            superficie.blit(texto_mult_surf, (x_texto, y_mult))
+        
+        y_voltas = y_mult + (texto_mult_surf.get_height() if texto_mult_surf else 0) + 5
         
         superficie.blit(texto_voltas_surf, (x_texto, y_voltas))
     
