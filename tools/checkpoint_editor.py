@@ -295,13 +295,11 @@ class CheckpointEditor:
         return True
     
     def salvar_checkpoints(self):
-        """Salva checkpoints e spawn points no arquivo JSON específico da pista"""
+        """Salva checkpoints e spawn points no JSON e exporta para laps_grip.py"""
         try:
-            # Salvar em arquivo JSON específico da pista
             arquivo = self.obter_caminho_checkpoints_pista()
             os.makedirs(os.path.dirname(arquivo), exist_ok=True)
             
-            # Salvar em formato: {"checkpoints": [...], "spawn_points": [...]}
             dados_para_salvar = {
                 "checkpoints": self.checkpoints,
                 "spawn_points": self.spawn_points,
@@ -312,26 +310,11 @@ class CheckpointEditor:
                 json.dump(dados_para_salvar, f, indent=2)
             
             print(f"Checkpoints salvos em JSON para pista {self.numero_pista}: {len(self.checkpoints)} checkpoints, {len(self.spawn_points)} spawn points")
-            print(f"Arquivo: {arquivo}")
-            print(f"NOTA: O jogo usa checkpoints de src/core/laps_grip.py, não do JSON.")
-            print(f"Use F10 para exportar para laps_grip.py ou copie manualmente as coordenadas abaixo.\n")
             
-            # Mostrar coordenadas para copiar para laps_grip.py
-            print(f"=== COORDENADAS PARA PISTA {self.numero_pista} ===")
-            print(f"Copie e cole no arquivo src/core/laps_grip.py:")
-            print(f"    if numero_pista == {self.numero_pista}:")
-            centro_x, centro_y = 2500, 2500
-            for i, cp in enumerate(self.checkpoints):
-                x, y = cp[0], cp[1]
-                angulo = cp[2] if len(cp) > 2 else 0
-                offset_x = x - centro_x
-                offset_y = y - centro_y
-                print(f"        checkpoint_{i+1} = (centro_x + {offset_x:.0f}, centro_y + {offset_y:.0f}, {angulo:.0f})  # Ângulo: {angulo:.0f}°")
-            print(f"        checkpoints = [")
-            for i in range(len(self.checkpoints)):
-                print(f"            tuple(checkpoint_{i+1}),")
-            print(f"        ]")
-            print(f"==========================================\n")
+            if self.exportar_para_laps_grip():
+                print(f"Checkpoints exportados para laps_grip.py - serão usados no jogo!")
+            else:
+                print(f"AVISO: Não foi possível exportar para laps_grip.py. Use F10 para exportar manualmente.")
             
             return True
         except Exception as e:

@@ -287,6 +287,9 @@ CONFIGURACOES = {
         "modo_drift": True,
         "mostrar_fps": False,
         "mostrar_debug": False
+    },
+    "idioma": {
+        "idioma_atual": "pt"
     }
 }
 

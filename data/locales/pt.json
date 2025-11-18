@@ -1,0 +1,177 @@
+{
+  "menu": {
+    "splash": {
+      "pressione_qualquer_botao": "APERTE QUALQUER BOTÃO PARA INICIAR"
+    },
+    "principal": {
+      "selecionar_carros": "SELECIONAR CARROS",
+      "jogar": "JOGAR",
+      "recordes": "RECORDES",
+      "opcoes": "OPÇÕES",
+      "sair": "SAIR"
+    },
+    "opcoes": {
+      "titulo": "OPÇÕES",
+      "volume": "VOLUME",
+      "controles": "CONTROLES",
+      "graficos": "GRÁFICOS",
+      "idioma": "IDIOMA",
+      "voltar": "VOLTAR"
+    },
+    "idioma": {
+      "titulo": "SELECIONAR IDIOMA",
+      "portugues": "PORTUGUÊS",
+      "english": "ENGLISH",
+      "espanol": "ESPAÑOL",
+      "frances": "FRANÇAIS",
+      "voltar": "VOLTAR"
+    },
+    "selecionar_mapa": {
+      "titulo": "SELECIONAR MAPA",
+      "voltar": "VOLTAR",
+      "instrucao": "Use as setas para navegar | ENTER para selecionar | ESC para voltar",
+      "instrucao_navegar": "↑↓: Navegar | ENTER: Selecionar | ESC: Voltar",
+      "instrucao_atalhos": "R: Recarregar mapas | M: Próxima música"
+    },
+    "oficina": {
+      "titulo": "OFICINA",
+      "dinheiro": "DINHEIRO: ${}",
+      "jogador_1": "JOGADOR 1 - ESCOLHA SEU CARRO",
+      "jogador_2": "JOGADOR 2 - ESCOLHA SEU CARRO",
+      "navegar_confirmar": "← → navegar | ENTER confirmar | ESC voltar",
+      "navegar_comprar": "← → navegar | B comprar | ESC voltar",
+      "especificacoes": "ESPECIFICAÇÕES",
+      "tracao": "TRAÇÃO: {}",
+      "velocidade": "VELOCIDADE: {} km/h",
+      "dirigibilidade": "DIRIGIBILIDADE: {}%",
+      "frenagem": "FRENAGEM: {}%",
+      "aceleracao": "ACELERAÇÃO: {}%",
+      "estabilidade": "ESTABILIDADE: {}%",
+      "desbloqueado": "DESBLOQUEADO",
+      "bloqueado": "BLOQUEADO",
+      "preco": "PREÇO: ${}",
+      "bloqueado_preco": "BLOQUEADO - ${}",
+      "comprar": "COMPRAR",
+      "confirmar": "CONFIRMAR",
+      "usar": "USAR"
+    }
+  },
+  "jogo": {
+    "semaforo": {
+      "vai": "VAI!",
+      "3": "3",
+      "2": "2",
+      "1": "1"
+    },
+    "hud": {
+      "voltas": "Voltas: {}/{}",
+      "checkpoint": "CP: {}/{}",
+      "checkpoint_tempo": "Checkpoint: {}",
+      "tempo": "Tempo: {}",
+      "turbo": "Turbo: {}%",
+      "velocidade": "{} km/h"
+    },
+    "contramao": {
+      "titulo": "CONTRA MÃO!",
+      "mensagem": "Você está indo na direção errada!"
+    },
+    "vitoria": {
+      "vencedor": "VENCEDOR: {}",
+      "fim": "FIM!"
+    }
+  },
+  "tipos_tracao": {
+    "rear": "TRASEIRA",
+    "front": "DIANTEIRA",
+    "awd": "INTEGRAL"
+  },
+  "controles": {
+    "jogador_1_acelerar": "JOGADOR 1 - ACELERAR",
+    "jogador_1_frear": "JOGADOR 1 - FREAR",
+    "jogador_1_esquerda": "JOGADOR 1 - ESQUERDA",
+    "jogador_1_direita": "JOGADOR 1 - DIREITA",
+    "jogador_1_turbo": "JOGADOR 1 - TURBO",
+    "jogador_1_freio_mao": "JOGADOR 1 - FREIO DE MÃO",
+    "jogador_2_acelerar": "JOGADOR 2 - ACELERAR",
+    "jogador_2_frear": "JOGADOR 2 - FREAR",
+    "jogador_2_esquerda": "JOGADOR 2 - ESQUERDA",
+    "jogador_2_direita": "JOGADOR 2 - DIREITA",
+    "jogador_2_turbo": "JOGADOR 2 - TURBO",
+    "jogador_2_freio_mao": "JOGADOR 2 - FREIO DE MÃO",
+    "voltar": "VOLTAR"
+  },
+  "modo_jogo": {
+    "titulo": "MODO DE JOGO",
+    "numero_jogadores": "NÚMERO DE JOGADORES:",
+    "1_jogador": "1 JOGADOR",
+    "2_jogadores": "2 JOGADORES",
+    "corrida": "CORRIDA",
+    "drift": "DRIFT"
+  },
+  "recordes": {
+    "corrida": "CORRIDA",
+    "drift": "DRIFT",
+    "pista": "PISTA",
+    "trofeu": "TROFÉU",
+    "melhor_tempo": "MELHOR TEMPO",
+    "pista_numero": "Pista {}",
+    "volta": "VOLTA",
+    "voltas": "VOLTAS"
+  },
+  "voltas": {
+    "1_volta": "1 VOLTA",
+    "2_voltas": "2 VOLTAS",
+    "3_voltas": "3 VOLTAS"
+  },
+  "dificuldade": {
+    "facil": "FÁCIL",
+    "medio": "MÉDIO",
+    "dificil": "DIFÍCIL",
+    "dificuldade_ia": "DIFICULDADE DA IA:",
+    "dificuldade_pontuacao": "DIFICULDADE (PONTUAÇÃO):"
+  },
+  "audio": {
+    "titulo": "CONFIGURAÇÕES DE ÁUDIO",
+    "musica_habilitada": "MÚSICA HABILITADA",
+    "musica_no_menu": "MÚSICA NO MENU",
+    "musica_no_jogo": "MÚSICA NO JOGO",
+    "musica_aleatoria": "MÚSICA ALEATÓRIA",
+    "volume_musica": "VOLUME MÚSICA",
+    "voltar": "VOLTAR"
+  },
+  "video": {
+    "titulo": "CONFIGURAÇÕES DE VÍDEO",
+    "resolucao": "RESOLUÇÃO",
+    "tela_cheia": "TELA CHEIA",
+    "sem_bordas": "SEM BORDAS",
+    "qualidade_alta": "QUALIDADE ALTA",
+    "vsync": "VSYNC",
+    "fps_maximo": "FPS MÁXIMO",
+    "mostrar_fps": "MOSTRAR FPS",
+    "voltar": "VOLTAR"
+  },
+  "jogo": {
+    "tipo_jogo": "TIPO DE JOGO:",
+    "numero_voltas": "NÚMERO DE VOLTAS:",
+    "iniciar_jogo": "INICIAR JOGO",
+    "selecionar_fase": "SELECIONAR FASE",
+    "fase_numero": "FASE {}",
+    "recordes": "RECORDES",
+    "melhor_score": "MELHOR SCORE",
+    "sim": "SIM",
+    "nao": "NÃO",
+    "p1": "P1:",
+    "p2": "P2:"
+  },
+  "mensagens": {
+    "mapas_recarregados": "Mapas recarregados!",
+    "nenhum_mapa_novo": "Nenhum mapa novo encontrado",
+    "carro_comprado": "Carro {} comprado!",
+    "dinheiro_insuficiente": "Dinheiro insuficiente!"
+  },
+  "titulo_jogo": {
+    "menu": "Turbo Racer — Menu",
+    "jogo": "Turbo Racer"
+  }
+}
+

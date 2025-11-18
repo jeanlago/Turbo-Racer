@@ -7,6 +7,27 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+## [3.2.2] - 2025-11-18
+
+### Removido
+- **Comentários Desnecessários** - Removidos comentários redundantes que apenas descreviam o código óbvio
+- **Código Comentado** - Removido bloco grande de código comentado relacionado a fonte pixel art em `menu.py`
+- **Funções Não Utilizadas** - Removidas funções que não eram chamadas em nenhum lugar:
+  - `normalizar_texto()` - Função de normalização de texto não utilizada
+  - `ponto_dentro_ret()` - Função wrapper desnecessária para `rect.collidepoint()`
+
+### Modificado
+- **Limpeza de Código** - Removidos comentários redundantes em:
+  - `src/core/menu.py` - Comentários de layout, posicionamento e animação
+  - `src/core/musica.py` - Comentários sobre configuração de áudio
+  - `src/core/checkpoint_manager.py` - Comentários sobre cálculos de centralização
+- **Código Mais Limpo** - Melhor legibilidade e manutenibilidade sem perder funcionalidade
+
+### Corrigido
+- **Manutenibilidade** - Código mais fácil de ler e manter, mantendo apenas comentários que explicam lógica complexa
+
+---
+
 ## [3.2.1] - 2025-11-13
 
 ### Modificado
@@ -331,6 +352,6 @@ chore: atualizar dependências do pygame
 
 ---
 
-**Última atualização:** Novembro 2025  
-**Versão atual:** 3.1.0  
-**Próxima versão:** 3.2.0 (planejada)
+**Última atualização:** 18 de Novembro de 2025  
+**Versão atual:** 3.2.2  
+**Próxima versão:** 3.3.0 (planejada)

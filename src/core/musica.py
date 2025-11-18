@@ -3,8 +3,7 @@ import pygame
 import random
 from config import DIR_PROJETO
 
-# Forçar uso de driver de áudio real
-os.environ["SDL_AUDIODRIVER"] = "directsound"  # Windows
+os.environ["SDL_AUDIODRIVER"] = "directsound"
 
 class GerenciadorMusica:
     def __init__(self):
@@ -17,16 +16,12 @@ class GerenciadorMusica:
         self.musica_tocando = False
         self.nome_musica_atual = ""
         
-        # Configurar mixer de áudio primeiro
         try:
             pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
         except pygame.error:
-            # Tentar com configurações mais simples
             pygame.mixer.init()
         
         pygame.mixer.music.set_volume(self.volume)
-        
-        # Carregar músicas da pasta
         self.carregar_musicas()
     
     def carregar_musicas(self):
@@ -38,14 +33,11 @@ class GerenciadorMusica:
                 if arquivo.endswith(('.ogg', '.mp3', '.wav')):
                     caminho_completo = os.path.join(pasta_musicas, arquivo)
                     nome_musica = os.path.splitext(arquivo)[0]
-                    
-                    # Adicionar música sem testar (será testada quando tocar)
                     self.musicas.append({
                         'caminho': caminho_completo,
                         'nome': nome_musica
                     })
         
-        # Se não houver músicas, criar uma lista vazia
         if not self.musicas:
             print("Nenhuma música encontrada na pasta assets/sounds/music")
     

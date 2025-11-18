@@ -1,6 +1,6 @@
 # 🔧 API Reference - Turbo Racer
 
-Referência completa da API do Turbo Racer v3.2.1 (Novembro 2025).
+Referência completa da API do Turbo Racer v3.2.2 (18 de Novembro de 2025).
 
 ## 📋 Índice
 
@@ -490,6 +490,6 @@ tela.blit(superficie_p2, (metade_largura, 0))
 
 ---
 
-**Versão:** 3.2.1  
-**Última atualização:** Novembro 2025  
+**Versão:** 3.2.2  
+**Última atualização:** 18 de Novembro de 2025  
 **Desenvolvedores:** Jean Marins e Jayson Sales

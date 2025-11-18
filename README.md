@@ -52,6 +52,7 @@ Um jogo de corrida arcade 2D top-down desenvolvido em **Python** com **Pygame**,
 
 ### **Histórico de Versões**
 - **[CHANGELOG.md](docs/CHANGELOG.md)** - Histórico completo de mudanças
+  - Versão 3.2.2 - Limpeza de comentários e funções não utilizadas
   - Versão 3.2.1 - Limpeza de código e correção de nomenclatura
   - Versão 3.2.0 - Modo drift reformulado e sistema de pontuação dinâmica
   - Versão 3.1.0 - Sistema GRIP completo e melhorias de IA
@@ -518,10 +519,15 @@ Este projeto é de código aberto e está disponível sob a **licença MIT**.
 ---
 
 **Desenvolvido por Jean Marins e Jayson Sales**  
-**Versão atual:** 3.2.1  
-**Última atualização:** Novembro 2025
+**Versão atual:** 3.2.2  
+**Última atualização:** 18 de Novembro de 2025
 
-### **Novidades da Versão 3.2.1 (Novembro 2025)**
+### **Novidades da Versão 3.2.2 (18 de Novembro de 2025)**
+- **Limpeza de Código** - Removidos comentários desnecessários e código comentado
+- **Funções Não Utilizadas Removidas** - Removidas funções que não eram chamadas (`normalizar_texto`, `ponto_dentro_ret`)
+- **Código Mais Limpo** - Melhor legibilidade mantendo apenas comentários essenciais
+
+### **Novidades da Versão 3.2.1 (13 de Novembro de 2025)**
 - **Limpeza de Código** - Removido código não utilizado e comentários desnecessários
 - **Nomenclatura Corrigida** - Corrigidos nomes com "IA" no meio de palavras (gerenciador_musica, iniciada, etc.)
 - **Código Mais Limpo** - Melhor manutenibilidade e consistência

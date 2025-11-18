@@ -8,25 +8,26 @@ def carregar_checkpoints_grip(numero_pista):
     centro_x, centro_y = 2500, 2500
     
     if numero_pista == 1:
-        checkpoint_1 = (centro_x + -244, centro_y + 42, 90)
-        checkpoint_2 = (centro_x + -1257, centro_y + 2, 105)
-        checkpoint_3 = (centro_x + -1577, centro_y + -544, 0)
-        checkpoint_4 = (centro_x + -1257, centro_y + -1014, 60)
-        checkpoint_5 = (centro_x + -564, centro_y + -1018, 120)
-        checkpoint_6 = (centro_x + -297, centro_y + -471, 120)
-        checkpoint_7 = (centro_x + 282, centro_y + -484, 60)
-        checkpoint_8 = (centro_x + 551, centro_y + -853, 45)
-        checkpoint_9 = (centro_x + 1109, centro_y + -784, 135)
-        checkpoint_10 = (centro_x + 1323, centro_y + -224, 150)
-        checkpoint_11 = (centro_x + 1730, centro_y + -38, 150)
-        checkpoint_12 = (centro_x + 1677, centro_y + 1037, 30)
-        checkpoint_13 = (centro_x + 1179, centro_y + 1275, 75)
-        checkpoint_14 = (centro_x + -594, centro_y + 1265, 90)
-        checkpoint_15 = (centro_x + -981, centro_y + 879, 0)
-        checkpoint_16 = (centro_x + -698, centro_y + 561, 45)
-        checkpoint_17 = (centro_x + 756, centro_y + 532, 45)
-        checkpoint_18 = (centro_x + 744, centro_y + 100, 315)
-        checkpoint_19 = (centro_x + -18, centro_y + 52, 90)
+        checkpoint_1 = (centro_x + -244, centro_y + 42, 90)  # Ângulo: 90°
+        checkpoint_2 = (centro_x + -1257, centro_y + 2, 105)  # Ângulo: 105°
+        checkpoint_3 = (centro_x + -1577, centro_y + -544, 0)  # Ângulo: 0°
+        checkpoint_4 = (centro_x + -1257, centro_y + -1014, 60)  # Ângulo: 60°
+        checkpoint_5 = (centro_x + -564, centro_y + -1018, 120)  # Ângulo: 120°
+        checkpoint_6 = (centro_x + -297, centro_y + -471, 120)  # Ângulo: 120°
+        checkpoint_7 = (centro_x + 282, centro_y + -484, 60)  # Ângulo: 60°
+        checkpoint_8 = (centro_x + 551, centro_y + -853, 45)  # Ângulo: 45°
+        checkpoint_9 = (centro_x + 1109, centro_y + -784, 135)  # Ângulo: 135°
+        checkpoint_10 = (centro_x + 1323, centro_y + -224, 150)  # Ângulo: 150°
+        checkpoint_11 = (centro_x + 1730, centro_y + -38, 150)  # Ângulo: 150°
+        checkpoint_12 = (centro_x + 1583, centro_y + 1073, 30)  # Ângulo: 30°
+        checkpoint_13 = (centro_x + 1069, centro_y + 1246, 75)  # Ângulo: 75°
+        checkpoint_14 = (centro_x + -754, centro_y + 1208, 120)  # Ângulo: 120°
+        checkpoint_15 = (centro_x + -952, centro_y + 912, 0)  # Ângulo: 0°
+        checkpoint_16 = (centro_x + -698, centro_y + 582, 45)  # Ângulo: 45°
+        checkpoint_17 = (centro_x + 756, centro_y + 532, 45)  # Ângulo: 45°
+        checkpoint_18 = (centro_x + 744, centro_y + 100, 315)  # Ângulo: 315°
+        checkpoint_19 = (centro_x + -18, centro_y + 52, 90)  # Ângulo: 90°
+        # Checkpoints com ângulo: (x, y, angulo) ou (x, y) para cálculo automático
         checkpoints = [
             tuple(checkpoint_1),
             tuple(checkpoint_2),
@@ -48,16 +49,6 @@ def carregar_checkpoints_grip(numero_pista):
             tuple(checkpoint_18),
             tuple(checkpoint_19),
         ]
-    elif numero_pista == 2:
-        finish_line = (centro_x + 50, centro_y + 50)
-        section1 = (centro_x + 400, centro_y + 1250)
-        section2 = (centro_x + 100, centro_y - 1150)
-        checkpoints = [tuple(finish_line), tuple(section1), tuple(section2)]
-    elif numero_pista == 3:
-        finish_line = (centro_x + 50, centro_y + 50)
-        section1 = (centro_x + 900, centro_y + 1750)
-        section2 = (centro_x - 600, centro_y + 1050)
-        checkpoints = [tuple(finish_line), tuple(section1), tuple(section2)]
     elif numero_pista == 4:
         finish_line = (centro_x + 50, centro_y + 50)
         section1 = (centro_x + 3150, centro_y + 600)

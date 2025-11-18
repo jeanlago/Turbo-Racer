@@ -6,7 +6,28 @@ from config import DIR_PROJETO, MAPAS_DISPONIVEIS, MAPA_ATUAL, obter_caminho_che
 class CheckpointManager:
     """Gerenciador de checkpoints com edição em tempo real para múltiplos mapas"""
     
-    def __init__(self, mapa_atual=None):
+    TILE_SIZE = 300
+    CENTRO_PISTA_X = 2500
+    CENTRO_PISTA_Y = 2500
+    
+    def _centralizar_no_tile(self, x, y):
+        """
+        Centraliza coordenadas no centro do tile mais próximo.
+        Os tiles têm 300x300px e são posicionados em relação ao centro (2500, 2500).
+        O centro de um tile é: canto_superior_esquerdo + 150px (metade de 300px).
+        """
+        offset_x = x - self.CENTRO_PISTA_X
+        offset_y = y - self.CENTRO_PISTA_Y
+        
+        tile_canto_x = round(offset_x / self.TILE_SIZE) * self.TILE_SIZE
+        tile_canto_y = round(offset_y / self.TILE_SIZE) * self.TILE_SIZE
+        
+        tile_centro_x = tile_canto_x + (self.TILE_SIZE // 2)
+        tile_centro_y = tile_canto_y + (self.TILE_SIZE // 2)
+        
+        return self.CENTRO_PISTA_X + tile_centro_x, self.CENTRO_PISTA_Y + tile_centro_y
+    
+    def __init__(self, mapa_atual=None, checkpoints_iniciais=None):
         self.checkpoints = []
         self.modo_edicao = False
         self.checkpoint_selecionado = -1
@@ -14,6 +35,12 @@ class CheckpointManager:
         self.mapa_atual = mapa_atual or MAPA_ATUAL
         self.arquivo_checkpoints = obter_caminho_checkpoints()
         self.carregar_checkpoints()
+        if not self.checkpoints and checkpoints_iniciais:
+            self.checkpoints = []
+            for cp in checkpoints_iniciais:
+                if isinstance(cp, (list, tuple)) and len(cp) >= 2:
+                    self.checkpoints.append([float(cp[0]), float(cp[1])])
+            print(f"Usando {len(self.checkpoints)} checkpoints iniciais fornecidos")
     
     def trocar_mapa(self, novo_mapa):
         """Troca para um novo mapa e carrega seus checkpoints"""
@@ -30,6 +57,19 @@ class CheckpointManager:
             print(f"Trocado para mapa: {MAPAS_DISPONIVEIS[novo_mapa]['nome']}")
             return True
         return False
+    
+    def centralizar_checkpoints_existentes(self):
+        """Centraliza todos os checkpoints existentes nos tiles mais próximos"""
+        checkpoints_centralizados = []
+        for cp in self.checkpoints:
+            if len(cp) >= 2:
+                cx, cy = self._centralizar_no_tile(cp[0], cp[1])
+                if len(cp) >= 3:
+                    checkpoints_centralizados.append([float(cx), float(cy), float(cp[2])])
+                else:
+                    checkpoints_centralizados.append([float(cx), float(cy)])
+        self.checkpoints = checkpoints_centralizados
+        print(f"Centralizados {len(self.checkpoints)} checkpoints nos tiles")
     
     def carregar_checkpoints(self):
         """Carrega checkpoints do arquivo JSON"""
@@ -62,9 +102,11 @@ class CheckpointManager:
             return False
     
     def adicionar_checkpoint(self, x, y):
-        """Adiciona um novo checkpoint na posição especificada"""
-        self.checkpoints.append([float(x), float(y)])
-        print(f"Checkpoint adicionado: ({x:.1f}, {y:.1f})")
+        """Adiciona um novo checkpoint na posição especificada, centralizado no tile"""
+        # Centralizar no tile mais próximo
+        cx, cy = self._centralizar_no_tile(x, y)
+        self.checkpoints.append([float(cx), float(cy)])
+        print(f"Checkpoint adicionado: ({cx:.1f}, {cy:.1f}) [centralizado no tile]")
     
     def remover_checkpoint(self, indice):
         """Remove checkpoint pelo índice"""
@@ -75,9 +117,15 @@ class CheckpointManager:
         return False
     
     def mover_checkpoint(self, indice, novo_x, novo_y):
-        """Move checkpoint para nova posição"""
+        """Move checkpoint para nova posição, centralizado no tile"""
         if 0 <= indice < len(self.checkpoints):
-            self.checkpoints[indice] = [float(novo_x), float(novo_y)]
+            # Centralizar no tile mais próximo
+            cx, cy = self._centralizar_no_tile(novo_x, novo_y)
+            # Preservar ângulo se existir
+            if len(self.checkpoints[indice]) >= 3:
+                self.checkpoints[indice] = [float(cx), float(cy), float(self.checkpoints[indice][2])]
+            else:
+                self.checkpoints[indice] = [float(cx), float(cy)]
             # Removido print para reduzir spam no console
             return True
         return False
@@ -121,14 +169,14 @@ class CheckpointManager:
         # Agora área vazia arrasta a câmera
     
     def adicionar_checkpoint_na_posicao(self, x, y, camera):
-        """Adiciona checkpoint na posição especificada"""
+        """Adiciona checkpoint na posição especificada, centralizado no tile"""
         if not self.modo_edicao or not camera:
             return
         
         mundo_x, mundo_y = camera.tela_para_mundo(x, y)
+        # adicionar_checkpoint já centraliza automaticamente
         self.adicionar_checkpoint(mundo_x, mundo_y)
         self.checkpoint_selecionado = len(self.checkpoints) - 1
-        print(f"Checkpoint adicionado em ({mundo_x:.1f}, {mundo_y:.1f})")
     
     def processar_teclado(self, teclas):
         """Processa teclas para edição de checkpoints"""

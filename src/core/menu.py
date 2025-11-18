@@ -3,7 +3,6 @@ import sys
 import pygame
 from enum import Enum
 
-# Adicionar o diretório pai ao path para importar config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import LARGURA, ALTURA, FPS, CAMINHO_MENU, CONFIGURACOES, MAPAS_DISPONIVEIS
@@ -21,9 +20,6 @@ def scale_to_cover(img_surf, target_w, target_h):
     y = (surf.get_height() - target_h) // 2
     return surf.subsurface((x, y, target_w, target_h)).copy()
 
-def ponto_dentro_ret(mouse_x, mouse_y, rect: pygame.Rect) -> bool:
-    return rect.collidepoint(mouse_x, mouse_y)
-
 def verificar_clique_opcao(mouse_x, mouse_y, opcoes, caixa_x, caixa_y, caixa_largura, altura_item=50, offset_y=80, opcao_largura=None, scroll_offset=0):
     """Verifica se o mouse clicou em alguma opção e retorna o índice"""
     for i, (nome, chave) in enumerate(opcoes):
@@ -32,7 +28,6 @@ def verificar_clique_opcao(mouse_x, mouse_y, opcoes, caixa_x, caixa_y, caixa_lar
             y = caixa_y + offset_y + i * altura_item - scroll_offset
             opcao_rect = pygame.Rect(caixa_x + 20, y - 5, caixa_largura - 40, altura_item)
         else:
-            # Layout para menu de opções principal
             opcao_x = caixa_x + (caixa_largura - opcao_largura) // 2
             opcao_y_inicial = caixa_y + 20 + 48 + 10 + 40  # titulo_y + titulo_height + 10 + 40
             opcao_y = opcao_y_inicial + i * (altura_item + 15) - scroll_offset  # altura_item + espacamento
@@ -47,31 +42,25 @@ def desenhar_scrollbar(screen, scroll_offset, max_scroll, caixa_x, caixa_y, caix
     if max_scroll <= 0:
         return
     
-    # Calcular posição e tamanho da barra
     scrollbar_width = 12
     scrollbar_x = caixa_x + caixa_largura - scrollbar_width - 5
     scrollbar_y = caixa_y + 80
     scrollbar_height = caixa_altura - 200  # Altura da área de opções (deixando espaço para o botão voltar)
     
-    # Calcular posição do indicador
     scroll_ratio = scroll_offset / max_scroll if max_scroll > 0 else 0
     indicator_height = max(30, int(scrollbar_height * 0.3))  # 30% da altura da barra
     indicator_y = scrollbar_y + int(scroll_ratio * (scrollbar_height - indicator_height))
     
-    # Desenhar fundo da barra (semi-transparente)
     scrollbar_bg = pygame.Surface((scrollbar_width, scrollbar_height), pygame.SRCALPHA)
     scrollbar_bg.fill((50, 50, 50, 150))
     screen.blit(scrollbar_bg, (scrollbar_x, scrollbar_y))
     
-    # Desenhar indicador
     indicator_bg = pygame.Surface((scrollbar_width - 2, indicator_height), pygame.SRCALPHA)
     indicator_bg.fill((150, 150, 150, 200))
     screen.blit(indicator_bg, (scrollbar_x + 1, indicator_y))
     
-    # Borda da barra
     pygame.draw.rect(screen, (255, 255, 255), (scrollbar_x, scrollbar_y, scrollbar_width, scrollbar_height), 1)
 
-# Cache para o atlas de fonte pixel art
 _pixel_font_atlas = None
 _pixel_font_chars = {}
 
@@ -81,17 +70,14 @@ def load_pixel_font_atlas():
     
     if _pixel_font_atlas is None:
         try:
-            # Garantir que pygame está inicializado
             if not pygame.get_init():
                 pygame.init()
             _pixel_font_atlas = pygame.image.load("assets/fonts/pixel_font_atlas.png").convert_alpha()
             
-            # Definir caracteres e suas posições no atlas
             char_width = 8
             char_height = 12
             chars_per_row = 10
             
-            # Carregar caracteres ASCII 32-126
             for ascii_code in range(32, 127):
                 char = chr(ascii_code)
                 char_index = ascii_code - 32
@@ -102,12 +88,10 @@ def load_pixel_font_atlas():
                 x = col * char_width
                 y = row * char_height
                 
-                # Extrair caractere do atlas
                 char_surface = pygame.Surface((char_width, char_height), pygame.SRCALPHA)
                 char_surface.blit(_pixel_font_atlas, (0, 0), (x, y, char_width, char_height))
                 _pixel_font_chars[char] = char_surface
             
-            # Carregar caracteres especiais portugueses
             special_chars = ['ç', 'Ç', 'ã', 'Ã', 'õ', 'Õ', 'á', 'Á', 'à', 'À', 'â', 'Â', 
                            'é', 'É', 'ê', 'Ê', 'í', 'Í', 'ó', 'Ó', 'ô', 'Ô', 'ú', 'Ú', 
                            'ü', 'Ü', 'ñ', 'Ñ']
@@ -121,7 +105,6 @@ def load_pixel_font_atlas():
                 x = col * char_width
                 y = row * char_height
                 
-                # Extrair caractere do atlas
                 char_surface = pygame.Surface((char_width, char_height), pygame.SRCALPHA)
                 char_surface.blit(_pixel_font_atlas, (0, 0), (x, y, char_width, char_height))
                 _pixel_font_chars[char] = char_surface
@@ -137,46 +120,37 @@ def render_pixel_text(text, size, color=(255,255,255)):
     load_pixel_font_atlas()
     
     if _pixel_font_atlas is None:
-        # Fallback para fonte do sistema
         font = pygame.font.SysFont("consolas", size, bold=True)
         return font.render(text, True, color)
     
-    # Calcular escala baseada no tamanho desejado
     base_size = 12  # Tamanho base dos caracteres no atlas
     scale = size / base_size
     
     char_width = int(8 * scale)
     char_height = int(12 * scale)
     
-    # Criar superfície para o texto completo
     text_width = len(text) * char_width
     text_height = char_height
     text_surface = pygame.Surface((text_width, text_height), pygame.SRCALPHA)
     
-    # Renderizar cada caractere
     for i, char in enumerate(text):
         if char in _pixel_font_chars:
             char_surface = _pixel_font_chars[char]
             
-            # Escalar caractere
             if scale != 1.0:
                 char_surface = pygame.transform.scale(char_surface, (char_width, char_height))
             
-            # Aplicar cor corretamente
             char_colored = pygame.Surface(char_surface.get_size(), pygame.SRCALPHA)
             
-            # Aplicar cor apenas nos pixels brancos (que representam o caractere)
             for x in range(char_surface.get_width()):
                 for y in range(char_surface.get_height()):
                     pixel = char_surface.get_at((x, y))
                     if pixel[0] > 128:  # Se é um pixel branco (caractere)
                         char_colored.set_at((x, y), (*color, 255))
             
-            # Posicionar caractere
             x = i * char_width
             text_surface.blit(char_colored, (x, 0))
         else:
-            # Se caractere não existe, usar fonte do sistema como fallback
             font_fallback = pygame.font.SysFont("consolas", size, bold=True)
             char_surface = font_fallback.render(char, True, color)
             char_surface = pygame.transform.scale(char_surface, (char_width, char_height))
@@ -185,61 +159,10 @@ def render_pixel_text(text, size, color=(255,255,255)):
     
     return text_surface
 
-def normalizar_texto(text):
-    """Substitui acentos e cedilha por caracteres normais para compatibilidade com fontes TTF"""
-    # Mapeamento de caracteres especiais para normais
-    mapeamento = {
-        'á': 'a', 'à': 'a', 'â': 'a', 'ã': 'a', 'ä': 'a',
-        'Á': 'A', 'À': 'A', 'Â': 'A', 'Ã': 'A', 'Ä': 'A',
-        'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
-        'É': 'E', 'È': 'E', 'Ê': 'E', 'Ë': 'E',
-        'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
-        'Í': 'I', 'Ì': 'I', 'Î': 'I', 'Ï': 'I',
-        'ó': 'o', 'ò': 'o', 'ô': 'o', 'õ': 'o', 'ö': 'o',
-        'Ó': 'O', 'Ò': 'O', 'Ô': 'O', 'Õ': 'O', 'Ö': 'O',
-        'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
-        'Ú': 'U', 'Ù': 'U', 'Û': 'U', 'Ü': 'U',
-        'ç': 'c', 'Ç': 'C',
-        'ñ': 'n', 'Ñ': 'N'
-    }
-    
-    # Aplicar mapeamento
-    texto_normalizado = ""
-    for char in text:
-        texto_normalizado += mapeamento.get(char, char)
-    
-    return texto_normalizado
-
 def render_text(text, size, color=(255,255,255), bold=True, pixel_style=True):
     pygame.font.init()
     
     if pixel_style:
-        # Usar fonte TTF com suporte a acentos (sem normalização)
-        # Usar fontes do sistema com suporte a acentos (desabilitar atlas customizado por enquanto)
-        # try:
-        #     pixel_text = render_pixel_text(text, size, color)
-        #     if pixel_text.get_width() > 0:  # Se conseguiu renderizar
-        #         # Adicionar contorno se necessário
-        #         if size >= 16:
-        #             outline_width = 2 if size < 32 else 3
-        #             final_surface = pygame.Surface((pixel_text.get_width() + outline_width * 2, pixel_text.get_height() + outline_width * 2), pygame.SRCALPHA)
-        #             
-        #             # Desenhar contorno
-        #             outline_surface = render_pixel_text(text, size, (0, 0, 0))
-        #             for dx in range(-outline_width, outline_width + 1):
-        #                 for dy in range(-outline_width, outline_width + 1):
-        #                     if dx != 0 or dy != 0:
-        #                         final_surface.blit(outline_surface, (outline_width + dx, outline_width + dy))
-        #             
-        #             # Desenhar texto principal
-        #             final_surface.blit(pixel_text, (outline_width, outline_width))
-        #             return final_surface
-        #         else:
-        #             return pixel_text
-        # except:
-        #     pass
-        
-        # Fallback para fontes TTF pixel art com suporte a acentos
         pixel_fonts = [
             "assets/fonts/PixeloidSans.ttf",           # PixeloidSans (pixel art com acentos)
             "assets/fonts/ByteBounce.ttf",             # ByteBounce (pixel art com acentos)
@@ -342,39 +265,31 @@ def splash_screen(screen) -> bool:
     clock = pygame.time.Clock()
     start_time = pygame.time.get_ticks()
     
-    # Efeito de fade in
     fade_surface = pygame.Surface((LARGURA, ALTURA))
     fade_surface.fill((0, 0, 0))
     
     while True:
         dt = clock.tick(FPS) / 1000.0
-        
-        # Atualizar música (sem popup)
         gerenciador_musica.verificar_fim_musica()
         
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 return False
             if ev.type == pygame.KEYDOWN or ev.type == pygame.MOUSEBUTTONDOWN:
-                # Qualquer tecla ou clique do mouse inicia o jogo
                 return True
         
-        # Desenhar
         screen.blit(bg, (0, 0))
         
-        # Calcular fade in (2 segundos)
         elapsed = pygame.time.get_ticks() - start_time
         fade_alpha = max(0, 255 - int((elapsed / 2000.0) * 255))
         
-        # Desenhar fade
         if fade_alpha > 0:
             fade_surface.set_alpha(fade_alpha)
             screen.blit(fade_surface, (0, 0))
-        
-        # Efeito de piscar para o texto "Aperte qualquer botão"
+        from core.i18n import t
         blink_time = (pygame.time.get_ticks() % 2000) / 2000.0
         if blink_time < 0.5:  # Pisca a cada 1 segundo
-            texto_iniciar = render_text("APERTE QUALQUER BOTÃO PARA INICIAR", 24, (0, 200, 255), bold=True, pixel_style=True)
+            texto_iniciar = render_text(t("menu.splash.pressione_qualquer_botao"), 24, (0, 200, 255), bold=True, pixel_style=True)
             texto_iniciar_x = (LARGURA - texto_iniciar.get_width()) // 2
             texto_iniciar_y = ALTURA // 2 + 50
             screen.blit(texto_iniciar, (texto_iniciar_x, texto_iniciar_y))
@@ -385,81 +300,61 @@ def menu_loop(screen) -> Escolha:
     bg_raw = pygame.image.load(CAMINHO_MENU).convert_alpha()
     bg = scale_to_cover(bg_raw, LARGURA, ALTURA)
 
-    # Ordem visual (da esquerda para a direita)
-    itens = ["SELECIONAR CARROS", "JOGAR", "RECORDES", "OPÇÕES", "SAIR"]
-    idx = 1  # Começar no JOGAR (centro)
+    from core.i18n import t
+    itens = [t("menu.principal.selecionar_carros"), t("menu.principal.jogar"), t("menu.principal.recordes"), t("menu.principal.opcoes"), t("menu.principal.sair")]
+    idx = 1
     clock = pygame.time.Clock()
 
-    # Layout com botão JOGAR centralizado na linha inferior, mas em destaque
-    itens_completos = ["SELECIONAR CARROS", "JOGAR", "RECORDES", "OPÇÕES", "SAIR"]
+    itens_completos = [t("menu.principal.selecionar_carros"), t("menu.principal.jogar"), t("menu.principal.recordes"), t("menu.principal.opcoes"), t("menu.principal.sair")]
     base_y = int(ALTURA * 0.85)
     
-    # Tamanhos dos botões
-    jogar_largura = 280  # Maior que os outros
-    jogar_altura = 70    # Maior que os outros
-    botao_largura = 180  # Menor que o JOGAR
-    botao_sel_carros_largura = 220  # Maior para "SELECIONAR CARROS"
-    botao_altura = 50    # Menor que o JOGAR
+    jogar_largura = 280
+    jogar_altura = 70
+    botao_largura = 180
+    botao_sel_carros_largura = 220
+    botao_altura = 50
     espacamento = 15
     
-    # Ajustar posição vertical para alinhar os centros dos botões
-    # O centro do JOGAR deve estar na mesma linha que o centro dos outros botões
-    jogar_y = base_y + (botao_altura - jogar_altura) // 2  # Ajustar para alinhar centros
-    
-    # Calcular posições - JOGAR no meio, outros ao redor
-    # JOGAR fica no centro, então calculamos as posições dos outros
+    jogar_y = base_y + (botao_altura - jogar_altura) // 2
     jogar_x = (LARGURA - jogar_largura) // 2
     
-    # Posições dos outros botões
-    # Ordem: RECORDES (mais à esquerda), SELECIONAR CARROS, JOGAR (centro), OPÇÕES, SAIR (direita)
     outros_posicoes = []
-    outros_itens = ["RECORDES", "SELECIONAR CARROS", "OPÇÕES", "SAIR"]
+    outros_itens = [t("menu.principal.recordes"), t("menu.principal.selecionar_carros"), t("menu.principal.opcoes"), t("menu.principal.sair")]
     
-    # Calcular espaço total necessário
     espaco_esquerda = jogar_x - espacamento
     espaco_direita = LARGURA - (jogar_x + jogar_largura) - espacamento
     
-    # Distribuir botões ao redor do JOGAR (ordem visual)
-    # RECORDES (mais à esquerda)
     outros_posicoes.append((jogar_x - espacamento - botao_sel_carros_largura - espacamento - botao_largura, base_y))
-    # SELECIONAR CARROS (à esquerda do JOGAR)
     outros_posicoes.append((jogar_x - espacamento - botao_sel_carros_largura, base_y))
-    # OPÇÕES (à direita do JOGAR)
     outros_posicoes.append((jogar_x + jogar_largura + espacamento, base_y))
-    # SAIR (mais à direita)
     outros_posicoes.append((jogar_x + jogar_largura + espacamento + botao_largura + espacamento, base_y))
     
-    # Variáveis para animação de hover dos botões
-    hover_animation = [0.0] * len(itens)  # Progresso da animação para cada botão
-    hover_speed = 8.0  # Velocidade da animação de hover (aumentada para mais responsividade)
+    hover_animation = [0.0] * len(itens)
+    hover_speed = 8.0
 
     while True:
-        dt = clock.tick(FPS) / 1000.0  # Converter para segundos
+        dt = clock.tick(FPS) / 1000.0
         
-        # Atualizar música
         gerenciador_musica.verificar_fim_musica()
         popup_musica.atualizar(dt)
         
-        # Verificar hover do pop-up
         mouse_x, mouse_y = pygame.mouse.get_pos()
         popup_musica.verificar_hover(mouse_x, mouse_y)
         
-        # Atualizar animação de hover dos botões
         for i in range(len(itens)):
-            # Usar a mesma lógica de posicionamento que na renderização
-            if i == 1:  # Botão JOGAR (segundo na nova ordem)
+            if i == 1:
                 rect = pygame.Rect(jogar_x, jogar_y, jogar_largura, jogar_altura)
-            else:  # Outros botões
-                if i == 0:  # SELECIONAR CARROS
-                    x, y = outros_posicoes[1]  # Segundo na lista outros_posicoes
+            else:
+                if i == 0:
+                    x, y = outros_posicoes[1]
                     largura = botao_sel_carros_largura
-                elif i == 2:  # RECORDES
-                    x, y = outros_posicoes[0]  # Primeiro na lista outros_posicoes
+                elif i == 2:
+                    x, y = outros_posicoes[0]
                     largura = botao_largura
-                elif i == 3:  # OPÇÕES
+                elif i == 3:
                     x, y = outros_posicoes[2]
                     largura = botao_largura
-                else:  # SAIR (i == 4)
+                else:
                     x, y = outros_posicoes[3]
                     largura = botao_largura
                 rect = pygame.Rect(x, y, largura, botao_altura)
@@ -467,10 +362,8 @@ def menu_loop(screen) -> Escolha:
             is_hovering = rect.collidepoint(mouse_x, mouse_y)
             
             if is_hovering:
-                # Aumentar progresso da animação
                 hover_animation[i] = min(1.0, hover_animation[i] + hover_speed * dt)
             else:
-                # Diminuir progresso da animação
                 hover_animation[i] = max(0.0, hover_animation[i] - hover_speed * dt)
         
         for ev in pygame.event.get():
@@ -508,18 +401,15 @@ def menu_loop(screen) -> Escolha:
                 elif ev.key == pygame.K_ESCAPE:
                     return Escolha.SAIR
                 elif ev.key == pygame.K_m:
-                    # Próxima música
                     gerenciador_musica.proxima_musica()
                     if gerenciador_musica.musica_tocando:
                         popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
                 elif ev.key == pygame.K_n:
-                    # Música anterior
                     gerenciador_musica.musica_anterior()
                     if gerenciador_musica.musica_tocando:
                         popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
             if ev.type == pygame.MOUSEMOTION:
                 mx, my = ev.pos
-                # detecta hover do mouse nas opções
                 for i in range(len(itens)):
                     if i == 1:  # Botão JOGAR (segundo na nova ordem)
                         rect = pygame.Rect(jogar_x, jogar_y, jogar_largura, jogar_altura)
@@ -540,7 +430,6 @@ def menu_loop(screen) -> Escolha:
                     if rect.collidepoint(mx, my):
                         idx = i
             if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                # Verificar clique no pop-up de música primeiro
                 clique_popup = popup_musica.verificar_clique(ev.pos[0], ev.pos[1])
                 if clique_popup == "anterior":
                     gerenciador_musica.musica_anterior()
@@ -551,7 +440,6 @@ def menu_loop(screen) -> Escolha:
                     if gerenciador_musica.musica_tocando:
                         popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
                 else:
-                    # Se não clicou no popup, verificar se clicou em algum botão
                     mouse_x, mouse_y = ev.pos
                     for i, txt in enumerate(itens):
                         if i == 1:  # Botão JOGAR (segundo na nova ordem)
@@ -765,9 +653,11 @@ def selecionar_mapas_loop(screen):
                     if recarregar_mapas():
                         mapas = obter_lista_mapas()
                         indice = 0
-                        popup_musica.mostrar("Mapas recarregados!", tipo="outra")
+                        from core.i18n import t
+                        popup_musica.mostrar(t("mensagens.mapas_recarregados"), tipo="outra")
                     else:
-                        popup_musica.mostrar("Nenhum mapa novo encontrado", tipo="outra")
+                        from core.i18n import t
+                        popup_musica.mostrar(t("mensagens.nenhum_mapa_novo"), tipo="outra")
         
         screen.blit(bg, (0, 0))
         
@@ -776,7 +666,8 @@ def selecionar_mapas_loop(screen):
         pygame.draw.rect(screen, (255, 255, 255, 50), (caixa_x, caixa_y, caixa_largura, caixa_altura), 2)
         
         # Título
-        titulo = render_text("SELECIONAR MAPA", 32, (255, 255, 255), bold=True, pixel_style=True)
+        from core.i18n import t
+        titulo = render_text(t("menu.selecionar_mapa.titulo"), 32, (255, 255, 255), bold=True, pixel_style=True)
         titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
         screen.blit(titulo, (titulo_x, caixa_y + 20))
         
@@ -825,13 +716,15 @@ def selecionar_mapas_loop(screen):
         voltar_hover = voltar_rect.collidepoint(mouse_x, mouse_y)
         if voltar_hover:
             pygame.draw.rect(screen, (0, 200, 255, 50), voltar_rect)
-        voltar_texto = render_text("VOLTAR", 24, (0, 200, 255) if voltar_hover else (255, 255, 255), bold=True, pixel_style=True)
+        from core.i18n import t
+        voltar_texto = render_text(t("menu.selecionar_mapa.voltar"), 24, (0, 200, 255) if voltar_hover else (255, 255, 255), bold=True, pixel_style=True)
         screen.blit(voltar_texto, (caixa_x + 210, caixa_y + caixa_altura - 50))
         
         # Instruções
+        from core.i18n import t
         instrucoes = [
-            "↑↓: Navegar | ENTER: Selecionar | ESC: Voltar",
-            "R: Recarregar mapas | M: Próxima música"
+            t("menu.selecionar_mapa.instrucao_navegar"),
+            t("menu.selecionar_mapa.instrucao_atalhos")
         ]
         
         for j, instrucao in enumerate(instrucoes):
@@ -1026,9 +919,11 @@ def selecionar_carros_loop(screen):
                             if botao_comprar_rect_p1 and botao_comprar_rect_p1.collidepoint(mouse_x, mouse_y):
                                 preco = carro_atual.get('preco', 0)
                                 if gerenciador_progresso.comprar_carro(carro_atual['prefixo_cor'], preco):
-                                    popup_musica.mostrar(f"Carro {carro_atual['nome']} comprado!", tipo="outra")
+                                    from core.i18n import t
+                                    popup_musica.mostrar(t("mensagens.carro_comprado").format(carro_atual['nome']), tipo="outra")
                                 else:
-                                    popup_musica.mostrar("Dinheiro insuficiente!", tipo="outra")
+                                    from core.i18n import t
+                                    popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
                     elif fase_selecao == 2:
                         carro_atual = CARROS_DISPONIVEIS[carro_p2]
                         esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
@@ -1042,9 +937,11 @@ def selecionar_carros_loop(screen):
                             if botao_comprar_rect_p2 and botao_comprar_rect_p2.collidepoint(mouse_x, mouse_y):
                                 preco = carro_atual.get('preco', 0)
                                 if gerenciador_progresso.comprar_carro(carro_atual['prefixo_cor'], preco):
-                                    popup_musica.mostrar(f"Carro {carro_atual['nome']} comprado!", tipo="outra")
+                                    from core.i18n import t
+                                    popup_musica.mostrar(t("mensagens.carro_comprado").format(carro_atual['nome']), tipo="outra")
                                 else:
-                                    popup_musica.mostrar("Dinheiro insuficiente!", tipo="outra")
+                                    from core.i18n import t
+                                    popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
             if ev.type == pygame.KEYDOWN:
                 if ev.key == pygame.K_ESCAPE:
                     return None, None
@@ -1099,19 +996,20 @@ def selecionar_carros_loop(screen):
         overlay.fill((0, 0, 0, 80))
         screen.blit(overlay, (0, 0))
         
+        from core.i18n import t
         # Mostrar dinheiro no topo (dourado suave harmonizado)
-        dinheiro_texto = f"DINHEIRO: ${gerenciador_progresso.dinheiro}"
+        dinheiro_texto = t("menu.oficina.dinheiro").format(gerenciador_progresso.dinheiro)
         dinheiro_render = render_text(dinheiro_texto, 32, (255, 220, 100), bold=True, pixel_style=True)
         screen.blit(dinheiro_render, (20, 20))
         
         # Título - estilo pixel art (azul ciano harmonizado) - mais espaçado
-        titulo = render_text("OFICINA", 48, (100, 220, 255), bold=True, pixel_style=True)
+        titulo = render_text(t("menu.oficina.titulo"), 48, (100, 220, 255), bold=True, pixel_style=True)
         titulo_x = (LARGURA - titulo.get_width()) // 2
         screen.blit(titulo, (titulo_x, 30))
         
         if fase_selecao == 1:
             # FASE 1: Player 1 selecionando (azul claro harmonizado) - mais espaçado
-            subtitulo = render_text("JOGADOR 1 - ESCOLHA SEU CARRO", 32, (150, 220, 255), bold=True, pixel_style=True)
+            subtitulo = render_text(t("menu.oficina.jogador_1"), 32, (150, 220, 255), bold=True, pixel_style=True)
             subtitulo_x = (LARGURA - subtitulo.get_width()) // 2
             screen.blit(subtitulo, (subtitulo_x, 90))
             
@@ -1119,9 +1017,9 @@ def selecionar_carros_loop(screen):
             carro_atual = CARROS_DISPONIVEIS[carro_p1]
             esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
             if esta_desbloqueado:
-                instrucoes = render_text("← → navegar | ENTER confirmar | ESC voltar", 20, (255, 255, 255), bold=True, pixel_style=True)
+                instrucoes = render_text(t("menu.oficina.navegar_confirmar"), 20, (255, 255, 255), bold=True, pixel_style=True)
             else:
-                instrucoes = render_text("← → navegar | B comprar | ESC voltar", 20, (255, 255, 255), bold=True, pixel_style=True)
+                instrucoes = render_text(t("menu.oficina.navegar_comprar"), 20, (255, 255, 255), bold=True, pixel_style=True)
             instrucoes_x = (LARGURA - instrucoes.get_width()) // 2
             screen.blit(instrucoes, (instrucoes_x, 130))
             
@@ -1186,42 +1084,54 @@ def selecionar_carros_loop(screen):
             screen.blit(nome_carro_info, (nome_x_info, info_y + 15))
             
             # Título das informações - mais espaçado
-            info_titulo = render_text("ESPECIFICAÇÕES", 18, (255, 255, 255), bold=True, pixel_style=True)
+            info_titulo = render_text(t("menu.oficina.especificacoes"), 18, (255, 255, 255), bold=True, pixel_style=True)
             screen.blit(info_titulo, (info_x + 15, info_y + 55))
             
             # Tipo de tração - espaçamento melhorado
-            tracao_texto = f"TRAÇÃO: {carro_atual['tipo_tracao'].upper()}"
+            # Normalizar tipo de tração: converter português para inglês
+            tipo_tracao_str = carro_atual['tipo_tracao'].lower() if isinstance(carro_atual['tipo_tracao'], str) else str(carro_atual['tipo_tracao']).lower()
+            mapeamento_tracao = {
+                "traseira": "rear",
+                "frontal": "front",
+                "integral": "awd",
+                "rear": "rear",
+                "front": "front",
+                "awd": "awd"
+            }
+            tipo_tracao_normalizado = mapeamento_tracao.get(tipo_tracao_str, "rear")
+            tracao_tipo = t(f"tipos_tracao.{tipo_tracao_normalizado}")
+            tracao_texto = t("menu.oficina.tracao").format(tracao_tipo)
             tracao_color = (120, 240, 180) if carro_atual['tipo_tracao'] == 'awd' else (150, 220, 255)
             tracao_render = render_text(tracao_texto, 16, tracao_color, bold=True, pixel_style=True)
             screen.blit(tracao_render, (info_x + 15, info_y + 90))
             
             # Velocidade máxima (simulada baseada no tipo de tração) - azul claro harmonizado
             vel_max = {"front": 180, "rear": 200, "awd": 220}.get(carro_atual['tipo_tracao'], 190)
-            vel_texto = f"VELOCIDADE: {vel_max} km/h"
+            vel_texto = t("menu.oficina.velocidade").format(vel_max)
             vel_render = render_text(vel_texto, 16, (120, 200, 255), bold=True, pixel_style=True)
             screen.blit(vel_render, (info_x + 15, info_y + 120))
             
             # Dirigibilidade (simulada) - azul ciano suave
             dir_valor = {"front": 85, "rear": 70, "awd": 95}.get(carro_atual['tipo_tracao'], 80)
-            dir_texto = f"DIRIGIBILIDADE: {dir_valor}%"
+            dir_texto = t("menu.oficina.dirigibilidade").format(dir_valor)
             dir_render = render_text(dir_texto, 16, (140, 210, 255), bold=True, pixel_style=True)
             screen.blit(dir_render, (info_x + 15, info_y + 150))
             
             # Frenagem (simulada) - azul ciano médio
             fren_valor = {"front": 90, "rear": 75, "awd": 95}.get(carro_atual['tipo_tracao'], 85)
-            fren_texto = f"FRENAGEM: {fren_valor}%"
+            fren_texto = t("menu.oficina.frenagem").format(fren_valor)
             fren_render = render_text(fren_texto, 16, (130, 200, 255), bold=True, pixel_style=True)
             screen.blit(fren_render, (info_x + 15, info_y + 180))
             
             # Aceleração (simulada) - azul ciano claro
             acel_valor = {"front": 80, "rear": 90, "awd": 95}.get(carro_atual['tipo_tracao'], 85)
-            acel_texto = f"ACELERAÇÃO: {acel_valor}%"
+            acel_texto = t("menu.oficina.aceleracao").format(acel_valor)
             acel_render = render_text(acel_texto, 16, (160, 220, 255), bold=True, pixel_style=True)
             screen.blit(acel_render, (info_x + 15, info_y + 210))
             
             # Estabilidade (simulada) - azul ciano suave
             est_valor = {"front": 85, "rear": 70, "awd": 95}.get(carro_atual['tipo_tracao'], 80)
-            est_texto = f"ESTABILIDADE: {est_valor}%"
+            est_texto = t("menu.oficina.estabilidade").format(est_valor)
             est_render = render_text(est_texto, 16, (150, 230, 255), bold=True, pixel_style=True)
             screen.blit(est_render, (info_x + 15, info_y + 240))
             
@@ -1230,10 +1140,10 @@ def selecionar_carros_loop(screen):
             preco = carro_atual.get('preco', 0)
             
             if esta_desbloqueado:
-                status_texto = "DESBLOQUEADO"
+                status_texto = t("menu.oficina.desbloqueado")
                 status_color = (120, 240, 180)  # Verde-água harmonizado
             else:
-                status_texto = f"BLOQUEADO - ${preco}"
+                status_texto = t("menu.oficina.bloqueado_preco").format(preco)
                 status_color = (255, 150, 120)  # Laranja suave harmonizado
             
             status_render = render_text(status_texto, 20, status_color, bold=True, pixel_style=True)
@@ -1248,7 +1158,7 @@ def selecionar_carros_loop(screen):
                 if botao_usar_rect_p1:
                     pygame.draw.rect(screen, (50, 150, 100), botao_usar_rect_p1)
                     pygame.draw.rect(screen, (120, 240, 180), botao_usar_rect_p1, 2)
-                    texto_usar = render_text("USAR", 20, (255, 255, 255), bold=True, pixel_style=True)
+                    texto_usar = render_text(t("menu.oficina.usar"), 20, (255, 255, 255), bold=True, pixel_style=True)
                     texto_usar_x = botao_usar_rect_p1.x + (botao_usar_rect_p1.width - texto_usar.get_width()) // 2
                     texto_usar_y = botao_usar_rect_p1.y + (botao_usar_rect_p1.height - texto_usar.get_height()) // 2
                     screen.blit(texto_usar, (texto_usar_x, texto_usar_y))
@@ -1258,7 +1168,7 @@ def selecionar_carros_loop(screen):
                     if gerenciador_progresso.tem_dinheiro(preco):
                         pygame.draw.rect(screen, (150, 120, 50), botao_comprar_rect_p1)
                         pygame.draw.rect(screen, (255, 220, 100), botao_comprar_rect_p1, 2)
-                        texto_comprar = render_text("COMPRAR", 18, (255, 255, 255), bold=True, pixel_style=True)
+                        texto_comprar = render_text(t("menu.oficina.comprar"), 18, (255, 255, 255), bold=True, pixel_style=True)
                     else:
                         pygame.draw.rect(screen, (100, 50, 50), botao_comprar_rect_p1)
                         pygame.draw.rect(screen, (255, 150, 120), botao_comprar_rect_p1, 2)
@@ -1270,14 +1180,15 @@ def selecionar_carros_loop(screen):
             
         elif fase_selecao == 2:
             # FASE 2: Player 2 selecionando (azul claro harmonizado) - mais espaçado
-            subtitulo = render_text("JOGADOR 2 - ESCOLHA SEU CARRO", 32, (150, 220, 255), bold=True, pixel_style=True)
+            subtitulo = render_text(t("menu.oficina.jogador_2"), 32, (150, 220, 255), bold=True, pixel_style=True)
             subtitulo_x = (LARGURA - subtitulo.get_width()) // 2
             screen.blit(subtitulo, (subtitulo_x, 90))
             
             # Mostrar carro do P1 já selecionado (pequeno, no canto)
             carro_p1_selecionado = CARROS_DISPONIVEIS[carro_p1]
             sprite_p1 = pygame.transform.scale(sprites_carros[carro_p1_selecionado['prefixo_cor']], (90, 45))
-            screen.blit(render_text("P1:", 20, (255, 255, 255), bold=True, pixel_style=True), (50, 100))
+            from core.i18n import t
+            screen.blit(render_text(t("jogo.p1"), 20, (255, 255, 255), bold=True, pixel_style=True), (50, 100))
             screen.blit(sprite_p1, (50, 120))
             screen.blit(render_text(carro_p1_selecionado['nome'], 16, (255, 255, 255), bold=True, pixel_style=True), (50, 175))
             
@@ -1352,42 +1263,56 @@ def selecionar_carros_loop(screen):
             screen.blit(nome_carro_info, (nome_x_info, info_y + 15))
             
             # Título das informações - mais espaçado
-            info_titulo = render_text("ESPECIFICAÇÕES", 18, (255, 255, 255), bold=True, pixel_style=True)
+            from core.i18n import t
+            info_titulo = render_text(t("menu.oficina.especificacoes"), 18, (255, 255, 255), bold=True, pixel_style=True)
             screen.blit(info_titulo, (info_x + 15, info_y + 55))
             
             # Tipo de tração (harmonizado - azul ciano com variações sutis) - espaçamento melhorado
-            tracao_texto = f"TRAÇÃO: {carro_atual['tipo_tracao'].upper()}"
+            from core.i18n import t
+            # Normalizar tipo de tração: converter português para inglês
+            tipo_tracao_str = carro_atual['tipo_tracao'].lower() if isinstance(carro_atual['tipo_tracao'], str) else str(carro_atual['tipo_tracao']).lower()
+            mapeamento_tracao = {
+                "traseira": "rear",
+                "frontal": "front",
+                "integral": "awd",
+                "rear": "rear",
+                "front": "front",
+                "awd": "awd"
+            }
+            tipo_tracao_normalizado = mapeamento_tracao.get(tipo_tracao_str, "rear")
+            tipo_tracao_traduzido = t(f"tipos_tracao.{tipo_tracao_normalizado}")
+            tracao_texto = t("menu.oficina.tracao").format(tipo_tracao_traduzido)
             tracao_color = (120, 240, 180) if carro_atual['tipo_tracao'] == 'awd' else (150, 220, 255)
             tracao_render = render_text(tracao_texto, 16, tracao_color, bold=True, pixel_style=True)
             screen.blit(tracao_render, (info_x + 15, info_y + 90))
             
             # Velocidade máxima (simulada baseada no tipo de tração) - azul claro harmonizado
             vel_max = {"front": 180, "rear": 200, "awd": 220}.get(carro_atual['tipo_tracao'], 190)
-            vel_texto = f"VELOCIDADE: {vel_max} km/h"
+            vel_texto = t("menu.oficina.velocidade").format(vel_max)
             vel_render = render_text(vel_texto, 16, (120, 200, 255), bold=True, pixel_style=True)
             screen.blit(vel_render, (info_x + 15, info_y + 120))
             
             # Dirigibilidade (simulada) - azul ciano suave
             dir_valor = {"front": 85, "rear": 70, "awd": 95}.get(carro_atual['tipo_tracao'], 80)
-            dir_texto = f"DIRIGIBILIDADE: {dir_valor}%"
+            dir_texto = t("menu.oficina.dirigibilidade").format(dir_valor)
             dir_render = render_text(dir_texto, 16, (140, 210, 255), bold=True, pixel_style=True)
             screen.blit(dir_render, (info_x + 15, info_y + 150))
             
             # Frenagem (simulada) - azul ciano médio
             fren_valor = {"front": 90, "rear": 75, "awd": 95}.get(carro_atual['tipo_tracao'], 85)
-            fren_texto = f"FRENAGEM: {fren_valor}%"
+            fren_texto = t("menu.oficina.frenagem").format(fren_valor)
             fren_render = render_text(fren_texto, 16, (130, 200, 255), bold=True, pixel_style=True)
             screen.blit(fren_render, (info_x + 15, info_y + 180))
             
             # Aceleração (simulada) - azul ciano claro
             acel_valor = {"front": 80, "rear": 90, "awd": 95}.get(carro_atual['tipo_tracao'], 85)
-            acel_texto = f"ACELERAÇÃO: {acel_valor}%"
+            acel_texto = t("menu.oficina.aceleracao").format(acel_valor)
             acel_render = render_text(acel_texto, 16, (160, 220, 255), bold=True, pixel_style=True)
             screen.blit(acel_render, (info_x + 15, info_y + 210))
             
             # Estabilidade (simulada) - azul ciano suave
             est_valor = {"front": 85, "rear": 70, "awd": 95}.get(carro_atual['tipo_tracao'], 80)
-            est_texto = f"ESTABILIDADE: {est_valor}%"
+            est_texto = t("menu.oficina.estabilidade").format(est_valor)
             est_render = render_text(est_texto, 16, (150, 230, 255), bold=True, pixel_style=True)
             screen.blit(est_render, (info_x + 15, info_y + 240))
             
@@ -1396,10 +1321,10 @@ def selecionar_carros_loop(screen):
             preco = carro_atual.get('preco', 0)
             
             if esta_desbloqueado:
-                status_texto = "DESBLOQUEADO"
+                status_texto = t("menu.oficina.desbloqueado")
                 status_color = (120, 240, 180)  # Verde-água harmonizado
             else:
-                status_texto = f"BLOQUEADO - ${preco}"
+                status_texto = t("menu.oficina.bloqueado_preco").format(preco)
                 status_color = (255, 150, 120)  # Laranja suave harmonizado
             
             status_render = render_text(status_texto, 20, status_color, bold=True, pixel_style=True)
@@ -1414,7 +1339,7 @@ def selecionar_carros_loop(screen):
                 if botao_usar_rect_p2:
                     pygame.draw.rect(screen, (50, 150, 100), botao_usar_rect_p2)
                     pygame.draw.rect(screen, (120, 240, 180), botao_usar_rect_p2, 2)
-                    texto_usar = render_text("USAR", 20, (255, 255, 255), bold=True, pixel_style=True)
+                    texto_usar = render_text(t("menu.oficina.usar"), 20, (255, 255, 255), bold=True, pixel_style=True)
                     texto_usar_x = botao_usar_rect_p2.x + (botao_usar_rect_p2.width - texto_usar.get_width()) // 2
                     texto_usar_y = botao_usar_rect_p2.y + (botao_usar_rect_p2.height - texto_usar.get_height()) // 2
                     screen.blit(texto_usar, (texto_usar_x, texto_usar_y))
@@ -1424,7 +1349,7 @@ def selecionar_carros_loop(screen):
                     if gerenciador_progresso.tem_dinheiro(preco):
                         pygame.draw.rect(screen, (150, 120, 50), botao_comprar_rect_p2)
                         pygame.draw.rect(screen, (255, 220, 100), botao_comprar_rect_p2, 2)
-                        texto_comprar = render_text("COMPRAR", 18, (255, 255, 255), bold=True, pixel_style=True)
+                        texto_comprar = render_text(t("menu.oficina.comprar"), 18, (255, 255, 255), bold=True, pixel_style=True)
                     else:
                         pygame.draw.rect(screen, (100, 50, 50), botao_comprar_rect_p2)
                         pygame.draw.rect(screen, (255, 150, 120), botao_comprar_rect_p2, 2)
@@ -1446,14 +1371,15 @@ def submenu_audio(screen):
     bg_raw = pygame.image.load(CAMINHO_MENU).convert_alpha()
     bg = scale_to_cover(bg_raw, LARGURA, ALTURA)
 
+    from core.i18n import t
     opcoes_audio = [
-        ("MÚSICA HABILITADA", "musica_habilitada"),
-        ("MÚSICA NO MENU", "musica_no_menu"),
-        ("MÚSICA NO JOGO", "musica_no_jogo"),
-        ("MÚSICA ALEATÓRIA", "musica_aleatoria"),
-        ("VOLUME MÚSICA", "volume_musica")
+        (t("audio.musica_habilitada"), "musica_habilitada"),
+        (t("audio.musica_no_menu"), "musica_no_menu"),
+        (t("audio.musica_no_jogo"), "musica_no_jogo"),
+        (t("audio.musica_aleatoria"), "musica_aleatoria"),
+        (t("audio.volume_musica"), "volume_musica")
     ]
-    opcao_voltar = ("VOLTAR", "voltar")
+    opcao_voltar = (t("audio.voltar"), "voltar")
 
     opcao_atual = 0
     clock = pygame.time.Clock()
@@ -1549,7 +1475,8 @@ def submenu_audio(screen):
                 hover_animation[i] = max(0.0, hover_animation[i] - hover_speed * dt * 1.5)
 
         # título
-        titulo = render_text("CONFIGURAÇÕES DE ÁUDIO", 36, (255, 255, 255), bold=True, pixel_style=True)
+        from core.i18n import t
+        titulo = render_text(t("audio.titulo"), 36, (255, 255, 255), bold=True, pixel_style=True)
         titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
         screen.blit(titulo, (titulo_x, caixa_y + 20))
 
@@ -1596,7 +1523,8 @@ def submenu_audio(screen):
                 valor = f"{CONFIGURACOES['audio'][chave]:.1f}"
                 texto = render_text(f"{nome}: {valor}", 20, cor_texto, bold=True, pixel_style=True)
             else:
-                valor = "SIM" if CONFIGURACOES["audio"][chave] else "NÃO"
+                from core.i18n import t
+                valor = t("jogo.sim") if CONFIGURACOES["audio"][chave] else t("jogo.nao")
                 texto = render_text(f"{nome}: {valor}", 20, cor_texto, bold=True, pixel_style=True)
             screen.blit(texto, (caixa_x + 30, y))
 
@@ -1616,21 +1544,22 @@ def submenu_controles(screen):
     bg_raw = pygame.image.load(CAMINHO_MENU).convert_alpha()
     bg = scale_to_cover(bg_raw, LARGURA, ALTURA)
 
+    from core.i18n import t
     opcoes_controles = [
-        ("JOGADOR 1 - ACELERAR", "W"),
-        ("JOGADOR 1 - FREAR", "S"),
-        ("JOGADOR 1 - ESQUERDA", "A"),
-        ("JOGADOR 1 - DIREITA", "D"),
-        ("JOGADOR 1 - TURBO", "SHIFT ESQUERDO"),
-        ("JOGADOR 1 - FREIO DE MÃO", "SPACE"),
-        ("JOGADOR 2 - ACELERAR", "↑"),
-        ("JOGADOR 2 - FREAR", "↓"),
-        ("JOGADOR 2 - ESQUERDA", "←"),
-        ("JOGADOR 2 - DIREITA", "→"),
-        ("JOGADOR 2 - TURBO", "CTRL DIREITO"),
-        ("JOGADOR 2 - FREIO DE MÃO", "CTRL")
+        (t("controles.jogador_1_acelerar"), "W"),
+        (t("controles.jogador_1_frear"), "S"),
+        (t("controles.jogador_1_esquerda"), "A"),
+        (t("controles.jogador_1_direita"), "D"),
+        (t("controles.jogador_1_turbo"), "SHIFT ESQUERDO"),
+        (t("controles.jogador_1_freio_mao"), "SPACE"),
+        (t("controles.jogador_2_acelerar"), "↑"),
+        (t("controles.jogador_2_frear"), "↓"),
+        (t("controles.jogador_2_esquerda"), "←"),
+        (t("controles.jogador_2_direita"), "→"),
+        (t("controles.jogador_2_turbo"), "CTRL DIREITO"),
+        (t("controles.jogador_2_freio_mao"), "CTRL")
     ]
-    opcao_voltar = ("VOLTAR", "voltar")
+    opcao_voltar = (t("controles.voltar"), "voltar")
 
     opcao_atual = 0
     clock = pygame.time.Clock()
@@ -1727,7 +1656,8 @@ def submenu_controles(screen):
                 hover_animation[i] = max(0.0, hover_animation[i] - hover_speed * dt * 1.5)
         
         # título
-        titulo = render_text("CONTROLES", 36, (255, 255, 255), bold=True, pixel_style=True)
+        from core.i18n import t
+        titulo = render_text(t("menu.opcoes.controles"), 36, (255, 255, 255), bold=True, pixel_style=True)
         titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
         screen.blit(titulo, (titulo_x, caixa_y + 20))
 
@@ -1793,16 +1723,17 @@ def submenu_video(screen):
     bg_raw = pygame.image.load(CAMINHO_MENU).convert_alpha()
     bg = scale_to_cover(bg_raw, LARGURA, ALTURA)
 
+    from core.i18n import t
     opcoes_video = [
-        ("RESOLUÇÃO", "resolucao"),
-        ("TELA CHEIA", "fullscreen"),
-        ("SEM BORDAS", "tela_cheia_sem_bordas"),
-        ("QUALIDADE ALTA", "qualidade_alta"),
-        ("VSYNC", "vsync"),
-        ("FPS MÁXIMO", "fps_max"),
-        ("MOSTRAR FPS", "mostrar_fps")
+        (t("video.resolucao"), "resolucao"),
+        (t("video.tela_cheia"), "fullscreen"),
+        (t("video.sem_bordas"), "tela_cheia_sem_bordas"),
+        (t("video.qualidade_alta"), "qualidade_alta"),
+        (t("video.vsync"), "vsync"),
+        (t("video.fps_maximo"), "fps_max"),
+        (t("video.mostrar_fps"), "mostrar_fps")
     ]
-    opcao_voltar = ("VOLTAR", "voltar")
+    opcao_voltar = (t("video.voltar"), "voltar")
 
     opcao_atual = 0
     clock = pygame.time.Clock()
@@ -1934,7 +1865,8 @@ def submenu_video(screen):
                 hover_animation[i] = max(0.0, hover_animation[i] - hover_speed * dt * 1.5)
 
         # título
-        titulo = render_text("CONFIGURAÇÕES DE VÍDEO", 36, (255, 255, 255), bold=True, pixel_style=True)
+        from core.i18n import t
+        titulo = render_text(t("video.titulo"), 36, (255, 255, 255), bold=True, pixel_style=True)
         titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
         screen.blit(titulo, (titulo_x, caixa_y + 20))
 
@@ -1985,7 +1917,8 @@ def submenu_video(screen):
                 fps = CONFIGURACOES["video"][chave]
                 texto = render_text(f"{nome}: {fps}", 20, cor_texto, bold=True, pixel_style=True)
             else:
-                valor = "SIM" if CONFIGURACOES["video"][chave] else "NÃO"
+                from core.i18n import t
+                valor = t("jogo.sim") if CONFIGURACOES["video"][chave] else t("jogo.nao")
                 texto = render_text(f"{nome}: {valor}", 20, cor_texto, bold=True, pixel_style=True)
             screen.blit(texto, (caixa_x + 30, y))
 
@@ -2006,16 +1939,21 @@ def submenu_video(screen):
 
 def submenu_idioma(screen):
     """Submenu de configurações de idioma"""
+    from core.i18n import t
     bg_raw = pygame.image.load(CAMINHO_MENU).convert_alpha()
     bg = scale_to_cover(bg_raw, LARGURA, ALTURA)
 
-    opcoes_idioma = [
-        ("PORTUGUÊS", "pt"),
-        ("ENGLISH", "en"),
-        ("ESPAÑOL", "es"),
-        ("FRANÇAIS", "fr")
-    ]
-    opcao_voltar = ("VOLTAR", "voltar")
+    def recarregar_opcoes_idioma():
+        """Recarrega as opções de idioma com as traduções atualizadas"""
+        return [
+            (t("menu.idioma.portugues"), "pt"),
+            (t("menu.idioma.english"), "en"),
+            (t("menu.idioma.espanol"), "es"),
+            (t("menu.idioma.frances"), "fr")
+        ]
+    
+    opcoes_idioma = recarregar_opcoes_idioma()
+    opcao_voltar = (t("menu.idioma.voltar"), "voltar")
 
     opcao_atual = 0
     clock = pygame.time.Clock()
@@ -2047,6 +1985,21 @@ def submenu_idioma(screen):
                                                  caixa_x, caixa_y, caixa_largura, 45, 80, None, 0)
                     if idx >= 0:
                         opcao_atual = idx
+                        # Trocar idioma ao clicar
+                        if opcoes_idioma[idx][1] != "voltar":
+                            idioma_selecionado = opcoes_idioma[idx][1]
+                            from core.i18n import definir_idioma
+                            from config import CONFIGURACOES, salvar_configuracoes
+                            if definir_idioma(idioma_selecionado):
+                                CONFIGURACOES["idioma"]["idioma_atual"] = idioma_selecionado
+                                salvar_configuracoes()
+                                print(f"Idioma alterado para: {idioma_selecionado}")
+                                # Forçar atualização imediata da interface
+                                from core.i18n import atualizar_titulo_janela
+                                atualizar_titulo_janela("menu")
+                                # Recarregar opções de idioma para atualizar os textos
+                                opcoes_idioma = recarregar_opcoes_idioma()
+                                opcao_voltar = (t("menu.idioma.voltar"), "voltar")
             elif ev.type == pygame.KEYDOWN:
                 if ev.key == pygame.K_ESCAPE:
                     return True
@@ -2057,7 +2010,20 @@ def submenu_idioma(screen):
                 elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
                     if opcoes_idioma[opcao_atual][1] == "voltar":
                         return True
-                    # aqui entraria a troca de idioma
+                    # Trocar idioma
+                    idioma_selecionado = opcoes_idioma[opcao_atual][1]
+                    from core.i18n import definir_idioma
+                    from config import CONFIGURACOES, salvar_configuracoes
+                    if definir_idioma(idioma_selecionado):
+                        CONFIGURACOES["idioma"]["idioma_atual"] = idioma_selecionado
+                        salvar_configuracoes()
+                        print(f"Idioma alterado para: {idioma_selecionado}")
+                        # Forçar atualização imediata da interface
+                        from core.i18n import atualizar_titulo_janela
+                        atualizar_titulo_janela("menu")
+                        # Recarregar opções de idioma para atualizar os textos
+                        opcoes_idioma = recarregar_opcoes_idioma()
+                        opcao_voltar = (t("menu.idioma.voltar"), "voltar")
         
         # fundo/overlay/caixa
         screen.blit(bg, (0, 0))
@@ -2094,7 +2060,8 @@ def submenu_idioma(screen):
                 hover_animation[i] = max(0.0, hover_animation[i] - hover_speed * dt * 1.5)
         
         # título
-        titulo = render_text("IDIOMA", 36, (255, 255, 255), bold=True, pixel_style=True)
+        from core.i18n import t
+        titulo = render_text(t("menu.opcoes.idioma"), 36, (255, 255, 255), bold=True, pixel_style=True)
         titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
         screen.blit(titulo, (titulo_x, caixa_y + 20))
 
@@ -2154,13 +2121,19 @@ def opcoes_loop(screen):
     bg_raw = pygame.image.load(CAMINHO_MENU).convert_alpha()
     bg = scale_to_cover(bg_raw, LARGURA, ALTURA)
 
-    opcoes_principais = [
-        ("VOLUME", "audio"),
-        ("CONTROLES", "controles"),
-        ("GRÁFICOS", "video"),
-        ("IDIOMA", "idioma"),
-        ("VOLTAR", "voltar")
-    ]
+    from core.i18n import t
+    
+    def recarregar_opcoes():
+        """Recarrega as opções com as traduções atualizadas"""
+        return [
+            (t("menu.opcoes.volume"), "audio"),
+            (t("menu.opcoes.controles"), "controles"),
+            (t("menu.opcoes.graficos"), "video"),
+            (t("menu.opcoes.idioma"), "idioma"),
+            (t("menu.opcoes.voltar"), "voltar")
+        ]
+    
+    opcoes_principais = recarregar_opcoes()
 
     opcao_atual = 0
     clock = pygame.time.Clock()
@@ -2171,8 +2144,8 @@ def opcoes_loop(screen):
     caixa_x = (LARGURA - caixa_largura) // 2
     caixa_y = (ALTURA - caixa_altura) // 2
 
-    # animação hover
-    hover_animation = [0.0] * len(opcoes_principais)
+    # animação hover (mantém estado entre frames)
+    hover_animation = [0.0] * 5  # Tamanho fixo (sempre 5 opções)
     hover_speed = 8.0  # Velocidade aumentada
 
     while True:
@@ -2232,8 +2205,16 @@ def opcoes_loop(screen):
                             continue
                     elif chave == "idioma":
                         if submenu_idioma(screen):
+                            # Recarregar opções após voltar do submenu de idioma
+                            opcoes_principais = recarregar_opcoes()
                             continue
 
+        # Recarregar opções a cada frame para garantir traduções atualizadas
+        opcoes_principais = recarregar_opcoes()
+        # Garantir que hover_animation tem o tamanho correto
+        if len(hover_animation) != len(opcoes_principais):
+            hover_animation = [0.0] * len(opcoes_principais)
+        
         # desenha fundo/overlay/caixa
         screen.blit(bg, (0, 0))
         overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
@@ -2277,7 +2258,8 @@ def opcoes_loop(screen):
         pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
 
         # título
-        titulo = render_text("OPÇÕES", 48, (255, 255, 255), bold=True, pixel_style=True)
+        from core.i18n import t
+        titulo = render_text(t("menu.opcoes.titulo"), 48, (255, 255, 255), bold=True, pixel_style=True)
         titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
         titulo_y = caixa_y + 20
         screen.blit(titulo, (titulo_x, titulo_y))
@@ -2348,29 +2330,30 @@ def modo_jogo_loop(screen):
     dificuldade_ia_atual = "medio"  # Dificuldade da IA
     
     # Opções de modo de jogo
+    from core.i18n import t
     opcoes_modo = [
-        ("1 JOGADOR", ModoJogo.UM_JOGADOR),
-        ("2 JOGADORES", ModoJogo.DOIS_JOGADORES)
+        (t("modo_jogo.1_jogador"), ModoJogo.UM_JOGADOR),
+        (t("modo_jogo.2_jogadores"), ModoJogo.DOIS_JOGADORES)
     ]
     
     # Opções de tipo de jogo
     opcoes_tipo = [
-        ("CORRIDA", TipoJogo.CORRIDA),
-        ("DRIFT", TipoJogo.DRIFT)
+        (t("modo_jogo.corrida"), TipoJogo.CORRIDA),
+        (t("modo_jogo.drift"), TipoJogo.DRIFT)
     ]
     
     # Opções de voltas (apenas para corrida) - máximo 3 voltas
     opcoes_voltas = [
-        ("1 VOLTA", 1),
-        ("2 VOLTAS", 2),
-        ("3 VOLTAS", 3)
+        (t("voltas.1_volta"), 1),
+        (t("voltas.2_voltas"), 2),
+        (t("voltas.3_voltas"), 3)
     ]
     
     # Opções de dificuldade (IA para corrida, tempo para drift)
     opcoes_dificuldade = [
-        ("FÁCIL", "facil"),
-        ("MÉDIO", "medio"),
-        ("DIFÍCIL", "dificil")
+        (t("dificuldade.facil"), "facil"),
+        (t("dificuldade.medio"), "medio"),
+        (t("dificuldade.dificil"), "dificil")
     ]
     
     opcao_modo_atual = 0
@@ -2591,12 +2574,13 @@ def modo_jogo_loop(screen):
         pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
         
         # Título
-        titulo = render_text("MODO DE JOGO", 36, (255, 255, 255), bold=True, pixel_style=True)
+        titulo = render_text(t("modo_jogo.titulo"), 36, (255, 255, 255), bold=True, pixel_style=True)
         titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
         screen.blit(titulo, (titulo_x, caixa_y + 20))
         
         # Modo de jogo
-        modo_titulo = render_text("NÚMERO DE JOGADORES:", 24, (255, 255, 255), bold=True, pixel_style=True)
+        from core.i18n import t
+        modo_titulo = render_text(t("modo_jogo.numero_jogadores"), 24, (255, 255, 255), bold=True, pixel_style=True)
         screen.blit(modo_titulo, (caixa_x + 50, caixa_y + 80))
         
         for i, (nome, modo) in enumerate(opcoes_modo):
@@ -2638,7 +2622,8 @@ def modo_jogo_loop(screen):
             screen.blit(texto, (caixa_x + 60, y))
         
         # Tipo de jogo
-        tipo_titulo = render_text("TIPO DE JOGO:", 24, (255, 255, 255), bold=True, pixel_style=True)
+        from core.i18n import t
+        tipo_titulo = render_text(t("jogo.tipo_jogo"), 24, (255, 255, 255), bold=True, pixel_style=True)
         screen.blit(tipo_titulo, (caixa_x + 50, caixa_y + 220))
         
         for i, (nome, tipo) in enumerate(opcoes_tipo):
@@ -2681,7 +2666,7 @@ def modo_jogo_loop(screen):
         
         # Opções de voltas (para corrida e drift) - layout horizontal
         if tipo_jogo_atual in (TipoJogo.CORRIDA, TipoJogo.DRIFT):
-            voltas_titulo = render_text("NÚMERO DE VOLTAS:", 24, (255, 255, 255), bold=True, pixel_style=True)
+            voltas_titulo = render_text(t("jogo.numero_voltas"), 24, (255, 255, 255), bold=True, pixel_style=True)
             screen.blit(voltas_titulo, (caixa_x + 50, caixa_y + 350))
             
             for i, (nome, voltas) in enumerate(opcoes_voltas):
@@ -2729,9 +2714,9 @@ def modo_jogo_loop(screen):
         if modo_jogo_atual == ModoJogo.UM_JOGADOR or modo_jogo_atual == ModoJogo.DOIS_JOGADORES:
             # Título baseado no tipo de jogo
             if tipo_jogo_atual == TipoJogo.CORRIDA:
-                titulo_dificuldade = "DIFICULDADE DA IA:"
+                titulo_dificuldade = t("dificuldade.dificuldade_ia")
             else:  # DRIFT
-                titulo_dificuldade = "DIFICULDADE (PONTUAÇÃO):"
+                titulo_dificuldade = t("dificuldade.dificuldade_pontuacao")
             dificuldade_titulo = render_text(titulo_dificuldade, 24, (255, 255, 255), bold=True, pixel_style=True)
             screen.blit(dificuldade_titulo, (caixa_x + 50, caixa_y + 440))
             
@@ -2781,7 +2766,8 @@ def modo_jogo_loop(screen):
         iniciar_hover = iniciar_rect.collidepoint(mouse_x, mouse_y)
         if iniciar_hover:
             pygame.draw.rect(screen, (0, 255, 0, 50), iniciar_rect)
-        iniciar_texto = render_text("INICIAR JOGO", 24, (0, 255, 0) if iniciar_hover else (255, 255, 255), bold=True, pixel_style=True)
+        from core.i18n import t
+        iniciar_texto = render_text(t("jogo.iniciar_jogo"), 24, (0, 255, 0) if iniciar_hover else (255, 255, 255), bold=True, pixel_style=True)
         screen.blit(iniciar_texto, (caixa_x + 60, caixa_y + caixa_altura - 53))
         
         # Botão voltar (descido para não sobrepor dificuldade)
@@ -2789,7 +2775,8 @@ def modo_jogo_loop(screen):
         voltar_hover = voltar_rect.collidepoint(mouse_x, mouse_y)
         if voltar_hover:
             pygame.draw.rect(screen, (0, 200, 255, 50), voltar_rect)
-        voltar_texto = render_text("VOLTAR", 24, (0, 200, 255) if voltar_hover else (255, 255, 255), bold=True, pixel_style=True)
+        from core.i18n import t
+        voltar_texto = render_text(t("menu.selecionar_mapa.voltar"), 24, (0, 200, 255) if voltar_hover else (255, 255, 255), bold=True, pixel_style=True)
         screen.blit(voltar_texto, (caixa_x + 280, caixa_y + caixa_altura - 53))
         
         
@@ -2834,11 +2821,32 @@ def selecionar_fase_loop(screen):
             minimapa = pista_temp.carregar_minimapa(i)
             if minimapa:
                 minimapas[i] = minimapa
-                # Redimensionar apenas uma vez e cachear
-                minimapas_redimensionados[i] = pygame.transform.smoothscale(
+                # Redimensionar mantendo proporção para evitar distorção
+                largura_original = minimapa.get_width()
+                altura_original = minimapa.get_height()
+                
+                # Calcular escala para manter proporção
+                escala_x = minimapa_tamanho_display / largura_original
+                escala_y = minimapa_tamanho_display / altura_original
+                escala = min(escala_x, escala_y)  # Usar menor escala para manter proporção
+                
+                # Calcular novo tamanho mantendo proporção
+                nova_largura = int(largura_original * escala)
+                nova_altura = int(altura_original * escala)
+                
+                # Redimensionar mantendo proporção
+                minimapa_redimensionado = pygame.transform.smoothscale(
                     minimapa, 
-                    (minimapa_tamanho_display, minimapa_tamanho_display)
+                    (nova_largura, nova_altura)
                 )
+                
+                # Criar superfície do tamanho final e centralizar a imagem
+                minimapa_final = pygame.Surface((minimapa_tamanho_display, minimapa_tamanho_display), pygame.SRCALPHA)
+                offset_x = (minimapa_tamanho_display - nova_largura) // 2
+                offset_y = (minimapa_tamanho_display - nova_altura) // 2
+                minimapa_final.blit(minimapa_redimensionado, (offset_x, offset_y))
+                
+                minimapas_redimensionados[i] = minimapa_final
         except Exception as e:
             print(f"Erro ao carregar minimapa {i}: {e}")
     print(f"Minimapas carregados: {len(minimapas_redimensionados)}")
@@ -2948,7 +2956,8 @@ def selecionar_fase_loop(screen):
         pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
         
         # Título
-        titulo = render_text("SELECIONAR FASE", 36, (255, 255, 255), bold=True, pixel_style=True)
+        from core.i18n import t
+        titulo = render_text(t("jogo.selecionar_fase"), 36, (255, 255, 255), bold=True, pixel_style=True)
         titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
         screen.blit(titulo, (titulo_x, caixa_y + 20))
         
@@ -2989,13 +2998,13 @@ def selecionar_fase_loop(screen):
                 screen.blit(minimapas_redimensionados[fase_num], (x + 5, y + 5))
             else:
                 # Fallback: desenhar número da fase
-                texto_fase = render_text(f"FASE {fase_num}", 24, (255, 255, 255), bold=True, pixel_style=True)
+                texto_fase = render_text(t("jogo.fase_numero").format(fase_num), 24, (255, 255, 255), bold=True, pixel_style=True)
                 texto_x = x + (minimapa_tamanho - texto_fase.get_width()) // 2
                 texto_y = y + (minimapa_tamanho - texto_fase.get_height()) // 2
                 screen.blit(texto_fase, (texto_x, texto_y))
             
             # Desenhar número da fase abaixo do minimapa
-            texto_num = render_text(f"FASE {fase_num}", 14, (255, 255, 255), bold=True, pixel_style=True)
+            texto_num = render_text(t("jogo.fase_numero").format(fase_num), 14, (255, 255, 255), bold=True, pixel_style=True)
             texto_num_x = x + (minimapa_tamanho - texto_num.get_width()) // 2
             screen.blit(texto_num, (texto_num_x, y + minimapa_tamanho + 3))
             
@@ -3121,7 +3130,8 @@ def recordes_loop(screen):
         pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
         
         # Título
-        titulo = render_text("RECORDES", 36, (255, 255, 255), bold=True, pixel_style=True)
+        from core.i18n import t
+        titulo = render_text(t("jogo.recordes"), 36, (255, 255, 255), bold=True, pixel_style=True)
         titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
         screen.blit(titulo, (titulo_x, caixa_y + 20))
         
@@ -3131,8 +3141,9 @@ def recordes_loop(screen):
         fonte_secao = pygame.font.SysFont("consolas", 20, bold=True)
         
         # === SEÇÃO CORRIDA ===
+        from core.i18n import t
         y_secao_corrida = caixa_y + 70
-        titulo_corrida = fonte_secao.render("CORRIDA", True, (0, 200, 255))
+        titulo_corrida = fonte_secao.render(t("recordes.corrida"), True, (0, 200, 255))
         screen.blit(titulo_corrida, (caixa_x + 30, y_secao_corrida))
         
         y_inicial_corrida = y_secao_corrida + 35
@@ -3141,9 +3152,9 @@ def recordes_loop(screen):
         x_tempo = caixa_x + 220
         
         # Cabeçalhos corrida
-        cabecalho_pista = fonte_cabecalho.render("PISTA", True, (255, 255, 255))
-        cabecalho_trofeu = fonte_cabecalho.render("TROFÉU", True, (255, 255, 255))
-        cabecalho_tempo = fonte_cabecalho.render("MELHOR TEMPO", True, (255, 255, 255))
+        cabecalho_pista = fonte_cabecalho.render(t("recordes.pista"), True, (255, 255, 255))
+        cabecalho_trofeu = fonte_cabecalho.render(t("recordes.trofeu"), True, (255, 255, 255))
+        cabecalho_tempo = fonte_cabecalho.render(t("recordes.melhor_tempo"), True, (255, 255, 255))
         
         screen.blit(cabecalho_pista, (x_pista, y_inicial_corrida))
         screen.blit(cabecalho_trofeu, (x_trofeu, y_inicial_corrida))
@@ -3158,7 +3169,7 @@ def recordes_loop(screen):
         y_atual = y_inicial_corrida + 45
         for pista_num in range(1, 10):
             # Nome da pista
-            texto_pista = fonte_item.render(f"Pista {pista_num}", True, (255, 255, 255))
+            texto_pista = fonte_item.render(t("recordes.pista_numero").format(pista_num), True, (255, 255, 255))
             screen.blit(texto_pista, (x_pista, y_atual))
             
             # Troféu (sempre mostrar, vazio se não ganhou)
@@ -3184,7 +3195,7 @@ def recordes_loop(screen):
         # === SEÇÃO DRIFT ===
         y_secao_drift = caixa_y + 70
         x_drift = caixa_x + caixa_largura // 2 + 30
-        titulo_drift = fonte_secao.render("DRIFT", True, (255, 200, 0))
+        titulo_drift = fonte_secao.render(t("recordes.drift"), True, (255, 200, 0))
         screen.blit(titulo_drift, (x_drift, y_secao_drift))
         
         y_inicial_drift = y_secao_drift + 35
@@ -3193,9 +3204,9 @@ def recordes_loop(screen):
         x_score_drift = x_drift + 200
         
         # Cabeçalhos drift
-        cabecalho_pista_drift = fonte_cabecalho.render("PISTA", True, (255, 255, 255))
-        cabecalho_trofeu_drift = fonte_cabecalho.render("TROFÉU", True, (255, 255, 255))
-        cabecalho_score = fonte_cabecalho.render("MELHOR SCORE", True, (255, 255, 255))
+        cabecalho_pista_drift = fonte_cabecalho.render(t("recordes.pista"), True, (255, 255, 255))
+        cabecalho_trofeu_drift = fonte_cabecalho.render(t("recordes.trofeu"), True, (255, 255, 255))
+        cabecalho_score = fonte_cabecalho.render(t("jogo.melhor_score"), True, (255, 255, 255))
         
         screen.blit(cabecalho_pista_drift, (x_pista_drift, y_inicial_drift))
         screen.blit(cabecalho_trofeu_drift, (x_trofeu_drift, y_inicial_drift))
@@ -3224,7 +3235,7 @@ def recordes_loop(screen):
         y_atual_drift = y_inicial_drift + 45
         for pista_num in range(1, 10):
             # Nome da pista
-            texto_pista = fonte_item.render(f"Pista {pista_num}", True, (255, 255, 255))
+            texto_pista = fonte_item.render(t("recordes.pista_numero").format(pista_num), True, (255, 255, 255))
             screen.blit(texto_pista, (x_pista_drift, y_atual_drift))
             
             # Troféu baseado na pontuação
@@ -3270,7 +3281,9 @@ def recordes_loop(screen):
 def run():
     from config import CONFIGURACOES, carregar_configuracoes
     pygame.init()
-    pygame.display.set_caption("Turbo Racer — Menu")
+    from core.i18n import inicializar_idioma, t, atualizar_titulo_janela
+    inicializar_idioma()
+    atualizar_titulo_janela("menu")
     
     # Recarregar configurações para garantir que estão atualizadas
     carregar_configuracoes()

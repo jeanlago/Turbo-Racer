@@ -61,7 +61,9 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     if vsync:
         pygame.display.set_mode(resolucao, flags_display | pygame.DOUBLEBUF)
 
-    pygame.display.set_caption("Turbo Racer")
+    from core.i18n import inicializar_idioma, atualizar_titulo_janela
+    inicializar_idioma()
+    atualizar_titulo_janela("jogo")
     relogio = pygame.time.Clock()
 
     if CONFIGURACOES["video"]["mostrar_fps"]:
@@ -112,8 +114,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     
     minimapa_imagem = pista_tiles.carregar_minimapa(numero_pista)
     
-    checkpoint_manager = CheckpointManager(mapa_atual)
-    checkpoint_manager.checkpoints = checkpoints
+    checkpoint_manager = CheckpointManager(mapa_atual, checkpoints_iniciais=checkpoints)
 
     largura_atual, altura_atual = resolucao
     largura_pista, altura_pista = superficie_pista_renderizada.get_size()

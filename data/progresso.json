@@ -1,10 +1,15 @@
 {
-  "dinheiro": 0,
+  "dinheiro": 1125,
   "carros_desbloqueados": [
     "Car1"
   ],
-  "recordes": {
+  "recordes_corrida": {
+    "2": 7.879999999999935,
+    "1": 1.940999999999988
   },
+  "recordes_drift": {},
   "trofeus": {
+    "2": "ouro",
+    "1": "ouro"
   }
 }

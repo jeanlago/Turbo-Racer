@@ -69,8 +69,12 @@ class GerenciadorCorrida:
     def desenhar_semaforo(self, tela, largura, altura):
         if self.iniciada:
             return
+        from core.i18n import t
         val = max(0, int(self.contagem_regressiva) + 1)
-        texto = "VAI!" if val <= 0 else str(val)
+        if val <= 0:
+            texto = t("jogo.semaforo.vai")
+        else:
+            texto = t(f"jogo.semaforo.{val}") if val <= 3 else str(val)
         superficie = self.fonte_grande.render(texto, True, (255, 255, 255))
         sombra = self.fonte_grande.render(texto, True, (0, 0, 0))
         rect = superficie.get_rect(center=(largura//2, altura//3))
@@ -215,7 +219,7 @@ class GerenciadorCorrida:
                     # Isso garante que mesmo que o carro passe pela borda, ainda será detectado
                     passou_checkpoint = rect_expandido.collidepoint(carro.x, carro.y)
                 
-                # Verificar direção do movimento
+                # Verificar direção do movimento (sempre, não apenas quando passa pelo checkpoint)
                 if hasattr(carro, 'vx') and hasattr(carro, 'vy'):
                     velocidade = (carro.vx*carro.vx + carro.vy*carro.vy) ** 0.5
                     if velocidade > 0.1:  # Se estiver se movendo
@@ -242,20 +246,33 @@ class GerenciadorCorrida:
                             produto_escalar = (direcao_movimento[0] * direcao_esperada[0] + 
                                               direcao_movimento[1] * direcao_esperada[1]) / (norm_mov * norm_esperada)
                             
-                            # Se produto escalar negativo, está indo na direção errada
-                            if produto_escalar < -0.3 and passou_checkpoint:
+                            # Verificar se está próximo do checkpoint (dentro de 200px)
+                            distancia_checkpoint = ((carro.x - cx)**2 + (carro.y - cy)**2) ** 0.5
+                            proximo_do_checkpoint = distancia_checkpoint < 200
+                            
+                            # Se produto escalar negativo e está próximo/passou pelo checkpoint, está indo na direção errada
+                            # Threshold mais restritivo (-0.5) para evitar falsos positivos
+                            if produto_escalar < -0.5 and (passou_checkpoint or proximo_do_checkpoint):
                                 contra_mao = True
                                 # Armazenar flag de contra mão no carro
                                 if not hasattr(carro, 'contra_mao'):
                                     carro.contra_mao = False
                                 carro.contra_mao = True
                                 carro.contra_mao_checkpoint = idx_cp
-                                carro.contra_mao_tempo = 0.0  # Timer para mostrar aviso
-                                return  # Não passar checkpoint se estiver contra mão
-                            else:
-                                # Se não está contra mão, limpar flag
-                                if hasattr(carro, 'contra_mao'):
+                                if not hasattr(carro, 'contra_mao_tempo'):
+                                    carro.contra_mao_tempo = 0.0
+                                # Resetar timer se acabou de detectar contramão
+                                if passou_checkpoint:
+                                    carro.contra_mao_tempo = 0.0
+                                
+                                # Não passar checkpoint se estiver contra mão
+                                if passou_checkpoint:
+                                    return
+                            elif produto_escalar > 0.3:
+                                # Se está indo na direção correta (produto escalar positivo significativo), limpar flag
+                                if hasattr(carro, 'contra_mao') and carro.contra_mao:
                                     carro.contra_mao = False
+                                    carro.contra_mao_tempo = 0.0
                 
                 if passou_checkpoint and not contra_mao:
                     # Limpar flag de contra mão se passou corretamente
@@ -325,13 +342,14 @@ class GerenciadorCorrida:
             nome_carro = getattr(carro, 'nome', f'P{i}')
             
             # Mostrar progresso baseado no sistema de checkpoints
+            from core.i18n import t
             if self.checkpoints:
                 voltas_objetivo = self.voltas_objetivo
                 checkpoints_por_volta = len(self.checkpoints)
                 checkpoint_atual = checkpoints_completados % checkpoints_por_volta
-                texto = f"{nome_carro}  Voltas: {voltas}/{voltas_objetivo}  CP: {checkpoint_atual}/{checkpoints_por_volta}  Turbo: {int(carro.turbo_carga)}%  Tempo: {t_txt}"
+                texto = f"{nome_carro}  {t('jogo.hud.voltas').format(voltas, voltas_objetivo)}  {t('jogo.hud.checkpoint').format(checkpoint_atual, checkpoints_por_volta)}  {t('jogo.hud.turbo').format(int(carro.turbo_carga))}  {t('jogo.hud.tempo').format(t_txt)}"
             else:
-                texto = f"{nome_carro}  Voltas: {voltas}/{VOLTAS_OBJETIVO}  Turbo: {int(carro.turbo_carga)}%  Tempo: {t_txt}"
+                texto = f"{nome_carro}  {t('jogo.hud.voltas').format(voltas, VOLTAS_OBJETIVO)}  {t('jogo.hud.turbo').format(int(carro.turbo_carga))}  {t('jogo.hud.tempo').format(t_txt)}"
             
             sombra = self.fonte.render(texto, True, COR_SOMBRA)
             superficie = self.fonte.render(texto, True, COR_TEXTO)
@@ -359,8 +377,9 @@ class GerenciadorCorrida:
     def desenhar_podio(self, tela, largura, altura, carros):
         if not self.alguem_finalizou():
             return
+        from core.i18n import t
         vencedor = self.indice_vencedor(carros)
-        msg = f"VENCEDOR: P{vencedor}" if vencedor else "FIM!"
+        msg = t("jogo.vitoria.vencedor").format(f"P{vencedor}") if vencedor else t("jogo.vitoria.fim")
         fg = self.fonte_grande
         sombra = fg.render(msg, True, (0, 0, 0))
         texto  = fg.render(msg, True, (255, 215, 0))

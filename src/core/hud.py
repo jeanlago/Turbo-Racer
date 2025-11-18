@@ -162,7 +162,8 @@ class HUD:
             superficie.blit(texto_surf, texto_rect)
             
             # Texto "km/h" (ao lado do número)
-            texto_kmh = self.fonte_velocimetro_pequena.render("km/h", True, (200, 200, 200))
+            from core.i18n import t
+            texto_kmh = self.fonte_velocimetro_pequena.render(t("jogo.hud.velocidade").format(""), True, (200, 200, 200))
             texto_kmh_rect = texto_kmh.get_rect(topleft=(pos_x_velocimetro + texto_surf.get_width() + 5, pos_y - 28))
             superficie.blit(texto_kmh, texto_kmh_rect)
         else:
@@ -227,13 +228,43 @@ class HUD:
         minimapa_altura = 200
         minimapa_raio = 100  # Para minimapa circular
         
+        # Variáveis para o tamanho real do minimapa (usadas para posicionar carros e checkpoints)
+        minimapa_real_largura = minimapa_largura
+        minimapa_real_altura = minimapa_altura
+        minimapa_offset_x = posicao[0]
+        minimapa_offset_y = posicao[1]
+        
         # Se temos imagem do minimapa, usar ela
         if imagem_minimapa:
-            # Redimensionar imagem do minimapa
-            minimapa_redimensionado = pygame.transform.scale(imagem_minimapa, (minimapa_largura, minimapa_altura))
-            superficie.blit(minimapa_redimensionado, posicao)
+            # Redimensionar imagem do minimapa mantendo proporção para evitar distorção
+            largura_original = imagem_minimapa.get_width()
+            altura_original = imagem_minimapa.get_height()
             
-            # Remover borda do minimapa (apenas o circuito, sem contorno)
+            # Calcular escala para manter proporção
+            escala_x = minimapa_largura / largura_original
+            escala_y = minimapa_altura / altura_original
+            escala = min(escala_x, escala_y)  # Usar menor escala para manter proporção
+            
+            # Calcular novo tamanho mantendo proporção
+            nova_largura = int(largura_original * escala)
+            nova_altura = int(altura_original * escala)
+            
+            # Redimensionar mantendo proporção
+            minimapa_redimensionado = pygame.transform.smoothscale(
+                imagem_minimapa, 
+                (nova_largura, nova_altura)
+            )
+            
+            # Centralizar a imagem no espaço disponível
+            offset_x = posicao[0] + (minimapa_largura - nova_largura) // 2
+            offset_y = posicao[1] + (minimapa_altura - nova_altura) // 2
+            superficie.blit(minimapa_redimensionado, (offset_x, offset_y))
+            
+            # Atualizar variáveis para usar o tamanho real do minimapa redimensionado
+            minimapa_real_largura = nova_largura
+            minimapa_real_altura = nova_altura
+            minimapa_offset_x = offset_x
+            minimapa_offset_y = offset_y
         else:
             # Desenhar fundo circular do minimapa (fallback)
             pygame.draw.circle(superficie, (0, 0, 0), 
@@ -269,12 +300,12 @@ class HUD:
         
         # Calcular escala
         if imagem_minimapa:
-            # Para minimapa retangular com imagem
-            escala_x = minimapa_largura / (max_x - min_x)
-            escala_y = minimapa_altura / (max_y - min_y)
+            # Para minimapa retangular com imagem - usar tamanho real do minimapa redimensionado
+            escala_x = minimapa_real_largura / (max_x - min_x)
+            escala_y = minimapa_real_altura / (max_y - min_y)
             escala = min(escala_x, escala_y)
-            centro_x = posicao[0] + minimapa_largura / 2
-            centro_y = posicao[1] + minimapa_altura / 2
+            centro_x = minimapa_offset_x + minimapa_real_largura / 2
+            centro_y = minimapa_offset_y + minimapa_real_altura / 2
         else:
             # Para minimapa circular
             escala_x = (minimapa_raio * 2) / (max_x - min_x)
@@ -299,9 +330,9 @@ class HUD:
                     cp_normalizado_y = (cy - min_y) / (max_y - min_y)
                     
                     if imagem_minimapa:
-                        # Para minimapa retangular
-                        cp_x = posicao[0] + cp_normalizado_x * minimapa_largura
-                        cp_y = posicao[1] + cp_normalizado_y * minimapa_altura
+                        # Para minimapa retangular - usar tamanho real do minimapa redimensionado
+                        cp_x = minimapa_offset_x + cp_normalizado_x * minimapa_real_largura
+                        cp_y = minimapa_offset_y + cp_normalizado_y * minimapa_real_altura
                     else:
                         # Para minimapa circular
                         cp_x = centro_x + (cp_normalizado_x - 0.5) * (minimapa_raio * 2)
@@ -309,8 +340,8 @@ class HUD:
                     
                     # Verificar se está dentro dos limites do minimapa
                     if imagem_minimapa:
-                        dentro = (posicao[0] <= cp_x <= posicao[0] + minimapa_largura and 
-                                 posicao[1] <= cp_y <= posicao[1] + minimapa_altura)
+                        dentro = (minimapa_offset_x <= cp_x <= minimapa_offset_x + minimapa_real_largura and 
+                                 minimapa_offset_y <= cp_y <= minimapa_offset_y + minimapa_real_altura)
                     else:
                         distancia_centro = ((cp_x - centro_x) ** 2 + (cp_y - centro_y) ** 2) ** 0.5
                         dentro = distancia_centro <= minimapa_raio - 5
@@ -342,9 +373,9 @@ class HUD:
             
             # Mapear para o minimapa
             if imagem_minimapa:
-                # Para minimapa retangular - mapear diretamente
-                carro_x = posicao[0] + carro_normalizado_x * minimapa_largura
-                carro_y = posicao[1] + carro_normalizado_y * minimapa_altura
+                # Para minimapa retangular - usar tamanho real do minimapa redimensionado
+                carro_x = minimapa_offset_x + carro_normalizado_x * minimapa_real_largura
+                carro_y = minimapa_offset_y + carro_normalizado_y * minimapa_real_altura
             else:
                 # Para minimapa circular
                 carro_x = centro_x + (carro_normalizado_x - 0.5) * (minimapa_raio * 2)
@@ -378,9 +409,9 @@ class HUD:
                 
                 # Mapear para o minimapa
                 if imagem_minimapa:
-                    # Para minimapa retangular - mapear diretamente
-                    outro_carro_x = posicao[0] + outro_carro_normalizado_x * minimapa_largura
-                    outro_carro_y = posicao[1] + outro_carro_normalizado_y * minimapa_altura
+                    # Para minimapa retangular - usar tamanho real do minimapa redimensionado
+                    outro_carro_x = minimapa_offset_x + outro_carro_normalizado_x * minimapa_real_largura
+                    outro_carro_y = minimapa_offset_y + outro_carro_normalizado_y * minimapa_real_altura
                 else:
                     # Para minimapa circular
                     outro_carro_x = centro_x + (outro_carro_normalizado_x - 0.5) * (minimapa_raio * 2)
@@ -398,11 +429,12 @@ class HUD:
             if imagem_minimapa:
                 # Para minimapa retangular - sempre mostrar, mas com margem maior
                 # Usar margem maior para não cortar quando está perto das bordas
+                # Usar tamanho real do minimapa redimensionado
                 margem_borda = 8
-                outro_carro_x_visivel = max(posicao[0] + margem_borda, 
-                                           min(posicao[0] + minimapa_largura - margem_borda, outro_carro_x))
-                outro_carro_y_visivel = max(posicao[1] + margem_borda, 
-                                           min(posicao[1] + minimapa_altura - margem_borda, outro_carro_y))
+                outro_carro_x_visivel = max(minimapa_offset_x + margem_borda, 
+                                           min(minimapa_offset_x + minimapa_real_largura - margem_borda, outro_carro_x))
+                outro_carro_y_visivel = max(minimapa_offset_y + margem_borda, 
+                                           min(minimapa_offset_y + minimapa_real_altura - margem_borda, outro_carro_y))
             else:
                 # Para minimapa circular
                 distancia_outro_carro = ((outro_carro_x - centro_x) ** 2 + (outro_carro_y - centro_y) ** 2) ** 0.5
@@ -489,7 +521,8 @@ class HUD:
             
             voltas_atual = corrida.voltas.get(carro, 0)
             voltas_objetivo = corrida.voltas_objetivo
-            texto_voltas = f"Voltas: {voltas_atual}/{voltas_objetivo}"
+            from core.i18n import t
+            texto_voltas = t("jogo.hud.voltas").format(voltas_atual, voltas_objetivo)
         else:
             # Calcular posição atual do carro em tempo real
             def calcular_posicao_atual(carro_alvo, todos_carros):
@@ -539,7 +572,8 @@ class HUD:
                 texto_posicao = "?"
             
             # Texto de voltas
-            texto_voltas = f"Voltas: {voltas_atual}/{voltas_objetivo}"
+            from core.i18n import t
+            texto_voltas = t("jogo.hud.voltas").format(voltas_atual, voltas_objetivo)
         
         # Fontes menores ainda
         fonte_posicao = pygame.font.SysFont("Arial", 28, bold=True)
@@ -683,9 +717,11 @@ class HUD:
             minutos = int(tempo_total // 60)
             segundos = int(tempo_total % 60)
             centesimos = int((tempo_total % 1) * 100)
-            texto_tempo = f"Tempo: {minutos:02d}:{segundos:02d}.{centesimos:02d}"
+            from core.i18n import t
+            texto_tempo = t("jogo.hud.tempo").format(f"{minutos:02d}:{segundos:02d}.{centesimos:02d}")
         else:
-            texto_tempo = "Tempo: 00:00.00"
+            from core.i18n import t
+            texto_tempo = t("jogo.hud.tempo").format("00:00.00")
         
         # Tempo do checkpoint
         checkpoint_atual = getattr(carro, 'checkpoint_atual', 0)
@@ -693,9 +729,11 @@ class HUD:
             tempo_cp = corrida.tempo_checkpoint[carro][checkpoint_atual]
             segundos_cp = int(tempo_cp % 60)
             centesimos_cp = int((tempo_cp % 1) * 100)
-            texto_checkpoint = f"Checkpoint: {segundos_cp}.{centesimos_cp:02d}"
+            from core.i18n import t
+            texto_checkpoint = t("jogo.hud.checkpoint_tempo").format(f"{segundos_cp}.{centesimos_cp:02d}")
         else:
-            texto_checkpoint = "Checkpoint: 00.00"
+            from core.i18n import t
+            texto_checkpoint = t("jogo.hud.checkpoint_tempo").format("00.00")
         
         # Voltas
         voltas = corrida.voltas.get(carro, 0)
@@ -774,8 +812,10 @@ class HUD:
         if self.fonte_contra_mao is None:
             self.fonte_contra_mao = pygame.font.SysFont("Arial", 56, bold=True)
         
-        texto = self.fonte_contra_mao.render("CONTRA MÃO", True, (255, 0, 0))
-        texto_sombra = self.fonte_contra_mao.render("CONTRA MÃO", True, (0, 0, 0))
+        from core.i18n import t
+        texto_contramao = t("jogo.contramao.titulo")
+        texto = self.fonte_contra_mao.render(texto_contramao, True, (255, 0, 0))
+        texto_sombra = self.fonte_contra_mao.render(texto_contramao, True, (0, 0, 0))
         texto_rect = texto.get_rect(center=(centro_x, centro_y + 20))
         superficie.blit(texto_sombra, (texto_rect.x + 3, texto_rect.y + 3))
         superficie.blit(texto, texto_rect)

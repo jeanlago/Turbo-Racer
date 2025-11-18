@@ -1,0 +1,177 @@
+{
+  "menu": {
+    "splash": {
+      "pressione_qualquer_botao": "APPUYEZ SUR N'IMPORTE QUELLE TOUCHE POUR COMMENCER"
+    },
+    "principal": {
+      "selecionar_carros": "SÉLECTIONNER VOITURES",
+      "jogar": "JOUER",
+      "recordes": "RECORDS",
+      "opcoes": "OPTIONS",
+      "sair": "QUITTER"
+    },
+    "opcoes": {
+      "titulo": "OPTIONS",
+      "volume": "VOLUME",
+      "controles": "CONTRÔLES",
+      "graficos": "GRAPHIQUES",
+      "idioma": "LANGUE",
+      "voltar": "RETOUR"
+    },
+    "idioma": {
+      "titulo": "SÉLECTIONNER LA LANGUE",
+      "portugues": "PORTUGUÊS",
+      "english": "ENGLISH",
+      "espanol": "ESPAÑOL",
+      "frances": "FRANÇAIS",
+      "voltar": "RETOUR"
+    },
+    "selecionar_mapa": {
+      "titulo": "SÉLECTIONNER CARTE",
+      "voltar": "RETOUR",
+      "instrucao": "Utilisez les flèches pour naviguer | ENTER pour sélectionner | ESC pour revenir",
+      "instrucao_navegar": "↑↓: Naviguer | ENTER: Sélectionner | ESC: Retour",
+      "instrucao_atalhos": "R: Recharger cartes | M: Musique suivante"
+    },
+    "oficina": {
+      "titulo": "GARAGE",
+      "dinheiro": "ARGENT: ${}",
+      "jogador_1": "JOUEUR 1 - CHOISISSEZ VOTRE VOITURE",
+      "jogador_2": "JOUEUR 2 - CHOISISSEZ VOTRE VOITURE",
+      "navegar_confirmar": "← → naviguer | ENTER confirmer | ESC retour",
+      "navegar_comprar": "← → naviguer | B acheter | ESC retour",
+      "especificacoes": "SPÉCIFICATIONS",
+      "tracao": "TRACTION: {}",
+      "velocidade": "VITESSE: {} km/h",
+      "dirigibilidade": "CONDUITE: {}%",
+      "frenagem": "FREINAGE: {}%",
+      "aceleracao": "ACCÉLÉRATION: {}%",
+      "estabilidade": "STABILITÉ: {}%",
+      "desbloqueado": "DÉBLOQUÉ",
+      "bloqueado": "BLOQUÉ",
+      "preco": "PRIX: ${}",
+      "bloqueado_preco": "BLOQUÉ - ${}",
+      "comprar": "ACHETER",
+      "confirmar": "CONFIRMER",
+      "usar": "UTILISER"
+    }
+  },
+  "jogo": {
+    "semaforo": {
+      "vai": "ALLEZ!",
+      "3": "3",
+      "2": "2",
+      "1": "1"
+    },
+    "hud": {
+      "voltas": "Tours: {}/{}",
+      "checkpoint": "CP: {}/{}",
+      "checkpoint_tempo": "Checkpoint: {}",
+      "tempo": "Temps: {}",
+      "turbo": "Turbo: {}%",
+      "velocidade": "{} km/h"
+    },
+    "contramao": {
+      "titulo": "SENS INTERDIT!",
+      "mensagem": "Vous allez dans le mauvais sens!"
+    },
+    "vitoria": {
+      "vencedor": "VAINQUEUR: {}",
+      "fim": "TERMINÉ!"
+    }
+  },
+  "tipos_tracao": {
+    "rear": "ARRIÈRE",
+    "front": "AVANT",
+    "awd": "INTÉGRALE"
+  },
+  "controles": {
+    "jogador_1_acelerar": "JOUEUR 1 - ACCÉLÉRER",
+    "jogador_1_frear": "JOUEUR 1 - FREINER",
+    "jogador_1_esquerda": "JOUEUR 1 - GAUCHE",
+    "jogador_1_direita": "JOUEUR 1 - DROITE",
+    "jogador_1_turbo": "JOUEUR 1 - TURBO",
+    "jogador_1_freio_mao": "JOUEUR 1 - FREIN À MAIN",
+    "jogador_2_acelerar": "JOUEUR 2 - ACCÉLÉRER",
+    "jogador_2_frear": "JOUEUR 2 - FREINER",
+    "jogador_2_esquerda": "JOUEUR 2 - GAUCHE",
+    "jogador_2_direita": "JOUEUR 2 - DROITE",
+    "jogador_2_turbo": "JOUEUR 2 - TURBO",
+    "jogador_2_freio_mao": "JOUEUR 2 - FREIN À MAIN",
+    "voltar": "RETOUR"
+  },
+  "modo_jogo": {
+    "titulo": "MODE DE JEU",
+    "numero_jogadores": "NOMBRE DE JOUEURS:",
+    "1_jogador": "1 JOUEUR",
+    "2_jogadores": "2 JOUEURS",
+    "corrida": "COURSE",
+    "drift": "DRIFT"
+  },
+  "recordes": {
+    "corrida": "COURSE",
+    "drift": "DRIFT",
+    "pista": "PISTE",
+    "trofeu": "TROPHEE",
+    "melhor_tempo": "MEILLEUR TEMPS",
+    "pista_numero": "Piste {}",
+    "volta": "TOUR",
+    "voltas": "TOURS"
+  },
+  "voltas": {
+    "1_volta": "1 TOUR",
+    "2_voltas": "2 TOURS",
+    "3_voltas": "3 TOURS"
+  },
+  "dificuldade": {
+    "facil": "FACILE",
+    "medio": "MOYEN",
+    "dificil": "DIFFICILE",
+    "dificuldade_ia": "DIFFICULTÉ IA:",
+    "dificuldade_pontuacao": "DIFFICULTÉ (SCORE):"
+  },
+  "audio": {
+    "titulo": "PARAMÈTRES AUDIO",
+    "musica_habilitada": "MUSIQUE ACTIVÉE",
+    "musica_no_menu": "MUSIQUE AU MENU",
+    "musica_no_jogo": "MUSIQUE EN JEU",
+    "musica_aleatoria": "MUSIQUE ALÉATOIRE",
+    "volume_musica": "VOLUME MUSIQUE",
+    "voltar": "RETOUR"
+  },
+  "video": {
+    "titulo": "PARAMÈTRES VIDÉO",
+    "resolucao": "RÉSOLUTION",
+    "tela_cheia": "PLEIN ÉCRAN",
+    "sem_bordas": "SANS BORDURES",
+    "qualidade_alta": "HAUTE QUALITÉ",
+    "vsync": "VSYNC",
+    "fps_maximo": "FPS MAX",
+    "mostrar_fps": "AFFICHER FPS",
+    "voltar": "RETOUR"
+  },
+  "jogo": {
+    "tipo_jogo": "TYPE DE JEU:",
+    "numero_voltas": "NOMBRE DE TOURS:",
+    "iniciar_jogo": "DÉMARRER LE JEU",
+    "selecionar_fase": "SÉLECTIONNER STADE",
+    "fase_numero": "STADE {}",
+    "recordes": "RECORDS",
+    "melhor_score": "MEILLEUR SCORE",
+    "sim": "OUI",
+    "nao": "NON",
+    "p1": "P1:",
+    "p2": "P2:"
+  },
+  "mensagens": {
+    "mapas_recarregados": "Cartes rechargées!",
+    "nenhum_mapa_novo": "Aucune nouvelle carte trouvée",
+    "carro_comprado": "Voiture {} achetée!",
+    "dinheiro_insuficiente": "Argent insuffisant!"
+  },
+  "titulo_jogo": {
+    "menu": "Turbo Racer — Menu",
+    "jogo": "Turbo Racer"
+  }
+}
+
