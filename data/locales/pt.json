@@ -53,7 +53,37 @@
       "bloqueado_preco": "BLOQUEADO - ${}",
       "comprar": "COMPRAR",
       "confirmar": "CONFIRMAR",
-      "usar": "USAR"
+      "usar": "USAR",
+      "upgrade": "UPGRADE",
+      "vender": "VENDER"
+    },
+    "upgrades": {
+      "titulo": "UPGRADES - {}",
+      "voltar": "VOLTAR",
+      "motor": "MOTOR",
+      "filtro_ar": "FILTRO DE AR",
+      "ecu": "ECU",
+      "transmissao": "TRANSMISSÃO",
+      "rodas": "RODAS",
+      "suspensao": "SUSPENSÃO",
+      "nitro": "NITRO",
+      "nivel": "Nível: {}/{}",
+      "preco": "${}",
+      "maximo": "MÁXIMO",
+      "desc_motor": "Melhora a potência do motor e velocidade máxima do carro.",
+      "desc_filtro_ar": "Melhora a respiração do motor, aumentando aceleração e reduzindo arrasto.",
+      "desc_ecu": "Otimiza a aceleração e resposta do motor.",
+      "desc_transmissao": "Melhora a transmissão de potência e velocidade máxima.",
+      "desc_rodas": "Melhora o grip, estabilidade e aderência das rodas.",
+      "desc_suspensao": "Melhora a estabilidade, controle e assistência de direção.",
+      "desc_nitro": "Desbloqueia e melhora o sistema de nitro. Aumenta a força, duração e reduz o tempo de recarga.",
+      "melhorias_motor": "• +25% força do motor por nível\n• +15% velocidade máxima por nível",
+      "melhorias_filtro_ar": "• +12% força do motor por nível\n• -5% arrasto por nível",
+      "melhorias_ecu": "• +10% aceleração adicional por nível\n• +8% velocidade de direção por nível",
+      "melhorias_transmissao": "• +8% força adicional por nível\n• +10% velocidade máxima adicional por nível",
+      "melhorias_rodas": "• +18% grip por nível\n• +0.06 coeficiente de atrito por nível\n• +10% estabilidade por nível",
+      "melhorias_suspensao": "• +12% estabilidade adicional por nível\n• +8% amortecimento de guinada por nível\n• +10% assistência de contra-esterço por nível",
+      "melhorias_nitro": "• Desbloqueia o nitro (nível 1)\n• +20% força do nitro por nível\n• +15% duração por nível\n• -10% cooldown por nível"
     }
   },
   "jogo": {
@@ -167,7 +197,12 @@
     "mapas_recarregados": "Mapas recarregados!",
     "nenhum_mapa_novo": "Nenhum mapa novo encontrado",
     "carro_comprado": "Carro {} comprado!",
-    "dinheiro_insuficiente": "Dinheiro insuficiente!"
+    "carro_vendido": "Carro {} vendido!",
+    "dinheiro_insuficiente": "Dinheiro insuficiente!",
+    "upgrade_comprado": "{} - {} melhorado!",
+    "comprar_carro_primeiro": "Você precisa comprar o carro primeiro!",
+    "erro_vender_carro": "Erro ao vender o carro!",
+    "nao_pode_vender_unico_carro": "Você não pode vender seu único carro!"
   },
   "titulo_jogo": {
     "menu": "Turbo Racer — Menu",

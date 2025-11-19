@@ -53,7 +53,37 @@
       "bloqueado_preco": "BLOQUÉ - ${}",
       "comprar": "ACHETER",
       "confirmar": "CONFIRMER",
-      "usar": "UTILISER"
+      "usar": "UTILISER",
+      "upgrade": "AMÉLIORER",
+      "vender": "VENDRE"
+    },
+    "upgrades": {
+      "titulo": "AMÉLIORATIONS - {}",
+      "voltar": "RETOUR",
+      "motor": "MOTEUR",
+      "filtro_ar": "FILTRE À AIR",
+      "ecu": "ECU",
+      "transmissao": "TRANSMISSION",
+      "rodas": "ROUES",
+      "suspensao": "SUSPENSION",
+      "nitro": "NITRO",
+      "nivel": "Niveau: {}/{}",
+      "preco": "${}",
+      "maximo": "MAX",
+      "desc_motor": "Améliore la puissance du moteur et la vitesse maximale.",
+      "desc_filtro_ar": "Améliore la respiration du moteur, augmentant l'accélération et réduisant la traînée.",
+      "desc_ecu": "Optimise l'accélération et la réponse du moteur.",
+      "desc_transmissao": "Améliore la transmission de puissance et la vitesse maximale.",
+      "desc_rodas": "Améliore l'adhérence, la stabilité et la traction des roues.",
+      "desc_suspensao": "Améliore la stabilité, le contrôle et l'assistance de direction.",
+      "desc_nitro": "Débloque et améliore le système de nitro. Augmente la force, la durée et réduit le temps de recharge.",
+      "melhorias_motor": "• +25% force du moteur par niveau\n• +15% vitesse maximale par niveau",
+      "melhorias_filtro_ar": "• +12% force du moteur par niveau\n• -5% traînée par niveau",
+      "melhorias_ecu": "• +10% accélération supplémentaire par niveau\n• +8% vitesse de direction par niveau",
+      "melhorias_transmissao": "• +8% force supplémentaire par niveau\n• +10% vitesse maximale supplémentaire par niveau",
+      "melhorias_rodas": "• +18% adhérence par niveau\n• +0.06 coefficient de friction par niveau\n• +10% stabilité par niveau",
+      "melhorias_suspensao": "• +12% stabilité supplémentaire par niveau\n• +8% amortissement de lacet par niveau\n• +10% assistance de contre-braquage par niveau",
+      "melhorias_nitro": "• Débloque le nitro (niveau 1)\n• +20% force du nitro par niveau\n• +15% durée par niveau\n• -10% temps de recharge par niveau"
     }
   },
   "jogo": {
@@ -167,7 +197,12 @@
     "mapas_recarregados": "Cartes rechargées!",
     "nenhum_mapa_novo": "Aucune nouvelle carte trouvée",
     "carro_comprado": "Voiture {} achetée!",
-    "dinheiro_insuficiente": "Argent insuffisant!"
+    "carro_vendido": "Voiture {} vendue!",
+    "dinheiro_insuficiente": "Argent insuffisant!",
+    "upgrade_comprado": "{} - {} amélioré!",
+    "comprar_carro_primeiro": "Vous devez d'abord acheter la voiture !",
+    "erro_vender_carro": "Erreur lors de la vente de la voiture !",
+    "nao_pode_vender_unico_carro": "Vous ne pouvez pas vendre votre seule voiture !"
   },
   "titulo_jogo": {
     "menu": "Turbo Racer — Menu",

@@ -17,7 +17,7 @@ class CarroFisica:
     TRACAO_FRONTAL  = "front"
     TRACAO_INTEGRAL = "awd"
 
-    def __init__(self, x, y, prefixo_cor, controles, turbo_key=None, nome=None, tipo_tracao=None):
+    def __init__(self, x, y, prefixo_cor, controles, turbo_key=None, nome=None, tipo_tracao=None, upgrades=None, multiplicador_base=1.0):
         # --- Estado global ---
         self.x = float(x); self.y = float(y)
         self.angulo = 0.0
@@ -37,6 +37,8 @@ class CarroFisica:
         self.turbo_key = KEY_NAME_TO_CONST.get(turbo_key) if isinstance(turbo_key, str) else turbo_key
         self.nome = nome or f"Carro {prefixo_cor}"
         self.tipo_tracao = tipo_tracao or self.TRACAO_TRASEIRA
+        self.prefixo_cor = prefixo_cor
+        self.multiplicador_base = multiplicador_base
         self._carregar_sprite(prefixo_cor)
 
         # --- Parâmetros físicos ---
@@ -47,38 +49,35 @@ class CarroFisica:
         self.a  = self.L - self.b
         self.Iz = 2400.0
 
-        # pneus
-        self.Cf_base = 70000.0 if self.tipo_tracao != self.TRACAO_TRASEIRA else 68000.0
-        self.Cr_base = 50000.0 if self.tipo_tracao != self.TRACAO_TRASEIRA else 48000.0
-        self.mu_peak   = 1.05
-        self.mu_long   = 1.00
+        # pneus (valores base NERFADOS - carros fracos sem upgrades)
+        # Aplicar multiplicador base antes de tudo
+        self.Cf_base = (35000.0 if self.tipo_tracao != self.TRACAO_TRASEIRA else 34000.0) * self.multiplicador_base
+        self.Cr_base = (25000.0 if self.tipo_tracao != self.TRACAO_TRASEIRA else 24000.0) * self.multiplicador_base
+        self.mu_peak   = 0.75 + (self.multiplicador_base - 1.0) * 0.15  # Aumenta com multiplicador
+        self.mu_long   = 0.70 + (self.multiplicador_base - 1.0) * 0.15
         self.alpha_sat = math.radians(12.5)
 
-        # motor e resistências
-        self.engine_force    = 12000.0
-        self.brake_force     = 11000.0
-        self.handbrake_force = 12000.0
-        self.drag            = 0.0002  # Reduzido de 0.0009 para permitir velocidades maiores
-        self.roll_res        = 0.02    # Reduzido de 0.10 para permitir velocidades maiores
+        # motor e resistências (valores base NERFADOS)
+        self.engine_force    = 6000.0 * self.multiplicador_base
+        self.brake_force     = 5500.0 * self.multiplicador_base
+        self.handbrake_force = 6000.0 * self.multiplicador_base
+        self.drag            = 0.0003 / self.multiplicador_base  # Menos arrasto = melhor
+        self.roll_res        = 0.03 / self.multiplicador_base
         self.downforce_k     = 0.0
-        # Atrito de rolamento base (sempre ativo, faz o carro desacelerar naturalmente)
-        # Reduzido para não limitar velocidade máxima
-        self.friction_base   = 0.02  # Reduzido de 0.05 para 0.02 para permitir velocidades maiores
+        self.friction_base   = 0.03 / self.multiplicador_base
 
-        # forças separadas p/ frente e ré + limite de ré
-        self.engine_force_fwd = 250000.0  # Aumentado para permitir velocidades de ~200 km/h
-        self.engine_force_rev = 8000.0  # Reduzido para acelerar mais devagar na ré
-        # V_TOP_REV em px/s: para ~40 km/h máximo com ARCADE_SPEED_MULT=2.5 e PXPS_TO_KMH=1.0
-        # 40 km/h / (2.5 * 1.0) = 16 px/s
-        self.V_TOP_REV        = 16.0  # Limite máximo de 40 km/h (16 px/s * 2.5 = 40 km/h)
+        # forças separadas p/ frente e ré + limite de ré (NERFADOS)
+        self.engine_force_fwd = 80000.0 * self.multiplicador_base
+        self.engine_force_rev = 4000.0 * self.multiplicador_base
+        self.V_TOP_REV        = 16.0 * self.multiplicador_base
 
         # power oversteer (mais contido)
-        self.power_oversteer_k = 0.12      # ★ antes 0.18: menos sobre-esterço só por acelerar
+        self.power_oversteer_k = 0.12
         self.min_speed_oversteer = 100.0
 
-        # limites de velocidade
-        self.V_TOP  = 1200.0  # Aumentado para permitir velocidades de ~200 km/h
-        self.V_SOFT = 0.98 * self.V_TOP  # Aumentado de 0.95 para 0.98 para ser menos restritivo
+        # limites de velocidade (NERFADOS)
+        self.V_TOP  = 400.0 * self.multiplicador_base
+        self.V_SOFT = 0.95 * self.V_TOP
 
         # direção e estabilidade
         self.steer_rad_max = math.radians(42.0)  # ★ antes 46: menos lock → mais estável
@@ -102,12 +101,24 @@ class CarroFisica:
         self._low_speed_thresh  = 1.2
         self._stop_snap_thresh  = 0.10
 
-        # Turbo
-        self.turbo_carga = 100.0
+        # Nitro (NERFADO - valores base menores)
+        # Verificar se tem upgrade de nitro antes de habilitar
+        nivel_nitro_inicial = upgrades.get('nitro', 0) if upgrades else 0
+        self.turbo_carga = 100.0 if nivel_nitro_inicial > 0 else 0.0  # Sem nitro se não tiver upgrade
         self.turbo_ativo = False
         self._turbo_timer = 0.0
         self._turbo_cd    = 0.0
         self._turbo_mul   = 1.0
+        self._turbo_duracao_base = 0.9
+        self._turbo_cooldown_base = 2.5
+        self._turbo_forca_base = 1.5
+        
+        # Armazenar nível de motor para limitar velocidade com turbo
+        self.nivel_motor_inicial = upgrades.get('motor', 0) if upgrades else 0
+        
+        # Aplicar upgrades se fornecidos
+        if upgrades:
+            self.aplicar_upgrades(upgrades)
 
         # HUD/Efeitos
         self.emissor_nitro  = EmissorNitro()
@@ -151,6 +162,73 @@ class CarroFisica:
         self._angulo_cache = None
         self._sprite_rot_cache = None
         self._sprite_angulo_cache = None  # Inicializar como None para forçar primeiro cálculo
+    
+    def aplicar_upgrades(self, upgrades):
+        """Aplica upgrades ao carro. upgrades é um dict {tipo: nivel} onde nivel é 0-5"""
+        from config import TURBO_FORCA_IMPULSO, TURBO_DURACAO_S, TURBO_COOLDOWN_S
+        
+        nivel_motor = upgrades.get('motor', 0)
+        nivel_filtro_ar = upgrades.get('filtro_ar', 0)
+        nivel_ecu = upgrades.get('ecu', 0)
+        nivel_transmissao = upgrades.get('transmissao', 0)
+        nivel_rodas = upgrades.get('rodas', 0)
+        nivel_suspensao = upgrades.get('suspensao', 0)
+        nivel_nitro = upgrades.get('nitro', 0)
+        
+        # Atualizar nível de motor para limitar velocidade com nitro
+        self.nivel_motor_inicial = nivel_motor
+        
+        # Motor: aumenta força do motor e velocidade máxima
+        mult_motor = 1.0 + (nivel_motor * 0.25)  # +25% por nível (até +125%)
+        self.engine_force_fwd *= mult_motor
+        self.engine_force_rev *= mult_motor
+        self.engine_force *= mult_motor
+        self.V_TOP *= 1.0 + (nivel_motor * 0.15)  # +15% velocidade máxima por nível
+        self.V_SOFT = 0.95 * self.V_TOP
+        
+        # Filtro de Ar: melhora respiração do motor, aumenta aceleração
+        mult_filtro = 1.0 + (nivel_filtro_ar * 0.18)  # +18% por nível
+        self.engine_force_fwd *= 1.0 + (nivel_filtro_ar * 0.12)  # +12% força adicional
+        self.engine_force_rev *= 1.0 + (nivel_filtro_ar * 0.12)
+        self.drag *= 1.0 - (nivel_filtro_ar * 0.05)  # -5% arrasto por nível
+        
+        # ECU: melhora aceleração e resposta
+        mult_ecu = 1.0 + (nivel_ecu * 0.15)  # +15% por nível
+        self.engine_force_fwd *= 1.0 + (nivel_ecu * 0.10)  # +10% aceleração adicional
+        self.steer_rate *= 1.0 + (nivel_ecu * 0.08)  # +8% velocidade de direção por nível
+        
+        # Transmissão: melhora aceleração e velocidade máxima
+        mult_trans = 1.0 + (nivel_transmissao * 0.12)  # +12% por nível
+        self.engine_force_fwd *= 1.0 + (nivel_transmissao * 0.08)  # +8% força adicional
+        self.V_TOP *= 1.0 + (nivel_transmissao * 0.10)  # +10% velocidade máxima adicional
+        self.V_SOFT = 0.95 * self.V_TOP
+        
+        # Rodas: aumenta grip e estabilidade
+        mult_rodas = 1.0 + (nivel_rodas * 0.18)  # +18% por nível
+        self.Cf_base *= mult_rodas
+        self.Cr_base *= mult_rodas
+        # Calcular mu_peak e mu_long a partir do valor base original (0.75/0.70) + multiplicador + upgrades
+        mu_peak_base = 0.75 + (self.multiplicador_base - 1.0) * 0.15
+        mu_long_base = 0.70 + (self.multiplicador_base - 1.0) * 0.15
+        self.mu_peak = min(1.05, mu_peak_base + (nivel_rodas * 0.06))  # +0.06 por nível (até 1.05)
+        self.mu_long = min(1.00, mu_long_base + (nivel_rodas * 0.06))  # +0.06 por nível (até 1.00)
+        self.stability_k *= 1.0 + (nivel_rodas * 0.10)  # +10% estabilidade por nível
+        
+        # Suspensão: melhora estabilidade e controle
+        mult_suspensao = 1.0 + (nivel_suspensao * 0.16)  # +16% por nível
+        self.stability_k *= 1.0 + (nivel_suspensao * 0.12)  # +12% estabilidade adicional
+        self.yaw_damp_k *= 1.0 + (nivel_suspensao * 0.08)  # +8% amortecimento de guinada
+        self.counter_steer_assist *= 1.0 + (nivel_suspensao * 0.10)  # +10% assistência de contra-esterço
+        
+        # Nitro: aumenta força, duração e reduz cooldown
+        # Se não tinha nitro antes, habilitar agora
+        if nivel_nitro > 0 and self.turbo_carga == 0.0:
+            self.turbo_carga = 100.0
+        
+        mult_nitro = 1.0 + (nivel_nitro * 0.20)  # +20% por nível
+        self._turbo_forca_base = TURBO_FORCA_IMPULSO * mult_nitro
+        self._turbo_duracao_base = TURBO_DURACAO_S * (1.0 + nivel_nitro * 0.15)  # +15% duração por nível
+        self._turbo_cooldown_base = TURBO_COOLDOWN_S * (1.0 - nivel_nitro * 0.10)  # -10% cooldown por nível
 
     # ---------------- Sprites ----------------
     def _carregar_sprite(self, prefixo_cor):
@@ -600,13 +678,45 @@ class CarroFisica:
         speed = math.sqrt(speed_sq)
         
         if self.turbo_ativo:
-            # Com turbo: permitir ultrapassar o limite em até 200% (EXTREMAMENTE poderoso)
-            V_TOP_TURBO = self.V_TOP * 3.0  # 200% acima do limite normal (3x a velocidade)
-            V_SOFT_TURBO = self.V_SOFT * 2.0  # Soft limit também muito aumentado
+            # Com nitro: calcular velocidade máxima real baseada nos upgrades de motor
+            # Se o motor não for upado, o nitro não pode ultrapassar muito a velocidade final
+            # Calcular velocidade máxima real (mesma lógica das especificações)
+            multiplicador_base = self.multiplicador_base
+            nivel_motor = getattr(self, 'nivel_motor_inicial', 0)
+            
+            # Calcular V_TOP base e aplicar upgrades
+            V_TOP_base_calc = 400.0 * (1.0 + (multiplicador_base - 1.0) * 0.08)
+            V_TOP_calc = V_TOP_base_calc * (1.0 + nivel_motor * 0.10)
+            
+            # Calcular eficiência baseada nos upgrades
+            eficiencia_base_primeiro = 0.14
+            eficiencia_base = eficiencia_base_primeiro - (multiplicador_base - 1.0) * 0.005
+            fator_eficiencia_base = max(0.12, eficiencia_base)
+            bonus_motor = nivel_motor * 0.004
+            fator_eficiencia = min(0.20, fator_eficiencia_base + bonus_motor)
+            
+            # Velocidade máxima real em px/s
+            vel_max_real_pxps = V_TOP_calc * fator_eficiencia
+            
+            # Converter para km/h
+            ARCADE_SPEED_MULT = 2.5
+            PXPS_TO_KMH = 1.0
+            vel_max_real_kmh = vel_max_real_pxps * ARCADE_SPEED_MULT * PXPS_TO_KMH
+            
+            # Limitar nitro: pode ultrapassar um pouco (até 20% acima), mas depois desacelera
+            # Converter velocidade máxima real de volta para px/s para comparação
+            vel_max_nitro_kmh = vel_max_real_kmh * 1.20  # 20% acima da velocidade máxima real
+            vel_max_nitro_pxps = (vel_max_nitro_kmh / (ARCADE_SPEED_MULT * PXPS_TO_KMH))
+            
+            # Soft limit: começar a reduzir quando passar de 110% da velocidade máxima real
+            V_SOFT_TURBO = vel_max_real_pxps * 1.10
+            V_TOP_TURBO = vel_max_nitro_pxps
+            
             if speed > V_SOFT_TURBO:
                 cut = (speed - V_SOFT_TURBO) / max(1e-6, V_TOP_TURBO - V_SOFT_TURBO)
-                v_long *= (1.0 - 0.05*cut)  # Redução mínima com turbo (quase sem limite)
-                v_lat  *= (1.0 - 0.05*cut)
+                # Redução progressiva: quanto mais acima, mais reduz
+                v_long *= (1.0 - 0.15*cut)  # Redução mais forte para desacelerar até velocidade final
+                v_lat  *= (1.0 - 0.15*cut)
             if speed > V_TOP_TURBO:
                 esc = V_TOP_TURBO / speed
                 v_long *= esc
@@ -1084,12 +1194,12 @@ class CarroFisica:
         if self._turbo_cd > 0.0:
             return
         u, v = self._mundo_para_local(self.vx, self.vy)
-        u += TURBO_FORCA_IMPULSO
+        u += self._turbo_forca_base
         self.vx, self.vy = self._local_para_mundo(u, v)
         self.v_long, self.v_lat = self._mundo_para_local(self.vx, self.vy)
-        self._turbo_timer = TURBO_DURACAO_S
+        self._turbo_timer = self._turbo_duracao_base
         self._turbo_mul   = TURBO_FATOR
-        self._turbo_cd    = TURBO_COOLDOWN_S
+        self._turbo_cd    = self._turbo_cooldown_base
 
     def ativar_drift(self, teclas=None):
         if "IA" in self.nome:

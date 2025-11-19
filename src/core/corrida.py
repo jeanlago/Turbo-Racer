@@ -347,9 +347,37 @@ class GerenciadorCorrida:
                 voltas_objetivo = self.voltas_objetivo
                 checkpoints_por_volta = len(self.checkpoints)
                 checkpoint_atual = checkpoints_completados % checkpoints_por_volta
-                texto = f"{nome_carro}  {t('jogo.hud.voltas').format(voltas, voltas_objetivo)}  {t('jogo.hud.checkpoint').format(checkpoint_atual, checkpoints_por_volta)}  {t('jogo.hud.turbo').format(int(carro.turbo_carga))}  {t('jogo.hud.tempo').format(t_txt)}"
+                try:
+                    texto_voltas = t('jogo.hud.voltas').format(voltas, voltas_objetivo)
+                except:
+                    texto_voltas = f"Voltas: {voltas}/{voltas_objetivo}"
+                try:
+                    texto_checkpoint = t('jogo.hud.checkpoint').format(checkpoint_atual, checkpoints_por_volta)
+                except:
+                    texto_checkpoint = f"CP: {checkpoint_atual}/{checkpoints_por_volta}"
+                try:
+                    texto_turbo = t('jogo.hud.turbo').format(int(carro.turbo_carga))
+                except:
+                    texto_turbo = f"Turbo: {int(carro.turbo_carga)}%"
+                try:
+                    texto_tempo = t('jogo.hud.tempo').format(t_txt)
+                except:
+                    texto_tempo = f"Tempo: {t_txt}"
+                texto = f"{nome_carro}  {texto_voltas}  {texto_checkpoint}  {texto_turbo}  {texto_tempo}"
             else:
-                texto = f"{nome_carro}  {t('jogo.hud.voltas').format(voltas, VOLTAS_OBJETIVO)}  {t('jogo.hud.turbo').format(int(carro.turbo_carga))}  {t('jogo.hud.tempo').format(t_txt)}"
+                try:
+                    texto_voltas = t('jogo.hud.voltas').format(voltas, VOLTAS_OBJETIVO)
+                except:
+                    texto_voltas = f"Voltas: {voltas}/{VOLTAS_OBJETIVO}"
+                try:
+                    texto_turbo = t('jogo.hud.turbo').format(int(carro.turbo_carga))
+                except:
+                    texto_turbo = f"Turbo: {int(carro.turbo_carga)}%"
+                try:
+                    texto_tempo = t('jogo.hud.tempo').format(t_txt)
+                except:
+                    texto_tempo = f"Tempo: {t_txt}"
+                texto = f"{nome_carro}  {texto_voltas}  {texto_turbo}  {texto_tempo}"
             
             sombra = self.fonte.render(texto, True, COR_SOMBRA)
             superficie = self.fonte.render(texto, True, COR_TEXTO)

@@ -1,5 +1,5 @@
 {
-  "dinheiro": 1125,
+  "dinheiro": 825,
   "carros_desbloqueados": [
     "Car1"
   ],
@@ -11,5 +11,11 @@
   "trofeus": {
     "2": "ouro",
     "1": "ouro"
+  },
+  "upgrades": {
+    "Car1": {
+      "motor": 0,
+      "filtro_ar": 0
+    }
   }
 }

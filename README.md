@@ -52,6 +52,7 @@ Um jogo de corrida arcade 2D top-down desenvolvido em **Python** com **Pygame**,
 
 ### **Histórico de Versões**
 - **[CHANGELOG.md](docs/CHANGELOG.md)** - Histórico completo de mudanças
+  - Versão 3.2.3 - Sistema de nitro como upgrade, especificações de velocidade realistas
   - Versão 3.2.2 - Limpeza de comentários e funções não utilizadas
   - Versão 3.2.1 - Limpeza de código e correção de nomenclatura
   - Versão 3.2.0 - Modo drift reformulado e sistema de pontuação dinâmica
@@ -129,7 +130,7 @@ Turbo-Racer/
 - **S** - Frear/Ré
 - **A** - Virar Esquerda
 - **D** - Virar Direita
-- **Shift Esquerdo** - Turbo
+- **Shift Esquerdo** - Nitro
 - **Espaço** - Drift (por clique)
 
 #### **Jogador 2 (Player 2)**
@@ -137,7 +138,7 @@ Turbo-Racer/
 - **Seta ↓** - Frear/Ré
 - **Seta ←** - Virar Esquerda
 - **Seta →** - Virar Direita
-- **Ctrl Direito** - Turbo
+- **Ctrl Direito** - Nitro
 - **Shift** - Drift (hold)
 
 ### **Controles de Música**
@@ -519,8 +520,20 @@ Este projeto é de código aberto e está disponível sob a **licença MIT**.
 ---
 
 **Desenvolvido por Jean Marins e Jayson Sales**  
-**Versão atual:** 3.2.2  
+**Versão atual:** 3.2.3  
 **Última atualização:** 18 de Novembro de 2025
+
+### **Novidades da Versão 3.2.3 (18 de Novembro de 2025)**
+- **Sistema de Nitro como Upgrade** - Nitro agora é um upgrade separado que deve ser comprado para ser desbloqueado
+  - Carros base não têm nitro disponível
+  - Primeiro nível de upgrade de nitro desbloqueia o sistema
+  - Nitro respeita limites baseados nos upgrades de motor
+- **Especificações de Velocidade Realistas** - Ajustadas para refletir velocidades reais do jogo:
+  - Primeiro carro: ~140 km/h base, ~220 km/h com upgrades máximos
+  - Último carro: ~200 km/h base, ~380 km/h máximo com upgrades máximos
+- **Carregamento Automático do GarageEditor** - Configurações salvas no GarageEditor são carregadas automaticamente no jogo
+- **Limite de Velocidade com Nitro** - Nitro respeita a velocidade máxima real baseada nos upgrades de motor
+- **Nomenclatura Atualizada** - Upgrade "turbo" renomeado para "nitro" em todo o código e traduções
 
 ### **Novidades da Versão 3.2.2 (18 de Novembro de 2025)**
 - **Limpeza de Código** - Removidos comentários desnecessários e código comentado

@@ -53,7 +53,37 @@
       "bloqueado_preco": "LOCKED - ${}",
       "comprar": "BUY",
       "confirmar": "CONFIRM",
-      "usar": "USE"
+      "usar": "USE",
+      "upgrade": "UPGRADE",
+      "vender": "SELL"
+    },
+    "upgrades": {
+      "titulo": "UPGRADES - {}",
+      "voltar": "BACK",
+      "motor": "ENGINE",
+      "filtro_ar": "AIR FILTER",
+      "ecu": "ECU",
+      "transmissao": "TRANSMISSION",
+      "rodas": "WHEELS",
+      "suspensao": "SUSPENSION",
+      "nitro": "NITRO",
+      "nivel": "Level: {}/{}",
+      "preco": "${}",
+      "maximo": "MAX",
+      "desc_motor": "Improves engine power and maximum speed.",
+      "desc_filtro_ar": "Improves engine breathing, increasing acceleration and reducing drag.",
+      "desc_ecu": "Optimizes acceleration and engine response.",
+      "desc_transmissao": "Improves power transmission and maximum speed.",
+      "desc_rodas": "Improves wheel grip, stability and traction.",
+      "desc_suspensao": "Improves stability, control and steering assistance.",
+      "desc_nitro": "Unlocks and improves the nitro system. Increases force, duration and reduces cooldown time.",
+      "melhorias_motor": "• +25% engine force per level\n• +15% max speed per level",
+      "melhorias_filtro_ar": "• +12% engine force per level\n• -5% drag per level",
+      "melhorias_ecu": "• +10% additional acceleration per level\n• +8% steering speed per level",
+      "melhorias_transmissao": "• +8% additional force per level\n• +10% additional max speed per level",
+      "melhorias_rodas": "• +18% grip per level\n• +0.06 friction coefficient per level\n• +10% stability per level",
+      "melhorias_suspensao": "• +12% additional stability per level\n• +8% yaw damping per level\n• +10% counter-steer assistance per level",
+      "melhorias_nitro": "• Unlocks nitro (level 1)\n• +20% nitro force per level\n• +15% duration per level\n• -10% cooldown per level"
     }
   },
   "jogo": {
@@ -167,7 +197,12 @@
     "mapas_recarregados": "Maps reloaded!",
     "nenhum_mapa_novo": "No new maps found",
     "carro_comprado": "Car {} purchased!",
-    "dinheiro_insuficiente": "Insufficient money!"
+    "carro_vendido": "Car {} sold!",
+    "dinheiro_insuficiente": "Insufficient money!",
+    "upgrade_comprado": "{} - {} upgraded!",
+    "comprar_carro_primeiro": "You need to buy the car first!",
+    "erro_vender_carro": "Error selling the car!",
+    "nao_pode_vender_unico_carro": "You cannot sell your only car!"
   },
   "titulo_jogo": {
     "menu": "Turbo Racer — Menu",

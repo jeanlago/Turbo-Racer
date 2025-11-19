@@ -49,5 +49,5 @@ docs/
 
 ---
 
-**Versão:** 3.2.2  
+**Versão:** 3.2.3  
 **Última atualização:** 18 de Novembro de 2025

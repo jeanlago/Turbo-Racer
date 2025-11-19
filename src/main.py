@@ -19,21 +19,50 @@ from core.drift_scoring import DriftScoring
 from core.progresso import gerenciador_progresso
 from config import CAMINHO_MENU
 
+# Carregar configurações da garagem se existirem
+def carregar_configuracoes_garagem():
+    """Carrega configurações da garagem do arquivo JSON gerado pelo GarageEditor"""
+    try:
+        caminho_garage_config = os.path.join(os.path.dirname(__file__), '..', 'data', 'garage_config.json')
+        if os.path.exists(caminho_garage_config):
+            import json
+            with open(caminho_garage_config, 'r', encoding='utf-8') as f:
+                dados = json.load(f)
+            
+            # Criar dicionário por prefixo_cor para busca rápida
+            carros_dict = {carro['prefixo_cor']: carro for carro in dados.get('carros', [])}
+            
+            # Atualizar CARROS_DISPONIVEIS com as configurações carregadas
+            for carro in CARROS_DISPONIVEIS:
+                prefixo = carro['prefixo_cor']
+                if prefixo in carros_dict:
+                    carro_config = carros_dict[prefixo]
+                    carro['posicao'] = tuple(carro_config.get('posicao', carro['posicao']))
+                    carro['tamanho_oficina'] = tuple(carro_config.get('tamanho_oficina', carro['tamanho_oficina']))
+                    carro['posicao_oficina'] = tuple(carro_config.get('posicao_oficina', carro['posicao_oficina']))
+            
+            print(f"Configurações da garagem carregadas de: {caminho_garage_config}")
+    except Exception as e:
+        print(f"Erro ao carregar configurações da garagem: {e}")
+
 CARROS_DISPONIVEIS = [
-    {"nome": "Nissan 350Z", "prefixo_cor": "Car1", "posicao": (570, 145), "sprite_selecao": "Car1", "tipo_tracao": "Traseira", "tamanho_oficina": (850, 550), "posicao_oficina": (203, 183), "preco": 0},  # Gratuito (primeiro carro)
-    {"nome": "BMW M3 95' ", "prefixo_cor": "Car2", "posicao": (570, 190), "sprite_selecao": "Car2", "tipo_tracao": "Traseira", "tamanho_oficina": (770, 415), "posicao_oficina": (233, 298), "preco": 3000},
-    {"nome": "Chevrolet Camaro", "prefixo_cor": "Car3", "posicao": (560, 210), "sprite_selecao": "Car3", "tipo_tracao": "Traseira", "tamanho_oficina": (720, 470), "posicao_oficina": (263, 281), "preco": 4000},
-    {"nome": "Toyota Supra", "prefixo_cor": "Car4", "posicao": (570, 190), "sprite_selecao": "Car4", "tipo_tracao": "Traseira", "tamanho_oficina": (755, 400), "posicao_oficina": (242, 326), "preco": 5000},
-    {"nome": "Toyota Trueno", "prefixo_cor": "Car5", "posicao": (590, 175), "sprite_selecao": "Car5", "tipo_tracao": "Traseira", "tamanho_oficina": (740, 495), "posicao_oficina": (231, 240), "preco": 5600},
-    {"nome": "Nissan Skyline", "prefixo_cor": "Car6", "posicao": (550, 200), "sprite_selecao": "Car6", "tipo_tracao": "Frontal", "tamanho_oficina": (730, 400), "posicao_oficina": (244, 329), "preco": 6000},
-    {"nome": "Nissan Silvia S13", "prefixo_cor": "Car7", "posicao": (600, 185), "sprite_selecao": "Car7", "tipo_tracao": "Traseira", "tamanho_oficina": (855, 470), "posicao_oficina": (179, 318), "preco": 6400},
-    {"nome": "Mazda RX-7", "prefixo_cor": "Car8", "posicao": (540, 220), "sprite_selecao": "Car8", "tipo_tracao": "Traseira", "tamanho_oficina": (805, 505), "posicao_oficina": (197, 240), "preco": 7000},
-    {"nome": "Toyota Celica", "prefixo_cor": "Car9", "posicao": (610, 195), "sprite_selecao": "Car9", "tipo_tracao": "Traseira", "tamanho_oficina": (730, 425), "posicao_oficina": (240, 308), "preco": 9000},
-    {"nome": "Volkswagem Fusca", "prefixo_cor": "Car10", "posicao": (530, 240), "sprite_selecao": "Car10", "tipo_tracao": "Frontal", "tamanho_oficina": (720, 485), "posicao_oficina": (242, 230), "preco": 12400},
-    {"nome": "Mitsubishi Lancer", "prefixo_cor": "Car11", "posicao": (620, 205), "sprite_selecao": "Car11", "tipo_tracao": "Traseira", "tamanho_oficina": (955, 705), "posicao_oficina": (147, 86), "preco": 15600},
-    {"nome": "Porsche 911 77'", "prefixo_cor": "Car12", "posicao": (520, 260), "sprite_selecao": "Car12", "tipo_tracao": "Traseira", "tamanho_oficina": (935, 675), "posicao_oficina": (153, 196), "preco": 25000},
-    {"nome": "Audi Quattro S1", "prefixo_cor": "Car13", "posicao": (520, 260), "sprite_selecao": "Car13", "tipo_tracao": "AWD", "tamanho_oficina": (935, 675), "posicao_oficina": (153, 196), "preco": 17000}
+    {"nome": "Nissan 350Z", "prefixo_cor": "Car1", "posicao": (570, 145), "sprite_selecao": "Car1", "tipo_tracao": "Traseira", "tamanho_oficina": (850, 550), "posicao_oficina": (203, 183), "preco": 0, "multiplicador_base": 1.00},  # Gratuito (primeiro carro)
+    {"nome": "BMW M3 95' ", "prefixo_cor": "Car2", "posicao": (570, 190), "sprite_selecao": "Car2", "tipo_tracao": "Traseira", "tamanho_oficina": (770, 415), "posicao_oficina": (233, 298), "preco": 47000, "multiplicador_base": 1.12},
+    {"nome": "Chevrolet Camaro", "prefixo_cor": "Car3", "posicao": (560, 210), "sprite_selecao": "Car3", "tipo_tracao": "Traseira", "tamanho_oficina": (720, 470), "posicao_oficina": (263, 281), "preco": 49000, "multiplicador_base": 1.25},
+    {"nome": "Toyota Supra", "prefixo_cor": "Car4", "posicao": (570, 190), "sprite_selecao": "Car4", "tipo_tracao": "Traseira", "tamanho_oficina": (755, 400), "posicao_oficina": (242, 326), "preco": 51000, "multiplicador_base": 1.40},
+    {"nome": "Toyota Trueno", "prefixo_cor": "Car5", "posicao": (590, 175), "sprite_selecao": "Car5", "tipo_tracao": "Traseira", "tamanho_oficina": (740, 495), "posicao_oficina": (231, 240), "preco": 53000, "multiplicador_base": 1.57},
+    {"nome": "Nissan Skyline", "prefixo_cor": "Car6", "posicao": (550, 200), "sprite_selecao": "Car6", "tipo_tracao": "Frontal", "tamanho_oficina": (730, 400), "posicao_oficina": (244, 329), "preco": 55000, "multiplicador_base": 1.76},
+    {"nome": "Nissan Silvia S13", "prefixo_cor": "Car7", "posicao": (600, 185), "sprite_selecao": "Car7", "tipo_tracao": "Traseira", "tamanho_oficina": (855, 470), "posicao_oficina": (179, 318), "preco": 57000, "multiplicador_base": 1.97},
+    {"nome": "Mazda RX-7", "prefixo_cor": "Car8", "posicao": (540, 220), "sprite_selecao": "Car8", "tipo_tracao": "Traseira", "tamanho_oficina": (805, 505), "posicao_oficina": (197, 240), "preco": 59000, "multiplicador_base": 2.21},
+    {"nome": "Toyota Celica", "prefixo_cor": "Car9", "posicao": (610, 195), "sprite_selecao": "Car9", "tipo_tracao": "Traseira", "tamanho_oficina": (730, 425), "posicao_oficina": (240, 308), "preco": 61000, "multiplicador_base": 2.47},
+    {"nome": "Volkswagem Fusca", "prefixo_cor": "Car10", "posicao": (530, 240), "sprite_selecao": "Car10", "tipo_tracao": "Frontal", "tamanho_oficina": (720, 485), "posicao_oficina": (242, 230), "preco": 63000, "multiplicador_base": 2.77},
+    {"nome": "Mitsubishi Lancer", "prefixo_cor": "Car11", "posicao": (620, 205), "sprite_selecao": "Car11", "tipo_tracao": "Traseira", "tamanho_oficina": (955, 705), "posicao_oficina": (147, 86), "preco": 65000, "multiplicador_base": 3.10},
+    {"nome": "Porsche 911 77'", "prefixo_cor": "Car12", "posicao": (520, 260), "sprite_selecao": "Car12", "tipo_tracao": "Traseira", "tamanho_oficina": (935, 675), "posicao_oficina": (153, 196), "preco": 67000, "multiplicador_base": 3.47},
+    {"nome": "Audi Quattro S1", "prefixo_cor": "Car13", "posicao": (520, 260), "sprite_selecao": "Car13", "tipo_tracao": "AWD", "tamanho_oficina": (935, 675), "posicao_oficina": (153, 196), "preco": 69000, "multiplicador_base": 3.89}
 ]
+
+# Carregar configurações da garagem após definir CARROS_DISPONIVEIS
+carregar_configuracoes_garagem()
 
 def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=None, modo_jogo=ModoJogo.UM_JOGADOR, tipo_jogo=TipoJogo.CORRIDA, voltas=1, dificuldade_ia="medio"):
     if hasattr(principal, '_recompensa_drift_calculada'):
@@ -551,13 +580,17 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
     carros = []
 
+    upgrades_p1 = gerenciador_progresso.obter_todos_upgrades(carro_p1["prefixo_cor"])
+    multiplicador_p1 = carro_p1.get("multiplicador_base", 1.0)
     carro1 = CarroFisica(
         pos_inicial_p1[0], pos_inicial_p1[1],
         carro_p1["prefixo_cor"],
         (pygame.K_w, pygame.K_d, pygame.K_a, pygame.K_s),
         turbo_key=TURBO_P1,
         nome=carro_p1["nome"],
-        tipo_tracao=carro_p1.get("tipo_tracao", CarroFisica.TRACAO_TRASEIRA)
+        tipo_tracao=carro_p1.get("tipo_tracao", CarroFisica.TRACAO_TRASEIRA),
+        upgrades=upgrades_p1,
+        multiplicador_base=multiplicador_p1
     )
     carros.append(carro1)
     
@@ -567,13 +600,17 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
     carro2 = None
     if modo_jogo == ModoJogo.DOIS_JOGADORES and pos_inicial_p2 is not None:
+        upgrades_p2 = gerenciador_progresso.obter_todos_upgrades(carro_p2["prefixo_cor"])
+        multiplicador_p2 = carro_p2.get("multiplicador_base", 1.0)
         carro2 = CarroFisica(
             pos_inicial_p2[0], pos_inicial_p2[1],
             carro_p2["prefixo_cor"],
             (pygame.K_UP, pygame.K_RIGHT, pygame.K_LEFT, pygame.K_DOWN),
             turbo_key=TURBO_P2,
             nome=carro_p2["nome"],
-            tipo_tracao=carro_p2.get("tipo_tracao", CarroFisica.TRACAO_TRASEIRA)
+            tipo_tracao=carro_p2.get("tipo_tracao", CarroFisica.TRACAO_TRASEIRA),
+            upgrades=upgrades_p2,
+            multiplicador_base=multiplicador_p2
         )
         carros.append(carro2)
 
@@ -593,13 +630,17 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         carros_selecionados_ia = random.sample(carros_disponiveis_ia, min(num_ias, len(carros_disponiveis_ia)))
         
         for i, (pos_ia, carro_data) in enumerate(zip(posicoes_ia, carros_selecionados_ia)):
+            upgrades_ia = gerenciador_progresso.obter_todos_upgrades(carro_data["prefixo_cor"])
+            multiplicador_ia = carro_data.get("multiplicador_base", 1.0)
             carro_ia = CarroFisica(
                 pos_ia[0], pos_ia[1],
                 carro_data["prefixo_cor"],
                 (0, 0, 0, 0),
                 turbo_key=pygame.K_t,
                 nome=f"IA-{i+1}",
-                tipo_tracao=carro_data.get("tipo_tracao", CarroFisica.TRACAO_TRASEIRA)
+                tipo_tracao=carro_data.get("tipo_tracao", CarroFisica.TRACAO_TRASEIRA),
+                upgrades=upgrades_ia,
+                multiplicador_base=multiplicador_ia
             )
             carro_ia.eh_bot = True
             carro_ia.skidmarks.max_skidmarks = 80

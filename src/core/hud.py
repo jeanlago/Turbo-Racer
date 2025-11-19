@@ -163,7 +163,7 @@ class HUD:
             
             # Texto "km/h" (ao lado do número)
             from core.i18n import t
-            texto_kmh = self.fonte_velocimetro_pequena.render(t("jogo.hud.velocidade").format(""), True, (200, 200, 200))
+            texto_kmh = self.fonte_velocimetro_pequena.render("km/h", True, (200, 200, 200))
             texto_kmh_rect = texto_kmh.get_rect(topleft=(pos_x_velocimetro + texto_surf.get_width() + 5, pos_y - 28))
             superficie.blit(texto_kmh, texto_kmh_rect)
         else:
@@ -522,7 +522,10 @@ class HUD:
             voltas_atual = corrida.voltas.get(carro, 0)
             voltas_objetivo = corrida.voltas_objetivo
             from core.i18n import t
-            texto_voltas = t("jogo.hud.voltas").format(voltas_atual, voltas_objetivo)
+            try:
+                texto_voltas = t("jogo.hud.voltas").format(voltas_atual, voltas_objetivo)
+            except:
+                texto_voltas = f"Voltas: {voltas_atual}/{voltas_objetivo}"
         else:
             # Calcular posição atual do carro em tempo real
             def calcular_posicao_atual(carro_alvo, todos_carros):
@@ -573,7 +576,10 @@ class HUD:
             
             # Texto de voltas
             from core.i18n import t
-            texto_voltas = t("jogo.hud.voltas").format(voltas_atual, voltas_objetivo)
+            try:
+                texto_voltas = t("jogo.hud.voltas").format(voltas_atual, voltas_objetivo)
+            except:
+                texto_voltas = f"Voltas: {voltas_atual}/{voltas_objetivo}"
         
         # Fontes menores ainda
         fonte_posicao = pygame.font.SysFont("Arial", 28, bold=True)

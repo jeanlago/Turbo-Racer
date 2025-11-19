@@ -7,6 +7,34 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+## [3.2.3] - 2025-11-18
+
+### Adicionado
+- **Sistema de Nitro como Upgrade** - Nitro agora é um upgrade separado que deve ser comprado para ser desbloqueado
+  - Carros base não têm nitro disponível
+  - Primeiro nível de upgrade de nitro desbloqueia o sistema
+  - Nitro respeita limites baseados nos upgrades de motor
+- **Carregamento Automático do GarageEditor** - Configurações salvas no GarageEditor são carregadas automaticamente no jogo
+- **Limite de Velocidade com Nitro** - Nitro respeita a velocidade máxima real baseada nos upgrades de motor
+  - Pode ultrapassar até 20% acima da velocidade máxima real
+  - Desacelera progressivamente até a velocidade final se o motor não estiver upado
+
+### Modificado
+- **Especificações de Velocidade** - Ajustadas para refletir velocidades realistas:
+  - Primeiro carro: ~140 km/h base, ~220 km/h com upgrades máximos
+  - Último carro: ~200 km/h base, ~380 km/h máximo com upgrades máximos
+  - Cálculo considera atrito e arrasto para valores mais precisos
+- **Nomenclatura de Upgrade** - Upgrade "turbo" renomeado para "nitro" em todo o código
+- **Migração de Upgrades** - Upgrades antigos de "turbo" são migrados automaticamente para "nitro"
+- **Traduções** - Todas as traduções atualizadas para usar "nitro" em vez de "turbo"
+
+### Corrigido
+- **Velocidade Irrealista** - Especificações agora mostram velocidades realistas baseadas na física do jogo
+- **Traduções Faltantes** - Adicionado tratamento de erro para traduções não encontradas
+- **Carregamento do GarageEditor** - Posições editadas no GarageEditor agora são carregadas automaticamente
+
+---
+
 ## [3.2.2] - 2025-11-18
 
 ### Removido

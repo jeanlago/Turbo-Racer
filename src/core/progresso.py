@@ -14,6 +14,7 @@ class GerenciadorProgresso:
         self.recordes_corrida = {}  # {numero_pista: melhor_tempo}
         self.recordes_drift = {}  # {numero_pista: melhor_score}
         self.trofeus = {}  # {numero_pista: "ouro"/"prata"/"bronze"/None}
+        self.upgrades = {}  # {prefixo_cor: {tipo_upgrade: nivel}} - nivel de 0 a 5
         self.carregar()
     
     def carregar(self):
@@ -35,6 +36,9 @@ class GerenciadorProgresso:
                         self.recordes_corrida = data.get('recordes_corrida', {})
                     self.recordes_drift = data.get('recordes_drift', {})
                     self.trofeus = data.get('trofeus', {})
+                    self.upgrades = data.get('upgrades', {})
+                    # Migrar upgrades antigos para novos nomes
+                    self._migrar_upgrades_antigos()
                     # Converter chaves numéricas para strings se necessário (compatibilidade)
                     if self.recordes_corrida:
                         self.recordes_corrida = {str(k): v for k, v in self.recordes_corrida.items()}
@@ -61,7 +65,8 @@ class GerenciadorProgresso:
                 'carros_desbloqueados': list(self.carros_desbloqueados),
                 'recordes_corrida': self.recordes_corrida,
                 'recordes_drift': self.recordes_drift,
-                'trofeus': self.trofeus
+                'trofeus': self.trofeus,
+                'upgrades': self.upgrades
             }
             with open(CAMINHO_PROGRESSO, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
@@ -103,6 +108,30 @@ class GerenciadorProgresso:
             self.desbloquear_carro(prefixo_cor)
             return True
         return False
+    
+    def vender_carro(self, prefixo_cor, preco_venda):
+        """Vende um carro e remove upgrades associados"""
+        if not self.esta_desbloqueado(prefixo_cor):
+            return False  # Carro não está desbloqueado
+        
+        # Verificar se não é o único carro desbloqueado
+        if len(self.carros_desbloqueados) <= 1:
+            return False  # Não pode vender o último carro
+        
+        # Remover carro dos desbloqueados
+        self.carros_desbloqueados.discard(prefixo_cor)
+        
+        # Remover upgrades do carro
+        if prefixo_cor in self.upgrades:
+            del self.upgrades[prefixo_cor]
+        
+        # Adicionar dinheiro (50% do preço original)
+        self.adicionar_dinheiro(preco_venda)
+        return True
+    
+    def contar_carros_desbloqueados(self):
+        """Retorna a quantidade de carros desbloqueados"""
+        return len(self.carros_desbloqueados)
     
     def registrar_recorde(self, numero_pista, tempo):
         """Registra um novo recorde de corrida para uma pista (se for melhor)"""
@@ -157,6 +186,72 @@ class GerenciadorProgresso:
         # Converter numero_pista para string para buscar no dicionário
         pista_key = str(numero_pista)
         return self.trofeus.get(pista_key, None)
+    
+    def obter_upgrade(self, prefixo_cor, tipo_upgrade):
+        """Obtém o nível de upgrade de um carro (0-5)"""
+        if prefixo_cor not in self.upgrades:
+            return 0
+        return self.upgrades[prefixo_cor].get(tipo_upgrade, 0)
+    
+    def obter_todos_upgrades(self, prefixo_cor):
+        """Obtém todos os upgrades de um carro"""
+        return self.upgrades.get(prefixo_cor, {})
+    
+    def comprar_upgrade(self, prefixo_cor, tipo_upgrade, preco):
+        """Tenta comprar um upgrade para um carro"""
+        nivel_atual = self.obter_upgrade(prefixo_cor, tipo_upgrade)
+        if nivel_atual >= 5:
+            return False  # Já está no nível máximo
+        
+        if self.tem_dinheiro(preco):
+            self.remover_dinheiro(preco)
+            if prefixo_cor not in self.upgrades:
+                self.upgrades[prefixo_cor] = {}
+            self.upgrades[prefixo_cor][tipo_upgrade] = nivel_atual + 1
+            self.salvar()
+            return True
+        return False
+    
+    def calcular_preco_upgrade(self, tipo_upgrade, nivel_atual):
+        """Calcula o preço do próximo nível de upgrade"""
+        precos_base = {
+            'motor': 500,
+            'filtro_ar': 400,
+            'ecu': 350,
+            'transmissao': 550,
+            'rodas': 450,
+            'suspensao': 420,
+            'nitro': 480
+        }
+        preco_base = precos_base.get(tipo_upgrade, 500)
+        return int(preco_base * (1.5 ** nivel_atual))  # Aumenta 50% por nível
+    
+    def _migrar_upgrades_antigos(self):
+        """Migra upgrades antigos para os novos nomes"""
+        mapeamento = {
+            'turbo': 'nitro',  # Migrar turbo antigo para nitro
+            'pneus': 'rodas',
+            'freios': None  # Freios removidos, não migrar
+        }
+        
+        for prefixo_cor, upgrades_carro in self.upgrades.items():
+            if not isinstance(upgrades_carro, dict):
+                continue
+            
+            upgrades_novos = {}
+            for tipo_antigo, nivel in upgrades_carro.items():
+                if tipo_antigo in mapeamento:
+                    tipo_novo = mapeamento[tipo_antigo]
+                    if tipo_novo:  # Se não for None
+                        upgrades_novos[tipo_novo] = nivel
+                else:
+                    # Manter upgrades que não precisam migração
+                    upgrades_novos[tipo_antigo] = nivel
+            
+            self.upgrades[prefixo_cor] = upgrades_novos
+        
+        if self.upgrades:
+            self.salvar()
 
 # Instância global
 gerenciador_progresso = GerenciadorProgresso()

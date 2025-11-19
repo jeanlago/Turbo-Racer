@@ -1,6 +1,6 @@
 # 🔧 API Reference - Turbo Racer
 
-Referência completa da API do Turbo Racer v3.2.2 (18 de Novembro de 2025).
+Referência completa da API do Turbo Racer v3.2.3 (18 de Novembro de 2025).
 
 ## 📋 Índice
 
