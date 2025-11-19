@@ -19,7 +19,6 @@ from core.drift_scoring import DriftScoring
 from core.progresso import gerenciador_progresso
 from config import CAMINHO_MENU
 
-# Carregar configurações da garagem se existirem
 def carregar_configuracoes_garagem():
     """Carrega configurações da garagem do arquivo JSON gerado pelo GarageEditor"""
     try:
@@ -29,10 +28,8 @@ def carregar_configuracoes_garagem():
             with open(caminho_garage_config, 'r', encoding='utf-8') as f:
                 dados = json.load(f)
             
-            # Criar dicionário por prefixo_cor para busca rápida
             carros_dict = {carro['prefixo_cor']: carro for carro in dados.get('carros', [])}
             
-            # Atualizar CARROS_DISPONIVEIS com as configurações carregadas
             for carro in CARROS_DISPONIVEIS:
                 prefixo = carro['prefixo_cor']
                 if prefixo in carros_dict:
@@ -46,7 +43,7 @@ def carregar_configuracoes_garagem():
         print(f"Erro ao carregar configurações da garagem: {e}")
 
 CARROS_DISPONIVEIS = [
-    {"nome": "Nissan 350Z", "prefixo_cor": "Car1", "posicao": (570, 145), "sprite_selecao": "Car1", "tipo_tracao": "Traseira", "tamanho_oficina": (850, 550), "posicao_oficina": (203, 183), "preco": 0, "multiplicador_base": 1.00},  # Gratuito (primeiro carro)
+    {"nome": "Nissan 350Z", "prefixo_cor": "Car1", "posicao": (570, 145), "sprite_selecao": "Car1", "tipo_tracao": "Traseira", "tamanho_oficina": (850, 550), "posicao_oficina": (203, 183), "preco": 0, "multiplicador_base": 1.00},
     {"nome": "BMW M3 95' ", "prefixo_cor": "Car2", "posicao": (570, 190), "sprite_selecao": "Car2", "tipo_tracao": "Traseira", "tamanho_oficina": (770, 415), "posicao_oficina": (233, 298), "preco": 47000, "multiplicador_base": 1.12},
     {"nome": "Chevrolet Camaro", "prefixo_cor": "Car3", "posicao": (560, 210), "sprite_selecao": "Car3", "tipo_tracao": "Traseira", "tamanho_oficina": (720, 470), "posicao_oficina": (263, 281), "preco": 49000, "multiplicador_base": 1.25},
     {"nome": "Toyota Supra", "prefixo_cor": "Car4", "posicao": (570, 190), "sprite_selecao": "Car4", "tipo_tracao": "Traseira", "tamanho_oficina": (755, 400), "posicao_oficina": (242, 326), "preco": 51000, "multiplicador_base": 1.40},
@@ -61,7 +58,6 @@ CARROS_DISPONIVEIS = [
     {"nome": "Audi Quattro S1", "prefixo_cor": "Car13", "posicao": (520, 260), "sprite_selecao": "Car13", "tipo_tracao": "AWD", "tamanho_oficina": (935, 675), "posicao_oficina": (153, 196), "preco": 69000, "multiplicador_base": 3.89}
 ]
 
-# Carregar configurações da garagem após definir CARROS_DISPONIVEIS
 carregar_configuracoes_garagem()
 
 def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=None, modo_jogo=ModoJogo.UM_JOGADOR, tipo_jogo=TipoJogo.CORRIDA, voltas=1, dificuldade_ia="medio"):

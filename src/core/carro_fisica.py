@@ -18,21 +18,16 @@ class CarroFisica:
     TRACAO_INTEGRAL = "awd"
 
     def __init__(self, x, y, prefixo_cor, controles, turbo_key=None, nome=None, tipo_tracao=None, upgrades=None, multiplicador_base=1.0):
-        # --- Estado global ---
         self.x = float(x); self.y = float(y)
         self.angulo = 0.0
         self.vx = 0.0; self.vy = 0.0
         self.r  = 0.0
-        
-        # Flag para indicar se está na grama (estilo GRIP)
         self.na_grama = False
 
-        # --- Estado no frame do carro ---
         self.v_long = 0.0
         self.v_lat  = 0.0
         self.yaw_rate = 0.0
 
-        # --- Config básica / sprites ---
         self.controles = controles
         self.turbo_key = KEY_NAME_TO_CONST.get(turbo_key) if isinstance(turbo_key, str) else turbo_key
         self.nome = nome or f"Carro {prefixo_cor}"
@@ -41,7 +36,6 @@ class CarroFisica:
         self.multiplicador_base = multiplicador_base
         self._carregar_sprite(prefixo_cor)
 
-        # --- Parâmetros físicos ---
         self.m  = 1200.0
         self.g  = 9.81
         self.L  = 2.5
@@ -49,62 +43,49 @@ class CarroFisica:
         self.a  = self.L - self.b
         self.Iz = 2400.0
 
-        # pneus (valores base NERFADOS - carros fracos sem upgrades)
-        # Aplicar multiplicador base antes de tudo
         self.Cf_base = (35000.0 if self.tipo_tracao != self.TRACAO_TRASEIRA else 34000.0) * self.multiplicador_base
         self.Cr_base = (25000.0 if self.tipo_tracao != self.TRACAO_TRASEIRA else 24000.0) * self.multiplicador_base
-        self.mu_peak   = 0.75 + (self.multiplicador_base - 1.0) * 0.15  # Aumenta com multiplicador
+        self.mu_peak   = 0.75 + (self.multiplicador_base - 1.0) * 0.15
         self.mu_long   = 0.70 + (self.multiplicador_base - 1.0) * 0.15
         self.alpha_sat = math.radians(12.5)
 
-        # motor e resistências (valores base NERFADOS)
         self.engine_force    = 6000.0 * self.multiplicador_base
         self.brake_force     = 5500.0 * self.multiplicador_base
         self.handbrake_force = 6000.0 * self.multiplicador_base
-        self.drag            = 0.0003 / self.multiplicador_base  # Menos arrasto = melhor
+        self.drag            = 0.0003 / self.multiplicador_base
         self.roll_res        = 0.03 / self.multiplicador_base
         self.downforce_k     = 0.0
         self.friction_base   = 0.03 / self.multiplicador_base
 
-        # forças separadas p/ frente e ré + limite de ré (NERFADOS)
         self.engine_force_fwd = 80000.0 * self.multiplicador_base
         self.engine_force_rev = 4000.0 * self.multiplicador_base
         self.V_TOP_REV        = 16.0 * self.multiplicador_base
 
-        # power oversteer (mais contido)
         self.power_oversteer_k = 0.12
         self.min_speed_oversteer = 100.0
 
-        # limites de velocidade (NERFADOS)
         self.V_TOP  = 400.0 * self.multiplicador_base
         self.V_SOFT = 0.95 * self.V_TOP
 
-        # direção e estabilidade
-        self.steer_rad_max = math.radians(42.0)  # ★ antes 46: menos lock → mais estável
+        self.steer_rad_max = math.radians(42.0)
         self.steer_rate    = math.radians(520.0)
-        self.speed_steer_k = 0.016               # ★ mais redução de lock com a velocidade
-        # ↑ (0.018) = menos lock em alta = mais estável; ↓ = mais lock em alta
+        self.speed_steer_k = 0.016
         self._steer_wheel  = 0.0
         self._steer        = 0.0
 
-        self.counter_steer_assist   = 0.24       # ★ um pouco menor
+        self.counter_steer_assist   = 0.24
         self.rear_grip_cut_hb       = 0.45
-        self.rear_grip_cut_throttle = 0.97       # ★ quase não corta grip só por “dar pé”
-        self.stability_k            = 0.043     # ★ damping lateral um pouco mais forte
-        # ↑ (0.0033) = mais estável se parecer "sabão"; ↓ = menos damping
+        self.rear_grip_cut_throttle = 0.97
+        self.stability_k            = 0.043
 
-        # amortecimento de guinada
-        self.yaw_damp_k      = 3.8              # ★ mais damping de yaw
-        self.engine_yaw_push = 0.0006           # ★ menos empurrão de guinada do motor
+        self.yaw_damp_k      = 3.8
+        self.engine_yaw_push = 0.0006
 
-        # Anti-pêndulo
         self._low_speed_thresh  = 1.2
         self._stop_snap_thresh  = 0.10
 
-        # Nitro (NERFADO - valores base menores)
-        # Verificar se tem upgrade de nitro antes de habilitar
         nivel_nitro_inicial = upgrades.get('nitro', 0) if upgrades else 0
-        self.turbo_carga = 100.0 if nivel_nitro_inicial > 0 else 0.0  # Sem nitro se não tiver upgrade
+        self.turbo_carga = 100.0 if nivel_nitro_inicial > 0 else 0.0
         self.turbo_ativo = False
         self._turbo_timer = 0.0
         self._turbo_cd    = 0.0
@@ -113,14 +94,11 @@ class CarroFisica:
         self._turbo_cooldown_base = 2.5
         self._turbo_forca_base = 1.5
         
-        # Armazenar nível de motor para limitar velocidade com turbo
         self.nivel_motor_inicial = upgrades.get('motor', 0) if upgrades else 0
         
-        # Aplicar upgrades se fornecidos
         if upgrades:
             self.aplicar_upgrades(upgrades)
 
-        # HUD/Efeitos
         self.emissor_nitro  = EmissorNitro()
         self.skidmarks      = GerenciadorSkidmarks()
         self.velocidade     = 0.0
@@ -128,40 +106,25 @@ class CarroFisica:
         self.marcha_atual   = 0
         self.rpm            = 0.0
 
-        # Drift/handbrake
         self.drift_hold        = False
         self.drift_ativado     = False
         self.drifting          = False
         self.drift_intensidade = 0.0
-        self._ultimo_skidmark  = 0.0  # Controle de frequência
+        self._ultimo_skidmark  = 0.0
         self.freio_mao_ativo   = False
 
-        # --- Drift tuning (fechar curva) ---
-        # === AJUSTES FINOS DE DRIFT ===
-        # Para lapidar o comportamento do drift, ajuste estes valores:
-        
-        self.drift_front_bias   = 1.10  # ↑ grip dianteiro em drift (frente morde mais)
-        # ↑ (1.12–1.15) = frente "morde" mais; ↓ se ficar "trocando de traseira"
-        
-        self.drift_rear_cut     = 0.72  # ↓ grip traseiro em drift (traseira mais solta)
-        # ↑ (0.75–0.80) = traseira menos solta; ↓ = mais solta
-        
-        self.drift_long_damp    = 0.80  # fator por segundo na vel. longitudinal em drift
-        # ↑ (0.88–0.92) = perde menos velocidade no drift (anda mais pra frente)
-        # ↓ (0.80–0.85) = fecha mais a curva
-        
-        self.drift_yaw_boost    = 0.0009  # empurrão de guinada extra proporcional ao slip
-        # ↓ (0.0007–0.0008) = gira menos; ↑ (0.0010) = gira mais
+        self.drift_front_bias   = 1.10
+        self.drift_rear_cut     = 0.72
+        self.drift_long_damp    = 0.80
+        self.drift_yaw_boost    = 0.0009
 
-        # Internos
         self._bateu = False
         
-        # Cache de performance
         self._vetor_frente_cache = None
         self._vetor_direita_cache = None
         self._angulo_cache = None
         self._sprite_rot_cache = None
-        self._sprite_angulo_cache = None  # Inicializar como None para forçar primeiro cálculo
+        self._sprite_angulo_cache = None
     
     def aplicar_upgrades(self, upgrades):
         """Aplica upgrades ao carro. upgrades é um dict {tipo: nivel} onde nivel é 0-5"""
@@ -175,67 +138,55 @@ class CarroFisica:
         nivel_suspensao = upgrades.get('suspensao', 0)
         nivel_nitro = upgrades.get('nitro', 0)
         
-        # Atualizar nível de motor para limitar velocidade com nitro
         self.nivel_motor_inicial = nivel_motor
         
-        # Motor: aumenta força do motor e velocidade máxima
-        mult_motor = 1.0 + (nivel_motor * 0.25)  # +25% por nível (até +125%)
+        mult_motor = 1.0 + (nivel_motor * 0.25)
         self.engine_force_fwd *= mult_motor
         self.engine_force_rev *= mult_motor
         self.engine_force *= mult_motor
-        self.V_TOP *= 1.0 + (nivel_motor * 0.15)  # +15% velocidade máxima por nível
+        self.V_TOP *= 1.0 + (nivel_motor * 0.15)
         self.V_SOFT = 0.95 * self.V_TOP
         
-        # Filtro de Ar: melhora respiração do motor, aumenta aceleração
-        mult_filtro = 1.0 + (nivel_filtro_ar * 0.18)  # +18% por nível
-        self.engine_force_fwd *= 1.0 + (nivel_filtro_ar * 0.12)  # +12% força adicional
+        mult_filtro = 1.0 + (nivel_filtro_ar * 0.18)
+        self.engine_force_fwd *= 1.0 + (nivel_filtro_ar * 0.12)
         self.engine_force_rev *= 1.0 + (nivel_filtro_ar * 0.12)
-        self.drag *= 1.0 - (nivel_filtro_ar * 0.05)  # -5% arrasto por nível
+        self.drag *= 1.0 - (nivel_filtro_ar * 0.05)
         
-        # ECU: melhora aceleração e resposta
-        mult_ecu = 1.0 + (nivel_ecu * 0.15)  # +15% por nível
-        self.engine_force_fwd *= 1.0 + (nivel_ecu * 0.10)  # +10% aceleração adicional
-        self.steer_rate *= 1.0 + (nivel_ecu * 0.08)  # +8% velocidade de direção por nível
+        mult_ecu = 1.0 + (nivel_ecu * 0.15)
+        self.engine_force_fwd *= 1.0 + (nivel_ecu * 0.10)
+        self.steer_rate *= 1.0 + (nivel_ecu * 0.08)
         
-        # Transmissão: melhora aceleração e velocidade máxima
-        mult_trans = 1.0 + (nivel_transmissao * 0.12)  # +12% por nível
-        self.engine_force_fwd *= 1.0 + (nivel_transmissao * 0.08)  # +8% força adicional
-        self.V_TOP *= 1.0 + (nivel_transmissao * 0.10)  # +10% velocidade máxima adicional
+        mult_trans = 1.0 + (nivel_transmissao * 0.12)
+        self.engine_force_fwd *= 1.0 + (nivel_transmissao * 0.08)
+        self.V_TOP *= 1.0 + (nivel_transmissao * 0.10)
         self.V_SOFT = 0.95 * self.V_TOP
         
-        # Rodas: aumenta grip e estabilidade
-        mult_rodas = 1.0 + (nivel_rodas * 0.18)  # +18% por nível
+        mult_rodas = 1.0 + (nivel_rodas * 0.18)
         self.Cf_base *= mult_rodas
         self.Cr_base *= mult_rodas
-        # Calcular mu_peak e mu_long a partir do valor base original (0.75/0.70) + multiplicador + upgrades
         mu_peak_base = 0.75 + (self.multiplicador_base - 1.0) * 0.15
         mu_long_base = 0.70 + (self.multiplicador_base - 1.0) * 0.15
-        self.mu_peak = min(1.05, mu_peak_base + (nivel_rodas * 0.06))  # +0.06 por nível (até 1.05)
-        self.mu_long = min(1.00, mu_long_base + (nivel_rodas * 0.06))  # +0.06 por nível (até 1.00)
-        self.stability_k *= 1.0 + (nivel_rodas * 0.10)  # +10% estabilidade por nível
+        self.mu_peak = min(1.05, mu_peak_base + (nivel_rodas * 0.06))
+        self.mu_long = min(1.00, mu_long_base + (nivel_rodas * 0.06))
+        self.stability_k *= 1.0 + (nivel_rodas * 0.10)
         
-        # Suspensão: melhora estabilidade e controle
-        mult_suspensao = 1.0 + (nivel_suspensao * 0.16)  # +16% por nível
-        self.stability_k *= 1.0 + (nivel_suspensao * 0.12)  # +12% estabilidade adicional
-        self.yaw_damp_k *= 1.0 + (nivel_suspensao * 0.08)  # +8% amortecimento de guinada
-        self.counter_steer_assist *= 1.0 + (nivel_suspensao * 0.10)  # +10% assistência de contra-esterço
+        mult_suspensao = 1.0 + (nivel_suspensao * 0.16)
+        self.stability_k *= 1.0 + (nivel_suspensao * 0.12)
+        self.yaw_damp_k *= 1.0 + (nivel_suspensao * 0.08)
+        self.counter_steer_assist *= 1.0 + (nivel_suspensao * 0.10)
         
-        # Nitro: aumenta força, duração e reduz cooldown
-        # Se não tinha nitro antes, habilitar agora
         if nivel_nitro > 0 and self.turbo_carga == 0.0:
             self.turbo_carga = 100.0
         
-        mult_nitro = 1.0 + (nivel_nitro * 0.20)  # +20% por nível
+        mult_nitro = 1.0 + (nivel_nitro * 0.20)
         self._turbo_forca_base = TURBO_FORCA_IMPULSO * mult_nitro
-        self._turbo_duracao_base = TURBO_DURACAO_S * (1.0 + nivel_nitro * 0.15)  # +15% duração por nível
-        self._turbo_cooldown_base = TURBO_COOLDOWN_S * (1.0 - nivel_nitro * 0.10)  # -10% cooldown por nível
+        self._turbo_duracao_base = TURBO_DURACAO_S * (1.0 + nivel_nitro * 0.15)
+        self._turbo_cooldown_base = TURBO_COOLDOWN_S * (1.0 - nivel_nitro * 0.10)
 
-    # ---------------- Sprites ----------------
     def _carregar_sprite(self, prefixo_cor):
         caminho_sprite = os.path.join(DIR_SPRITES, f"{prefixo_cor}.png")
         sprite = pygame.image.load(caminho_sprite).convert_alpha()
         w0, h0 = sprite.get_size()
-        # Tamanho original mantido
         area_max = 48 * 48
         aspect = w0 / max(1, h0)
         if aspect >= 1.0:
@@ -243,12 +194,9 @@ class CarroFisica:
         else:
             h = int((area_max / aspect) ** 0.5); w = int(h * aspect)
         w = min(w, 64); h = min(h, 64)
-        # Usar smoothscale ao invés de scale para melhor qualidade de interpolação
         self.sprite_base = pygame.transform.smoothscale(sprite, (w, h))
 
-    # ---------------- Bases / transformações ---------------- 
     def _vetor_frente(self):
-        # Cache para evitar recálculos
         if self._angulo_cache != self.angulo:
             rad = math.radians(self.angulo)
             self._vetor_frente_cache = (-math.cos(rad), math.sin(rad))
@@ -257,9 +205,8 @@ class CarroFisica:
         return self._vetor_frente_cache
 
     def _vetor_direita(self):
-        # Usar cache
         if self._angulo_cache != self.angulo:
-            self._vetor_frente()  # Atualiza ambos os caches
+            self._vetor_frente()
         return self._vetor_direita_cache
 
     def _mundo_para_local(self, vx, vy):
@@ -272,7 +219,6 @@ class CarroFisica:
         rx, ry = self._vetor_direita()
         return fx * u + rx * v, fy * u + ry * v
 
-    # ---------------- Pneus / elipse ----------------
     def _tire_lateral(self, slip_angle, Ca, Fz, mu_lat=None):
         if mu_lat is None:
             mu_lat = self.mu_peak
@@ -296,7 +242,6 @@ class CarroFisica:
         Fzr = self.m * self.g * (self.a / self.L)
         return Fzf, Fzr
 
-    # ---------------- Métodos auxiliares ----------------
     def _decomp_vel(self):
         fx, fy = self._vetor_frente()
         rx, ry = self._vetor_direita()
@@ -333,7 +278,6 @@ class CarroFisica:
         
         return x_corrigido, y_corrigido
 
-    # ---------------- Loop principal ----------------
     def atualizar(self, teclas, superficie_mascara, dt, camera=None, superficie_pista_renderizada=None):
         acelerar = teclas[self.controles[0]]
         direita  = teclas[self.controles[1]]
@@ -671,51 +615,37 @@ class CarroFisica:
             self.yaw_rate += (self.steer_rad_max * steer_input * 1.5 - self.yaw_rate) * 0.5 * dt_fis
             v_lat *= (1.0 - 10.0 * dt_fis)
 
-        # --- soft limiter + clamp duro ---
-        # Usar distância ao quadrado para evitar sqrt quando possível
-        # Com turbo ativo, permitir ultrapassar o limite (estilo Need for Speed)
         speed_sq = v_long*v_long + v_lat*v_lat
         speed = math.sqrt(speed_sq)
         
         if self.turbo_ativo:
-            # Com nitro: calcular velocidade máxima real baseada nos upgrades de motor
-            # Se o motor não for upado, o nitro não pode ultrapassar muito a velocidade final
-            # Calcular velocidade máxima real (mesma lógica das especificações)
             multiplicador_base = self.multiplicador_base
             nivel_motor = getattr(self, 'nivel_motor_inicial', 0)
             
-            # Calcular V_TOP base e aplicar upgrades
             V_TOP_base_calc = 400.0 * (1.0 + (multiplicador_base - 1.0) * 0.08)
             V_TOP_calc = V_TOP_base_calc * (1.0 + nivel_motor * 0.10)
             
-            # Calcular eficiência baseada nos upgrades
             eficiencia_base_primeiro = 0.14
             eficiencia_base = eficiencia_base_primeiro - (multiplicador_base - 1.0) * 0.005
             fator_eficiencia_base = max(0.12, eficiencia_base)
             bonus_motor = nivel_motor * 0.004
             fator_eficiencia = min(0.20, fator_eficiencia_base + bonus_motor)
             
-            # Velocidade máxima real em px/s
             vel_max_real_pxps = V_TOP_calc * fator_eficiencia
             
-            # Converter para km/h
             ARCADE_SPEED_MULT = 2.5
             PXPS_TO_KMH = 1.0
             vel_max_real_kmh = vel_max_real_pxps * ARCADE_SPEED_MULT * PXPS_TO_KMH
             
-            # Limitar nitro: pode ultrapassar um pouco (até 20% acima), mas depois desacelera
-            # Converter velocidade máxima real de volta para px/s para comparação
-            vel_max_nitro_kmh = vel_max_real_kmh * 1.20  # 20% acima da velocidade máxima real
+            vel_max_nitro_kmh = vel_max_real_kmh * 1.20
             vel_max_nitro_pxps = (vel_max_nitro_kmh / (ARCADE_SPEED_MULT * PXPS_TO_KMH))
             
-            # Soft limit: começar a reduzir quando passar de 110% da velocidade máxima real
             V_SOFT_TURBO = vel_max_real_pxps * 1.10
             V_TOP_TURBO = vel_max_nitro_pxps
             
             if speed > V_SOFT_TURBO:
                 cut = (speed - V_SOFT_TURBO) / max(1e-6, V_TOP_TURBO - V_SOFT_TURBO)
-                # Redução progressiva: quanto mais acima, mais reduz
-                v_long *= (1.0 - 0.15*cut)  # Redução mais forte para desacelerar até velocidade final
+                v_long *= (1.0 - 0.15*cut)
                 v_lat  *= (1.0 - 0.15*cut)
             if speed > V_TOP_TURBO:
                 esc = V_TOP_TURBO / speed
@@ -732,53 +662,39 @@ class CarroFisica:
                 v_long *= esc
                 v_lat  *= esc
 
-        # torque de guinada + aligning torque
         Mz = self.a*(Fy_f*cs + Fx_f*sn) - self.b*Fy_r
 
-        # guinada pelo motor (reduzido) - funcionar em ré também
         if thr > 0.2 and abs(steer_input) > 0.15:
             Mz += self.engine_yaw_push * self.engine_force_fwd * thr * math.copysign(1.0, steer_input)
 
-        # aligning torque (um pouco mais forte sempre)
-        align_k = (0.28 + 0.24*spd_k)     # ★
+        align_k = (0.28 + 0.24*spd_k)
         Mz += -align_k * v_lat * max(60.0, abs(v_long))
 
-        # Boost de guinada em drift (gira mais fácil e fecha o raio)
         if escapando:
             Mz += self.drift_yaw_boost * v_lat * (abs(v_long) + 60.0)
 
-
-        # integra yaw + damping
         self.yaw_rate += (Mz / self.Iz) * dt_fis
-        self.yaw_rate -= self.yaw_rate * self.yaw_damp_k * dt_fis   # ★
+        self.yaw_rate -= self.yaw_rate * self.yaw_damp_k * dt_fis
 
-        # limite de yaw_rate mais baixo em alta
         spdf = min(1.0, abs(v_long) / 380.0)
-        yaw_max = 3.2 - 1.4*spdf           # ★ menos giro máximo
+        yaw_max = 3.2 - 1.4*spdf
         self.yaw_rate = max(-yaw_max, min(yaw_max, self.yaw_rate))
 
-        # alinhar rotação ao esterço (blend menor durante drift)
         yaw_target = (v_long * math.tan(self._steer_wheel)) / max(0.1, self.L)
         blend = 0.7 if not escapando else 0.35
         self.yaw_rate += (yaw_target - self.yaw_rate) * blend * dt_fis
 
-        # aplica ao ângulo do sprite
         self.angulo += math.degrees(self.yaw_rate) * dt_fis
         if self.angulo > 180: self.angulo -= 360
         if self.angulo < -180: self.angulo += 360
 
-        # recompor mundo e avançar posição
         self._recomp_vel(v_long, v_lat)
         speed_mult = ARCADE_SPEED_MULT * (0.88 if escapando else 1.0)
-        # Limitar movimento máximo por frame para evitar "blip" ou teleporte
-        # Calcular movimento desejado
         dx = self.vx * dt_fis * speed_mult
         dy = self.vy * dt_fis * speed_mult
-        # Limitar movimento máximo por frame (evitar saltos grandes)
-        max_move_per_frame = 200.0 * dt_fis  # Limite razoável baseado em dt
+        max_move_per_frame = 200.0 * dt_fis
         dist_movimento = math.sqrt(dx*dx + dy*dy)
         if dist_movimento > max_move_per_frame:
-            # Normalizar e limitar
             scale = max_move_per_frame / dist_movimento
             dx *= scale
             dy *= scale
@@ -786,53 +702,35 @@ class CarroFisica:
         self.y += dy
 
 
-        # Sistema estilo GRIP - limitar velocidade na grama (verificação já foi feita acima)
-        # No GRIP, você pode andar em qualquer lugar, mas na grama fica mais lento
-        # A verificação de grama já foi feita no início para limitar a força do motor
-        
         if na_grama:
-            # Se está na grama, aplicar atrito significativo para limitar velocidade
-            # Frente: ~100 km/h, Ré: ~50 km/h (muito mais permissivo para ré)
             v_long, v_lat = self._decomp_vel()
-            
-            # Verificar se está em ré (v_long negativo) ou tentando ir de ré
             esta_em_re = v_long < 0.0 or brk > 0.0
             
-            # Calcular velocidade atual em km/h (usar valor absoluto)
             velocidade_atual_pxps = math.sqrt(v_long*v_long + v_lat*v_lat)
             ARCADE_SPEED_MULT = 2.5
             PXPS_TO_KMH = 1.0
             velocidade_kmh_atual = velocidade_atual_pxps * ARCADE_SPEED_MULT * PXPS_TO_KMH
             
-            # Velocidade alvo na grama: diferente para frente e ré
             if esta_em_re:
-                # Ré: limite mais permissivo (50 km/h)
                 velocidade_alvo_kmh = 50.0
             else:
-                # Frente: limite de 100 km/h
                 velocidade_alvo_kmh = 100.0
             velocidade_alvo_pxps = velocidade_alvo_kmh / (ARCADE_SPEED_MULT * PXPS_TO_KMH)
             
-            # Aplicar atrito baseado na diferença da velocidade alvo
             if velocidade_kmh_atual > velocidade_alvo_kmh:
-                # Calcular excesso de velocidade
                 excesso_kmh = velocidade_kmh_atual - velocidade_alvo_kmh
                 
                 if esta_em_re:
-                    # Ré: atrito muito mais leve (5-15% por segundo)
-                    fator_atrito_base = 0.95  # Base de 5% por segundo
-                    fator_atrito_extra = min(0.10, excesso_kmh / 30.0)  # Até 10% extra
+                    fator_atrito_base = 0.95
+                    fator_atrito_extra = min(0.10, excesso_kmh / 30.0)
                     fator_atrito_total = fator_atrito_base - fator_atrito_extra
-                    fator_atrito_total = max(0.85, fator_atrito_total)  # Mínimo de 15% por segundo
+                    fator_atrito_total = max(0.85, fator_atrito_total)
                 else:
-                    # Frente: atrito mais forte (15-25% por segundo)
-                    fator_atrito_base = 0.85  # Base de 15% por segundo
-                    fator_atrito_extra = min(0.10, excesso_kmh / 30.0)  # Até 10% extra
+                    fator_atrito_base = 0.85
+                    fator_atrito_extra = min(0.10, excesso_kmh / 30.0)
                     fator_atrito_total = fator_atrito_base - fator_atrito_extra
-                    fator_atrito_total = max(0.75, fator_atrito_total)  # Mínimo de 25% por segundo
+                    fator_atrito_total = max(0.75, fator_atrito_total)
                 
-                # Aplicar atrito de forma suave (por segundo)
-                # Preservar o sinal de v_long (negativo para ré, positivo para frente)
                 fator_atrito = fator_atrito_total ** dt
                 v_long *= fator_atrito
                 v_lat *= fator_atrito

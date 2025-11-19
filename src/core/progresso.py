@@ -24,12 +24,9 @@ class GerenciadorProgresso:
                 with open(CAMINHO_PROGRESSO, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     self.dinheiro = data.get('dinheiro', 0)
-                    # Primeiro carro sempre desbloqueado
                     self.carros_desbloqueados = set(data.get('carros_desbloqueados', ['Car1']))
                     if 'Car1' not in self.carros_desbloqueados:
                         self.carros_desbloqueados.add('Car1')
-                    # Recordes e troféus (garantir que são dicionários)
-                    # Compatibilidade: se existir 'recordes' antigo, migrar para 'recordes_corrida'
                     if 'recordes' in data and 'recordes_corrida' not in data:
                         self.recordes_corrida = data.get('recordes', {})
                     else:
@@ -37,9 +34,7 @@ class GerenciadorProgresso:
                     self.recordes_drift = data.get('recordes_drift', {})
                     self.trofeus = data.get('trofeus', {})
                     self.upgrades = data.get('upgrades', {})
-                    # Migrar upgrades antigos para novos nomes
                     self._migrar_upgrades_antigos()
-                    # Converter chaves numéricas para strings se necessário (compatibilidade)
                     if self.recordes_corrida:
                         self.recordes_corrida = {str(k): v for k, v in self.recordes_corrida.items()}
                     if self.recordes_drift:
@@ -51,9 +46,8 @@ class GerenciadorProgresso:
                 self.dinheiro = 0
                 self.carros_desbloqueados = {'Car1'}  # Primeiro carro sempre desbloqueado
         else:
-            # Primeira vez - desbloquear primeiro carro e dar dinheiro inicial
-            self.dinheiro = 500  # Dinheiro inicial
-            self.carros_desbloqueados = {'Car1'}  # Primeiro carro sempre desbloqueado
+            self.dinheiro = 500
+            self.carros_desbloqueados = {'Car1'}
             self.salvar()
     
     def salvar(self):
