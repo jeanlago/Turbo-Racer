@@ -44,18 +44,18 @@ def carregar_configuracoes_garagem():
 
 CARROS_DISPONIVEIS = [
     {"nome": "Nissan 350Z", "prefixo_cor": "Car1", "posicao": (570, 145), "sprite_selecao": "Car1", "tipo_tracao": "Traseira", "tamanho_oficina": (850, 550), "posicao_oficina": (203, 183), "preco": 0, "multiplicador_base": 1.00},
-    {"nome": "BMW M3 95' ", "prefixo_cor": "Car2", "posicao": (570, 190), "sprite_selecao": "Car2", "tipo_tracao": "Traseira", "tamanho_oficina": (770, 415), "posicao_oficina": (233, 298), "preco": 47000, "multiplicador_base": 1.12},
-    {"nome": "Chevrolet Camaro", "prefixo_cor": "Car3", "posicao": (560, 210), "sprite_selecao": "Car3", "tipo_tracao": "Traseira", "tamanho_oficina": (720, 470), "posicao_oficina": (263, 281), "preco": 49000, "multiplicador_base": 1.25},
-    {"nome": "Toyota Supra", "prefixo_cor": "Car4", "posicao": (570, 190), "sprite_selecao": "Car4", "tipo_tracao": "Traseira", "tamanho_oficina": (755, 400), "posicao_oficina": (242, 326), "preco": 51000, "multiplicador_base": 1.40},
-    {"nome": "Toyota Trueno", "prefixo_cor": "Car5", "posicao": (590, 175), "sprite_selecao": "Car5", "tipo_tracao": "Traseira", "tamanho_oficina": (740, 495), "posicao_oficina": (231, 240), "preco": 53000, "multiplicador_base": 1.57},
-    {"nome": "Nissan Skyline", "prefixo_cor": "Car6", "posicao": (550, 200), "sprite_selecao": "Car6", "tipo_tracao": "Frontal", "tamanho_oficina": (730, 400), "posicao_oficina": (244, 329), "preco": 55000, "multiplicador_base": 1.76},
-    {"nome": "Nissan Silvia S13", "prefixo_cor": "Car7", "posicao": (600, 185), "sprite_selecao": "Car7", "tipo_tracao": "Traseira", "tamanho_oficina": (855, 470), "posicao_oficina": (179, 318), "preco": 57000, "multiplicador_base": 1.97},
-    {"nome": "Mazda RX-7", "prefixo_cor": "Car8", "posicao": (540, 220), "sprite_selecao": "Car8", "tipo_tracao": "Traseira", "tamanho_oficina": (805, 505), "posicao_oficina": (197, 240), "preco": 59000, "multiplicador_base": 2.21},
-    {"nome": "Toyota Celica", "prefixo_cor": "Car9", "posicao": (610, 195), "sprite_selecao": "Car9", "tipo_tracao": "Traseira", "tamanho_oficina": (730, 425), "posicao_oficina": (240, 308), "preco": 61000, "multiplicador_base": 2.47},
-    {"nome": "Volkswagem Fusca", "prefixo_cor": "Car10", "posicao": (530, 240), "sprite_selecao": "Car10", "tipo_tracao": "Frontal", "tamanho_oficina": (720, 485), "posicao_oficina": (242, 230), "preco": 63000, "multiplicador_base": 2.77},
-    {"nome": "Mitsubishi Lancer", "prefixo_cor": "Car11", "posicao": (620, 205), "sprite_selecao": "Car11", "tipo_tracao": "Traseira", "tamanho_oficina": (955, 705), "posicao_oficina": (147, 86), "preco": 65000, "multiplicador_base": 3.10},
-    {"nome": "Porsche 911 77'", "prefixo_cor": "Car12", "posicao": (520, 260), "sprite_selecao": "Car12", "tipo_tracao": "Traseira", "tamanho_oficina": (935, 675), "posicao_oficina": (153, 196), "preco": 67000, "multiplicador_base": 3.47},
-    {"nome": "Audi Quattro S1", "prefixo_cor": "Car13", "posicao": (520, 260), "sprite_selecao": "Car13", "tipo_tracao": "AWD", "tamanho_oficina": (935, 675), "posicao_oficina": (153, 196), "preco": 69000, "multiplicador_base": 3.89}
+    {"nome": "BMW M3 95' ", "prefixo_cor": "Car2", "posicao": (570, 190), "sprite_selecao": "Car2", "tipo_tracao": "Traseira", "tamanho_oficina": (770, 415), "posicao_oficina": (233, 298), "preco": 28000, "multiplicador_base": 1.12},
+    {"nome": "Chevrolet Camaro", "prefixo_cor": "Car3", "posicao": (560, 210), "sprite_selecao": "Car3", "tipo_tracao": "Traseira", "tamanho_oficina": (720, 470), "posicao_oficina": (263, 281), "preco": 38000, "multiplicador_base": 1.25},
+    {"nome": "Toyota Supra", "prefixo_cor": "Car4", "posicao": (570, 190), "sprite_selecao": "Car4", "tipo_tracao": "Traseira", "tamanho_oficina": (755, 400), "posicao_oficina": (242, 326), "preco": 48000, "multiplicador_base": 1.40},
+    {"nome": "Toyota Trueno", "prefixo_cor": "Car5", "posicao": (590, 175), "sprite_selecao": "Car5", "tipo_tracao": "Traseira", "tamanho_oficina": (740, 495), "posicao_oficina": (231, 240), "preco": 32000, "multiplicador_base": 1.57},
+    {"nome": "Nissan Skyline", "prefixo_cor": "Car6", "posicao": (550, 200), "sprite_selecao": "Car6", "tipo_tracao": "Frontal", "tamanho_oficina": (730, 400), "posicao_oficina": (244, 329), "preco": 65000, "multiplicador_base": 1.76},
+    {"nome": "Nissan Silvia S13", "prefixo_cor": "Car7", "posicao": (600, 185), "sprite_selecao": "Car7", "tipo_tracao": "Traseira", "tamanho_oficina": (855, 470), "posicao_oficina": (179, 318), "preco": 42000, "multiplicador_base": 1.97},
+    {"nome": "Mazda RX-7", "prefixo_cor": "Car8", "posicao": (540, 220), "sprite_selecao": "Car8", "tipo_tracao": "Traseira", "tamanho_oficina": (805, 505), "posicao_oficina": (197, 240), "preco": 52000, "multiplicador_base": 2.21},
+    {"nome": "Toyota Celica", "prefixo_cor": "Car9", "posicao": (610, 195), "sprite_selecao": "Car9", "tipo_tracao": "Traseira", "tamanho_oficina": (730, 425), "posicao_oficina": (240, 308), "preco": 38000, "multiplicador_base": 2.47},
+    {"nome": "Volkswagem Fusca", "prefixo_cor": "Car10", "posicao": (530, 240), "sprite_selecao": "Car10", "tipo_tracao": "Frontal", "tamanho_oficina": (720, 485), "posicao_oficina": (242, 230), "preco": 18000, "multiplicador_base": 2.77},
+    {"nome": "Mitsubishi Lancer", "prefixo_cor": "Car11", "posicao": (620, 205), "sprite_selecao": "Car11", "tipo_tracao": "Traseira", "tamanho_oficina": (955, 705), "posicao_oficina": (147, 86), "preco": 47000, "multiplicador_base": 3.10},
+    {"nome": "Porsche 911 77'", "prefixo_cor": "Car12", "posicao": (520, 260), "sprite_selecao": "Car12", "tipo_tracao": "Traseira", "tamanho_oficina": (935, 675), "posicao_oficina": (153, 196), "preco": 90000, "multiplicador_base": 3.47},
+    {"nome": "Audi Quattro S1", "prefixo_cor": "Car13", "posicao": (520, 260), "sprite_selecao": "Car13", "tipo_tracao": "AWD", "tamanho_oficina": (935, 675), "posicao_oficina": (153, 196), "preco": 100000, "multiplicador_base": 3.89}
 ]
 
 carregar_configuracoes_garagem()
@@ -981,7 +981,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 trofeu_drift_p1 = obter_trofeu_por_pontuacao(pontuacao_final_p1, pontuacoes_alvo)
                 
                 if not hasattr(principal, '_recompensa_drift_p1_calculada'):
-                    recompensa_drift_p1 = int(pontuacao_final_p1 / 200)
+                    # Recompensas de drift baseadas na dificuldade (como Need for Speed)
+                    if dificuldade_ia == "facil":
+                        recompensa_drift_p1 = int(pontuacao_final_p1 / 150)
+                    elif dificuldade_ia == "medio":
+                        recompensa_drift_p1 = int(pontuacao_final_p1 / 120)
+                    else:  # dificil
+                        recompensa_drift_p1 = int(pontuacao_final_p1 / 100)
                     gerenciador_progresso.adicionar_dinheiro(recompensa_drift_p1)
                     numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                     chave_recorde = f"{numero_pista}_{voltas_objetivo}"
@@ -1011,7 +1017,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     trofeu_drift_p2 = obter_trofeu_por_pontuacao(pontuacao_final_p2, pontuacoes_alvo)
                     
                     if not hasattr(principal, '_recompensa_drift_p2_calculada'):
-                        recompensa_drift_p2 = int(pontuacao_final_p2 / 200)
+                        # Recompensas de drift baseadas na dificuldade (como Need for Speed)
+                        if dificuldade_ia == "facil":
+                            recompensa_drift_p2 = int(pontuacao_final_p2 / 150)
+                        elif dificuldade_ia == "medio":
+                            recompensa_drift_p2 = int(pontuacao_final_p2 / 120)
+                        else:  # dificil
+                            recompensa_drift_p2 = int(pontuacao_final_p2 / 100)
                         gerenciador_progresso.adicionar_dinheiro(recompensa_drift_p2)
                         numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                         chave_recorde = f"{numero_pista}_{voltas_objetivo}"
@@ -1049,16 +1061,36 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     
                     if posicao_jogador_p1 == 1:
                         vencedor_p1 = "JOGADOR 1 VENCEU!"
-                        recompensa_base = 150
                         if dificuldade_ia == "facil":
-                            recompensa_dinheiro_p1 = recompensa_base
+                            recompensa_dinheiro_p1 = 600
                         elif dificuldade_ia == "medio":
-                            recompensa_dinheiro_p1 = int(recompensa_base * 1.5)
-                        else:
-                            recompensa_dinheiro_p1 = int(recompensa_base * 2.0)
+                            recompensa_dinheiro_p1 = 1500
+                        else:  # dificil
+                            recompensa_dinheiro_p1 = 3000
+                    elif posicao_jogador_p1 == 2:
+                        vencedor_p1 = "CORRIDA FINALIZADA!"
+                        if dificuldade_ia == "facil":
+                            recompensa_dinheiro_p1 = 300
+                        elif dificuldade_ia == "medio":
+                            recompensa_dinheiro_p1 = 750
+                        else:  # dificil
+                            recompensa_dinheiro_p1 = 1500
+                    elif posicao_jogador_p1 == 3:
+                        vencedor_p1 = "CORRIDA FINALIZADA!"
+                        if dificuldade_ia == "facil":
+                            recompensa_dinheiro_p1 = 150
+                        elif dificuldade_ia == "medio":
+                            recompensa_dinheiro_p1 = 400
+                        else:  # dificil
+                            recompensa_dinheiro_p1 = 800
                     else:
                         vencedor_p1 = "CORRIDA FINALIZADA!"
-                        recompensa_dinheiro_p1 = 30
+                        if dificuldade_ia == "facil":
+                            recompensa_dinheiro_p1 = 100
+                        elif dificuldade_ia == "medio":
+                            recompensa_dinheiro_p1 = 200
+                        else:  # dificil
+                            recompensa_dinheiro_p1 = 400
                     
                     if not hasattr(principal, '_recompensa_corrida_p1_calculada'):
                         gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro_p1)
@@ -1105,16 +1137,36 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     
                     if posicao_jogador_p2 == 1:
                         vencedor_p2 = "JOGADOR 2 VENCEU!"
-                        recompensa_base = 150
                         if dificuldade_ia == "facil":
-                            recompensa_dinheiro_p2 = recompensa_base
+                            recompensa_dinheiro_p2 = 600
                         elif dificuldade_ia == "medio":
-                            recompensa_dinheiro_p2 = int(recompensa_base * 1.5)
-                        else:
-                            recompensa_dinheiro_p2 = int(recompensa_base * 2.0)
+                            recompensa_dinheiro_p2 = 1500
+                        else:  # dificil
+                            recompensa_dinheiro_p2 = 3000
+                    elif posicao_jogador_p2 == 2:
+                        vencedor_p2 = "CORRIDA FINALIZADA!"
+                        if dificuldade_ia == "facil":
+                            recompensa_dinheiro_p2 = 300
+                        elif dificuldade_ia == "medio":
+                            recompensa_dinheiro_p2 = 750
+                        else:  # dificil
+                            recompensa_dinheiro_p2 = 1500
+                    elif posicao_jogador_p2 == 3:
+                        vencedor_p2 = "CORRIDA FINALIZADA!"
+                        if dificuldade_ia == "facil":
+                            recompensa_dinheiro_p2 = 150
+                        elif dificuldade_ia == "medio":
+                            recompensa_dinheiro_p2 = 400
+                        else:  # dificil
+                            recompensa_dinheiro_p2 = 800
                     else:
                         vencedor_p2 = "CORRIDA FINALIZADA!"
-                        recompensa_dinheiro_p2 = 30
+                        if dificuldade_ia == "facil":
+                            recompensa_dinheiro_p2 = 100
+                        elif dificuldade_ia == "medio":
+                            recompensa_dinheiro_p2 = 200
+                        else:  # dificil
+                            recompensa_dinheiro_p2 = 400
                     
                     if not hasattr(principal, '_recompensa_corrida_p2_calculada'):
                         gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro_p2)
@@ -1543,7 +1595,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
         if jogo_terminado and tipo_jogo == TipoJogo.DRIFT and not tela_fim_mostrada:
             if not hasattr(principal, '_recompensa_drift_calculada'):
-                recompensa_drift = int(pontuacao_final / 200)
+                # Recompensas de drift baseadas na dificuldade (como Need for Speed)
+                if dificuldade_ia == "facil":
+                    recompensa_drift = int(pontuacao_final / 150)
+                elif dificuldade_ia == "medio":
+                    recompensa_drift = int(pontuacao_final / 120)
+                else:  # dificil
+                    recompensa_drift = int(pontuacao_final / 100)
                 gerenciador_progresso.adicionar_dinheiro(recompensa_drift)
                 
                 numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
@@ -1596,16 +1654,36 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 
                 if posicao_jogador == 1:
                     vencedor = "JOGADOR VENCEU!"
-                    recompensa_base = 150
                     if dificuldade_ia == "facil":
-                        recompensa_dinheiro = recompensa_base
+                        recompensa_dinheiro = 600
                     elif dificuldade_ia == "medio":
-                        recompensa_dinheiro = int(recompensa_base * 1.5)
-                    else:
-                        recompensa_dinheiro = int(recompensa_base * 2.0)
+                        recompensa_dinheiro = 1500
+                    else:  # dificil
+                        recompensa_dinheiro = 3000
+                elif posicao_jogador == 2:
+                    vencedor = "CORRIDA FINALIZADA!"
+                    if dificuldade_ia == "facil":
+                        recompensa_dinheiro = 300
+                    elif dificuldade_ia == "medio":
+                        recompensa_dinheiro = 750
+                    else:  # dificil
+                        recompensa_dinheiro = 1500
+                elif posicao_jogador == 3:
+                    vencedor = "CORRIDA FINALIZADA!"
+                    if dificuldade_ia == "facil":
+                        recompensa_dinheiro = 150
+                    elif dificuldade_ia == "medio":
+                        recompensa_dinheiro = 400
+                    else:  # dificil
+                        recompensa_dinheiro = 800
                 else:
                     vencedor = "CORRIDA FINALIZADA!"
-                    recompensa_dinheiro = 30
+                    if dificuldade_ia == "facil":
+                        recompensa_dinheiro = 100
+                    elif dificuldade_ia == "medio":
+                        recompensa_dinheiro = 200
+                    else:  # dificil
+                        recompensa_dinheiro = 400
                 
                 gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro)
                 

@@ -108,7 +108,18 @@
     "vitoria": {
       "vencedor": "VAINQUEUR: {}",
       "fim": "TERMINÉ!"
-    }
+    },
+    "tipo_jogo": "TYPE DE JEU:",
+    "numero_voltas": "NOMBRE DE TOURS:",
+    "iniciar_jogo": "DÉMARRER LE JEU",
+    "selecionar_fase": "SÉLECTIONNER STADE",
+    "fase_numero": "STADE {}",
+    "recordes": "RECORDS",
+    "melhor_score": "MEILLEUR SCORE",
+    "sim": "OUI",
+    "nao": "NON",
+    "p1": "P1:",
+    "p2": "P2:"
   },
   "tipos_tracao": {
     "rear": "ARRIÈRE",
@@ -179,19 +190,6 @@
     "fps_maximo": "FPS MAX",
     "mostrar_fps": "AFFICHER FPS",
     "voltar": "RETOUR"
-  },
-  "jogo": {
-    "tipo_jogo": "TYPE DE JEU:",
-    "numero_voltas": "NOMBRE DE TOURS:",
-    "iniciar_jogo": "DÉMARRER LE JEU",
-    "selecionar_fase": "SÉLECTIONNER STADE",
-    "fase_numero": "STADE {}",
-    "recordes": "RECORDS",
-    "melhor_score": "MEILLEUR SCORE",
-    "sim": "OUI",
-    "nao": "NON",
-    "p1": "P1:",
-    "p2": "P2:"
   },
   "mensagens": {
     "mapas_recarregados": "Cartes rechargées!",

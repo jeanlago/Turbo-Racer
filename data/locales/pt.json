@@ -108,7 +108,18 @@
     "vitoria": {
       "vencedor": "VENCEDOR: {}",
       "fim": "FIM!"
-    }
+    },
+    "tipo_jogo": "TIPO DE JOGO:",
+    "numero_voltas": "NÚMERO DE VOLTAS:",
+    "iniciar_jogo": "INICIAR JOGO",
+    "selecionar_fase": "SELECIONAR FASE",
+    "fase_numero": "FASE {}",
+    "recordes": "RECORDES",
+    "melhor_score": "MELHOR SCORE",
+    "sim": "SIM",
+    "nao": "NÃO",
+    "p1": "P1:",
+    "p2": "P2:"
   },
   "tipos_tracao": {
     "rear": "TRASEIRA",
@@ -179,19 +190,6 @@
     "fps_maximo": "FPS MÁXIMO",
     "mostrar_fps": "MOSTRAR FPS",
     "voltar": "VOLTAR"
-  },
-  "jogo": {
-    "tipo_jogo": "TIPO DE JOGO:",
-    "numero_voltas": "NÚMERO DE VOLTAS:",
-    "iniciar_jogo": "INICIAR JOGO",
-    "selecionar_fase": "SELECIONAR FASE",
-    "fase_numero": "FASE {}",
-    "recordes": "RECORDES",
-    "melhor_score": "MELHOR SCORE",
-    "sim": "SIM",
-    "nao": "NÃO",
-    "p1": "P1:",
-    "p2": "P2:"
   },
   "mensagens": {
     "mapas_recarregados": "Mapas recarregados!",

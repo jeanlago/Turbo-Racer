@@ -7,43 +7,38 @@ class PopupMusica:
     def __init__(self):
         self.ativo = False
         self.tempo_visivel = 0.0
-        self.duracao_visivel = 15.0  # 15 segundos - muito mais tempo
-        self.velocidade_animacao = 200.0  # pixels por segundo - mais lenta
-        self.posicao_x = LARGURA  # Começa fora da tela (direita)
-        self.posicao_y = 20  # Posição fixa no canto superior direito
-        self.largura = 350
+        self.duracao_visivel = 15.0
+        self.velocidade_animacao = 200.0
+        self.posicao_x = LARGURA
+        self.posicao_y = 20
+        self.largura = 340
         self.altura = 70
         self.alpha = 0
-        self.hover = False  # Para controlar se o mouse está sobre o pop-up
-        self.texto_offset = 0  # Offset para animação do texto
-        self.texto_velocidade = 50  # Pixels por segundo
-        self.texto_tempo = 0  # Timer para o texto
-        self.texto_pausa = 2.0  # Segundos de pausa antes de deslizar novamente
-        self.texto_estado = "pausa"  # "pausa", "deslizando"
+        self.hover = False
+        self.texto_offset = 0
+        self.texto_velocidade = 50
+        self.texto_tempo = 0
+        self.texto_pausa = 2.0
+        self.texto_estado = "pausa"
         self.texto_largura_total = 0
         self.texto_largura_disponivel = 0
-        self.texto_terminou_deslizar = False  # Flag para saber quando terminou de deslizar
-        self.tempo_apos_deslizar = 0  # Timer após terminar de deslizar
+        self.texto_terminou_deslizar = False
+        self.tempo_apos_deslizar = 0
         
-        # Tipo de notificação e ícones
-        self.tipo_notificacao = "musica"  # "musica" ou "outra"
+        self.tipo_notificacao = "musica"
         self.icone_notificacao = None
         self.disco_original = None
         self.disco_rotacionado = None
         self.angulo_disco = 0
         self.icone_carregado = False
-        self.tempo_piscar = 0.0  # Timer para animação de piscar
+        self.tempo_piscar = 0.0
         
-        # Cores (estilo cyberpunk/retro)
-        self.cor_fundo = (0, 0, 0)  # Preto
-        self.cor_borda = (255, 255, 255)  # Branco
-        self.cor_texto = (255, 255, 255)  # Branco
-        self.cor_botao = (255, 255, 255)  # Branco para os botões
+        self.cor_fundo = (0, 0, 0)
+        self.cor_borda = (255, 255, 255)
+        self.cor_texto = (255, 255, 255)
+        self.cor_botao = (255, 255, 255)
         
-        # Superfície para o pop-up
         self.surface = pygame.Surface((self.largura, self.altura), pygame.SRCALPHA)
-        
-        # Botões removidos - apenas ícone e texto
     
     def carregar_icone_notificacao(self):
         """Carrega o ícone de notificação"""
@@ -56,18 +51,14 @@ class PopupMusica:
             
             for caminho in caminhos_tentados:
                 if os.path.exists(caminho):
-                    # Carregar com transparência para manter fundo transparente
                     self.icone_notificacao = pygame.image.load(caminho).convert_alpha()
-                    # Redimensionar para 30x30 pixels
-                    self.icone_notificacao = pygame.transform.scale(self.icone_notificacao, (30, 30))
+                    self.icone_notificacao = pygame.transform.scale(self.icone_notificacao, (35, 35))
                     print(f"Ícone de notificação carregado: {caminho}")
                     return
             
-            # Se não encontrar o arquivo, criar um ícone de notificação simples
             self.criar_icone_simples()
         except Exception as e:
             print(f"Erro ao carregar ícone de notificação: {e}")
-            # Criar ícone simples como fallback
             self.criar_icone_simples()
     
     def carregar_disco_vinil(self):
@@ -75,47 +66,32 @@ class PopupMusica:
         try:
             caminho_disco = os.path.join(DIR_PROJETO, "assets", "images", "icons", "vinil_disc.png")
             if os.path.exists(caminho_disco):
-                # Carregar com transparência para manter fundo transparente
                 self.disco_original = pygame.image.load(caminho_disco).convert_alpha()
-                # Redimensionar para 30x30 pixels
-                self.disco_original = pygame.transform.scale(self.disco_original, (30, 30))
+                self.disco_original = pygame.transform.scale(self.disco_original, (35, 35))
                 print(f"Disco de vinil carregado: {caminho_disco}")
             else:
-                # Se não encontrar o arquivo, criar um disco de vinil simples
                 self.criar_disco_simples()
         except Exception as e:
             print(f"Erro ao carregar disco de vinil: {e}")
-            # Criar disco simples como fallback
             self.criar_disco_simples()
     
     def criar_icone_simples(self):
         """Cria um ícone de notificação simples usando pygame"""
-        # Criar superfície com transparência
-        self.icone_notificacao = pygame.Surface((30, 30), pygame.SRCALPHA)
-        
-        # Desenhar ícone de sino/notificação simples
-        # Sino (círculo com linha)
-        pygame.draw.circle(self.icone_notificacao, (255, 255, 255), (15, 12), 8, 2)
-        # Badge de notificação (pequeno círculo no topo)
-        pygame.draw.circle(self.icone_notificacao, (255, 0, 0), (20, 8), 4)
+        self.icone_notificacao = pygame.Surface((35, 35), pygame.SRCALPHA)
+        pygame.draw.circle(self.icone_notificacao, (255, 255, 255), (17, 14), 9, 2)
+        pygame.draw.circle(self.icone_notificacao, (255, 0, 0), (24, 9), 5)
     
     def criar_disco_simples(self):
         """Cria um ícone de disco de vinil simples usando pygame"""
-        # Criar superfície com transparência
-        self.disco_original = pygame.Surface((30, 30), pygame.SRCALPHA)
-        
-        # Desenhar ícone de disco de vinil simples
-        # Círculo externo
-        pygame.draw.circle(self.disco_original, (255, 255, 255), (15, 15), 14, 2)
-        # Círculo interno
-        pygame.draw.circle(self.disco_original, (255, 255, 255), (15, 15), 6, 2)
-        # Linhas radiais
+        self.disco_original = pygame.Surface((35, 35), pygame.SRCALPHA)
+        pygame.draw.circle(self.disco_original, (255, 255, 255), (17, 17), 16, 2)
+        pygame.draw.circle(self.disco_original, (255, 255, 255), (17, 17), 7, 2)
         for i in range(8):
             angulo = i * 45
-            x1 = 15 + 6 * math.cos(math.radians(angulo))
-            y1 = 15 + 6 * math.sin(math.radians(angulo))
-            x2 = 15 + 14 * math.cos(math.radians(angulo))
-            y2 = 15 + 14 * math.sin(math.radians(angulo))
+            x1 = 17 + 7 * math.cos(math.radians(angulo))
+            y1 = 17 + 7 * math.sin(math.radians(angulo))
+            x2 = 17 + 16 * math.cos(math.radians(angulo))
+            y2 = 17 + 16 * math.sin(math.radians(angulo))
             pygame.draw.line(self.disco_original, (255, 255, 255), (x1, y1), (x2, y2), 1)
     
     def limpar_caracteres_especiais(self, texto):
@@ -123,7 +99,6 @@ class PopupMusica:
         if not texto:
             return texto
         
-        # Dicionário de substituições para caracteres problemáticos
         substituicoes = {
             'á': 'a', 'à': 'a', 'ã': 'a', 'â': 'a', 'ä': 'a',
             'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
@@ -143,28 +118,23 @@ class PopupMusica:
             '«': '"', '»': '"', '‹': "'", '›': "'"
         }
         
-        # Aplicar substituições
         texto_limpo = texto
         for char_problema, char_substituto in substituicoes.items():
             texto_limpo = texto_limpo.replace(char_problema, char_substituto)
         
-        # Remover caracteres não-ASCII restantes que podem causar problemas
-        # Mas manter alguns caracteres comuns que funcionam bem
         texto_final = ""
         for char in texto_limpo:
             codigo = ord(char)
-            if codigo < 128:  # ASCII básico
+            if codigo < 128:
                 texto_final += char
-            elif 192 <= codigo <= 255:  # Latin-1 suplementar (acentos comuns)
-                # Tentar manter acentos comuns que funcionam
+            elif 192 <= codigo <= 255:
                 try:
-                    # Testar se o caractere pode ser renderizado
                     teste = pygame.font.SysFont("arial", 16).render(char, True, (255, 255, 255))
                     texto_final += char
                 except:
                     texto_final += '?'
             else:
-                texto_final += '?'  # Substituir por ? se não for reconhecido
+                texto_final += '?'
         
         return texto_final
     
@@ -177,12 +147,11 @@ class PopupMusica:
         """
         self.ativo = True
         self.tempo_visivel = 0.0
-        self.nome_musica = texto  # Mantém compatibilidade com código antigo
+        self.nome_musica = texto
         self.tipo_notificacao = tipo
-        self.posicao_x = LARGURA  # Começa fora da tela (direita)
+        self.posicao_x = LARGURA
         self.alpha = 0
-        self.tempo_piscar = 0.0  # Resetar timer de piscar
-        # Resetar estado de animação
+        self.tempo_piscar = 0.0
         self.texto_offset = 0
         self.texto_tempo = 0
         self.texto_estado = "pausa"
@@ -198,82 +167,66 @@ class PopupMusica:
         if not self.ativo:
             return
         
-        # Contar o tempo de esconder sempre (não pausar no hover)
         self.tempo_visivel += dt
         
-        # Carregar ícones se ainda não foram carregados
         if not self.icone_carregado:
             self.carregar_icone_notificacao()
             self.carregar_disco_vinil()
             self.icone_carregado = True
         
-        # Rotacionar disco de vinil se for notificação de música
         if self.tipo_notificacao == "musica" and self.disco_original:
-            self.angulo_disco += 90 * dt  # 90 graus por segundo
+            self.angulo_disco += 90 * dt
             if self.angulo_disco >= 360:
                 self.angulo_disco = 0
             self.disco_rotacionado = pygame.transform.rotate(self.disco_original, self.angulo_disco)
         
-        # Atualizar timer de piscar para notificações não-musicais
         if self.tipo_notificacao == "outra":
             self.tempo_piscar += dt
         
-        # Atualizar animação do texto deslizante
         if hasattr(self, 'nome_musica') and self.nome_musica:
-            # Limpar caracteres problemáticos do nome da música
             nome_limpo = self.limpar_caracteres_especiais(self.nome_musica)
-            
-            # Usar fonte do sistema com tamanho maior
             fonte = pygame.font.SysFont("arial", 16, bold=True)
             texto_teste = fonte.render("♪ " + nome_limpo, True, (255, 255, 255))
             self.texto_largura_total = texto_teste.get_width()
-            self.texto_largura_disponivel = self.largura - 120  # Espaço disponível para o texto
+            self.texto_largura_disponivel = self.largura - 100
             
             if self.texto_largura_total > self.texto_largura_disponivel:
-                # Texto é muito longo, animar deslizamento simples
                 self.texto_tempo += dt
                 max_offset = self.texto_largura_total - self.texto_largura_disponivel
-                
-                # Deslizar continuamente com pausa e retorno
-                ciclo_tempo = 6.0  # 6 segundos por ciclo completo
+                ciclo_tempo = 6.0
                 tempo_ciclo = self.texto_tempo % ciclo_tempo
                 
-                if tempo_ciclo < 1.0:  # Pausa inicial
+                if tempo_ciclo < 1.0:
                     self.texto_offset = 0
-                elif tempo_ciclo < 3.0:  # Deslizamento para a direita
+                elif tempo_ciclo < 3.0:
                     progresso = (tempo_ciclo - 1.0) / 2.0
                     self.texto_offset = int(progresso * max_offset)
-                elif tempo_ciclo < 4.0:  # Pausa no final
+                elif tempo_ciclo < 4.0:
                     self.texto_offset = max_offset
-                elif tempo_ciclo < 5.5:  # Retorno para a esquerda
+                elif tempo_ciclo < 5.5:
                     progresso = (tempo_ciclo - 4.0) / 1.5
                     self.texto_offset = int(max_offset - progresso * max_offset)
-                else:  # Pausa final
+                else:
                     self.texto_offset = 0
             else:
-                # Texto cabe, não animar
                 self.texto_offset = 0
         
-        # Posição final fixa (canto superior direito)
         posicao_final = LARGURA - self.largura - 20
         
-        if self.tempo_visivel < 1.0:  # Animação de entrada
-            # Interpolação linear simples da direita para dentro
+        if self.tempo_visivel < 1.0:
             progresso = self.tempo_visivel / 1.0
             self.posicao_x = int(LARGURA - progresso * (LARGURA - posicao_final))
             self.alpha = int(255 * progresso)
-        elif self.tempo_visivel < self.duracao_visivel - 1.0:  # Fica visível
+        elif self.tempo_visivel < self.duracao_visivel - 1.0:
             self.posicao_x = posicao_final
             self.alpha = 255
-        else:  # Animação de saída
-            # Interpolação linear simples da posição atual para fora
+        else:
             progresso = (self.tempo_visivel - (self.duracao_visivel - 1.0)) / 1.0
             self.posicao_x = int(posicao_final + progresso * (LARGURA - posicao_final))
             self.alpha = int(255 * (1 - progresso))
             
             if progresso >= 1.0:
                 self.ativo = False
-                # Resetar posição para próxima ativação
                 self.posicao_x = LARGURA
                 self.alpha = 0
     
@@ -283,20 +236,14 @@ class PopupMusica:
             self.hover = False
             return False
         
-        # Verificar se o mouse está sobre o pop-up
         popup_rect = pygame.Rect(self.posicao_x, self.posicao_y, self.largura, self.altura)
         self.hover = popup_rect.collidepoint(mouse_x, mouse_y)
-        
-        # Hover dos botões removido
-        
         return self.hover
     
     def verificar_clique(self, mouse_x, mouse_y):
-        """Verifica se o usuário clicou no popup (sem botões visuais)"""
+        """Verifica se o usuário clicou no popup"""
         if not self.ativo or not self.hover:
             return None
-        
-        # Sem botões visuais - apenas hover
         return None
     
     def desenhar(self, tela):
@@ -304,18 +251,14 @@ class PopupMusica:
         if not self.ativo or self.alpha <= 0:
             return
         
-        
-        # Limpar superfície
+        self.surface = pygame.Surface((self.largura, self.altura), pygame.SRCALPHA)
         self.surface.fill((0, 0, 0, 0))
         
-        # Calcular cor da borda (piscar laranja para notificações não-musicais)
         cor_borda_atual = self.cor_borda
         if self.tipo_notificacao == "outra":
-            # Piscar laranja: alternar entre branco e laranja
-            ciclo_piscar = (self.tempo_piscar * 2.0) % 2.0  # Ciclo de 1 segundo
+            ciclo_piscar = (self.tempo_piscar * 2.0) % 2.0
             if ciclo_piscar < 1.0:
-                # Fase laranja
-                intensidade = abs(ciclo_piscar - 0.5) * 2.0  # Vai de 0 a 1 e volta
+                intensidade = abs(ciclo_piscar - 0.5) * 2.0
                 laranja = (255, 165, 0)
                 cor_borda_atual = (
                     int(self.cor_borda[0] * (1 - intensidade) + laranja[0] * intensidade),
@@ -323,75 +266,53 @@ class PopupMusica:
                     int(self.cor_borda[2] * (1 - intensidade) + laranja[2] * intensidade)
                 )
         
-        # Desenhar fundo com bordas arredondadas (estilo da imagem)
         pygame.draw.rect(self.surface, self.cor_fundo, (0, 0, self.largura, self.altura), border_radius=8)
         pygame.draw.rect(self.surface, cor_borda_atual, (0, 0, self.largura, self.altura), 2, border_radius=8)
         
-        # Desenhar ícone baseado no tipo de notificação
         if self.tipo_notificacao == "musica":
-            # Desenhar disco de vinil rotativo
             if self.disco_rotacionado:
-                # Centralizar o disco rotacionado
-                disco_rect = self.disco_rotacionado.get_rect(center=(25, 35))
+                disco_rect = self.disco_rotacionado.get_rect(center=(28, self.altura // 2))
                 self.surface.blit(self.disco_rotacionado, disco_rect)
             elif self.disco_original:
-                # Fallback: disco original se não estiver rotacionado
-                disco_rect = self.disco_original.get_rect(center=(25, 35))
+                disco_rect = self.disco_original.get_rect(center=(28, self.altura // 2))
                 self.surface.blit(self.disco_original, disco_rect)
             else:
-                # Fallback: círculo simples se não carregar
-                pygame.draw.circle(self.surface, self.cor_texto, (25, 35), 8)
+                pygame.draw.circle(self.surface, self.cor_texto, (28, self.altura // 2), 8)
         else:
-            # Desenhar ícone de notificação (pode piscar também)
             if self.icone_notificacao:
-                # Aplicar efeito de piscar no ícone também
                 if self.tipo_notificacao == "outra":
                     ciclo_piscar = (self.tempo_piscar * 2.0) % 2.0
                     if ciclo_piscar < 1.0:
                         intensidade = abs(ciclo_piscar - 0.5) * 2.0
                         icone_piscar = self.icone_notificacao.copy()
-                        # Aplicar cor laranja ao ícone
                         overlay = pygame.Surface(icone_piscar.get_size(), pygame.SRCALPHA)
                         overlay.fill((255, 165, 0))
                         overlay.set_alpha(int(128 * intensidade))
                         icone_piscar.blit(overlay, (0, 0), special_flags=pygame.BLEND_ADD)
-                        icone_rect = icone_piscar.get_rect(center=(25, 35))
+                        icone_rect = icone_piscar.get_rect(center=(28, self.altura // 2))
                         self.surface.blit(icone_piscar, icone_rect)
                     else:
-                        icone_rect = self.icone_notificacao.get_rect(center=(25, 35))
+                        icone_rect = self.icone_notificacao.get_rect(center=(28, self.altura // 2))
                         self.surface.blit(self.icone_notificacao, icone_rect)
                 else:
-                    icone_rect = self.icone_notificacao.get_rect(center=(25, 35))
+                    icone_rect = self.icone_notificacao.get_rect(center=(28, self.altura // 2))
                     self.surface.blit(self.icone_notificacao, icone_rect)
             else:
-                # Fallback: círculo simples se não carregar
-                pygame.draw.circle(self.surface, self.cor_texto, (25, 35), 8)
+                pygame.draw.circle(self.surface, self.cor_texto, (28, self.altura // 2), 8)
         
-        # Desenhar texto com animação deslizante
-        # Limpar caracteres problemáticos do texto
         nome_limpo = self.limpar_caracteres_especiais(self.nome_musica)
-        
-        # Usar fonte do sistema com tamanho maior
         fonte = pygame.font.SysFont("arial", 16, bold=True)
-        # Adicionar símbolo de música apenas para notificações de música
         prefixo = "♪ " if self.tipo_notificacao == "musica" else ""
         texto_musica = fonte.render(prefixo + nome_limpo, True, self.cor_texto)
         
-        # Criar uma superfície de clipping para o texto (mais espaço)
-        area_texto = pygame.Rect(50, 25, self.largura - 100, 20)
+        texto_altura = texto_musica.get_height()
+        area_texto_y = (self.altura - texto_altura) // 2
+        area_texto = pygame.Rect(50, area_texto_y, self.largura - 100, texto_altura + 4)
         clip_surface = pygame.Surface((area_texto.width, area_texto.height), pygame.SRCALPHA)
-        
-        # Desenhar o texto com offset (começa em 0, desliza para a esquerda)
         clip_surface.blit(texto_musica, (0 - self.texto_offset, 0))
-        
-        # Efeito de fade removido por enquanto para evitar problemas de cor
-        
-        # Aplicar o clipping
         self.surface.blit(clip_surface, (area_texto.x, area_texto.y))
         
-        # Desenhar na tela principal com transparência
         if self.alpha < 255:
-            # Criar uma cópia da superfície com alpha
             surface_alpha = self.surface.copy()
             surface_alpha.set_alpha(self.alpha)
             tela.blit(surface_alpha, (self.posicao_x, self.posicao_y))

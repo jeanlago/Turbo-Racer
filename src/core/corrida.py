@@ -71,10 +71,25 @@ class GerenciadorCorrida:
             return
         from core.i18n import t
         val = max(0, int(self.contagem_regressiva) + 1)
+        
         if val <= 0:
             texto = t("jogo.semaforo.vai")
+            if texto == "jogo.semaforo.vai":
+                texto = "VAI!"
+        elif val == 1:
+            texto = t("jogo.semaforo.1")
+            if texto == "jogo.semaforo.1":
+                texto = "1"
+        elif val == 2:
+            texto = t("jogo.semaforo.2")
+            if texto == "jogo.semaforo.2":
+                texto = "2"
+        elif val == 3:
+            texto = t("jogo.semaforo.3")
+            if texto == "jogo.semaforo.3":
+                texto = "3"
         else:
-            texto = t(f"jogo.semaforo.{val}") if val <= 3 else str(val)
+            texto = str(val)
         superficie = self.fonte_grande.render(texto, True, (255, 255, 255))
         sombra = self.fonte_grande.render(texto, True, (0, 0, 0))
         rect = superficie.get_rect(center=(largura//2, altura//3))
@@ -347,10 +362,14 @@ class GerenciadorCorrida:
                 voltas_objetivo = self.voltas_objetivo
                 checkpoints_por_volta = len(self.checkpoints)
                 checkpoint_atual = checkpoints_completados % checkpoints_por_volta
-                try:
-                    texto_voltas = t('jogo.hud.voltas').format(voltas, voltas_objetivo)
-                except:
+                texto_traducao = t('jogo.hud.voltas')
+                if texto_traducao == 'jogo.hud.voltas':
                     texto_voltas = f"Voltas: {voltas}/{voltas_objetivo}"
+                else:
+                    try:
+                        texto_voltas = texto_traducao.format(voltas, voltas_objetivo)
+                    except:
+                        texto_voltas = f"Voltas: {voltas}/{voltas_objetivo}"
                 try:
                     texto_checkpoint = t('jogo.hud.checkpoint').format(checkpoint_atual, checkpoints_por_volta)
                 except:

@@ -108,7 +108,18 @@
     "vitoria": {
       "vencedor": "WINNER: {}",
       "fim": "FINISH!"
-    }
+    },
+    "tipo_jogo": "GAME TYPE:",
+    "numero_voltas": "NUMBER OF LAPS:",
+    "iniciar_jogo": "START GAME",
+    "selecionar_fase": "SELECT STAGE",
+    "fase_numero": "STAGE {}",
+    "recordes": "RECORDS",
+    "melhor_score": "BEST SCORE",
+    "sim": "YES",
+    "nao": "NO",
+    "p1": "P1:",
+    "p2": "P2:"
   },
   "tipos_tracao": {
     "rear": "REAR",
@@ -179,19 +190,6 @@
     "fps_maximo": "MAX FPS",
     "mostrar_fps": "SHOW FPS",
     "voltar": "BACK"
-  },
-  "jogo": {
-    "tipo_jogo": "GAME TYPE:",
-    "numero_voltas": "NUMBER OF LAPS:",
-    "iniciar_jogo": "START GAME",
-    "selecionar_fase": "SELECT STAGE",
-    "fase_numero": "STAGE {}",
-    "recordes": "RECORDS",
-    "melhor_score": "BEST SCORE",
-    "sim": "YES",
-    "nao": "NO",
-    "p1": "P1:",
-    "p2": "P2:"
   },
   "mensagens": {
     "mapas_recarregados": "Maps reloaded!",

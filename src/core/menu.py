@@ -269,14 +269,33 @@ def splash_screen(screen) -> bool:
     fade_surface.fill((0, 0, 0))
     
     while True:
-        dt = clock.tick(FPS) / 1000.0
-        gerenciador_musica.verificar_fim_musica()
-        
-        for ev in pygame.event.get():
-            if ev.type == pygame.QUIT:
-                return False
-            if ev.type == pygame.KEYDOWN or ev.type == pygame.MOUSEBUTTONDOWN:
-                return True
+        try:
+            dt = clock.tick(FPS) / 1000.0
+            try:
+                gerenciador_musica.verificar_fim_musica()
+            except Exception as e:
+                print(f"Erro em verificar_fim_musica: {e}")
+                import traceback
+                traceback.print_exc()
+            
+            try:
+                for ev in pygame.event.get():
+                    if ev.type == pygame.QUIT:
+                        return False
+                    if ev.type == pygame.KEYDOWN or ev.type == pygame.MOUSEBUTTONDOWN:
+                        return True
+            except (SystemError, KeyError) as e:
+                print(f"Erro ao obter eventos do pygame: {e}")
+                import traceback
+                traceback.print_exc()
+                # Tentar continuar mesmo com erro
+                pass
+        except Exception as e:
+            print(f"Erro inesperado na splash screen: {e}")
+            import traceback
+            traceback.print_exc()
+            # Tentar continuar
+            pass
         
         screen.blit(bg, (0, 0))
         
@@ -1420,11 +1439,11 @@ def selecionar_carros_loop(screen):
                     if gerenciador_progresso.tem_dinheiro(preco):
                         pygame.draw.rect(screen, (150, 120, 50), botao_comprar_rect_p1)
                         pygame.draw.rect(screen, (255, 220, 100), botao_comprar_rect_p1, 2)
-                        texto_comprar = render_text(t("menu.oficina.comprar"), 16, (255, 255, 255), bold=True, pixel_style=True)
+                        texto_comprar = render_text(t("menu.oficina.comprar"), 14, (255, 255, 255), bold=True, pixel_style=True)
                     else:
                         pygame.draw.rect(screen, (100, 50, 50), botao_comprar_rect_p1)
                         pygame.draw.rect(screen, (255, 150, 120), botao_comprar_rect_p1, 2)
-                        texto_comprar = render_text("COMPRAR", 16, (200, 200, 200), bold=True, pixel_style=True)
+                        texto_comprar = render_text("COMPRAR", 14, (200, 200, 200), bold=True, pixel_style=True)
                     
                     texto_comprar_x = botao_comprar_rect_p1.x + (botao_comprar_rect_p1.width - texto_comprar.get_width()) // 2
                     texto_comprar_y = botao_comprar_rect_p1.y + (botao_comprar_rect_p1.height - texto_comprar.get_height()) // 2
@@ -1634,11 +1653,11 @@ def selecionar_carros_loop(screen):
                     if gerenciador_progresso.tem_dinheiro(preco):
                         pygame.draw.rect(screen, (150, 120, 50), botao_comprar_rect_p2)
                         pygame.draw.rect(screen, (255, 220, 100), botao_comprar_rect_p2, 2)
-                        texto_comprar = render_text(t("menu.oficina.comprar"), 16, (255, 255, 255), bold=True, pixel_style=True)
+                        texto_comprar = render_text(t("menu.oficina.comprar"), 14, (255, 255, 255), bold=True, pixel_style=True)
                     else:
                         pygame.draw.rect(screen, (100, 50, 50), botao_comprar_rect_p2)
                         pygame.draw.rect(screen, (255, 150, 120), botao_comprar_rect_p2, 2)
-                        texto_comprar = render_text("COMPRAR", 16, (200, 200, 200), bold=True, pixel_style=True)
+                        texto_comprar = render_text("COMPRAR", 14, (200, 200, 200), bold=True, pixel_style=True)
                     
                     texto_comprar_x = botao_comprar_rect_p2.x + (botao_comprar_rect_p2.width - texto_comprar.get_width()) // 2
                     texto_comprar_y = botao_comprar_rect_p2.y + (botao_comprar_rect_p2.height - texto_comprar.get_height()) // 2

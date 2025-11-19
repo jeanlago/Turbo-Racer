@@ -34,19 +34,64 @@ class GerenciadorProgresso:
                     self.recordes_drift = data.get('recordes_drift', {})
                     self.trofeus = data.get('trofeus', {})
                     self.upgrades = data.get('upgrades', {})
-                    self._migrar_upgrades_antigos()
+                    
+                    # Garantir que upgrades seja um dicionário válido antes de migrar
+                    if not isinstance(self.upgrades, dict):
+                        self.upgrades = {}
+                    
+                    try:
+                        self._migrar_upgrades_antigos()
+                    except Exception as e:
+                        print(f"Erro ao migrar upgrades antigos: {e}")
+                        import traceback
+                        traceback.print_exc()
+                    
+                    # Garantir que todas as chaves sejam strings para evitar KeyError com inteiros
                     if self.recordes_corrida:
-                        self.recordes_corrida = {str(k): v for k, v in self.recordes_corrida.items()}
+                        try:
+                            self.recordes_corrida = {str(k): v for k, v in self.recordes_corrida.items()}
+                        except Exception as e:
+                            print(f"Erro ao converter chaves de recordes_corrida: {e}")
+                            self.recordes_corrida = {}
                     if self.recordes_drift:
-                        self.recordes_drift = {str(k): v for k, v in self.recordes_drift.items()}
+                        try:
+                            self.recordes_drift = {str(k): v for k, v in self.recordes_drift.items()}
+                        except Exception as e:
+                            print(f"Erro ao converter chaves de recordes_drift: {e}")
+                            self.recordes_drift = {}
                     if self.trofeus:
-                        self.trofeus = {str(k): v for k, v in self.trofeus.items()}
+                        try:
+                            self.trofeus = {str(k): v for k, v in self.trofeus.items()}
+                        except Exception as e:
+                            print(f"Erro ao converter chaves de trofeus: {e}")
+                            self.trofeus = {}
+                    # Garantir que upgrades também tenha chaves válidas
+                    if self.upgrades:
+                        try:
+                            upgrades_limpos = {}
+                            for prefixo_cor, upgrades_carro in self.upgrades.items():
+                                if isinstance(upgrades_carro, dict):
+                                    upgrades_limpos[str(prefixo_cor)] = upgrades_carro
+                                else:
+                                    upgrades_limpos[str(prefixo_cor)] = {}
+                            self.upgrades = upgrades_limpos
+                        except Exception as e:
+                            print(f"Erro ao limpar upgrades: {e}")
+                            import traceback
+                            traceback.print_exc()
+                            self.upgrades = {}
             except Exception as e:
                 print(f"Erro ao carregar progresso: {e}")
+                import traceback
+                traceback.print_exc()
                 self.dinheiro = 0
                 self.carros_desbloqueados = {'Car1'}  # Primeiro carro sempre desbloqueado
+                self.recordes_corrida = {}
+                self.recordes_drift = {}
+                self.trofeus = {}
+                self.upgrades = {}
         else:
-            self.dinheiro = 500
+            self.dinheiro = 5000  # Dinheiro inicial aumentado para permitir compra de carros iniciais
             self.carros_desbloqueados = {'Car1'}
             self.salvar()
     

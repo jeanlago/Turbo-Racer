@@ -114,8 +114,6 @@ def t(chave, **kwargs):
         
         return valor
     except (KeyError, TypeError):
-        # Se não encontrar, retornar a chave
-        print(f"AVISO: Tradução não encontrada para chave: {chave}")
         return chave
 
 def inicializar_idioma():

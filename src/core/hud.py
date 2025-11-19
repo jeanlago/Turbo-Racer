@@ -522,10 +522,14 @@ class HUD:
             voltas_atual = corrida.voltas.get(carro, 0)
             voltas_objetivo = corrida.voltas_objetivo
             from core.i18n import t
-            try:
-                texto_voltas = t("jogo.hud.voltas").format(voltas_atual, voltas_objetivo)
-            except:
+            texto_traducao = t("jogo.hud.voltas")
+            if texto_traducao == "jogo.hud.voltas":
                 texto_voltas = f"Voltas: {voltas_atual}/{voltas_objetivo}"
+            else:
+                try:
+                    texto_voltas = texto_traducao.format(voltas_atual, voltas_objetivo)
+                except:
+                    texto_voltas = f"Voltas: {voltas_atual}/{voltas_objetivo}"
         else:
             # Calcular posição atual do carro em tempo real
             def calcular_posicao_atual(carro_alvo, todos_carros):
@@ -574,12 +578,15 @@ class HUD:
             else:
                 texto_posicao = "?"
             
-            # Texto de voltas
             from core.i18n import t
-            try:
-                texto_voltas = t("jogo.hud.voltas").format(voltas_atual, voltas_objetivo)
-            except:
+            texto_traducao = t("jogo.hud.voltas")
+            if texto_traducao == "jogo.hud.voltas":
                 texto_voltas = f"Voltas: {voltas_atual}/{voltas_objetivo}"
+            else:
+                try:
+                    texto_voltas = texto_traducao.format(voltas_atual, voltas_objetivo)
+                except:
+                    texto_voltas = f"Voltas: {voltas_atual}/{voltas_objetivo}"
         
         # Fontes menores ainda
         fonte_posicao = pygame.font.SysFont("Arial", 28, bold=True)
