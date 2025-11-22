@@ -27,12 +27,13 @@ class CheckpointManager:
         
         return self.CENTRO_PISTA_X + tile_centro_x, self.CENTRO_PISTA_Y + tile_centro_y
     
-    def __init__(self, mapa_atual=None, checkpoints_iniciais=None):
+    def __init__(self, mapa_atual=None, checkpoints_iniciais=None, numero_pista=None):
         self.checkpoints = []
         self.modo_edicao = False
         self.checkpoint_selecionado = -1
         self.checkpoint_em_arraste = -1
         self.mapa_atual = mapa_atual or MAPA_ATUAL
+        self.numero_pista = numero_pista  # Número da pista GRIP (1-9) passado diretamente
         self.arquivo_checkpoints = obter_caminho_checkpoints()
         self.carregar_checkpoints()
         if not self.checkpoints and checkpoints_iniciais:
@@ -72,17 +73,75 @@ class CheckpointManager:
         print(f"Centralizados {len(self.checkpoints)} checkpoints nos tiles")
     
     def carregar_checkpoints(self):
-        """Carrega checkpoints do arquivo JSON"""
+        """Carrega checkpoints do arquivo JSON (prioridade: checkpoint_editor, depois arquivo antigo)"""
         try:
+            # PRIMEIRO: Tentar carregar do arquivo JSON do checkpoint_editor (baseado no número da pista)
+            # Usar número da pista passado diretamente, ou tentar extrair do mapa
+            numero_pista = self.numero_pista
+            
+            # Se não foi passado diretamente, tentar extrair do mapa atual
+            if numero_pista is None:
+                if self.mapa_atual and isinstance(self.mapa_atual, str):
+                    # Tentar extrair número da pista do nome do mapa (ex: "Pista_1" ou "Map_1")
+                    import re
+                    match = re.search(r'(\d+)', self.mapa_atual)
+                    if match:
+                        numero_pista = int(match.group(1))
+                
+                # Se não encontrou no nome, tentar verificar se é uma pista GRIP (1-9)
+                if numero_pista is None and self.mapa_atual in MAPAS_DISPONIVEIS:
+                    # Verificar se o mapa atual corresponde a uma pista GRIP
+                    nome_mapa = MAPAS_DISPONIVEIS[self.mapa_atual].get("nome", "")
+                    match = re.search(r'(\d+)', nome_mapa)
+                    if match:
+                        numero_pista = int(match.group(1))
+            
+            # Tentar carregar do arquivo JSON do checkpoint_editor
+            if numero_pista and 1 <= numero_pista <= 9:
+                from config import DIR_PROJETO
+                DIR_DATA = os.path.join(DIR_PROJETO, "data")
+                arquivo_checkpoint_editor = os.path.join(DIR_DATA, f"checkpoints_pista_{numero_pista}.json")
+                
+                print(f"Tentando carregar checkpoints da pista {numero_pista} do arquivo: {arquivo_checkpoint_editor}")
+                print(f"Arquivo existe? {os.path.exists(arquivo_checkpoint_editor)}")
+                
+                if os.path.exists(arquivo_checkpoint_editor):
+                    with open(arquivo_checkpoint_editor, 'r', encoding='utf-8') as f:
+                        dados = json.load(f)
+                    
+                    if isinstance(dados, dict):
+                        checkpoints_json = dados.get("checkpoints", [])
+                    else:
+                        checkpoints_json = dados
+                    
+                    if checkpoints_json:
+                        self.checkpoints = []
+                        for cp in checkpoints_json:
+                            if len(cp) >= 3:
+                                self.checkpoints.append([float(cp[0]), float(cp[1]), float(cp[2])])
+                            elif len(cp) >= 2:
+                                self.checkpoints.append([float(cp[0]), float(cp[1])])
+                        print(f"✓ Carregados {len(self.checkpoints)} checkpoints do checkpoint_editor (pista {numero_pista})")
+                        return
+                    else:
+                        print(f"⚠ Arquivo JSON encontrado mas sem checkpoints válidos para pista {numero_pista}")
+                else:
+                    print(f"⚠ Arquivo JSON não encontrado para pista {numero_pista}: {arquivo_checkpoint_editor}")
+            else:
+                print(f"⚠ Número da pista inválido ou não encontrado: {numero_pista}")
+            
+            # FALLBACK: Tentar carregar do arquivo antigo
             if os.path.exists(self.arquivo_checkpoints):
                 with open(self.arquivo_checkpoints, 'r', encoding='utf-8') as f:
                     self.checkpoints = json.load(f)
-                print(f"Carregados {len(self.checkpoints)} checkpoints do arquivo")
+                print(f"Carregados {len(self.checkpoints)} checkpoints do arquivo antigo")
             else:
                 print("Arquivo de checkpoints não encontrado, usando lista vazia")
                 self.checkpoints = []
         except Exception as e:
             print(f"Erro ao carregar checkpoints: {e}")
+            import traceback
+            traceback.print_exc()
             self.checkpoints = []
     
     def salvar_checkpoints(self):

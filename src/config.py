@@ -1,4 +1,5 @@
 import os
+import sys
 import glob
 
 # ---------- Tela ----------
@@ -6,8 +7,28 @@ LARGURA, ALTURA = 1280, 720
 FPS = 60
 
 # ---------- Caminhos ----------
-DIR_BASE = os.path.dirname(__file__)
-DIR_PROJETO = os.path.abspath(os.path.join(DIR_BASE, ".."))
+# Detectar se está rodando em um executável PyInstaller
+def obter_caminho_base():
+    """Retorna o caminho base do projeto, funcionando tanto em dev quanto no executável"""
+    if getattr(sys, 'frozen', False):
+        # Executável PyInstaller
+        base_path = sys._MEIPASS
+    else:
+        # Modo desenvolvimento
+        base_path = os.path.dirname(__file__)
+    return base_path
+
+def obter_caminho_projeto():
+    """Retorna o caminho do projeto, funcionando tanto em dev quanto no executável"""
+    if getattr(sys, 'frozen', False):
+        # Executável PyInstaller - os assets estão em sys._MEIPASS
+        return sys._MEIPASS
+    else:
+        # Modo desenvolvimento
+        return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+DIR_BASE = obter_caminho_base()
+DIR_PROJETO = obter_caminho_projeto()
 DIR_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "cars")
 DIR_CAR_SELECTION = os.path.join(DIR_PROJETO, "assets", "images", "car_selection")
 DIR_MAPS = os.path.join(DIR_PROJETO, "assets", "images", "maps")

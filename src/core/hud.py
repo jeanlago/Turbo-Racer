@@ -459,13 +459,6 @@ class HUD:
             
             pygame.draw.circle(superficie, cor_carro, (int(outro_carro_x_visivel), int(outro_carro_y_visivel)), tamanho)
             pygame.draw.circle(superficie, (255, 255, 255), (int(outro_carro_x_visivel), int(outro_carro_y_visivel)), tamanho, 1)
-            
-            # Desenhar direção do carro
-            angulo_rad = math.radians(outro_carro.angulo)
-            dir_x = outro_carro_x_visivel + 12 * math.cos(angulo_rad)
-            dir_y = outro_carro_y_visivel + 12 * math.sin(angulo_rad)
-            pygame.draw.line(superficie, cor_carro, (int(outro_carro_x_visivel), int(outro_carro_y_visivel)), 
-                           (int(dir_x), int(dir_y)), 2)
     
     def desenhar_posicao_voltas(self, superficie, corrida, carro, todos_carros, posicao=(10, 10), alinhar_direita=False, tipo_jogo=None, drift_scoring=None, pontuacoes_alvo=None, trofeu_ouro=None, trofeu_prata=None, trofeu_bronze=None, trofeu_vazio=None):
         """

@@ -920,7 +920,8 @@ def selecionar_carros_loop(screen):
     
     # Carregar ícone de cadeado
     icone_cadeado = None
-    caminho_cadeado = os.path.join("assets", "images", "icons", "Locked.png")
+    from config import DIR_ICONS
+    caminho_cadeado = os.path.join(DIR_ICONS, "Locked.png")
     if os.path.exists(caminho_cadeado):
         icone_cadeado = pygame.image.load(caminho_cadeado).convert_alpha()
         # Redimensionar para tamanho adequado
@@ -1723,7 +1724,8 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
     # Carregar ícones grandes
     icones_upgrades = {}
     icones_upgrades_grandes = {}
-    dir_icons = os.path.join("assets", "images", "icons")
+    from config import DIR_ICONS
+    dir_icons = DIR_ICONS
     tamanho_icon_grande = 200  # Ícones grandes para estilo NFS
     for tipo, nome, arquivo_icon in upgrades_disponiveis:
         caminho_icon = os.path.join(dir_icons, arquivo_icon)

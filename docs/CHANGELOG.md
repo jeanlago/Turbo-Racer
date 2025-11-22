@@ -7,6 +7,44 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+## [3.2.4] - 2025-11-22
+
+### Adicionado
+- **Sistema de Personalidades da IA** - Cada IA agora tem uma personalidade única que afeta seu comportamento:
+  - **Agressiva**: Linha interna, freia tarde, acelera rápido, menos evasão
+  - **Defensiva**: Linha externa, freia cedo, acelera devagar, mais evasão
+  - **Equilibrada**: Linha média, comportamento balanceado
+  - **Arriscada**: Linha muito interna, freia muito tarde, muito agressiva
+- **Pathfinding Variado** - IAs não seguem mais em "fila indiana":
+  - Offset lateral baseado na personalidade e curvatura da pista
+  - Cada IA escolhe uma linha de corrida única
+  - Variação individual para tornar cada IA única
+- **Sistema de Colisão Entre Carros** - Sistema completo de detecção e resolução de colisões:
+  - Detecção circular com raio ajustado (28px)
+  - Resolução física com separação e impulso
+  - Rebote elástico parcial (30% de elasticidade)
+- **Evasão Inteligente da IA** - IAs agora evitam colisões entre si:
+  - Detecção de proximidade de outros carros (70px mínimo, 45px crítico)
+  - Offset de evasão baseado na distância e posição relativa
+  - Força de evasão ajustada pela personalidade
+
+### Modificado
+- **Comportamento de Ré** - Múltiplas melhorias no comportamento de ré:
+  - Direção invertida corretamente em todas as velocidades (A/D funcionam intuitivamente)
+  - Lock de direção aumentado em ré (mínimo 70% ao invés de 40%) para permitir virar em altas velocidades
+  - Redução da influência da velocidade no lock (0.3 ao invés de 0.5)
+- **Física de Ré** - Ajustes no cálculo de yaw_target para comportamento consistente:
+  - Uso de `abs(v_long)` para evitar comportamento invertido
+  - Cálculo correto considerando que `steer_wheel` já foi invertido quando necessário
+
+### Corrigido
+- **Bug de Direção em Ré** - Direção agora funciona corretamente em todas as velocidades (não apenas em baixas)
+- **Bug de Freio em Ré** - Carro agora freia corretamente ao tentar acelerar enquanto está em ré
+- **Bug de Aceleração Lateral** - Prevenção de aceleração quando apenas direção é pressionada (sem acelerar ou frear)
+- **Bug de Inversão de Direção** - Inversão agora é aplicada consistentemente em todas as velocidades de ré
+
+---
+
 ## [3.2.3] - 2025-11-18
 
 ### Adicionado

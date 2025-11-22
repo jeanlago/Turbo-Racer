@@ -1,10 +1,24 @@
 import math
 import pygame
+import random
 
 class IA:
     _trig_cache = {}
     
-    def __init__(self, checkpoints, nome="IA-Melhorada-V2", dificuldade="medio"):
+    # Personalidades disponíveis
+    PERSONALIDADE_AGRESSIVA = "agressiva"
+    PERSONALIDADE_DEFENSIVA = "defensiva"
+    PERSONALIDADE_EQUILIBRADA = "equilibrada"
+    PERSONALIDADE_ARISCADA = "arriscada"
+    
+    PERSONALIDADES = [
+        PERSONALIDADE_AGRESSIVA,
+        PERSONALIDADE_DEFENSIVA,
+        PERSONALIDADE_EQUILIBRADA,
+        PERSONALIDADE_ARISCADA
+    ]
+    
+    def __init__(self, checkpoints, nome="IA-Melhorada-V2", dificuldade="medio", personalidade=None):
         self.checkpoints = checkpoints if checkpoints else []
         self.nome = nome
         self.checkpoint_atual = 0
@@ -12,10 +26,16 @@ class IA:
         self.debug = False
         self.dificuldade = dificuldade
         
+        # Atribuir personalidade aleatória se não fornecida
+        if personalidade is None:
+            self.personalidade = random.choice(self.PERSONALIDADES)
+        else:
+            self.personalidade = personalidade if personalidade in self.PERSONALIDADES else self.PERSONALIDADE_EQUILIBRADA
+        
         if not self.checkpoints or len(self.checkpoints) == 0:
             print(f"AVISO: IA {self.nome} não recebeu checkpoints válidos!")
         else:
-            print(f"IA {self.nome} inicializada com {len(self.checkpoints)} checkpoints")
+            print(f"IA {self.nome} inicializada com {len(self.checkpoints)} checkpoints - Personalidade: {self.personalidade}")
         
         self.pontos_navegacao = []
         self.ponto_navegacao_atual = 0
@@ -26,9 +46,18 @@ class IA:
         self.velocidade_curva = 4.0
         
         self._configurar_dificuldade()
+        self._configurar_personalidade()
         
-        self.lookahead_distance = 120.0
-        self.lookahead_points = 5
+        # Configurar lookahead após personalidade (usa lookahead_multiplier)
+        # SEMPRE garantir que lookahead_multiplier existe - usar getattr para segurança máxima
+        self.lookahead_multiplier = getattr(self, 'lookahead_multiplier', 1.0)
+        # SEMPRE definir lookahead_points no __init__ - CRÍTICO para evitar AttributeError
+        self.lookahead_distance = 120.0 * self.lookahead_multiplier
+        self.lookahead_points = max(3, int(5 * self.lookahead_multiplier))
+        
+        # Verificação final para garantir que foi definido
+        assert hasattr(self, 'lookahead_points'), f"ERRO: lookahead_points não foi definido para {self.nome}"
+        assert hasattr(self, 'lookahead_multiplier'), f"ERRO: lookahead_multiplier não foi definido para {self.nome}"
         
         self.estado_curva = "reta"
         self.tempo_na_curva = 0.0
@@ -85,6 +114,55 @@ class IA:
             self.precisao_curva = 0.9
             self.tempo_reacao = 0.08
     
+    def _configurar_personalidade(self):
+        """Configura parâmetros baseados na personalidade da IA"""
+        if self.personalidade == self.PERSONALIDADE_AGRESSIVA:
+            # Agressiva: linha interna, freia tarde, acelera rápido
+            self.offset_lateral_base = -25.0  # Linha interna (negativo = dentro da curva)
+            self.offset_lateral_variacao = 10.0
+            self.fator_freio = 0.7  # Freia mais tarde
+            self.fator_aceleracao = 1.3  # Acelera mais rápido
+            self.fator_velocidade_curva = 1.15  # Mais rápido nas curvas
+            self.lookahead_multiplier = 0.9  # Menos lookahead (mais reativo)
+            self.agressividade_personalidade = 1.2
+        elif self.personalidade == self.PERSONALIDADE_DEFENSIVA:
+            # Defensiva: linha externa, freia cedo, acelera devagar
+            self.offset_lateral_base = 30.0  # Linha externa (positivo = fora da curva)
+            self.offset_lateral_variacao = 15.0
+            self.fator_freio = 1.4  # Freia mais cedo
+            self.fator_aceleracao = 0.85  # Acelera mais devagar
+            self.fator_velocidade_curva = 0.85  # Mais devagar nas curvas
+            self.lookahead_multiplier = 1.3  # Mais lookahead (mais antecipado)
+            self.agressividade_personalidade = 0.6
+        elif self.personalidade == self.PERSONALIDADE_ARISCADA:
+            # Arriscada: linha muito interna, freia muito tarde, muito agressiva
+            self.offset_lateral_base = -40.0  # Linha muito interna
+            self.offset_lateral_variacao = 15.0
+            self.fator_freio = 0.5  # Freia muito tarde
+            self.fator_aceleracao = 1.5  # Acelera muito rápido
+            self.fator_velocidade_curva = 1.3  # Muito rápido nas curvas
+            self.lookahead_multiplier = 0.7  # Pouco lookahead (muito reativo)
+            self.agressividade_personalidade = 1.5
+        else:  # EQUILIBRADA
+            # Equilibrada: linha média, comportamento balanceado
+            self.offset_lateral_base = 0.0  # Linha média
+            self.offset_lateral_variacao = 20.0
+            self.fator_freio = 1.0  # Freia no tempo normal
+            self.fator_aceleracao = 1.0  # Acelera normalmente
+            self.fator_velocidade_curva = 1.0  # Velocidade normal nas curvas
+            self.lookahead_multiplier = 1.0  # Lookahead normal
+            self.agressividade_personalidade = 1.0
+        
+        # Garantir que lookahead_multiplier foi definido (segurança extra)
+        if not hasattr(self, 'lookahead_multiplier'):
+            self.lookahead_multiplier = 1.0
+        
+        # Aplicar variação aleatória para tornar cada IA única
+        self.offset_lateral_individual = random.uniform(
+            -self.offset_lateral_variacao,
+            self.offset_lateral_variacao
+        )
+    
     def atualizar_pontos_navegacao(self):
         """Atualiza os pontos de navegação baseados nos checkpoints"""
         self.pontos_navegacao = self.checkpoints.copy()
@@ -92,6 +170,150 @@ class IA:
         if self.pontos_navegacao:
             self.alvo_x = self.pontos_navegacao[0][0]
             self.alvo_y = self.pontos_navegacao[0][1]
+    
+    def _calcular_offset_lateral(self, carro, checkpoint_idx):
+        """Calcula offset lateral baseado na personalidade e direção da curva"""
+        if not self.checkpoints or len(self.checkpoints) < 2:
+            return 0.0
+        
+        # Obter checkpoint atual e próximo
+        cp_atual = self.checkpoints[checkpoint_idx]
+        cp_proximo_idx = (checkpoint_idx + 1) % len(self.checkpoints)
+        cp_proximo = self.checkpoints[cp_proximo_idx]
+        
+        # Calcular distância ao checkpoint atual
+        dx_cp = cp_atual[0] - carro.x
+        dy_cp = cp_atual[1] - carro.y
+        distancia_ao_checkpoint = math.sqrt(dx_cp*dx_cp + dy_cp*dy_cp)
+        
+        # Calcular direção da curva
+        dx_curva = cp_proximo[0] - cp_atual[0]
+        dy_curva = cp_proximo[1] - cp_atual[1]
+        angulo_curva = math.atan2(dy_curva, dx_curva)
+        
+        # Calcular direção perpendicular à curva (para dentro ou fora)
+        angulo_perpendicular = angulo_curva + math.pi / 2
+        
+        # Offset base + variação individual
+        offset_total = self.offset_lateral_base + self.offset_lateral_individual
+        
+        # Ajustar baseado na curvatura (curvas mais fechadas = mais offset)
+        if len(self.checkpoints) >= 3:
+            cp_anterior_idx = (checkpoint_idx - 1) % len(self.checkpoints)
+            cp_anterior = self.checkpoints[cp_anterior_idx]
+            curvatura = self.calcular_curvatura(
+                (cp_anterior[0], cp_anterior[1]),
+                (cp_atual[0], cp_atual[1]),
+                (cp_proximo[0], cp_proximo[1])
+            )
+            # Curvas mais fechadas aumentam o offset
+            offset_total *= (1.0 + curvatura * 2.0)
+        
+        # Reduzir offset progressivamente quando próximo do checkpoint
+        # Isso garante que a IA passe pelo retângulo de detecção
+        distancia_reducao = 120.0  # Começar a reduzir a partir de 120px
+        if distancia_ao_checkpoint < distancia_reducao:
+            # Reduzir linearmente até zero quando muito próximo
+            fator_reducao = max(0.0, distancia_ao_checkpoint / distancia_reducao)
+            offset_total *= fator_reducao
+        
+        return offset_total
+    
+    def _aplicar_offset_checkpoint(self, cx, cy, checkpoint_idx, offset):
+        """Aplica offset lateral ao checkpoint para variar a linha de corrida"""
+        if not self.checkpoints or len(self.checkpoints) < 2:
+            return cx, cy
+        
+        # Obter direção da pista (do checkpoint atual para o próximo)
+        cp_proximo_idx = (checkpoint_idx + 1) % len(self.checkpoints)
+        cp_proximo = self.checkpoints[cp_proximo_idx]
+        
+        dx = cp_proximo[0] - cx
+        dy = cp_proximo[1] - cy
+        distancia = math.sqrt(dx*dx + dy*dy) if (dx*dx + dy*dy) > 0.01 else 1.0
+        
+        # Normalizar e calcular perpendicular (90 graus)
+        dx_norm = dx / distancia
+        dy_norm = dy / distancia
+        
+        # Vetor perpendicular (rotacionar 90 graus)
+        perp_x = -dy_norm
+        perp_y = dx_norm
+        
+        # Aplicar offset
+        novo_x = cx + perp_x * offset
+        novo_y = cy + perp_y * offset
+        
+        return novo_x, novo_y
+    
+    def _calcular_evasao_carros(self, carro, outros_carros, checkpoint_idx):
+        """Calcula offset de evasão para evitar colisões com outros carros"""
+        if not outros_carros or not self.checkpoints or len(self.checkpoints) < 2:
+            return 0.0
+        
+        offset_evasao_total = 0.0
+        distancia_minima = 70.0  # Começar a evitar a partir de 70px
+        distancia_critica = 45.0  # Distância crítica para evasão agressiva
+        
+        # Obter direção da pista para calcular evasão perpendicular
+        cp_atual = self.checkpoints[checkpoint_idx]
+        cp_proximo_idx = (checkpoint_idx + 1) % len(self.checkpoints)
+        cp_proximo = self.checkpoints[cp_proximo_idx]
+        
+        dx_pista = cp_proximo[0] - cp_atual[0]
+        dy_pista = cp_proximo[1] - cp_atual[1]
+        distancia_pista = math.sqrt(dx_pista*dx_pista + dy_pista*dy_pista)
+        
+        if distancia_pista < 0.01:
+            return 0.0
+        
+        # Normalizar direção da pista
+        dx_pista_norm = dx_pista / distancia_pista
+        dy_pista_norm = dy_pista / distancia_pista
+        
+        # Vetor perpendicular à pista (para esquerda e direita)
+        perp_x = -dy_pista_norm
+        perp_y = dx_pista_norm
+        
+        for outro_carro in outros_carros:
+            if outro_carro == carro:
+                continue
+            
+            dx = outro_carro.x - carro.x
+            dy = outro_carro.y - carro.y
+            distancia = math.sqrt(dx*dx + dy*dy)
+            
+            if distancia < distancia_minima and distancia > 0.01:
+                # Calcular força de evasão baseada na distância
+                if distancia < distancia_critica:
+                    # Muito próximo: evasão agressiva
+                    forca_evasao = (distancia_critica - distancia) / distancia_critica
+                    offset_evasao = forca_evasao * 80.0  # Aumentado de 50 para 80px de offset
+                else:
+                    # Próximo mas não crítico: evasão suave
+                    forca_evasao = (distancia_minima - distancia) / (distancia_minima - distancia_critica)
+                    offset_evasao = forca_evasao * 40.0  # Aumentado de 25 para 40px de offset
+                
+                # Escolher direção de evasão baseada na posição relativa
+                # Calcular produto escalar para determinar se o outro carro está à esquerda ou direita
+                produto_escalar = dx * perp_x + dy * perp_y
+                
+                # Se produto escalar > 0, outro carro está à direita, então desviar para esquerda (offset negativo)
+                # Se produto escalar < 0, outro carro está à esquerda, então desviar para direita (offset positivo)
+                direcao_evasao = -1.0 if produto_escalar > 0 else 1.0
+                
+                # Ajustar baseado na personalidade (mas manter evasão mínima)
+                if self.personalidade == self.PERSONALIDADE_AGRESSIVA:
+                    offset_evasao *= 0.8  # Aumentado de 0.7 para 0.8 (menos redução)
+                elif self.personalidade == self.PERSONALIDADE_ARISCADA:
+                    offset_evasao *= 0.7  # Aumentado de 0.5 para 0.7 (menos redução)
+                elif self.personalidade == self.PERSONALIDADE_DEFENSIVA:
+                    offset_evasao *= 1.5  # Aumentado de 1.3 para 1.5 (mais evasão)
+                
+                # Aplicar offset na direção perpendicular à pista
+                offset_evasao_total += direcao_evasao * offset_evasao
+        
+        return offset_evasao_total
     
     def calcular_curvatura(self, p1, p2, p3):
         """Calcula curvatura entre três pontos"""
@@ -123,6 +345,11 @@ class IA:
         if not self.pontos_navegacao:
             return []
         
+        # GARANTIR que lookahead_points SEMPRE existe antes de usar
+        if not hasattr(self, 'lookahead_points'):
+            lookahead_multiplier = getattr(self, 'lookahead_multiplier', 1.0)
+            self.lookahead_points = max(3, int(5 * lookahead_multiplier))
+        
         distancia_min_sq = float('inf')
         indice_inicial = 0
         carro_x, carro_y = carro.x, carro.y
@@ -136,7 +363,15 @@ class IA:
                 indice_inicial = i
         
         pontos_lookahead = []
-        for i in range(min(self.lookahead_points, len(self.pontos_navegacao))):
+        # GARANTIR que self.lookahead_points está definido - usar getattr para segurança máxima
+        lookahead_points_val = getattr(self, 'lookahead_points', None)
+        if lookahead_points_val is None:
+            lookahead_multiplier = getattr(self, 'lookahead_multiplier', 1.0)
+            self.lookahead_points = max(3, int(5 * lookahead_multiplier))
+            lookahead_points_val = self.lookahead_points
+        # Usar self.lookahead_points para garantir consistência
+        num_pontos = min(lookahead_points_val, len(self.pontos_navegacao))
+        for i in range(num_pontos):
             indice = (indice_inicial + i) % len(self.pontos_navegacao)
             pontos_lookahead.append(self.pontos_navegacao[indice])
         
@@ -240,8 +475,16 @@ class IA:
         """Limpa o cache de cálculos trigonométricos"""
         cls._trig_cache.clear()
     
-    def controlar(self, carro, superficie_mascara, is_on_track, dt, superficie_pista_renderizada=None, corrida_iniciada=True):
+    def controlar(self, carro, superficie_mascara, is_on_track, dt, superficie_pista_renderizada=None, corrida_iniciada=True, outros_carros=None):
         """Controla o carro com sistema inteligente"""
+        
+        # Garantir que atributos essenciais existam (segurança)
+        if not hasattr(self, 'lookahead_points'):
+            if hasattr(self, 'lookahead_multiplier'):
+                self.lookahead_points = max(3, int(5 * self.lookahead_multiplier))
+            else:
+                self.lookahead_multiplier = 1.0
+                self.lookahead_points = 5
         
         if not corrida_iniciada:
             return
@@ -298,18 +541,6 @@ class IA:
         
         if not self.checkpoints or len(self.checkpoints) == 0:
             return
-        
-        checkpoint_idx = self.checkpoint_atual % len(self.checkpoints)
-        self.alvo_x = self.checkpoints[checkpoint_idx][0]
-        self.alvo_y = self.checkpoints[checkpoint_idx][1]
-        
-        if not hasattr(self, '_ultimo_debug_tempo'):
-            self._ultimo_debug_tempo = 0.0
-        if pygame.time.get_ticks() / 1000.0 - self._ultimo_debug_tempo > 2.0:
-            print(f"[IA {self.nome}] Checkpoint atual: {checkpoint_idx}/{len(self.checkpoints)}")
-            print(f"[IA {self.nome}] Alvo: ({self.alvo_x:.1f}, {self.alvo_y:.1f})")
-            print(f"[IA {self.nome}] Carro pos: ({carro.x:.1f}, {carro.y:.1f})")
-            self._ultimo_debug_tempo = pygame.time.get_ticks() / 1000.0
         
         checkpoint_idx = self.checkpoint_atual % len(self.checkpoints)
         if checkpoint_idx < len(self.checkpoints):
@@ -383,16 +614,52 @@ class IA:
                         2
                     )
             
-            checkpoint_rect = checkpoint_rect.inflate(10, 10)
+            # Expandir o retângulo para acomodar o offset lateral das personalidades
+            # O offset pode ser até 40-50px, então expandimos bastante
+            checkpoint_rect = checkpoint_rect.inflate(100, 100)  # Aumentado de 10 para 100
             
+            # Verificar se passou pelo checkpoint de duas formas:
+            # 1. Dentro do retângulo expandido (checkpoint original)
+            # 2. Proximidade ao checkpoint original (para IAs com offset)
+            passou_checkpoint = False
             if checkpoint_rect.collidepoint(carro.x, carro.y):
+                passou_checkpoint = True
+            else:
+                # Verificar distância ao checkpoint original (para IAs que passam com offset)
+                distancia_ao_checkpoint = math.sqrt((carro.x - cx)**2 + (carro.y - cy)**2)
+                # Se está a menos de 80px do checkpoint original, considera que passou
+                if distancia_ao_checkpoint < 80.0:
+                    passou_checkpoint = True
+            
+            if passou_checkpoint:
                 self.checkpoint_atual = (self.checkpoint_atual + 1) % len(self.checkpoints)
                 self.tempo_travado = 0.0
                 self.tentativas_recuperacao = 0
         
         checkpoint_idx = self.checkpoint_atual % len(self.checkpoints)
-        self.alvo_x = self.checkpoints[checkpoint_idx][0]
-        self.alvo_y = self.checkpoints[checkpoint_idx][1]
+        cp = self.checkpoints[checkpoint_idx]
+        cx, cy = cp[0], cp[1]
+        
+        # Calcular offset lateral baseado na personalidade e direção da curva
+        offset_lateral = self._calcular_offset_lateral(carro, checkpoint_idx)
+        
+        # Evitar colisões com outros carros
+        offset_evasao = 0.0
+        if outros_carros:
+            offset_evasao = self._calcular_evasao_carros(carro, outros_carros, checkpoint_idx)
+        
+        # Combinar offset de personalidade com evasão (priorizar evasão)
+        # Aumentar peso da evasão para evitar colisões
+        offset_total = offset_lateral + offset_evasao * 2.0  # Evasão tem muito mais peso (aumentado de 1.5)
+        
+        # Aplicar offset ao checkpoint alvo
+        self.alvo_x, self.alvo_y = self._aplicar_offset_checkpoint(
+            cx, cy, checkpoint_idx, offset_total
+        )
+        
+        # Debug info
+        if not hasattr(self, '_ultimo_debug_tempo'):
+            self._ultimo_debug_tempo = 0.0
         
         dx = self.alvo_x - carro.x
         dy = self.alvo_y - carro.y
@@ -453,8 +720,10 @@ class IA:
                 self.tempo_travado = 0.0
                 
                 checkpoint_idx = self.checkpoint_atual % len(self.checkpoints)
-                self.alvo_x = self.checkpoints[checkpoint_idx][0]
-                self.alvo_y = self.checkpoints[checkpoint_idx][1]
+                cp = self.checkpoints[checkpoint_idx]
+                cx, cy = cp[0], cp[1]
+                offset_lateral = self._calcular_offset_lateral(carro, checkpoint_idx)
+                self.alvo_x, self.alvo_y = self._aplicar_offset_checkpoint(cx, cy, checkpoint_idx, offset_lateral)
                 dx = self.alvo_x - carro.x
                 dy = self.alvo_y - carro.y
             else:
@@ -471,13 +740,17 @@ class IA:
                 self.checkpoint_atual = checkpoint_mais_proximo
                 self.tentativas_recuperacao = 0
                 self.tempo_travado = 0.0
-                self.alvo_x = self.checkpoints[checkpoint_mais_proximo][0]
-                self.alvo_y = self.checkpoints[checkpoint_mais_proximo][1]
+                cp = self.checkpoints[checkpoint_mais_proximo]
+                cx, cy = cp[0], cp[1]
+                offset_lateral = self._calcular_offset_lateral(carro, checkpoint_mais_proximo)
+                self.alvo_x, self.alvo_y = self._aplicar_offset_checkpoint(cx, cy, checkpoint_mais_proximo, offset_lateral)
                 dx = self.alvo_x - carro.x
                 dy = self.alvo_y - carro.y
                 print(f"IA {self.nome}: Recuperação final - mudou para checkpoint mais próximo: {checkpoint_mais_proximo + 1} (não resetou para 0)")
         
-        self.velocidade_alvo = self.calcular_velocidade_alvo(carro)
+        # Aplicar fator de velocidade de curva da personalidade
+        velocidade_alvo_base = self.calcular_velocidade_alvo(carro)
+        self.velocidade_alvo = velocidade_alvo_base * self.fator_velocidade_curva
         self.atualizar_estado_curva(carro, dt)
         
         acelerar = True
@@ -487,8 +760,12 @@ class IA:
             frear_re = True
             acelerar = False
         
+        # Aplicar fator de freio da personalidade
+        distancia_freio_curva_ajustada = self.distancia_freio_curva * self.fator_freio
+        distancia_freio_checkpoint_ajustada = self.distancia_freio_checkpoint * self.fator_freio
+        
         if self.curvatura_futura > 0.12:
-            if distancia < self.distancia_freio_curva * 3.0:
+            if distancia < distancia_freio_curva_ajustada * 3.0:
                 if velocidade_atual > self.velocidade_max_curva * 0.4:
                     frear_re = True
                     acelerar = False
@@ -496,12 +773,12 @@ class IA:
                 frear_re = True
                 acelerar = False
         elif self.curvatura_futura > 0.08:
-            if distancia < self.distancia_freio_curva * 2.5:
+            if distancia < distancia_freio_curva_ajustada * 2.5:
                 if velocidade_atual > self.velocidade_max_curva * 0.5:
                     frear_re = True
                     acelerar = False
         elif self.curvatura_futura > 0.05:
-            if distancia < self.distancia_freio_curva * 1.8:
+            if distancia < distancia_freio_curva_ajustada * 1.8:
                 if velocidade_atual > self.velocidade_max_curva * 0.65:
                     frear_re = True
                     acelerar = False
@@ -516,7 +793,7 @@ class IA:
             frear_re = True
             acelerar = False
         
-        if distancia < self.distancia_freio_checkpoint and velocidade_atual > 1.2:
+        if distancia < distancia_freio_checkpoint_ajustada and velocidade_atual > 1.2:
             frear_re = True
             acelerar = False
         
@@ -554,22 +831,22 @@ class IA:
                 frear_re = True
                 acelerar = False
         
-        if distancia < self.distancia_freio_curva and velocidade_atual > self.velocidade_maxima * 0.8:
+        if distancia < distancia_freio_curva_ajustada and velocidade_atual > self.velocidade_maxima * 0.8:
             frear_re = True
             acelerar = False
         
         if self.curvatura_atual > 0.10:
-            distancia_freio_ajustada = self.distancia_freio_curva * 3.5
+            distancia_freio_ajustada = distancia_freio_curva_ajustada * 3.5
             if distancia < distancia_freio_ajustada and velocidade_atual > self.velocidade_maxima * 0.3:
                 frear_re = True
                 acelerar = False
         elif self.curvatura_atual > 0.08:
-            distancia_freio_ajustada = self.distancia_freio_curva * 2.5
+            distancia_freio_ajustada = distancia_freio_curva_ajustada * 2.5
             if distancia < distancia_freio_ajustada and velocidade_atual > self.velocidade_maxima * 0.4:
                 frear_re = True
                 acelerar = False
         elif self.curvatura_atual > 0.05:
-            distancia_freio_ajustada = self.distancia_freio_curva * 1.6
+            distancia_freio_ajustada = distancia_freio_curva_ajustada * 1.6
             if distancia < distancia_freio_ajustada and velocidade_atual > self.velocidade_maxima * 0.6 and abs(diff_angulo) > 25:
                 frear_re = True
                 acelerar = False
@@ -581,7 +858,8 @@ class IA:
             frear_re = True
             acelerar = False
         
-        if abs(diff_angulo) < 12 and distancia > self.distancia_freio_checkpoint and velocidade_atual < self.velocidade_maxima * 0.9:
+        # Aplicar fator de aceleração da personalidade
+        if abs(diff_angulo) < 12 and distancia > distancia_freio_checkpoint_ajustada and velocidade_atual < self.velocidade_maxima * (0.9 * self.fator_aceleracao):
             acelerar = True
             frear_re = False
         
@@ -670,9 +948,15 @@ class IA:
                 acelerar = True
                 frear_re = False
         
+        if not hasattr(self, '_ultimo_debug_tempo'):
+            self._ultimo_debug_tempo = 0.0
         if pygame.time.get_ticks() / 1000.0 - self._ultimo_debug_tempo > 2.0:
-            print(f"[IA {self.nome}] Controles: acelerar={acelerar}, frear={frear_re}, direita={direita}, esquerda={esquerda}, turbo={turbo_pressed}")
-            print(f"[IA {self.nome}] Velocidade: {velocidade_atual:.2f}, diff_angulo: {diff_angulo:.1f}°, distancia: {distancia:.1f}")
+            # Recalcular offset para debug
+            checkpoint_idx_debug = self.checkpoint_atual % len(self.checkpoints)
+            offset_lateral_debug = self._calcular_offset_lateral(carro, checkpoint_idx_debug)
+            print(f"[IA {self.nome} - {self.personalidade.upper()}] Controles: acelerar={acelerar}, frear={frear_re}, direita={direita}, esquerda={esquerda}, turbo={turbo_pressed}")
+            print(f"[IA {self.nome}] Velocidade: {velocidade_atual:.2f}, diff_angulo: {diff_angulo:.1f}°, distancia: {distancia:.1f}, offset: {offset_lateral_debug:.1f}")
+            self._ultimo_debug_tempo = pygame.time.get_ticks() / 1000.0
         
         carro._step(acelerar, direita, esquerda, frear_re, turbo_pressed, superficie_mascara, dt, None, superficie_pista_renderizada)
         

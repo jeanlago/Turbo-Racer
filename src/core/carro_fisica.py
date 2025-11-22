@@ -325,12 +325,24 @@ class CarroFisica:
 
         # direção desejada
         steer_input = -1.0 if direita else (1.0 if esquerda else 0.0)
-        # Remover inversão problemática que causa travamento em ré
-        # if v_long < -0.25:
-        #     steer_input = -steer_input
+        
+        # Inverter direção em ré para comportamento intuitivo
+        # Quando está de ré, virar para direita deve fazer o carro ir para direita
+        # SEMPRE inverter quando estiver em ré (v_long < 0.0) OU quando estiver tentando dar ré (frear_re)
+        # Isso garante comportamento consistente em TODAS as velocidades de ré
+        esta_em_re = v_long < 0.0  # Qualquer velocidade negativa = em ré
+        if frear_re or esta_em_re:  # Se está tentando dar ré OU já está em ré (qualquer velocidade)
+            steer_input = -steer_input
 
-        # lock reduz com a velocidade
-        lock_scale = max(0.20, 1.0 - self.speed_steer_k * abs(v_long))  # ★ um pouco mais agressivo
+        # lock reduz com a velocidade, mas menos em ré para permitir virar
+        if v_long < 0.0:
+            # Em ré: reduzir MUITO MENOS o lock para permitir virar mesmo em altas velocidades
+            # Aumentar o mínimo de 0.40 para 0.70 para manter mais lock em altas velocidades
+            # Reduzir ainda menos a influência da velocidade (0.3 ao invés de 0.5)
+            lock_scale = max(0.70, 1.0 - self.speed_steer_k * abs(v_long) * 0.3)  # Redução muito menor em ré
+        else:
+            # Em frente: comportamento normal
+            lock_scale = max(0.20, 1.0 - self.speed_steer_k * abs(v_long))  # ★ um pouco mais agressivo
         target_wheel = self.steer_rad_max * lock_scale * steer_input
 
         # slewing da roda
@@ -462,8 +474,12 @@ class CarroFisica:
 
         # ré -> frente com W (mata ré rápido)
         if v_long < 0.0 and thr > 0.0:
-            if v_long < -1.0:
-                Fx_long = +self.brake_force * 1.6
+            # Aplicar freio proporcional à velocidade de ré
+            velocidade_re_abs = abs(v_long)
+            if velocidade_re_abs > 1.0:
+                # Quanto mais rápido em ré, mais forte o freio
+                fator_freio_re = min(2.0, 1.0 + velocidade_re_abs / 10.0)
+                Fx_long = +self.brake_force * fator_freio_re
             else:
                 Fx_long = +self.brake_force * 1.0
 
@@ -513,6 +529,16 @@ class CarroFisica:
         cs = math.cos(self._steer_wheel); sn = math.sin(self._steer_wheel)
         Fx = Fx_f*cs - Fy_f*sn + Fx_r
         Fy = Fy_f*cs + Fx_f*sn + Fy_r
+        
+        # Prevenir aceleração quando apenas direção é pressionada (sem acelerar ou frear)
+        # Se não há aceleração nem freio E o carro está parado ou quase parado,
+        # não deve haver força longitudinal resultante da direção
+        # IMPORTANTE: Não aplicar quando está dando ré (brk > 0.0), pois ré precisa funcionar
+        velocidade_atual = math.sqrt(v_long*v_long + v_lat*v_lat)
+        if thr == 0.0 and brk == 0.0 and velocidade_atual < 5.0:
+            # Remover componente longitudinal que vem da força lateral ao virar
+            # Isso previne que o carro acelere para o lado quando apenas A ou D são pressionados
+            Fx = 0.0
 
         # resistências
         Fy += - self.stability_k * v_lat * (1.0 + 0.6*abs(v_long))
@@ -680,7 +706,10 @@ class CarroFisica:
         yaw_max = 3.2 - 1.4*spdf
         self.yaw_rate = max(-yaw_max, min(yaw_max, self.yaw_rate))
 
-        yaw_target = (v_long * math.tan(self._steer_wheel)) / max(0.1, self.L)
+        # Calcular yaw_target considerando se está em ré
+        # Em ré, v_long é negativo, mas steer_wheel já foi invertido pelo steer_input
+        # Então precisamos usar abs(v_long) para manter o sinal correto
+        yaw_target = (abs(v_long) * math.tan(self._steer_wheel)) / max(0.1, self.L)
         blend = 0.7 if not escapando else 0.35
         self.yaw_rate += (yaw_target - self.yaw_rate) * blend * dt_fis
 

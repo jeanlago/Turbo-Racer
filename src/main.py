@@ -22,7 +22,8 @@ from config import CAMINHO_MENU
 def carregar_configuracoes_garagem():
     """Carrega configurações da garagem do arquivo JSON gerado pelo GarageEditor"""
     try:
-        caminho_garage_config = os.path.join(os.path.dirname(__file__), '..', 'data', 'garage_config.json')
+        from config import DIR_PROJETO
+        caminho_garage_config = os.path.join(DIR_PROJETO, 'data', 'garage_config.json')
         if os.path.exists(caminho_garage_config):
             import json
             with open(caminho_garage_config, 'r', encoding='utf-8') as f:
@@ -139,8 +140,18 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     
     minimapa_imagem = pista_tiles.carregar_minimapa(numero_pista)
     
-    checkpoint_manager = CheckpointManager(mapa_atual, checkpoints_iniciais=checkpoints)
-
+    checkpoint_manager = CheckpointManager(mapa_atual, checkpoints_iniciais=checkpoints, numero_pista=numero_pista)
+    
+    # Usar checkpoints do checkpoint_manager (que carrega do JSON se disponível)
+    if checkpoint_manager.checkpoints:
+        checkpoints = []
+        for cp in checkpoint_manager.checkpoints:
+            if len(cp) >= 3:
+                checkpoints.append((float(cp[0]), float(cp[1]), float(cp[2])))
+            elif len(cp) >= 2:
+                checkpoints.append((float(cp[0]), float(cp[1]), 0))
+        print(f"Usando {len(checkpoints)} checkpoints do checkpoint_manager")
+    
     largura_atual, altura_atual = resolucao
     largura_pista, altura_pista = superficie_pista_renderizada.get_size()
     
@@ -685,10 +696,21 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         print(f"Primeiro checkpoint da IA: {checkpoints_ia[0]}")
     
     instancias_ia = []
+    personalidades_usadas = []
     for i, carro_ia in enumerate(carros_ia):
-        instancia_ia = IA(checkpoints_ia, nome=carro_ia.nome, dificuldade=dificuldade_ia)
+        # Atribuir personalidade aleatória, evitando repetições excessivas
+        personalidades_disponiveis = IA.PERSONALIDADES.copy()
+        # Se já temos muitas IAs, garantir variedade
+        if len(personalidades_usadas) >= len(IA.PERSONALIDADES):
+            personalidades_usadas = []
+        
+        # Escolher personalidade que ainda não foi usada muito
+        personalidade = random.choice(personalidades_disponiveis)
+        personalidades_usadas.append(personalidade)
+        
+        instancia_ia = IA(checkpoints_ia, nome=carro_ia.nome, dificuldade=dificuldade_ia, personalidade=personalidade)
         instancias_ia.append(instancia_ia)
-        print(f"Criada {instancia_ia.nome} com {len(checkpoints_ia)} checkpoints")
+        print(f"Criada {instancia_ia.nome} com {len(checkpoints_ia)} checkpoints - Personalidade: {personalidade}")
     
     IA2 = instancias_ia[0] if len(instancias_ia) > 0 else None
     IA3 = instancias_ia[1] if len(instancias_ia) > 1 else None
@@ -1227,7 +1249,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         carro2.atualizar(teclas, None, dt_fixo, camera, superficie_pista_renderizada)
                 elif USAR_IA_NO_CARRO_2 and corrida.iniciada:
                     if not corrida.finalizou.get(carro2, False):
-                        IA2.controlar(carro2, None, None, dt_fixo, superficie_pista_renderizada, corrida_iniciada=corrida.iniciada)
+                        outros_carros_p2 = [c for c in carros if c != carro2]
+                        IA2.controlar(carro2, None, None, dt_fixo, superficie_pista_renderizada, corrida_iniciada=corrida.iniciada, outros_carros=outros_carros_p2)
                 elif corrida.pode_controlar():
                     carro2.atualizar(teclas, None, dt_fixo, camera, superficie_pista_renderizada)
 
@@ -1235,7 +1258,9 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 for i, (carro_ia, instancia_ia) in enumerate(zip(carros_ia, instancias_ia)):
                     if not corrida.finalizou.get(carro_ia, False):
                         pos_antes_bot = (carro_ia.x, carro_ia.y)
-                        instancia_ia.controlar(carro_ia, None, None, dt_fixo, superficie_pista_renderizada, corrida_iniciada=corrida.iniciada)
+                        # Passar lista de outros carros para a IA evitar colisões
+                        outros_carros = [c for c in carros if c != carro_ia]
+                        instancia_ia.controlar(carro_ia, None, None, dt_fixo, superficie_pista_renderizada, corrida_iniciada=corrida.iniciada, outros_carros=outros_carros)
                         pos_depois_bot = (carro_ia.x, carro_ia.y)
                         dist_movimento_bot = ((pos_depois_bot[0] - pos_antes_bot[0])**2 + (pos_depois_bot[1] - pos_antes_bot[1])**2)**0.5
                         if dist_movimento_bot > 100:
@@ -1244,6 +1269,70 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 carro_ia.x, carro_ia.y = pos_antes_bot
                                 print(f"Posição do bot {carro_ia.nome} restaurada para: {pos_antes_bot}")
 
+                # Sistema de colisão entre carros
+                def detectar_colisao_carros(carro1, carro2):
+                    """Detecta colisão entre dois carros usando círculos"""
+                    dx = carro1.x - carro2.x
+                    dy = carro1.y - carro2.y
+                    distancia = math.sqrt(dx*dx + dy*dy)
+                    raio_carro = 28.0  # Raio ajustado para detectar quando sprites se tocam
+                    return distancia < (raio_carro * 2)
+                
+                def resolver_colisao_carros(carro1, carro2, dt):
+                    """Resolve colisão física entre dois carros"""
+                    dx = carro1.x - carro2.x
+                    dy = carro1.y - carro2.y
+                    distancia = math.sqrt(dx*dx + dy*dy)
+                    
+                    if distancia < 0.01:
+                        distancia = 0.01
+                    
+                    # Normalizar direção
+                    nx = dx / distancia
+                    ny = dy / distancia
+                    
+                    # Calcular velocidades relativas
+                    v1x, v1y = carro1.vx, carro1.vy
+                    v2x, v2y = carro2.vx, carro2.vy
+                    
+                    # Velocidade relativa na direção da colisão
+                    v_rel = (v1x - v2x) * nx + (v1y - v2y) * ny
+                    
+                    # Se os carros estão se afastando, não aplicar colisão
+                    if v_rel > 0:
+                        return
+                    
+                    # Separar os carros para evitar sobreposição (distância mínima = 56px)
+                    distancia_minima = 56.0
+                    sobreposicao = (distancia_minima - distancia) * 0.5
+                    if sobreposicao > 0:
+                        carro1.x += nx * sobreposicao
+                        carro1.y += ny * sobreposicao
+                        carro2.x -= nx * sobreposicao
+                        carro2.y -= ny * sobreposicao
+                    
+                    # Aplicar força de colisão (rebote elástico parcial)
+                    massa_total = carro1.m + carro2.m
+                    if massa_total > 0:
+                        # Fator de elasticidade (0.3 = 30% de rebote, 70% de amortecimento)
+                        elasticidade = 0.3
+                        impulso = (1.0 + elasticidade) * v_rel / massa_total
+                        
+                        # Aplicar impulso baseado na massa
+                        fator_massa1 = carro2.m / massa_total
+                        fator_massa2 = carro1.m / massa_total
+                        
+                        carro1.vx -= nx * impulso * fator_massa1 * carro1.m
+                        carro1.vy -= ny * impulso * fator_massa1 * carro1.m
+                        carro2.vx += nx * impulso * fator_massa2 * carro2.m
+                        carro2.vy += ny * impulso * fator_massa2 * carro2.m
+                
+                # Verificar e resolver colisões entre todos os pares de carros
+                for i, carro_a in enumerate(carros):
+                    for j, carro_b in enumerate(carros[i+1:], start=i+1):
+                        if detectar_colisao_carros(carro_a, carro_b):
+                            resolver_colisao_carros(carro_a, carro_b, dt_fixo)
+                
                 for c in carros:
                     corrida.atualizar_progresso_carro(c)
 

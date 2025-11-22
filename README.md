@@ -341,6 +341,9 @@ Para editar checkpoints e spawn points de uma pista:
 
 ### **Sistema de IA**
 - **Algoritmo Pure Pursuit** - Navegação suave e realista
+- **Sistema de Personalidades** - 4 personalidades diferentes (Agressiva, Defensiva, Equilibrada, Arriscada)
+- **Pathfinding Variado** - Cada IA escolhe uma linha de corrida única, evitando "fila indiana"
+- **Evasão Inteligente** - IAs detectam e evitam colisões entre si
 - **Detecção Inteligente** - Evita obstáculos e recupera de situações problemáticas
 - **Parâmetros Configuráveis** - Wheelbase, lookahead distance, velocidades
 
@@ -368,7 +371,14 @@ Para editar checkpoints e spawn points de uma pista:
   - **FWD (Tração Frontal)** - Muito estável, sem drift
   - **AWD (Tração Integral)** - Equilibrado, drift limitado
 - **Sistema de Derrapagem** - Baseado em velocidade e ângulo
-- **Colisões Realistas** - Rebote e perda de velocidade
+- **Colisões Entre Carros** - Sistema completo de detecção e resolução física:
+  - Detecção circular com raio ajustado
+  - Resolução com separação e impulso
+  - Rebote elástico parcial (30% de elasticidade)
+- **Comportamento de Ré** - Direção invertida intuitiva em todas as velocidades:
+  - Pressionar A (esquerda) em ré faz o carro ir para direita
+  - Pressionar D (direita) em ré faz o carro ir para esquerda
+  - Freio automático ao tentar acelerar enquanto está em ré
 - **Turbo com Cooldown** - 0.9s de duração, 2.5s de cooldown
 
 ### **Sistema de Áudio**
@@ -520,8 +530,33 @@ Este projeto é de código aberto e está disponível sob a **licença MIT**.
 ---
 
 **Desenvolvido por Jean Marins e Jayson Sales**  
-**Versão atual:** 3.2.3  
-**Última atualização:** 18 de Novembro de 2025
+**Versão atual:** 3.2.4  
+**Última atualização:** 22 de Novembro de 2025
+
+### **Novidades da Versão 3.2.4 (22 de Novembro de 2025)**
+- **Sistema de Personalidades da IA** - Cada IA agora tem uma personalidade única que afeta seu comportamento:
+  - **Agressiva**: Linha interna, freia tarde, acelera rápido, menos evasão
+  - **Defensiva**: Linha externa, freia cedo, acelera devagar, mais evasão
+  - **Equilibrada**: Linha média, comportamento balanceado
+  - **Arriscada**: Linha muito interna, freia muito tarde, muito agressiva
+- **Pathfinding Variado** - IAs não seguem mais em "fila indiana":
+  - Offset lateral baseado na personalidade e curvatura da pista
+  - Cada IA escolhe uma linha de corrida única
+  - Variação individual para tornar cada IA única
+- **Sistema de Colisão Entre Carros** - Sistema completo de detecção e resolução de colisões:
+  - Detecção circular com raio ajustado
+  - Resolução física com separação e impulso
+  - Rebote elástico parcial (30% de elasticidade)
+- **Evasão Inteligente da IA** - IAs agora evitam colisões entre si:
+  - Detecção de proximidade de outros carros
+  - Offset de evasão baseado na distância e posição relativa
+  - Força de evasão ajustada pela personalidade
+- **Correções de Ré** - Múltiplas correções no comportamento de ré:
+  - Direção invertida corretamente em todas as velocidades (A/D funcionam intuitivamente)
+  - Lock de direção aumentado em ré para permitir virar em altas velocidades
+  - Freio automático ao tentar acelerar enquanto está em ré
+  - Prevenção de aceleração lateral quando apenas direção é pressionada
+- **Melhorias de Física** - Ajustes no cálculo de yaw_target para comportamento consistente em ré
 
 ### **Novidades da Versão 3.2.3 (18 de Novembro de 2025)**
 - **Sistema de Nitro como Upgrade** - Nitro agora é um upgrade separado que deve ser comprado para ser desbloqueado

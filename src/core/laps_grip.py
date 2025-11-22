@@ -1,12 +1,52 @@
 import os
+from config import DIR_PROJETO
 
-DIR_PROJETO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DIR_LAPS = os.path.join(DIR_PROJETO, "data", "laps")
 DIR_DATA = os.path.join(DIR_PROJETO, "data")
 
 def carregar_checkpoints_grip(numero_pista):
+    """Carrega checkpoints do JSON (prioridade) ou do código hardcoded (fallback)"""
     centro_x, centro_y = 2500, 2500
     
+    # PRIMEIRO: Tentar carregar do arquivo JSON (salvo pelo checkpoint_editor)
+    try:
+        import json
+        arquivo = os.path.join(DIR_DATA, f"checkpoints_pista_{numero_pista}.json")
+        
+        print(f"Tentando carregar checkpoints do JSON: {arquivo}")
+        print(f"Arquivo existe? {os.path.exists(arquivo)}")
+        
+        if os.path.exists(arquivo):
+            with open(arquivo, 'r', encoding='utf-8') as f:
+                dados = json.load(f)
+            
+            if isinstance(dados, dict):
+                checkpoints_json = dados.get("checkpoints", [])
+            else:
+                checkpoints_json = dados
+            
+            if checkpoints_json:
+                # Converter para formato de tuplas
+                checkpoints = []
+                for cp in checkpoints_json:
+                    if len(cp) >= 3:
+                        checkpoints.append((float(cp[0]), float(cp[1]), float(cp[2])))
+                    elif len(cp) >= 2:
+                        checkpoints.append((float(cp[0]), float(cp[1]), 0))
+                
+                if checkpoints:
+                    print(f"✓ Carregados {len(checkpoints)} checkpoints do JSON para pista {numero_pista}")
+                    return checkpoints
+                else:
+                    print(f"⚠ Arquivo JSON encontrado mas sem checkpoints válidos")
+        else:
+            print(f"⚠ Arquivo JSON não encontrado: {arquivo}")
+    except Exception as e:
+        print(f"❌ Erro ao carregar checkpoints do JSON: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # FALLBACK: Usar checkpoints hardcoded do código
     if numero_pista == 1:
         checkpoint_1 = (centro_x + -244, centro_y + 42, 90)  # Ângulo: 90°
         checkpoint_2 = (centro_x + -1257, centro_y + 2, 105)  # Ângulo: 105°

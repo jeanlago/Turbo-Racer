@@ -8,7 +8,7 @@ import json
 from config import LARGURA, ALTURA
 
 # Caminhos
-DIR_PROJETO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import DIR_PROJETO
 DIR_PISTAS = os.path.join(DIR_PROJETO, "assets", "images", "pistas")
 DIR_LAPS = os.path.join(DIR_PROJETO, "data", "laps")
 
