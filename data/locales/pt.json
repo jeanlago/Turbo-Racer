@@ -156,6 +156,7 @@
   "recordes": {
     "corrida": "CORRIDA",
     "drift": "DRIFT",
+    "relogio": "RELÓGIO",
     "pista": "PISTA",
     "trofeu": "TROFÉU",
     "melhor_tempo": "MELHOR TEMPO",
@@ -188,6 +189,10 @@
   "video": {
     "titulo": "CONFIGURAÇÕES DE VÍDEO",
     "resolucao": "RESOLUÇÃO",
+    "confirmar_resolucao": "Você deseja manter as novas configurações?",
+    "manter": "MANTER",
+    "reverter": "REVERTER",
+    "tempo_restante": "Tempo restante: {}s",
     "tela_cheia": "TELA CHEIA",
     "sem_bordas": "SEM BORDAS",
     "qualidade_alta": "QUALIDADE ALTA",

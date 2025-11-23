@@ -26,12 +26,10 @@ import pygame
 import json
 from pathlib import Path
 
-# Adicionar o diretório src ao path para importar módulos
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from config import LARGURA, ALTURA, FPS, CAMINHO_OFICINA, DIR_SPRITES, DIR_CAR_SELECTION
 
-# Importar lista de carros do main.py
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 from main import CARROS_DISPONIVEIS
 
@@ -39,21 +37,17 @@ class GarageEditor:
     def __init__(self):
         pygame.init()
         
-        # Configurações da tela
         self.screen = pygame.display.set_mode((LARGURA, ALTURA))
         pygame.display.set_caption("Garage Editor - Turbo Racer")
         
-        # Clock para FPS
         self.clock = pygame.time.Clock()
         
-        # Estado do editor
         self.modo_edicao = False
         self.carro_selecionado = 0
         self.arrastando = False
         self.arrastando_canto = None
         self.offset_arraste = (0, 0)
         
-        # Carregar dados dos carros (cópia para edição)
         self.carros = []
         for carro in CARROS_DISPONIVEIS:
             self.carros.append({
@@ -67,7 +61,6 @@ class GarageEditor:
                 'tipo_tracao': carro.get('tipo_tracao', 'rear')
             })
         
-        # Carregar imagem de fundo da oficina
         self.bg_oficina = None
         try:
             if os.path.exists(CAMINHO_OFICINA):
@@ -76,18 +69,15 @@ class GarageEditor:
         except Exception as e:
             print(f"Erro ao carregar fundo da oficina: {e}")
         
-        # Carregar sprites dos carros
         self.sprites_carros = {}
         self.carregar_sprites()
         
-        # Fonte
         self.fonte = pygame.font.Font(None, 24)
         self.fonte_pequena = pygame.font.Font(None, 18)
         self.fonte_grande = pygame.font.Font(None, 36)
         
-        # Estado da interface
         self.mostrar_ajuda = True
-        self.velocidade_ajuste = 5  # Pixels por ajuste
+        self.velocidade_ajuste = 5
         
     def carregar_sprites(self):
         """Carrega os sprites dos carros"""
@@ -103,7 +93,6 @@ class GarageEditor:
                 self.sprites_carros[carro['prefixo_cor']] = sprite
             except Exception as e:
                 print(f"Erro ao carregar sprite de {carro['nome']}: {e}")
-                # Criar sprite placeholder
                 placeholder = pygame.Surface((100, 50), pygame.SRCALPHA)
                 pygame.draw.rect(placeholder, (128, 128, 128), (0, 0, 100, 50))
                 self.sprites_carros[carro['prefixo_cor']] = placeholder
@@ -133,7 +122,6 @@ class GarageEditor:
                     self.carro_selecionado = (self.carro_selecionado + 1) % len(self.carros)
                     print(f"Carro selecionado: {self.carros[self.carro_selecionado]['nome']} ({self.carro_selecionado + 1}/{len(self.carros)})")
                 
-                # Ajustes de posição (apenas em modo edição)
                 if self.modo_edicao:
                     carro = self.carros[self.carro_selecionado]
                     if event.key == pygame.K_w:
@@ -154,10 +142,9 @@ class GarageEditor:
                         carro['tamanho_oficina'][1] += self.velocidade_ajuste
             
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:  # Botão esquerdo
+                if event.button == 1:
                     mouse_x, mouse_y = event.pos
                     
-                    # Verificar primeiro se clicou no carro selecionado (para mover/redimensionar)
                     carro_atual = self.carros[self.carro_selecionado]
                     rect_atual = pygame.Rect(
                         carro_atual['posicao_oficina'][0],
@@ -166,23 +153,17 @@ class GarageEditor:
                         carro_atual['tamanho_oficina'][1]
                     )
                     
-                    # Se clicou no carro selecionado, verificar se é para mover ou redimensionar
                     if rect_atual.collidepoint(mouse_x, mouse_y):
-                        # Verificar se clicou em um canto para redimensionar
                         canto = self.verificar_canto(rect_atual, mouse_x, mouse_y)
                         if canto and self.modo_edicao:
                             self.arrastando_canto = canto
                         elif self.modo_edicao:
-                            # Iniciar arraste para mover
                             self.arrastando = True
                             self.offset_arraste = (
                                 mouse_x - carro_atual['posicao_oficina'][0],
                                 mouse_y - carro_atual['posicao_oficina'][1]
                             )
-                        # Se não estiver em modo edição, não fazer nada (não mudar seleção)
                     else:
-                        # Se não clicou no carro selecionado, verificar se clicou em outro carro
-                        # (mas só se não estiver em modo edição, para evitar mudanças acidentais)
                         if not self.modo_edicao:
                             carro_idx = self.encontrar_carro_no_ponto(mouse_x, mouse_y)
                             if carro_idx is not None and carro_idx != self.carro_selecionado:
@@ -218,7 +199,6 @@ class GarageEditor:
                             carro['tamanho_oficina'][1] = nova_altura
                             carro['posicao_oficina'][1] = event.pos[1]
                     elif self.arrastando_canto == 'sd':
-                        # Canto superior direito
                         nova_largura = event.pos[0] - rect.left
                         nova_altura = rect.bottom - event.pos[1]
                         if nova_largura > 50:
@@ -227,7 +207,6 @@ class GarageEditor:
                             carro['tamanho_oficina'][1] = nova_altura
                             carro['posicao_oficina'][1] = event.pos[1]
                     elif self.arrastando_canto == 'ie':
-                        # Canto inferior esquerdo
                         nova_largura = rect.right - event.pos[0]
                         nova_altura = event.pos[1] - rect.top
                         if nova_largura > 50:
@@ -236,7 +215,6 @@ class GarageEditor:
                         if nova_altura > 50:
                             carro['tamanho_oficina'][1] = nova_altura
                     elif self.arrastando_canto == 'id':
-                        # Canto inferior direito
                         nova_largura = event.pos[0] - rect.left
                         nova_altura = event.pos[1] - rect.top
                         if nova_largura > 50:
@@ -274,17 +252,14 @@ class GarageEditor:
     
     def desenhar(self):
         """Desenha a tela"""
-        # Fundo
         if self.bg_oficina:
             self.screen.blit(self.bg_oficina, (0, 0))
         else:
             self.screen.fill((40, 40, 40))
         
-        # Desenhar apenas o carro selecionado (não todos empilhados)
         carro_selecionado_obj = self.carros[self.carro_selecionado]
         self.desenhar_carro(carro_selecionado_obj, True)
         
-        # Desenhar interface
         self.desenhar_interface()
         
         pygame.display.flip()
@@ -294,28 +269,22 @@ class GarageEditor:
         x, y = carro['posicao_oficina']
         largura, altura = carro['tamanho_oficina']
         
-        # Retângulo do canvas
         cor_borda = (0, 255, 0) if selecionado else (128, 128, 128)
         espessura = 3 if selecionado else 1
         
-        # Fundo semi-transparente
         superficie_canvas = pygame.Surface((largura, altura), pygame.SRCALPHA)
         superficie_canvas.fill((0, 0, 0, 100))
         self.screen.blit(superficie_canvas, (x, y))
         
-        # Borda
         pygame.draw.rect(self.screen, cor_borda, (x, y, largura, altura), espessura)
         
-        # Desenhar sprite do carro
         if carro['prefixo_cor'] in self.sprites_carros:
             sprite_original = self.sprites_carros[carro['prefixo_cor']]
             
-            # Calcular escala para manter proporção
             escala_x = largura / sprite_original.get_width()
             escala_y = altura / sprite_original.get_height()
-            escala = min(escala_x, escala_y) * 0.9  # 90% para deixar margem
+            escala = min(escala_x, escala_y) * 0.9
             
-            # Redimensionar
             nova_largura = int(sprite_original.get_width() * escala)
             nova_altura = int(sprite_original.get_height() * escala)
             sprite_redimensionado = pygame.transform.scale(sprite_original, (nova_largura, nova_altura))

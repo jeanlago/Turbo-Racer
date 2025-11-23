@@ -1,4 +1,3 @@
-# core/carro_fisica.py
 import os, math, pygame
 from config import (
     LARGURA, ALTURA, DIR_SPRITES,
@@ -278,15 +277,47 @@ class CarroFisica:
         
         return x_corrigido, y_corrigido
 
-    def atualizar(self, teclas, superficie_mascara, dt, camera=None, superficie_pista_renderizada=None):
-        acelerar = teclas[self.controles[0]]
-        direita  = teclas[self.controles[1]]
-        esquerda = teclas[self.controles[2]]
-        frear_re = teclas[self.controles[3]]
+    def atualizar(self, teclas, superficie_mascara, dt, camera=None, superficie_pista_renderizada=None, inputs_controle=None):
+        """
+        Atualiza o carro com inputs de teclado ou controle
+        
+        Args:
+            teclas: dict de teclas pressionadas (pygame.key.get_pressed())
+            superficie_mascara: máscara de colisão
+            dt: delta time
+            camera: câmera do jogo
+            superficie_pista_renderizada: superfície da pista
+            inputs_controle: dict com inputs de controle {"acelerar", "frear", "direita", "esquerda", "turbo"}
+        """
+        if inputs_controle is not None:
+            # Usar inputs de controle se fornecidos
+            acelerar = inputs_controle.get("acelerar", False)
+            direita = inputs_controle.get("direita", False)
+            esquerda = inputs_controle.get("esquerda", False)
+            frear_re = inputs_controle.get("frear", False)
+            turbo_pressed = inputs_controle.get("turbo", False)
+            freio_mao_pressed = inputs_controle.get("freio_mao", False)
+            drift_pressed = inputs_controle.get("drift", False)
+            # DEBUG: Mostrar quando freio de mão ou drift é pressionado
+            if freio_mao_pressed:
+                print(f"[DEBUG CARRO] Freio de mão pressionado (R1)")
+            if drift_pressed:
+                print(f"[DEBUG CARRO] Drift pressionado (Square)")
+            # Ativar/desativar freio de mão ou drift
+            if freio_mao_pressed or drift_pressed:
+                self.ativar_drift()
+            else:
+                self.desativar_drift()
+        else:
+            # Usar teclado (comportamento padrão)
+            acelerar = teclas[self.controles[0]]
+            direita  = teclas[self.controles[1]]
+            esquerda = teclas[self.controles[2]]
+            frear_re = teclas[self.controles[3]]
 
-        turbo_pressed = False
-        if self.turbo_key is not None:
-            turbo_pressed = bool(teclas[self.turbo_key])
+            turbo_pressed = False
+            if self.turbo_key is not None:
+                turbo_pressed = bool(teclas[self.turbo_key])
 
         self._step(acelerar, direita, esquerda, frear_re, turbo_pressed, superficie_mascara, dt, camera, superficie_pista_renderizada)
 
@@ -328,10 +359,10 @@ class CarroFisica:
         
         # Inverter direção em ré para comportamento intuitivo
         # Quando está de ré, virar para direita deve fazer o carro ir para direita
-        # SEMPRE inverter quando estiver em ré (v_long < 0.0) OU quando estiver tentando dar ré (frear_re)
-        # Isso garante comportamento consistente em TODAS as velocidades de ré
+        # IMPORTANTE: Só inverter quando REALMENTE estiver em ré (v_long < 0.0)
+        # NÃO inverter quando apenas está freando (frear_re) mas ainda está indo para frente
         esta_em_re = v_long < 0.0  # Qualquer velocidade negativa = em ré
-        if frear_re or esta_em_re:  # Se está tentando dar ré OU já está em ré (qualquer velocidade)
+        if esta_em_re:  # Só inverter quando REALMENTE estiver em ré
             steer_input = -steer_input
 
         # lock reduz com a velocidade, mas menos em ré para permitir virar

@@ -1,0 +1,56 @@
+{
+  "p1": {
+    "acelerar": {
+      "tipo": "axis",
+      "index": 5,
+      "invertido": false
+    },
+    "frear": {
+      "tipo": "axis",
+      "index": 4,
+      "invertido": false
+    },
+    "direita": {
+      "tipo": "axis",
+      "index": 0,
+      "invertido": false
+    },
+    "esquerda": {
+      "tipo": "axis",
+      "index": 0,
+      "invertido": true
+    },
+    "turbo": {
+      "tipo": "button",
+      "index": 0
+    },
+    "joystick_id": 0
+  },
+  "p2": {
+    "acelerar": {
+      "tipo": "axis",
+      "index": 5,
+      "invertido": false
+    },
+    "frear": {
+      "tipo": "axis",
+      "index": 4,
+      "invertido": false
+    },
+    "direita": {
+      "tipo": "axis",
+      "index": 0,
+      "invertido": false
+    },
+    "esquerda": {
+      "tipo": "axis",
+      "index": 0,
+      "invertido": true
+    },
+    "turbo": {
+      "tipo": "button",
+      "index": 0
+    },
+    "joystick_id": 1
+  }
+}

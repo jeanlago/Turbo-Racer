@@ -1,0 +1,56 @@
+{
+  "desafios_diarios": [
+    {
+      "tipo": "estabelecer_recorde",
+      "objetivo": 1,
+      "recompensa": 895,
+      "descricao": "Estabeleça um novo recorde",
+      "id": "diario_20251123_0",
+      "progresso": 0
+    },
+    {
+      "tipo": "vencer_corridas",
+      "objetivo": 1,
+      "recompensa": 471,
+      "descricao": "Vença 2 corridas em 1º lugar",
+      "id": "diario_20251123_0",
+      "progresso": 0
+    },
+    {
+      "tipo": "completar_voltas",
+      "objetivo": 15,
+      "recompensa": 308,
+      "descricao": "Complete 13 voltas",
+      "id": "diario_20251123_0",
+      "progresso": 0
+    }
+  ],
+  "desafios_semanais": [
+    {
+      "tipo": "completar_corridas",
+      "objetivo": 13,
+      "recompensa": 2895,
+      "descricao": "Complete 10 corridas",
+      "id": "semanal_202546_0",
+      "progresso": 0
+    },
+    {
+      "tipo": "completar_voltas",
+      "objetivo": 83,
+      "recompensa": 1678,
+      "descricao": "Complete 89 voltas",
+      "id": "semanal_202546_0",
+      "progresso": 0
+    }
+  ],
+  "missoes_pista": {},
+  "progresso": {
+    "diario_20251123_0": 2,
+    "semanal_202546_0": 1
+  },
+  "completados": [
+    "diario_20251123_0"
+  ],
+  "ultima_atualizacao_diaria": "2025-11-23",
+  "ultima_atualizacao_semanal": "2025-W47"
+}

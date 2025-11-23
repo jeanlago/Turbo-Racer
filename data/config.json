@@ -4,10 +4,10 @@
     "volume_musica": 1.0,
     "volume_efeitos": 1.0,
     "audio_habilitado": true,
-    "musica_habilitada": true,
+    "musica_habilitada": false,
     "musica_no_menu": true,
     "musica_no_jogo": false,
-    "musica_aleatoria": false,
+    "musica_aleatoria": true,
     "musica_aleatorIA": true
   },
   "video": {

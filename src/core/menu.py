@@ -12,6 +12,7 @@ from core.musica import gerenciador_musica
 from core.popup_musica import popup_musica
 from core.game_modes import ModoJogo, TipoJogo
 from core.progresso import gerenciador_progresso
+from core.gamepad_manager import gerenciador_gamepad
 
 # Variável global para rastrear se o jogador tinha dinheiro suficiente antes (fora da oficina)
 # Usado para mostrar notificação apenas quando há transição de "sem dinheiro" para "com dinheiro"
@@ -42,7 +43,7 @@ def verificar_clique_opcao(mouse_x, mouse_y, opcoes, caixa_x, caixa_y, caixa_lar
             return i
     return -1
 
-def desenhar_scrollbar(screen, scroll_offset, max_scroll, caixa_x, caixa_y, caixa_largura, caixa_altura):
+def desenhar_scrollbar(screen, scroll_offset, max_scroll, caixa_x, caixa_y, caixa_largura, caixa_altura, scroll_dragging=False):
     """Desenha uma barra de rolagem"""
     if max_scroll <= 0:
         return
@@ -60,8 +61,9 @@ def desenhar_scrollbar(screen, scroll_offset, max_scroll, caixa_x, caixa_y, caix
     scrollbar_bg.fill((50, 50, 50, 150))
     screen.blit(scrollbar_bg, (scrollbar_x, scrollbar_y))
     
+    indicator_color = (180, 180, 180, 200) if not scroll_dragging else (220, 220, 220, 200)
     indicator_bg = pygame.Surface((scrollbar_width - 2, indicator_height), pygame.SRCALPHA)
-    indicator_bg.fill((150, 150, 150, 200))
+    indicator_bg.fill(indicator_color)
     screen.blit(indicator_bg, (scrollbar_x + 1, indicator_y))
     
     pygame.draw.rect(screen, (255, 255, 255), (scrollbar_x, scrollbar_y, scrollbar_width, scrollbar_height), 1)
@@ -287,6 +289,14 @@ def splash_screen(screen) -> bool:
                 for ev in pygame.event.get():
                     if ev.type == pygame.QUIT:
                         return False
+                    # Verificar controles
+                    if gerenciador_gamepad.obter_numero_controles() > 0:
+                        if ev.type == pygame.JOYBUTTONDOWN:
+                            return True
+                        elif ev.type == pygame.JOYHATMOTION:
+                            hat_x, hat_y = ev.value
+                            if hat_x != 0 or hat_y != 0:
+                                return True
                     if ev.type == pygame.KEYDOWN or ev.type == pygame.MOUSEBUTTONDOWN:
                         return True
             except (SystemError, KeyError) as e:
@@ -372,12 +382,18 @@ _achievements_scroll_offset = 0.0
 _achievements_scroll_dragging = False
 _achievements_scroll_drag_start_y = 0
 _achievements_scroll_drag_start_offset = 0.0
+_achievements_animacao_cursor = 0.0
 
 def desenhar_tela_achievements(screen, dt):
     """Desenha a tela de achievements/conquistas no menu"""
-    global _achievements_scroll_offset, _achievements_scroll_dragging, _achievements_scroll_drag_start_y, _achievements_scroll_drag_start_offset
+    global _achievements_scroll_offset, _achievements_scroll_dragging, _achievements_scroll_drag_start_y, _achievements_scroll_drag_start_offset, _achievements_animacao_cursor
     from core.achievements import gerenciador_achievements, ACHIEVEMENTS
     from core.i18n import t
+    
+    # Atualizar animação do cursor do controle
+    _achievements_animacao_cursor += dt * 3.0
+    if _achievements_animacao_cursor >= 1.0:
+        _achievements_animacao_cursor = 0.0
     
     # Carregar cache de ícones (apenas uma vez)
     _carregar_cache_achievements()
@@ -566,6 +582,17 @@ def desenhar_tela_achievements(screen, dt):
     pygame.draw.rect(screen, cor_fechar, fechar_rect)
     pygame.draw.rect(screen, (255, 255, 255), fechar_rect, 2)
     
+    # Desenhar cursor do controle (caixa animada) para botão fechar
+    if gerenciador_gamepad.obter_numero_controles() > 0:
+        tamanho_cursor = 3 + int(2 * abs(math.sin(_achievements_animacao_cursor * math.pi)))
+        cursor_rect = pygame.Rect(
+            fechar_rect.x - tamanho_cursor,
+            fechar_rect.y - tamanho_cursor,
+            fechar_rect.width + tamanho_cursor * 2,
+            fechar_rect.height + tamanho_cursor * 2
+        )
+        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
+    
     fechar_texto = render_text("FECHAR", 18, (255, 255, 255), bold=True, pixel_style=True)
     fechar_x = fechar_rect.x + (fechar_rect.width - fechar_texto.get_width()) // 2
     fechar_y = fechar_rect.y + (fechar_rect.height - fechar_texto.get_height()) // 2
@@ -575,6 +602,166 @@ def desenhar_tela_achievements(screen, dt):
     instrucao = render_text("ESC para fechar", 16, (150, 150, 150), bold=False, pixel_style=True)
     screen.blit(instrucao, (caixa_x + 20, caixa_y + caixa_altura - 30))
 
+# Variáveis globais para animação do cursor nas telas
+_estatisticas_animacao_cursor = 0.0
+_desafios_animacao_cursor = 0.0
+
+def desenhar_tela_estatisticas(screen, dt):
+    """Desenha a tela de estatísticas detalhadas"""
+    global _estatisticas_animacao_cursor
+    from core.i18n import t
+    from core.estatisticas import gerenciador_estatisticas
+    
+    # Atualizar animação do cursor do controle
+    _estatisticas_animacao_cursor += dt * 3.0
+    if _estatisticas_animacao_cursor >= 1.0:
+        _estatisticas_animacao_cursor = 0.0
+    
+    overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 200))
+    screen.blit(overlay, (0, 0))
+    
+    caixa_largura = 800
+    caixa_altura = 600
+    caixa_x = (LARGURA - caixa_largura) // 2
+    caixa_y = (ALTURA - caixa_altura) // 2
+    
+    caixa_fundo = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+    caixa_fundo.fill((0, 0, 0, 240))
+    screen.blit(caixa_fundo, (caixa_x, caixa_y))
+    pygame.draw.rect(screen, (100, 150, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
+    
+    titulo = render_text("ESTATÍSTICAS", 48, (100, 220, 255), bold=True, pixel_style=True)
+    titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
+    screen.blit(titulo, (titulo_x, caixa_y + 20))
+    
+    stats_gerais = gerenciador_estatisticas.obter_estatisticas_gerais()
+    y_atual = caixa_y + 90
+    
+    secoes = [
+        ("GERAIS", [
+            ("Tempo Total Jogado", gerenciador_estatisticas.formatar_tempo(stats_gerais["tempo_total_jogado"])),
+            ("Distância Total", gerenciador_estatisticas.formatar_distancia(stats_gerais["distancia_total"])),
+            ("Corridas Completas", str(stats_gerais["corridas_completas"])),
+            ("Corridas Vencidas", str(stats_gerais["corridas_vencidas"])),
+            ("Voltas Completas", str(stats_gerais["voltas_completas"])),
+            ("Colisões Totais", str(stats_gerais["colisoes_totais"])),
+            ("Drifts Totais", str(stats_gerais["drifts_totais"])),
+            ("Turbo Usado", str(stats_gerais["turbo_usado"])),
+            ("Recordes Estabelecidos", str(stats_gerais["recordes_estabelecidos"])),
+            ("Troféus Ganhos", str(stats_gerais["trofeus_ganhos"]))
+        ])
+    ]
+    
+    for secao_nome, itens in secoes:
+        secao_titulo = render_text(secao_nome, 28, (150, 200, 255), bold=True, pixel_style=True)
+        screen.blit(secao_titulo, (caixa_x + 30, y_atual))
+        y_atual += 40
+        
+        for i, (nome, valor) in enumerate(itens):
+            if y_atual > caixa_y + caixa_altura - 100:
+                break
+            nome_texto = render_text(nome, 18, (200, 200, 200), bold=False, pixel_style=True)
+            valor_texto = render_text(str(valor), 18, (100, 220, 255), bold=True, pixel_style=True)
+            screen.blit(nome_texto, (caixa_x + 50, y_atual))
+            screen.blit(valor_texto, (caixa_x + caixa_largura - 250, y_atual))
+            y_atual += 45
+    
+    botao_fechar_rect = pygame.Rect(caixa_x + caixa_largura - 120, caixa_y + 20, 100, 40)
+    pygame.draw.rect(screen, (200, 50, 50), botao_fechar_rect)
+    pygame.draw.rect(screen, (255, 100, 100), botao_fechar_rect, 2)
+    fechar_texto = render_text("FECHAR", 18, (255, 255, 255), bold=True, pixel_style=True)
+    fechar_x = botao_fechar_rect.x + (botao_fechar_rect.width - fechar_texto.get_width()) // 2
+    fechar_y = botao_fechar_rect.y + (botao_fechar_rect.height - fechar_texto.get_height()) // 2
+    screen.blit(fechar_texto, (fechar_x, fechar_y))
+    
+    return botao_fechar_rect
+
+def desenhar_tela_desafios(screen, dt):
+    """Desenha a tela de desafios/missões"""
+    global _desafios_animacao_cursor
+    from core.i18n import t
+    from core.desafios import gerenciador_desafios
+    
+    # Atualizar animação do cursor do controle
+    _desafios_animacao_cursor += dt * 3.0
+    if _desafios_animacao_cursor >= 1.0:
+        _desafios_animacao_cursor = 0.0
+    
+    overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 200))
+    screen.blit(overlay, (0, 0))
+    
+    caixa_largura = 900
+    caixa_altura = 700
+    caixa_x = (LARGURA - caixa_largura) // 2
+    caixa_y = (ALTURA - caixa_altura) // 2
+    
+    caixa_fundo = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+    caixa_fundo.fill((20, 20, 30, 240))
+    screen.blit(caixa_fundo, (caixa_x, caixa_y))
+    pygame.draw.rect(screen, (100, 150, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
+    
+    titulo = render_text("DESAFIOS", 48, (100, 220, 255), bold=True, pixel_style=True)
+    titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
+    screen.blit(titulo, (titulo_x, caixa_y + 20))
+    
+    y_atual = caixa_y + 90
+    
+    desafios_diarios = gerenciador_desafios.obter_desafios_diarios()
+    desafios_semanais = gerenciador_desafios.obter_desafios_semanais()
+    
+    if desafios_diarios:
+        secao_titulo = render_text("DESAFIOS DIÁRIOS", 28, (150, 200, 255), bold=True, pixel_style=True)
+        screen.blit(secao_titulo, (caixa_x + 30, y_atual))
+        y_atual += 40
+        
+        for desafio in desafios_diarios:
+            if y_atual > caixa_y + caixa_altura - 100:
+                break
+            progresso = gerenciador_desafios.obter_progresso(desafio["id"])
+            porcentagem = min(100, int((progresso / desafio["objetivo"]) * 100))
+            
+            desc_texto = render_text(desafio["descricao"], 18, (200, 200, 200), bold=False, pixel_style=True)
+            progresso_texto = render_text(f"{progresso}/{desafio['objetivo']} ({porcentagem}%)", 16, (100, 220, 255), bold=True, pixel_style=True)
+            recompensa_texto = render_text(f"Recompensa: ${desafio['recompensa']}", 16, (150, 255, 150), bold=True, pixel_style=True)
+            
+            screen.blit(desc_texto, (caixa_x + 50, y_atual))
+            screen.blit(progresso_texto, (caixa_x + 50, y_atual + 25))
+            screen.blit(recompensa_texto, (caixa_x + caixa_largura - 250, y_atual))
+            y_atual += 60
+    
+    if desafios_semanais:
+        y_atual += 20
+        secao_titulo = render_text("DESAFIOS SEMANAIS", 28, (200, 150, 255), bold=True, pixel_style=True)
+        screen.blit(secao_titulo, (caixa_x + 30, y_atual))
+        y_atual += 40
+        
+        for desafio in desafios_semanais:
+            if y_atual > caixa_y + caixa_altura - 100:
+                break
+            progresso = gerenciador_desafios.obter_progresso(desafio["id"])
+            porcentagem = min(100, int((progresso / desafio["objetivo"]) * 100))
+            
+            desc_texto = render_text(desafio["descricao"], 18, (200, 200, 200), bold=False, pixel_style=True)
+            progresso_texto = render_text(f"{progresso}/{desafio['objetivo']} ({porcentagem}%)", 16, (100, 220, 255), bold=True, pixel_style=True)
+            recompensa_texto = render_text(f"Recompensa: ${desafio['recompensa']}", 16, (200, 150, 255), bold=True, pixel_style=True)
+            
+            screen.blit(desc_texto, (caixa_x + 50, y_atual))
+            screen.blit(progresso_texto, (caixa_x + 50, y_atual + 25))
+            screen.blit(recompensa_texto, (caixa_x + caixa_largura - 250, y_atual))
+            y_atual += 60
+    
+    botao_fechar_rect = pygame.Rect(caixa_x + caixa_largura - 120, caixa_y + 20, 100, 40)
+    pygame.draw.rect(screen, (200, 50, 50), botao_fechar_rect)
+    pygame.draw.rect(screen, (255, 100, 100), botao_fechar_rect, 2)
+    fechar_texto = render_text("FECHAR", 18, (255, 255, 255), bold=True, pixel_style=True)
+    fechar_x = botao_fechar_rect.x + (botao_fechar_rect.width - fechar_texto.get_width()) // 2
+    fechar_y = botao_fechar_rect.y + (botao_fechar_rect.height - fechar_texto.get_height()) // 2
+    screen.blit(fechar_texto, (fechar_x, fechar_y))
+    
+    return botao_fechar_rect
+
 def menu_loop(screen) -> Escolha:
     bg_raw = pygame.image.load(CAMINHO_MENU).convert_alpha()
     bg = scale_to_cover(bg_raw, LARGURA, ALTURA)
@@ -582,6 +769,9 @@ def menu_loop(screen) -> Escolha:
     from core.i18n import t
     itens = [t("menu.principal.selecionar_carros"), t("menu.principal.jogar"), t("menu.principal.recordes"), t("menu.principal.opcoes"), t("menu.principal.sair")]
     idx = 1
+    # Variável para rastrear se está navegando nos ícones superiores
+    # None = nas opções do menu (idx 0-4), -1 = estatísticas, -2 = conquistas, -3 = missão diária
+    icone_selecionado = None
     clock = pygame.time.Clock()
 
     itens_completos = [t("menu.principal.selecionar_carros"), t("menu.principal.jogar"), t("menu.principal.recordes"), t("menu.principal.opcoes"), t("menu.principal.sair")]
@@ -613,22 +803,69 @@ def menu_loop(screen) -> Escolha:
     
     # Variável para controlar se a tela de achievements está aberta
     tela_achievements_aberta = False
+    tela_estatisticas_aberta = False
+    tela_desafios_aberta = False
     
     # Variável para animação do ícone de exclamação
     tempo_animacao_exclamacao = 0.0
     
+    # Animação do cursor do controle
+    animacao_cursor = 0.0
+    velocidade_animacao_cursor = 3.0
+    
+    # Definir retângulos dos botões de ícones (antes do loop para evitar erro)
+    botao_achievements_tamanho = 50
+    botao_estatisticas_rect = pygame.Rect(10, 10, botao_achievements_tamanho, botao_achievements_tamanho)
+    botao_achievements_rect = pygame.Rect(70, 10, botao_achievements_tamanho, botao_achievements_tamanho)
+    botao_missao_rect = pygame.Rect(130, 10, botao_achievements_tamanho, botao_achievements_tamanho)
+    
     # Carregar ícone de achievements uma vez (cache) - evita lag
     icon_achievements_cache = None
     icon_exclamacao_cache = None
+    icon_estatisticas_cache = None
+    icon_missao_cache = None  # Cache para ícone de missão diária
     from config import DIR_ICONS
     caminho_icon_achievements = os.path.join(DIR_ICONS, "achievements.png")
     if os.path.exists(caminho_icon_achievements):
         try:
             icon_achievements_raw = pygame.image.load(caminho_icon_achievements).convert_alpha()
-            # Redimensionar para 50x50 pixels (tamanho do botão)
-            icon_achievements_cache = pygame.transform.scale(icon_achievements_raw, (50, 50))
+            # Redimensionar mantendo proporção para 50x50 pixels (tamanho do botão)
+            largura_original, altura_original = icon_achievements_raw.get_size()
+            if largura_original > 0 and altura_original > 0:
+                proporcao = min(50 / largura_original, 50 / altura_original)
+                nova_largura = int(largura_original * proporcao)
+                nova_altura = int(altura_original * proporcao)
+                icon_achievements_cache = pygame.transform.smoothscale(icon_achievements_raw, (nova_largura, nova_altura))
+            else:
+                icon_achievements_cache = pygame.transform.scale(icon_achievements_raw, (50, 50))
         except Exception as e:
             print(f"Erro ao carregar ícone de achievements: {e}")
+    
+    caminho_icon_estatisticas = os.path.join(DIR_ICONS, "estatistica.png")
+    if os.path.exists(caminho_icon_estatisticas):
+        try:
+            icon_estatisticas_raw = pygame.image.load(caminho_icon_estatisticas).convert_alpha()
+            largura_original, altura_original = icon_estatisticas_raw.get_size()
+            if largura_original > 0 and altura_original > 0:
+                proporcao = min(50 / largura_original, 50 / altura_original)
+                nova_largura = int(largura_original * proporcao)
+                nova_altura = int(altura_original * proporcao)
+                icon_estatisticas_cache = pygame.transform.smoothscale(icon_estatisticas_raw, (nova_largura, nova_altura))
+            else:
+                icon_estatisticas_cache = pygame.transform.scale(icon_estatisticas_raw, (50, 50))
+        except Exception as e:
+            print(f"Erro ao carregar ícone de estatísticas: {e}")
+    
+    # Carregar ícones de missão diária (missao0.png, missao1.png, missao2.png, missao3.png)
+    icon_missao_cache = {}  # Dicionário para armazenar os 4 ícones
+    for i in range(4):
+        caminho_icon_missao = os.path.join(DIR_ICONS, f"missao{i}.png")
+        if os.path.exists(caminho_icon_missao):
+            try:
+                icon_missao_raw = pygame.image.load(caminho_icon_missao).convert_alpha()
+                icon_missao_cache[i] = pygame.transform.scale(icon_missao_raw, (50, 50))
+            except Exception as e:
+                print(f"Erro ao carregar ícone de missão {i}: {e}")
     
     # Carregar ícone de exclamação para notificações
     caminho_exclamacao = os.path.join(DIR_ICONS, "Exclamacao.png")
@@ -679,21 +916,234 @@ def menu_loop(screen) -> Escolha:
             else:
                 hover_animation[i] = max(0.0, hover_animation[i] - hover_speed * dt)
         
+        # Atualizar animação do cursor do controle
+        animacao_cursor += dt * velocidade_animacao_cursor
+        if animacao_cursor >= 1.0:
+            animacao_cursor = 0.0
+        
+        # Processar navegação contínua quando botão está sendo mantido pressionado
+        if gerenciador_gamepad.obter_numero_controles() > 0:
+            from core.menu_controles import processar_navegacao_hold
+            tempo_atual = pygame.time.get_ticks()
+            resultado_hold = processar_navegacao_hold(joystick_id=0, tempo_atual=tempo_atual)
+            if resultado_hold:
+                acao = resultado_hold.get("acao")
+                if acao == "cima" and resultado_hold.get("fonte") == "hold":
+                    if icone_selecionado is None:
+                        icone_selecionado = -1
+                elif acao == "baixo" and resultado_hold.get("fonte") == "hold":
+                    if icone_selecionado is not None:
+                        icone_selecionado = None
+                elif acao == "esquerda" and resultado_hold.get("fonte") == "hold":
+                    if icone_selecionado is not None:
+                        if icone_selecionado == -2:
+                            icone_selecionado = -1
+                        elif icone_selecionado == -3:
+                            icone_selecionado = -2
+                    else:
+                        # Navegação entre opções do menu
+                        navegacao_esquerda = {
+                            0: 2, 1: 0, 2: None, 3: 1, 4: 3
+                        }
+                        novo_idx = navegacao_esquerda.get(idx)
+                        if novo_idx is not None:
+                            idx = novo_idx
+                elif acao == "direita" and resultado_hold.get("fonte") == "hold":
+                    if icone_selecionado is not None:
+                        if icone_selecionado == -1:
+                            icone_selecionado = -2
+                        elif icone_selecionado == -2:
+                            icone_selecionado = -3
+                    else:
+                        # Navegação entre opções do menu
+                        navegacao_direita = {
+                            0: 1, 1: 3, 2: 0, 3: 4, 4: None
+                        }
+                        novo_idx = navegacao_direita.get(idx)
+                        if novo_idx is not None:
+                            idx = novo_idx
+        
+        # Verificação contínua do D-pad REMOVIDA
+        # O D-pad agora é processado apenas via eventos JOYBUTTONDOWN
+        # Isso garante comportamento "por clique" - uma ação por pressionamento
+        
         for ev in pygame.event.get():
             # Declarar todas as variáveis globais no início do loop de eventos
             global _achievements_scroll_offset, _achievements_scroll_dragging, _achievements_scroll_drag_start_y, _achievements_scroll_drag_start_offset
+            
+            # Processar eventos de controle nas telas abertas PRIMEIRO
+            if tela_achievements_aberta and gerenciador_gamepad.obter_numero_controles() > 0:
+                from core.menu_controles import processar_eventos_controle_menu
+                tempo_atual = pygame.time.get_ticks()
+                resultado_controle = processar_eventos_controle_menu(ev, 0, 0, joystick_id=0, tempo_atual=tempo_atual)
+                if resultado_controle:
+                    acao = resultado_controle.get("acao")
+                    if acao == "cima":
+                        # Scroll para cima
+                        scroll_speed = 50.0
+                        _achievements_scroll_offset -= scroll_speed
+                        from core.achievements import gerenciador_achievements
+                        achievements = gerenciador_achievements.obter_todos_achievements()
+                        altura_total = len(achievements) * 70
+                        area_scroll_altura = 400
+                        scroll_max = max(0, altura_total - area_scroll_altura)
+                        _achievements_scroll_offset = max(0, min(_achievements_scroll_offset, scroll_max))
+                        continue
+                    elif acao == "baixo":
+                        # Scroll para baixo
+                        scroll_speed = 50.0
+                        _achievements_scroll_offset += scroll_speed
+                        from core.achievements import gerenciador_achievements
+                        achievements = gerenciador_achievements.obter_todos_achievements()
+                        altura_total = len(achievements) * 70
+                        area_scroll_altura = 400
+                        scroll_max = max(0, altura_total - area_scroll_altura)
+                        _achievements_scroll_offset = max(0, min(_achievements_scroll_offset, scroll_max))
+                        continue
+                    elif acao == "confirmar" or acao == "cancelar":
+                        # Fechar tela
+                        tela_achievements_aberta = False
+                        from core.achievements import gerenciador_achievements
+                        gerenciador_achievements.marcar_todos_como_visualizados()
+                        _achievements_scroll_offset = 0.0
+                        icone_selecionado = None
+                        continue
+            elif tela_estatisticas_aberta and gerenciador_gamepad.obter_numero_controles() > 0:
+                from core.menu_controles import processar_eventos_controle_menu
+                tempo_atual = pygame.time.get_ticks()
+                resultado_controle = processar_eventos_controle_menu(ev, 0, 0, joystick_id=0, tempo_atual=tempo_atual)
+                if resultado_controle:
+                    acao = resultado_controle.get("acao")
+                    if acao == "confirmar" or acao == "cancelar":
+                        # Fechar tela
+                        tela_estatisticas_aberta = False
+                        icone_selecionado = None
+                        continue
+            elif tela_desafios_aberta and gerenciador_gamepad.obter_numero_controles() > 0:
+                from core.menu_controles import processar_eventos_controle_menu
+                tempo_atual = pygame.time.get_ticks()
+                resultado_controle = processar_eventos_controle_menu(ev, 0, 0, joystick_id=0, tempo_atual=tempo_atual)
+                if resultado_controle:
+                    acao = resultado_controle.get("acao")
+                    if acao == "confirmar" or acao == "cancelar":
+                        # Fechar tela
+                        tela_desafios_aberta = False
+                        icone_selecionado = None
+                        continue
+            
+            # Processar eventos de controle ANTES de outros eventos (para o menu principal)
+            if gerenciador_gamepad.obter_numero_controles() > 0:
+                from core.menu_controles import processar_eventos_controle_menu
+                tempo_atual = pygame.time.get_ticks()
+                resultado_controle = processar_eventos_controle_menu(ev, idx, len(itens), joystick_id=0, tempo_atual=tempo_atual)
+                if resultado_controle:
+                    acao = resultado_controle.get("acao")
+                    # No menu principal, ignorar cima/baixo do analógico (só usar esquerda/direita)
+                    # Ignorar cima/baixo do analógico, mas aceitar do D-pad
+                    if acao == "cima" and resultado_controle.get("fonte") == "dpad":
+                        # Se está nas opções do menu, ir para os ícones superiores
+                        if icone_selecionado is None:
+                            icone_selecionado = -1  # Começar no primeiro ícone (estatísticas)
+                        # Se já está nos ícones, navegar entre eles (não fazer nada, já está no topo)
+                    elif acao == "baixo" and resultado_controle.get("fonte") == "dpad":
+                        # Se está nos ícones, voltar para as opções do menu
+                        if icone_selecionado is not None:
+                            icone_selecionado = None
+                            # Manter o idx atual (ou voltar para o primeiro)
+                        elif "opcao" in resultado_controle:
+                            idx = resultado_controle["opcao"]
+                    elif acao == "esquerda":
+                        # Se está nos ícones, navegar entre eles
+                        if icone_selecionado is not None:
+                            if icone_selecionado == -1:  # Estatísticas (primeiro, não tem esquerda)
+                                pass
+                            elif icone_selecionado == -2:  # Conquistas -> Estatísticas
+                                icone_selecionado = -1
+                            elif icone_selecionado == -3:  # Missão Diária -> Conquistas
+                                icone_selecionado = -2
+                        else:
+                            # Processar tanto D-pad quanto analógico nas opções do menu
+                            navegacao_esquerda = {
+                                0: 2,     # SELECIONAR CARROS -> RECORDES
+                                1: 0,     # JOGAR -> SELECIONAR CARROS
+                                2: None,  # RECORDES -> não tem esquerda (primeiro)
+                                3: 1,     # OPÇÕES -> JOGAR
+                                4: 3      # SAIR -> OPÇÕES
+                            }
+                            novo_idx = navegacao_esquerda.get(idx)
+                            if novo_idx is not None:
+                                idx = novo_idx
+                    elif acao == "direita":
+                        # Se está nos ícones, navegar entre eles
+                        if icone_selecionado is not None:
+                            if icone_selecionado == -1:  # Estatísticas -> Conquistas
+                                icone_selecionado = -2
+                            elif icone_selecionado == -2:  # Conquistas -> Missão Diária
+                                icone_selecionado = -3
+                            elif icone_selecionado == -3:  # Missão Diária (último, não tem direita)
+                                pass
+                        else:
+                            # Processar tanto D-pad quanto analógico nas opções do menu
+                            navegacao_direita = {
+                                0: 1,     # SELECIONAR CARROS -> JOGAR
+                                1: 3,     # JOGAR -> OPÇÕES
+                                2: 0,     # RECORDES -> SELECIONAR CARROS
+                                3: 4,     # OPÇÕES -> SAIR
+                                4: None   # SAIR -> não tem direita (último)
+                            }
+                            novo_idx = navegacao_direita.get(idx)
+                            if novo_idx is not None:
+                                idx = novo_idx
+                    elif acao == "confirmar":
+                        # Se está nos ícones, abrir a tela correspondente
+                        if icone_selecionado == -1:  # Estatísticas
+                            tela_estatisticas_aberta = True
+                            icone_selecionado = None  # Resetar seleção ao abrir tela
+                        elif icone_selecionado == -2:  # Conquistas
+                            tela_achievements_aberta = True
+                            from core.achievements import gerenciador_achievements
+                            gerenciador_achievements.marcar_todos_como_visualizados()
+                            _achievements_scroll_offset = 0.0
+                            icone_selecionado = None  # Resetar seleção ao abrir tela
+                        elif icone_selecionado == -3:  # Missão Diária
+                            tela_desafios_aberta = True
+                            icone_selecionado = None  # Resetar seleção ao abrir tela
+                        else:
+                            # Se está nas opções do menu, retornar a escolha
+                            return Escolha(idx)
+                    elif acao == "cancelar":
+                        # Se está nas telas de achievements, estatísticas ou desafios, fechar a tela
+                        if tela_achievements_aberta:
+                            tela_achievements_aberta = False
+                            from core.achievements import gerenciador_achievements
+                            gerenciador_achievements.marcar_todos_como_visualizados()
+                            _achievements_scroll_offset = 0.0
+                            icone_selecionado = None
+                        elif tela_estatisticas_aberta:
+                            tela_estatisticas_aberta = False
+                            icone_selecionado = None
+                        elif tela_desafios_aberta:
+                            tela_desafios_aberta = False
+                            icone_selecionado = None
+                        else:
+                            # Se não está em nenhuma tela, sair do jogo
+                            return Escolha.SAIR
+                    # Se processou evento de controle, pular processamento de teclado
+                    continue
             
             if ev.type == pygame.QUIT:
                 return Escolha.SAIR
             if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                 # Verificar clique no botão de achievements
-                if not tela_achievements_aberta and botao_achievements_rect.collidepoint(mouse_x, mouse_y):
+                if not tela_achievements_aberta and not tela_estatisticas_aberta and not tela_desafios_aberta and botao_achievements_rect.collidepoint(mouse_x, mouse_y):
                     tela_achievements_aberta = True
-                    # Marcar todos os achievements como visualizados quando abrir a tela
                     from core.achievements import gerenciador_achievements
                     gerenciador_achievements.marcar_todos_como_visualizados()
-                    # Resetar scroll quando abrir
                     _achievements_scroll_offset = 0.0
+                elif not tela_achievements_aberta and not tela_estatisticas_aberta and not tela_desafios_aberta and botao_estatisticas_rect.collidepoint(mouse_x, mouse_y):
+                    tela_estatisticas_aberta = True
+                elif not tela_achievements_aberta and not tela_estatisticas_aberta and not tela_desafios_aberta and botao_missao_rect.collidepoint(mouse_x, mouse_y):
+                    tela_desafios_aberta = True
                 elif tela_achievements_aberta:
                     # Verificar clique no botão fechar da tela de achievements
                     fechar_rect = pygame.Rect((LARGURA - 800) // 2 + 800 - 100, (ALTURA - 600) // 2 + 20, 80, 40)
@@ -702,8 +1152,8 @@ def menu_loop(screen) -> Escolha:
                         # Marcar todos os achievements como visualizados quando fechar a tela
                         from core.achievements import gerenciador_achievements
                         gerenciador_achievements.marcar_todos_como_visualizados()
-                        # Resetar scroll quando fechar
                         _achievements_scroll_offset = 0.0
+                        icone_selecionado = None  # Resetar seleção ao fechar tela
                     else:
                         # Verificar clique na barra de rolagem
                         caixa_x = (LARGURA - 800) // 2
@@ -720,6 +1170,16 @@ def menu_loop(screen) -> Escolha:
                             _achievements_scroll_dragging = True
                             _achievements_scroll_drag_start_y = mouse_y
                             _achievements_scroll_drag_start_offset = _achievements_scroll_offset
+                elif tela_estatisticas_aberta:
+                    botao_fechar_estat = desenhar_tela_estatisticas(screen, dt)
+                    if botao_fechar_estat.collidepoint(mouse_x, mouse_y):
+                        tela_estatisticas_aberta = False
+                        icone_selecionado = None  # Resetar seleção ao fechar tela
+                elif tela_desafios_aberta:
+                    botao_fechar_desafios = desenhar_tela_desafios(screen, dt)
+                    if botao_fechar_desafios.collidepoint(mouse_x, mouse_y):
+                        tela_desafios_aberta = False
+                        icone_selecionado = None  # Resetar seleção ao fechar tela
             elif ev.type == pygame.MOUSEBUTTONUP and ev.button == 1:
                 if tela_achievements_aberta:
                     _achievements_scroll_dragging = False
@@ -772,10 +1232,20 @@ def menu_loop(screen) -> Escolha:
                         gerenciador_achievements.marcar_todos_como_visualizados()
                         # Resetar scroll quando fechar
                         _achievements_scroll_offset = 0.0
+                        icone_selecionado = None  # Resetar seleção ao fechar tela
                         continue
-                # Não processar outras teclas se a tela de achievements estiver aberta
-                if tela_achievements_aberta:
+                    elif tela_estatisticas_aberta:
+                        tela_estatisticas_aberta = False
+                        icone_selecionado = None  # Resetar seleção ao fechar tela
+                        continue
+                    elif tela_desafios_aberta:
+                        tela_desafios_aberta = False
+                        icone_selecionado = None  # Resetar seleção ao fechar tela
+                        continue
+                # Não processar outras teclas se as telas estiverem abertas
+                if tela_achievements_aberta or tela_estatisticas_aberta or tela_desafios_aberta:
                     continue
+                
                 if ev.key in (pygame.K_LEFT, pygame.K_a):
                     # Navegação baseada na ordem visual: RECORDES (2), SELECIONAR CARROS (0), JOGAR (1), OPÇÕES (3), SAIR (4)
                     # Ordem visual da esquerda para direita: 2, 0, 1, 3, 4
@@ -888,10 +1358,15 @@ def menu_loop(screen) -> Escolha:
         # desenha
         screen.blit(bg, (0, 0))
         
-        # Botão de Achievements no canto superior esquerdo (50x50 pixels)
-        botao_achievements_tamanho = 50
-        botao_achievements_rect = pygame.Rect(10, 10, botao_achievements_tamanho, botao_achievements_tamanho)
+        # Verificar hover dos botões de ícones (os retângulos já foram definidos antes do loop)
+        botao_estatisticas_hover = botao_estatisticas_rect.collidepoint(mouse_x, mouse_y)
         botao_achievements_hover = botao_achievements_rect.collidepoint(mouse_x, mouse_y)
+        botao_missao_hover = botao_missao_rect.collidepoint(mouse_x, mouse_y)
+        
+        # Contar missões diárias concluídas e selecionar ícone apropriado
+        from core.desafios import gerenciador_desafios
+        missoes_concluidas = gerenciador_desafios.contar_missoes_diarias_concluidas()
+        icon_missao_atual = icon_missao_cache.get(missoes_concluidas, None)
         
         # Desenhar apenas o ícone de achievements (sem caixa de contorno)
         if not tela_achievements_aberta:
@@ -964,10 +1439,70 @@ def menu_loop(screen) -> Escolha:
                     exclamacao_y = botao_achievements_rect.y + 2  # Sem vibração vertical
                     screen.blit(icon_exclamacao_animado, (exclamacao_x, exclamacao_y))
             # Removido: emoji de fallback (conforme solicitado pelo usuário)
+            
+            # Desenhar cursor do controle (caixa animada) para conquistas
+            if gerenciador_gamepad.obter_numero_controles() > 0 and icone_selecionado == -2:
+                tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                cursor_rect = pygame.Rect(
+                    botao_achievements_rect.x - tamanho_cursor,
+                    botao_achievements_rect.y - tamanho_cursor,
+                    botao_achievements_rect.width + tamanho_cursor * 2,
+                    botao_achievements_rect.height + tamanho_cursor * 2
+                )
+                pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
+        
+        # Desenhar botão de Estatísticas
+        if not tela_estatisticas_aberta:
+            if icon_estatisticas_cache is not None:
+                icon_largura, icon_altura = icon_estatisticas_cache.get_size()
+                icon_x = botao_estatisticas_rect.x + (botao_estatisticas_rect.width - icon_largura) // 2
+                icon_y = botao_estatisticas_rect.y + (botao_estatisticas_rect.height - icon_altura) // 2
+                if botao_estatisticas_hover:
+                    icon_temp = icon_estatisticas_cache.copy()
+                    icon_temp.set_alpha(220)
+                    screen.blit(icon_temp, (icon_x, icon_y))
+                else:
+                    screen.blit(icon_estatisticas_cache, (icon_x, icon_y))
+                
+                # Desenhar cursor do controle (caixa animada) para estatísticas
+                if gerenciador_gamepad.obter_numero_controles() > 0 and icone_selecionado == -1:
+                    tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                    cursor_rect = pygame.Rect(
+                        botao_estatisticas_rect.x - tamanho_cursor,
+                        botao_estatisticas_rect.y - tamanho_cursor,
+                        botao_estatisticas_rect.width + tamanho_cursor * 2,
+                        botao_estatisticas_rect.height + tamanho_cursor * 2
+                    )
+                    pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
+        
+        # Desenhar botão de Missão Diária
+        if not tela_desafios_aberta and icon_missao_atual is not None:
+            if botao_missao_hover:
+                icon_temp = icon_missao_atual.copy()
+                icon_temp.set_alpha(200)
+                screen.blit(icon_temp, botao_missao_rect.topleft)
+            else:
+                screen.blit(icon_missao_atual, botao_missao_rect.topleft)
+            
+            # Desenhar cursor do controle (caixa animada) para missão diária
+            if gerenciador_gamepad.obter_numero_controles() > 0 and icone_selecionado == -3:
+                tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                cursor_rect = pygame.Rect(
+                    botao_missao_rect.x - tamanho_cursor,
+                    botao_missao_rect.y - tamanho_cursor,
+                    botao_missao_rect.width + tamanho_cursor * 2,
+                    botao_missao_rect.height + tamanho_cursor * 2
+                )
+                pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
 
+        # Atualizar animação do cursor do controle
+        animacao_cursor += dt * velocidade_animacao_cursor
+        if animacao_cursor >= 1.0:
+            animacao_cursor = 0.0
+        
         # Renderizar todos os botões na mesma linha
         for i, txt in enumerate(itens):
-            sel = (i == idx)
+            sel = (i == idx and icone_selecionado is None)  # Só selecionar se não estiver nos ícones
             hover_progress = hover_animation[i]  # Progresso da animação de hover (0.0 a 1.0)
             
             # Posição e tamanho do botão
@@ -1089,11 +1624,14 @@ def menu_loop(screen) -> Escolha:
                 glow_surface.fill((0, 200, 255, 20))  # Glow sutil
                 screen.blit(glow_surface, (x - offset_x - 10, y - offset_y - 10))
 
-        # Desenhar tela de achievements se estiver aberta
+        # Desenhar tela de achievements, estatísticas ou desafios se estiverem abertas
         if tela_achievements_aberta:
             desenhar_tela_achievements(screen, dt)
+        elif tela_estatisticas_aberta:
+            desenhar_tela_estatisticas(screen, dt)
+        elif tela_desafios_aberta:
+            desenhar_tela_desafios(screen, dt)
         else:
-            # Só desenhar popup de música se a tela de achievements não estiver aberta (evita lag)
             popup_musica.desenhar(screen)
         
         pygame.display.flip()
@@ -1517,12 +2055,14 @@ def selecionar_carros_loop(screen):
     icon_exclamacao_oficina = None
     caminho_exclamacao = os.path.join(DIR_ICONS, "Exclamacao.png")
     if os.path.exists(caminho_exclamacao):
-        icon_exclamacao_oficina = pygame.image.load(caminho_exclamacao).convert_alpha()
-        # Redimensionar para tamanho adequado (altura de 24 pixels, mantendo proporção)
-        icon_exclamacao_largura_original, icon_exclamacao_altura_original = icon_exclamacao_oficina.get_size()
-        altura_desejada = 24
-        largura_desejada = int(icon_exclamacao_largura_original * (altura_desejada / icon_exclamacao_altura_original))
-        icon_exclamacao_oficina = pygame.transform.smoothscale(icon_exclamacao_oficina, (largura_desejada, altura_desejada))
+        icon_exclamacao_raw = pygame.image.load(caminho_exclamacao).convert_alpha()
+        # Redimensionar mantendo proporção - usar altura como referência
+        icon_exclamacao_largura_original, icon_exclamacao_altura_original = icon_exclamacao_raw.get_size()
+        altura_desejada = 20
+        # Calcular largura mantendo proporção
+        escala = altura_desejada / icon_exclamacao_altura_original
+        largura_desejada = int(icon_exclamacao_largura_original * escala)
+        icon_exclamacao_oficina = pygame.transform.smoothscale(icon_exclamacao_raw, (largura_desejada, altura_desejada))
     
     # Variável para animação do ícone de exclamação na oficina
     tempo_animacao_exclamacao_oficina = 0.0
@@ -1606,12 +2146,22 @@ def selecionar_carros_loop(screen):
     
     clock = pygame.time.Clock()
     
+    # Variáveis para cursor do controle (indicador visual)
+    botao_selecionado_controle = None  # Qual botão está selecionado pelo controle
+    animacao_cursor = 0.0  # Animação do cursor (0.0 a 1.0)
+    velocidade_animacao_cursor = 3.0  # Velocidade da animação
+    
     while True:
         dt = clock.tick(FPS) / 1000.0  # Converter para segundos
         
         atualizar_transicao(dt)
         tempo_animacao_exclamacao_oficina += dt
         popup_musica.atualizar(dt)
+        
+        # Atualizar animação do cursor do controle
+        animacao_cursor += dt * velocidade_animacao_cursor
+        if animacao_cursor >= 1.0:
+            animacao_cursor = 0.0
         
         screen.blit(bg, (0, 0))
         
@@ -1753,7 +2303,434 @@ def selecionar_carros_loop(screen):
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 return None, None
-            elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+            
+            # Processar eventos de controle ANTES de outros eventos
+            if gerenciador_gamepad.obter_numero_controles() > 0:
+                from core.menu_controles import processar_eventos_controle_menu
+                tempo_atual = pygame.time.get_ticks()
+                # Criar uma lista de opções para navegação (carros)
+                num_carros = len(CARROS_DISPONIVEIS)
+                carro_atual_idx = carro_p1 if fase_selecao == 1 else carro_p2
+                
+                # Passar 0 como num_opcoes para evitar que esquerda/direita do D-pad sejam processadas como navegação de carros
+                # Apenas L1/R1 devem trocar carros
+                # Para navegação de carros, passar 0 (apenas L1/R1)
+                # Para navegação de opções (usar, upgrade, vender, concluído), passar número de opções
+                # Determinar opções disponíveis baseado no estado do carro
+                if fase_selecao == 1:
+                    carro_atual = CARROS_DISPONIVEIS[carro_p1]
+                    esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                else:
+                    carro_atual = CARROS_DISPONIVEIS[carro_p2]
+                    esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                
+                # Opções disponíveis: 
+                # Linha superior: voltar, dois_jogadores (2 opções)
+                # Linha inferior: usar/comprar, upgrade, vender, concluído (4 opções)
+                num_opcoes_botoes_superior = 2  # voltar, dois_jogadores
+                num_opcoes_botoes_inferior = 4  # usar/comprar, upgrade, vender, concluído
+                
+                # Determinar em qual linha estamos
+                linha_atual = "inferior"  # ou "superior"
+                opcao_botao_atual = 0
+                if botao_selecionado_controle:
+                    if botao_selecionado_controle == "voltar":
+                        linha_atual = "superior"
+                        opcao_botao_atual = 0
+                    elif botao_selecionado_controle == "dois_jogadores":
+                        linha_atual = "superior"
+                        opcao_botao_atual = 1
+                    elif botao_selecionado_controle == "usar" or botao_selecionado_controle == "comprar":
+                        linha_atual = "inferior"
+                        opcao_botao_atual = 0
+                    elif botao_selecionado_controle == "upgrade":
+                        linha_atual = "inferior"
+                        opcao_botao_atual = 1
+                    elif botao_selecionado_controle == "vender":
+                        linha_atual = "inferior"
+                        opcao_botao_atual = 2
+                    elif botao_selecionado_controle == "concluido":
+                        linha_atual = "inferior"
+                        opcao_botao_atual = 3
+                
+                # Processar eventos: uma chamada para cima/baixo (0 opções) e outra para esquerda/direita
+                num_opcoes_horizontal = num_opcoes_botoes_superior if linha_atual == "superior" else num_opcoes_botoes_inferior
+                resultado_controle_vertical = processar_eventos_controle_menu(ev, opcao_botao_atual, 0, joystick_id=0, tempo_atual=tempo_atual)
+                resultado_controle_horizontal = processar_eventos_controle_menu(ev, opcao_botao_atual, num_opcoes_horizontal, joystick_id=0, tempo_atual=tempo_atual)
+                
+                # Priorizar resultado vertical (cima/baixo) se existir, senão usar horizontal (esquerda/direita)
+                if resultado_controle_vertical and resultado_controle_vertical.get("acao") in ("cima", "baixo"):
+                    resultado_controle = resultado_controle_vertical
+                elif resultado_controle_horizontal and resultado_controle_horizontal.get("acao") in ("esquerda", "direita"):
+                    resultado_controle = resultado_controle_horizontal
+                else:
+                    resultado_controle = resultado_controle_vertical or resultado_controle_horizontal
+                controle_processado = False
+                if resultado_controle:
+                    controle_processado = True
+                    acao = resultado_controle.get("acao")
+                    # Processar ações de carro (L1/R1) - processar sempre, mesmo durante transição
+                    if acao == "carro_anterior" or acao == "carro_proximo":
+                        # Processar mesmo durante transição (permitir mudança rápida)
+                        if acao == "carro_anterior":
+                            # Navegar para carro anterior (L1) - ir para esquerda (carro anterior)
+                            if fase_selecao == 1:
+                                iniciar_transicao(-1, carro_p1)
+                                carro_p1 = (carro_p1 - 1) % num_carros
+                                carro_selecionado_p1 = (gerenciador_progresso.obter_carro_atual(1) == carro_p1)
+                                botao_selecionado_controle = None
+                            else:
+                                iniciar_transicao(-1, carro_p2)
+                                carro_p2 = (carro_p2 - 1) % num_carros
+                                carro_selecionado_p2 = (gerenciador_progresso.obter_carro_atual(2) == carro_p2)
+                                botao_selecionado_controle = None
+                        elif acao == "carro_proximo":
+                            # Navegar para próximo carro (R1) - ir para direita (próximo carro)
+                            if fase_selecao == 1:
+                                iniciar_transicao(1, carro_p1)
+                                carro_p1 = (carro_p1 + 1) % num_carros
+                                carro_selecionado_p1 = (gerenciador_progresso.obter_carro_atual(1) == carro_p1)
+                                botao_selecionado_controle = None
+                            else:
+                                iniciar_transicao(1, carro_p2)
+                                carro_p2 = (carro_p2 + 1) % num_carros
+                                carro_selecionado_p2 = (gerenciador_progresso.obter_carro_atual(2) == carro_p2)
+                                botao_selecionado_controle = None
+                        continue
+                    
+                    if not transicao_ativa:
+                        if acao == "cima" or acao == "baixo":
+                            # Navegar entre botões (cima/baixo) - apenas setinhas
+                            if resultado_controle.get("fonte") == "dpad":
+                                if fase_selecao == 1:
+                                    carro_atual = CARROS_DISPONIVEIS[carro_p1]
+                                    esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                                    if esta_desbloqueado:
+                                        # Navegação vertical: qualquer botão (baixo) → concluído, concluído (baixo) → voltar
+                                        if botao_selecionado_controle is None:
+                                            botao_selecionado_controle = "usar"
+                                        elif botao_selecionado_controle == "usar":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
+                                        elif botao_selecionado_controle == "upgrade":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
+                                        elif botao_selecionado_controle == "vender":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
+                                        elif botao_selecionado_controle == "concluido":
+                                            botao_selecionado_controle = "voltar" if acao == "baixo" else "usar"
+                                        elif botao_selecionado_controle == "voltar":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
+                                        elif botao_selecionado_controle == "dois_jogadores":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
+                                    else:
+                                        # Navegação vertical: qualquer botão (baixo) → concluído, concluído (baixo) → voltar
+                                        if botao_selecionado_controle is None:
+                                            botao_selecionado_controle = "comprar"
+                                        elif botao_selecionado_controle == "comprar":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
+                                        elif botao_selecionado_controle == "upgrade":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
+                                        elif botao_selecionado_controle == "vender":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
+                                        elif botao_selecionado_controle == "concluido":
+                                            botao_selecionado_controle = "voltar" if acao == "baixo" else "comprar"
+                                        elif botao_selecionado_controle == "voltar":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
+                                        elif botao_selecionado_controle == "dois_jogadores":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
+                                else:
+                                    # Fase 2 (P2) - mesma lógica
+                                    carro_atual = CARROS_DISPONIVEIS[carro_p2]
+                                    esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                                    if esta_desbloqueado:
+                                        # Navegação vertical: qualquer botão (baixo) → concluído, concluído (baixo) → voltar
+                                        if botao_selecionado_controle is None:
+                                            botao_selecionado_controle = "usar"
+                                        elif botao_selecionado_controle == "usar":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
+                                        elif botao_selecionado_controle == "upgrade":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
+                                        elif botao_selecionado_controle == "vender":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
+                                        elif botao_selecionado_controle == "concluido":
+                                            botao_selecionado_controle = "voltar" if acao == "baixo" else "usar"
+                                        elif botao_selecionado_controle == "voltar":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
+                                        elif botao_selecionado_controle == "dois_jogadores":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
+                                    else:
+                                        # Navegação vertical: qualquer botão (baixo) → concluído, concluído (baixo) → voltar
+                                        if botao_selecionado_controle is None:
+                                            botao_selecionado_controle = "comprar"
+                                        elif botao_selecionado_controle == "comprar":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
+                                        elif botao_selecionado_controle == "upgrade":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
+                                        elif botao_selecionado_controle == "vender":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
+                                        elif botao_selecionado_controle == "concluido":
+                                            botao_selecionado_controle = "voltar" if acao == "baixo" else "comprar"
+                                        elif botao_selecionado_controle == "voltar":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
+                                        elif botao_selecionado_controle == "dois_jogadores":
+                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
+                        elif acao == "esquerda" or acao == "direita":
+                            # Navegação horizontal entre opções
+                            if resultado_controle.get("fonte") == "dpad":
+                                # Determinar linha atual
+                                linha_atual = "inferior"
+                                if botao_selecionado_controle in ("voltar", "dois_jogadores"):
+                                    linha_atual = "superior"
+                                
+                                if linha_atual == "superior":
+                                    # Navegação horizontal na linha superior: voltar ↔ dois_jogadores
+                                    if "opcao" in resultado_controle:
+                                        opcao_idx = resultado_controle["opcao"]
+                                    else:
+                                        if botao_selecionado_controle == "voltar":
+                                            opcao_idx = 0
+                                        elif botao_selecionado_controle == "dois_jogadores":
+                                            opcao_idx = 1
+                                        else:
+                                            opcao_idx = 0
+                                        
+                                        if acao == "esquerda":
+                                            opcao_idx = (opcao_idx - 1) % 2
+                                        else:  # direita
+                                            opcao_idx = (opcao_idx + 1) % 2
+                                    
+                                    opcoes_superior = ["voltar", "dois_jogadores"]
+                                    botao_selecionado_controle = opcoes_superior[opcao_idx]
+                                else:
+                                    # Navegação horizontal na linha inferior: usar/comprar ↔ upgrade ↔ vender ↔ concluído
+                                    if fase_selecao == 1:
+                                        carro_atual = CARROS_DISPONIVEIS[carro_p1]
+                                        esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                                    else:
+                                        carro_atual = CARROS_DISPONIVEIS[carro_p2]
+                                        esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                                    
+                                    # Mapear índice para botão
+                                    if "opcao" in resultado_controle:
+                                        opcao_idx = resultado_controle["opcao"]
+                                    else:
+                                        # Calcular manualmente
+                                        if botao_selecionado_controle:
+                                            if botao_selecionado_controle == "usar" or botao_selecionado_controle == "comprar":
+                                                opcao_idx = 0
+                                            elif botao_selecionado_controle == "upgrade":
+                                                opcao_idx = 1
+                                            elif botao_selecionado_controle == "vender":
+                                                opcao_idx = 2
+                                            elif botao_selecionado_controle == "concluido":
+                                                opcao_idx = 3
+                                            else:
+                                                opcao_idx = 0
+                                        else:
+                                            opcao_idx = 0
+                                        
+                                        if acao == "esquerda":
+                                            opcao_idx = (opcao_idx - 1) % 4
+                                        else:  # direita
+                                            opcao_idx = (opcao_idx + 1) % 4
+                                    
+                                    # Mapear índice de volta para botão
+                                    if esta_desbloqueado:
+                                        opcoes = ["usar", "upgrade", "vender", "concluido"]
+                                    else:
+                                        opcoes = ["comprar", "upgrade", "vender", "concluido"]
+                                    
+                                    botao_selecionado_controle = opcoes[opcao_idx]
+                        elif acao == "confirmar":
+                            # Confirmar ação baseada no botão atual
+                            if fase_selecao == 1:
+                                carro_atual = CARROS_DISPONIVEIS[carro_p1]
+                                esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                                if esta_desbloqueado:
+                                    # Verificar qual botão está selecionado
+                                    if botao_selecionado_controle == "usar":
+                                        if not carro_selecionado_p1:
+                                            carro_selecionado_p1 = True
+                                    elif botao_selecionado_controle == "upgrade":
+                                        # Abrir tela de upgrades
+                                        if botao_upgrade_rect_p1:
+                                            pode_upgrade = (carro_atual['prefixo_cor'] == "Car1") or esta_desbloqueado
+                                            if pode_upgrade and fundo_sem_textos:
+                                                if tela_upgrades(screen, carro_atual['prefixo_cor'], carro_atual['nome'], fundo_sem_textos):
+                                                    pass  # Volta para seleção de carros
+                                            elif not pode_upgrade:
+                                                from core.i18n import t
+                                                popup_musica.mostrar(t("mensagens.comprar_carro_primeiro"), tipo="outra")
+                                    elif botao_selecionado_controle == "vender":
+                                        # Vender carro
+                                        if botao_vender_rect_p1:
+                                            pode_vender = gerenciador_progresso.contar_carros_desbloqueados() > 1
+                                            if pode_vender:
+                                                preco_venda = int(carro_atual.get('preco', 0) * 0.5)  # 50% do preço original
+                                                if gerenciador_progresso.vender_carro(carro_atual['prefixo_cor'], preco_venda):
+                                                    from core.i18n import t
+                                                    popup_musica.mostrar(t("mensagens.carro_vendido").format(carro_atual['nome']), tipo="outra")
+                                                else:
+                                                    from core.i18n import t
+                                                    popup_musica.mostrar(t("mensagens.erro_vender_carro"), tipo="outra")
+                                            else:
+                                                from core.i18n import t
+                                                popup_musica.mostrar(t("mensagens.nao_pode_vender_unico_carro"), tipo="outra")
+                                    elif botao_selecionado_controle == "concluido":
+                                        # Confirmar seleção
+                                        if botao_concluido_rect_p1:
+                                            if modo_dois_jogadores:
+                                                if carro_selecionado_p1:
+                                                    fase_selecao = 2
+                                            else:
+                                                if carro_selecionado_p1:
+                                                    gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1)
+                                                    return carro_p1, carro_p2
+                                    elif botao_selecionado_controle == "voltar":
+                                        # Voltar para o menu
+                                        if modo_dois_jogadores:
+                                            if fase_selecao == 1 and carro_selecionado_p1:
+                                                fase_selecao = 2  # Vai para P2
+                                            elif fase_selecao == 2 and carro_selecionado_p2:
+                                                gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1, carro_p2=carro_p2)
+                                                return carro_p1, carro_p2
+                                            elif fase_selecao == 1:
+                                                return None, None
+                                            else:
+                                                return None, None
+                                        else:
+                                            if carro_selecionado_p1:
+                                                gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1)
+                                                return carro_p1, carro_p2
+                                            else:
+                                                return None, None
+                                    elif botao_selecionado_controle == "dois_jogadores":
+                                        # Alternar modo 2 jogadores
+                                        if modo_dois_jogadores:
+                                            # Voltar para modo single player
+                                            modo_dois_jogadores = False
+                                            carro_selecionado_p1 = False  # Resetar seleção
+                                            carro_selecionado_p2 = False  # Resetar seleção
+                                        else:
+                                            # Ativar modo 2 jogadores (não seleciona carro automaticamente)
+                                            modo_dois_jogadores = True
+                                else:
+                                    # Carro não desbloqueado
+                                    if botao_selecionado_controle == "comprar":
+                                        # Tentar comprar
+                                        if botao_comprar_rect_p1:
+                                            preco = carro_atual.get('preco', 0)
+                                            if gerenciador_progresso.comprar_carro(carro_atual['prefixo_cor'], preco):
+                                                from core.i18n import t
+                                                popup_musica.mostrar(t("mensagens.carro_comprado").format(carro_atual['nome']), tipo="outra")
+                                            else:
+                                                from core.i18n import t
+                                                popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
+                                    elif botao_selecionado_controle == "upgrade":
+                                        # Abrir tela de upgrades (mesmo que não desbloqueado, pode mostrar)
+                                        if botao_upgrade_rect_p1:
+                                            pode_upgrade = (carro_atual['prefixo_cor'] == "Car1") or esta_desbloqueado
+                                            if pode_upgrade and fundo_sem_textos:
+                                                if tela_upgrades(screen, carro_atual['prefixo_cor'], carro_atual['nome'], fundo_sem_textos):
+                                                    pass  # Volta para seleção de carros
+                                            elif not pode_upgrade:
+                                                from core.i18n import t
+                                                popup_musica.mostrar(t("mensagens.comprar_carro_primeiro"), tipo="outra")
+                                    elif botao_selecionado_controle == "vender":
+                                        # Vender carro (não aplicável se não desbloqueado)
+                                        pass
+                                    elif botao_selecionado_controle == "concluido":
+                                        # Confirmar seleção (não aplicável se não desbloqueado)
+                                        pass
+                            else:
+                                # Fase 2 (P2)
+                                carro_atual = CARROS_DISPONIVEIS[carro_p2]
+                                esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                                if esta_desbloqueado:
+                                    # Verificar qual botão está selecionado
+                                    if botao_selecionado_controle == "usar":
+                                        if not carro_selecionado_p2:
+                                            carro_selecionado_p2 = True
+                                    elif botao_selecionado_controle == "upgrade":
+                                        # Abrir tela de upgrades
+                                        if botao_upgrade_rect_p2:
+                                            tela_upgrades_aberta = True
+                                            carro_upgrade_atual = carro_p2
+                                    elif botao_selecionado_controle == "vender":
+                                        # Vender carro
+                                        if botao_vender_rect_p2:
+                                            pode_vender = gerenciador_progresso.contar_carros_desbloqueados() > 1
+                                            if pode_vender:
+                                                preco_venda = int(carro_atual.get('preco', 0) * 0.5)  # 50% do preço original
+                                                if gerenciador_progresso.vender_carro(carro_atual['prefixo_cor'], preco_venda):
+                                                    from core.i18n import t
+                                                    popup_musica.mostrar(t("mensagens.carro_vendido").format(carro_atual['nome']), tipo="outra")
+                                                else:
+                                                    from core.i18n import t
+                                                    popup_musica.mostrar(t("mensagens.erro_vender_carro"), tipo="outra")
+                                            else:
+                                                from core.i18n import t
+                                                popup_musica.mostrar(t("mensagens.nao_pode_vender_unico_carro"), tipo="outra")
+                                    elif botao_selecionado_controle == "concluido":
+                                        # Confirmar seleção
+                                        if botao_concluido_rect_p2:
+                                            if carro_selecionado_p2:
+                                                gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1, carro_p2=carro_p2)
+                                                return carro_p1, carro_p2
+                                    elif botao_selecionado_controle == "voltar":
+                                        # Voltar para o menu
+                                        if carro_selecionado_p2:
+                                            gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1, carro_p2=carro_p2)
+                                            return carro_p1, carro_p2
+                                        else:
+                                            return None, None
+                                else:
+                                    # Carro não desbloqueado
+                                    if botao_selecionado_controle == "comprar":
+                                        # Tentar comprar
+                                        if botao_comprar_rect_p2:
+                                            preco = carro_atual.get('preco', 0)
+                                            if gerenciador_progresso.comprar_carro(carro_atual['prefixo_cor'], preco):
+                                                from core.i18n import t
+                                                popup_musica.mostrar(t("mensagens.carro_comprado").format(carro_atual['nome']), tipo="outra")
+                                            else:
+                                                from core.i18n import t
+                                                popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
+                                    elif botao_selecionado_controle == "upgrade":
+                                        # Abrir tela de upgrades
+                                        if botao_upgrade_rect_p2:
+                                            tela_upgrades_aberta = True
+                                            carro_upgrade_atual = carro_p2
+                                    elif botao_selecionado_controle == "vender":
+                                        # Vender carro (não aplicável se não desbloqueado)
+                                        pass
+                                    elif botao_selecionado_controle == "concluido":
+                                        # Confirmar seleção (não aplicável se não desbloqueado)
+                                        pass
+                        elif acao == "cancelar":
+                            # Voltar
+                            if botao_voltar_rect:
+                                if modo_dois_jogadores:
+                                    if fase_selecao == 1 and carro_selecionado_p1:
+                                        fase_selecao = 2
+                                    elif fase_selecao == 2 and carro_selecionado_p2:
+                                        gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1, carro_p2=carro_p2)
+                                        return carro_p1, carro_p2
+                                    elif fase_selecao == 1:
+                                        return None, None
+                                    else:
+                                        return None, None
+                                else:
+                                    if carro_selecionado_p1:
+                                        gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1)
+                                        return carro_p1, carro_p2
+                                    else:
+                                        return None, None
+                
+                # Se processou evento de controle, não processar mouse/teclado para esse evento
+                if controle_processado:
+                    continue
+            
+            if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                 # Verificar clique no botão "Voltar"
                 if botao_voltar_rect.collidepoint(ev.pos[0], ev.pos[1]):
                     # Se estiver no modo 2 jogadores, verificar se ambos selecionaram
@@ -1954,9 +2931,12 @@ def selecionar_carros_loop(screen):
         titulo_x = (LARGURA - titulo.get_width()) // 2
         screen.blit(titulo, (titulo_x, 30))
         
-        # Subtítulo "2 jogadores" quando estiver no modo 2 jogadores
+        # Subtítulo indicando qual jogador está escolhendo (modo 2 jogadores)
         if modo_dois_jogadores:
-            subtitulo_texto = t("menu.oficina.dois_jogadores")
+            if fase_selecao == 1:
+                subtitulo_texto = t("menu.oficina.jogador_1")
+            else:
+                subtitulo_texto = t("menu.oficina.jogador_2")
             subtitulo = render_text(subtitulo_texto, 32, (150, 220, 255), bold=True, pixel_style=True)
             subtitulo_x = (LARGURA - subtitulo.get_width()) // 2
             screen.blit(subtitulo, (subtitulo_x, 85))
@@ -1982,9 +2962,20 @@ def selecionar_carros_loop(screen):
         botao_dois_jogadores_menu_hover = botao_dois_jogadores_menu_rect.collidepoint(pygame.mouse.get_pos())
         
         # Desenhar botão "Voltar"
+        selecionado_controle_voltar = (botao_selecionado_controle == "voltar")
         cor_voltar = (100, 150, 200) if botao_voltar_hover else (80, 120, 180)
         pygame.draw.rect(screen, cor_voltar, botao_voltar_rect)
         pygame.draw.rect(screen, (150, 200, 255), botao_voltar_rect, 2)
+        # Desenhar cursor do controle (caixa animada)
+        if selecionado_controle_voltar and gerenciador_gamepad.obter_numero_controles() > 0:
+            tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+            cursor_rect = pygame.Rect(
+                botao_voltar_rect.x - tamanho_cursor,
+                botao_voltar_rect.y - tamanho_cursor,
+                botao_voltar_rect.width + tamanho_cursor * 2,
+                botao_voltar_rect.height + tamanho_cursor * 2
+            )
+            pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
         texto_voltar = render_text("VOLTAR", 18, (255, 255, 255), bold=True, pixel_style=True)
         texto_voltar_x = botao_voltar_rect.x + (botao_voltar_rect.width - texto_voltar.get_width()) // 2
         texto_voltar_y = botao_voltar_rect.y + (botao_voltar_rect.height - texto_voltar.get_height()) // 2
@@ -1999,9 +2990,20 @@ def selecionar_carros_loop(screen):
                 # Mostrar botão "2 jogadores" quando estiver no modo single player
                 texto_botao = t("menu.oficina.dois_jogadores")
             
+            selecionado_controle_dois_jogadores = (botao_selecionado_controle == "dois_jogadores")
             cor_dois_jogadores_menu = (150, 100, 200) if botao_dois_jogadores_menu_hover else (120, 80, 180)
             pygame.draw.rect(screen, cor_dois_jogadores_menu, botao_dois_jogadores_menu_rect)
             pygame.draw.rect(screen, (200, 150, 255), botao_dois_jogadores_menu_rect, 2)
+            # Desenhar cursor do controle (caixa animada)
+            if selecionado_controle_dois_jogadores and gerenciador_gamepad.obter_numero_controles() > 0:
+                tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                cursor_rect = pygame.Rect(
+                    botao_dois_jogadores_menu_rect.x - tamanho_cursor,
+                    botao_dois_jogadores_menu_rect.y - tamanho_cursor,
+                    botao_dois_jogadores_menu_rect.width + tamanho_cursor * 2,
+                    botao_dois_jogadores_menu_rect.height + tamanho_cursor * 2
+                )
+                pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
             texto_dois_jogadores_menu = render_text(texto_botao, 16, (255, 255, 255), bold=True, pixel_style=True)
             texto_dois_jogadores_menu_x = botao_dois_jogadores_menu_rect.x + (botao_dois_jogadores_menu_rect.width - texto_dois_jogadores_menu.get_width()) // 2
             texto_dois_jogadores_menu_y = botao_dois_jogadores_menu_rect.y + (botao_dois_jogadores_menu_rect.height - texto_dois_jogadores_menu.get_height()) // 2
@@ -2141,6 +3143,8 @@ def selecionar_carros_loop(screen):
                 if botao_usar_rect_p1:
                     usar_hover_p1 = botao_usar_rect_p1.collidepoint(pygame.mouse.get_pos())
                     usar_selecionado = carro_selecionado_p1
+                    # Verificar se está selecionado pelo controle
+                    selecionado_controle = (botao_selecionado_controle == "usar")
                     if usar_selecionado:
                         cor_usar = (50, 140, 90) if usar_hover_p1 else (40, 120, 80)
                         cor_borda_usar = (100, 200, 150)
@@ -2151,6 +3155,17 @@ def selecionar_carros_loop(screen):
                         cor_texto_usar = (255, 255, 255)
                     pygame.draw.rect(screen, cor_usar, botao_usar_rect_p1)
                     pygame.draw.rect(screen, cor_borda_usar, botao_usar_rect_p1, 2)
+                    # Desenhar cursor do controle (caixa animada)
+                    if selecionado_controle and gerenciador_gamepad.obter_numero_controles() > 0:
+                        # Calcular tamanho da caixa animada (cresce e diminui)
+                        tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                        cursor_rect = pygame.Rect(
+                            botao_usar_rect_p1.x - tamanho_cursor,
+                            botao_usar_rect_p1.y - tamanho_cursor,
+                            botao_usar_rect_p1.width + tamanho_cursor * 2,
+                            botao_usar_rect_p1.height + tamanho_cursor * 2
+                        )
+                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
                     texto_usar = render_text(t("menu.oficina.usar"), 18, cor_texto_usar, bold=True, pixel_style=True)
                     texto_usar_x = botao_usar_rect_p1.x + (botao_usar_rect_p1.width - texto_usar.get_width()) // 2
                     texto_usar_y = botao_usar_rect_p1.y + (botao_usar_rect_p1.height - texto_usar.get_height()) // 2
@@ -2159,21 +3174,42 @@ def selecionar_carros_loop(screen):
                 # Botão UPGRADE (azul ciano) - sempre traduzido
                 if botao_upgrade_rect_p1:
                     upgrade_hover_p1 = botao_upgrade_rect_p1.collidepoint(pygame.mouse.get_pos())
+                    selecionado_controle = (botao_selecionado_controle == "upgrade")
                     cor_upgrade = (80, 150, 200) if upgrade_hover_p1 else (60, 120, 180)
                     pygame.draw.rect(screen, cor_upgrade, botao_upgrade_rect_p1)
                     pygame.draw.rect(screen, (100, 220, 255), botao_upgrade_rect_p1, 2)
+                    # Desenhar cursor do controle (caixa animada)
+                    if selecionado_controle and gerenciador_gamepad.obter_numero_controles() > 0:
+                        tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                        cursor_rect = pygame.Rect(
+                            botao_upgrade_rect_p1.x - tamanho_cursor,
+                            botao_upgrade_rect_p1.y - tamanho_cursor,
+                            botao_upgrade_rect_p1.width + tamanho_cursor * 2,
+                            botao_upgrade_rect_p1.height + tamanho_cursor * 2
+                        )
+                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
                     texto_upgrade = render_text(t("menu.oficina.upgrade"), 14, (255, 255, 255), bold=True, pixel_style=True)
                     texto_upgrade_x = botao_upgrade_rect_p1.x + (botao_upgrade_rect_p1.width - texto_upgrade.get_width()) // 2
                     texto_upgrade_y = botao_upgrade_rect_p1.y + (botao_upgrade_rect_p1.height - texto_upgrade.get_height()) // 2
                     screen.blit(texto_upgrade, (texto_upgrade_x, texto_upgrade_y))
                     
-                    # NÃO desenhar ícone de exclamação na oficina (conforme solicitado pelo usuário)
-                    # O ícone só aparece no menu principal quando há transição de "sem dinheiro" para "com dinheiro"
+                    # Desenhar ícone de notificação se houver upgrades disponíveis
+                    if icon_exclamacao_oficina is not None and verificar_upgrades_disponiveis(carro_atual['prefixo_cor']):
+                        # Animação de vibração (tremer) ao invés de piscar
+                        vibracao_x = 2.0 * math.sin(tempo_animacao_exclamacao_oficina * 8.0)  # Vibração mais rápida
+                        vibracao_y = 2.0 * math.cos(tempo_animacao_exclamacao_oficina * 8.0)  # Vibração vertical também
+                        # Tamanho fixo (sem pulso)
+                        icon_largura, icon_altura = icon_exclamacao_oficina.get_size()
+                        # Posicionar no canto superior direito do botão
+                        exclamacao_x = botao_upgrade_rect_p1.x + botao_upgrade_rect_p1.width - icon_largura - 5 + int(vibracao_x)
+                        exclamacao_y = botao_upgrade_rect_p1.y + 5 + int(vibracao_y)
+                        screen.blit(icon_exclamacao_oficina, (exclamacao_x, exclamacao_y))
                 
                 # Botão VENDER (vermelho) - sempre vermelho quando carro é possuído
                 if botao_vender_rect_p1:
                     pode_vender = gerenciador_progresso.contar_carros_desbloqueados() > 1
                     vender_hover_p1 = botao_vender_rect_p1.collidepoint(pygame.mouse.get_pos())
+                    selecionado_controle = (botao_selecionado_controle == "vender")
                     # Sempre vermelho quando pode vender, vermelho escuro quando não pode
                     if pode_vender:
                         cor_vender = (200, 100, 100) if vender_hover_p1 else (150, 80, 80)
@@ -2185,6 +3221,16 @@ def selecionar_carros_loop(screen):
                         cor_texto_vender = (255, 255, 255)
                     pygame.draw.rect(screen, cor_vender, botao_vender_rect_p1)
                     pygame.draw.rect(screen, cor_borda_vender, botao_vender_rect_p1, 2)
+                    # Desenhar cursor do controle (caixa animada)
+                    if selecionado_controle and gerenciador_gamepad.obter_numero_controles() > 0:
+                        tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                        cursor_rect = pygame.Rect(
+                            botao_vender_rect_p1.x - tamanho_cursor,
+                            botao_vender_rect_p1.y - tamanho_cursor,
+                            botao_vender_rect_p1.width + tamanho_cursor * 2,
+                            botao_vender_rect_p1.height + tamanho_cursor * 2
+                        )
+                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
                     texto_vender = render_text(t("menu.oficina.vender"), 16, cor_texto_vender, bold=True, pixel_style=True)
                     texto_vender_x = botao_vender_rect_p1.x + (botao_vender_rect_p1.width - texto_vender.get_width()) // 2
                     texto_vender_y = botao_vender_rect_p1.y + (botao_vender_rect_p1.height - texto_vender.get_height()) // 2
@@ -2193,9 +3239,20 @@ def selecionar_carros_loop(screen):
                 # Botão "Concluído" (verde) - sempre aparece
                 if botao_concluido_rect_p1:
                     concluido_hover_p1 = botao_concluido_rect_p1.collidepoint(pygame.mouse.get_pos())
+                    selecionado_controle = (botao_selecionado_controle == "concluido")
                     cor_concluido = (50, 200, 100) if concluido_hover_p1 else (40, 180, 80)
                     pygame.draw.rect(screen, cor_concluido, botao_concluido_rect_p1)
                     pygame.draw.rect(screen, (100, 255, 150), botao_concluido_rect_p1, 2)
+                    # Desenhar cursor do controle (caixa animada)
+                    if selecionado_controle and gerenciador_gamepad.obter_numero_controles() > 0:
+                        tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                        cursor_rect = pygame.Rect(
+                            botao_concluido_rect_p1.x - tamanho_cursor,
+                            botao_concluido_rect_p1.y - tamanho_cursor,
+                            botao_concluido_rect_p1.width + tamanho_cursor * 2,
+                            botao_concluido_rect_p1.height + tamanho_cursor * 2
+                        )
+                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
                     texto_concluido = render_text(t("menu.oficina.concluido"), 18, (255, 255, 255), bold=True, pixel_style=True)
                     texto_concluido_x = botao_concluido_rect_p1.x + (botao_concluido_rect_p1.width - texto_concluido.get_width()) // 2
                     texto_concluido_y = botao_concluido_rect_p1.y + (botao_concluido_rect_p1.height - texto_concluido.get_height()) // 2
@@ -2203,6 +3260,7 @@ def selecionar_carros_loop(screen):
             else:
                 if botao_comprar_rect_p1:
                     comprar_hover_p1 = botao_comprar_rect_p1.collidepoint(pygame.mouse.get_pos())
+                    selecionado_controle = (botao_selecionado_controle == "comprar")
                     if gerenciador_progresso.tem_dinheiro(preco):
                         cor_comprar = (180, 150, 70) if comprar_hover_p1 else (150, 120, 50)
                         cor_borda_comprar = (255, 220, 100)
@@ -2213,6 +3271,16 @@ def selecionar_carros_loop(screen):
                         cor_texto_comprar = (100, 100, 100)
                     pygame.draw.rect(screen, cor_comprar, botao_comprar_rect_p1)
                     pygame.draw.rect(screen, cor_borda_comprar, botao_comprar_rect_p1, 2)
+                    # Desenhar cursor do controle (caixa animada)
+                    if selecionado_controle and gerenciador_gamepad.obter_numero_controles() > 0:
+                        tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                        cursor_rect = pygame.Rect(
+                            botao_comprar_rect_p1.x - tamanho_cursor,
+                            botao_comprar_rect_p1.y - tamanho_cursor,
+                            botao_comprar_rect_p1.width + tamanho_cursor * 2,
+                            botao_comprar_rect_p1.height + tamanho_cursor * 2
+                        )
+                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
                     texto_comprar = render_text(t("menu.oficina.comprar"), 14, cor_texto_comprar, bold=True, pixel_style=True)
                     texto_comprar_x = botao_comprar_rect_p1.x + (botao_comprar_rect_p1.width - texto_comprar.get_width()) // 2
                     texto_comprar_y = botao_comprar_rect_p1.y + (botao_comprar_rect_p1.height - texto_comprar.get_height()) // 2
@@ -2223,11 +3291,22 @@ def selecionar_carros_loop(screen):
                 
                 if botao_upgrade_rect_p1:
                     upgrade_hover_p1 = botao_upgrade_rect_p1.collidepoint(pygame.mouse.get_pos())
+                    selecionado_controle = (botao_selecionado_controle == "upgrade")
                     cor_upgrade = (50, 70, 90) if upgrade_hover_p1 else (40, 60, 80)
                     cor_borda = (60, 80, 100)
                     cor_texto = (100, 100, 100)
                     pygame.draw.rect(screen, cor_upgrade, botao_upgrade_rect_p1)
                     pygame.draw.rect(screen, cor_borda, botao_upgrade_rect_p1, 2)
+                    # Desenhar cursor do controle (caixa animada)
+                    if selecionado_controle and gerenciador_gamepad.obter_numero_controles() > 0:
+                        tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                        cursor_rect = pygame.Rect(
+                            botao_upgrade_rect_p1.x - tamanho_cursor,
+                            botao_upgrade_rect_p1.y - tamanho_cursor,
+                            botao_upgrade_rect_p1.width + tamanho_cursor * 2,
+                            botao_upgrade_rect_p1.height + tamanho_cursor * 2
+                        )
+                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
                     texto_upgrade = render_text(t("menu.oficina.upgrade"), 14, cor_texto, bold=True, pixel_style=True)
                     texto_upgrade_x = botao_upgrade_rect_p1.x + (botao_upgrade_rect_p1.width - texto_upgrade.get_width()) // 2
                     texto_upgrade_y = botao_upgrade_rect_p1.y + (botao_upgrade_rect_p1.height - texto_upgrade.get_height()) // 2
@@ -2235,11 +3314,22 @@ def selecionar_carros_loop(screen):
                 
                 if botao_vender_rect_p1:
                     vender_hover_p1 = botao_vender_rect_p1.collidepoint(pygame.mouse.get_pos())
+                    selecionado_controle = (botao_selecionado_controle == "vender")
                     cor_vender = (100, 50, 50) if vender_hover_p1 else (80, 40, 40)
                     cor_borda_vender = (100, 50, 50)
                     cor_texto_vender = (150, 100, 100)
                     pygame.draw.rect(screen, cor_vender, botao_vender_rect_p1)
                     pygame.draw.rect(screen, cor_borda_vender, botao_vender_rect_p1, 2)
+                    # Desenhar cursor do controle (caixa animada)
+                    if selecionado_controle and gerenciador_gamepad.obter_numero_controles() > 0:
+                        tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                        cursor_rect = pygame.Rect(
+                            botao_vender_rect_p1.x - tamanho_cursor,
+                            botao_vender_rect_p1.y - tamanho_cursor,
+                            botao_vender_rect_p1.width + tamanho_cursor * 2,
+                            botao_vender_rect_p1.height + tamanho_cursor * 2
+                        )
+                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
                     texto_vender = render_text(t("menu.oficina.vender"), 16, cor_texto_vender, bold=True, pixel_style=True)
                     texto_vender_x = botao_vender_rect_p1.x + (botao_vender_rect_p1.width - texto_vender.get_width()) // 2
                     texto_vender_y = botao_vender_rect_p1.y + (botao_vender_rect_p1.height - texto_vender.get_height()) // 2
@@ -2248,9 +3338,20 @@ def selecionar_carros_loop(screen):
                 # Botão "Concluído" sempre aparece (mesmo quando carro não é possuído)
                 if botao_concluido_rect_p1:
                     concluido_hover_p1 = botao_concluido_rect_p1.collidepoint(pygame.mouse.get_pos())
+                    selecionado_controle = (botao_selecionado_controle == "concluido")
                     cor_concluido = (50, 200, 100) if concluido_hover_p1 else (40, 180, 80)
                     pygame.draw.rect(screen, cor_concluido, botao_concluido_rect_p1)
                     pygame.draw.rect(screen, (100, 255, 150), botao_concluido_rect_p1, 2)
+                    # Desenhar cursor do controle (caixa animada)
+                    if selecionado_controle and gerenciador_gamepad.obter_numero_controles() > 0:
+                        tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                        cursor_rect = pygame.Rect(
+                            botao_concluido_rect_p1.x - tamanho_cursor,
+                            botao_concluido_rect_p1.y - tamanho_cursor,
+                            botao_concluido_rect_p1.width + tamanho_cursor * 2,
+                            botao_concluido_rect_p1.height + tamanho_cursor * 2
+                        )
+                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
                     texto_concluido = render_text(t("menu.oficina.concluido"), 18, (255, 255, 255), bold=True, pixel_style=True)
                     texto_concluido_x = botao_concluido_rect_p1.x + (botao_concluido_rect_p1.width - texto_concluido.get_width()) // 2
                     texto_concluido_y = botao_concluido_rect_p1.y + (botao_concluido_rect_p1.height - texto_concluido.get_height()) // 2
@@ -2261,11 +3362,21 @@ def selecionar_carros_loop(screen):
             
             # Mostrar carro do P1 já selecionado (pequeno, no canto)
             carro_p1_selecionado = CARROS_DISPONIVEIS[carro_p1]
-            sprite_p1 = pygame.transform.scale(sprites_carros[carro_p1_selecionado['prefixo_cor']], (90, 45))
+            sprite_p1_original = sprites_carros[carro_p1_selecionado['prefixo_cor']]
+            # Calcular escala mantendo proporção
+            largura_desejada = 120
+            altura_desejada = 60
+            largura_original, altura_original = sprite_p1_original.get_size()
+            escala_x = largura_desejada / largura_original
+            escala_y = altura_desejada / altura_original
+            escala = min(escala_x, escala_y)  # Usar a menor escala para manter proporção
+            nova_largura = int(largura_original * escala)
+            nova_altura = int(altura_original * escala)
+            sprite_p1 = pygame.transform.scale(sprite_p1_original, (nova_largura, nova_altura))
             from core.i18n import t
-            screen.blit(render_text(t("jogo.p1"), 20, (255, 255, 255), bold=True, pixel_style=True), (50, 100))
-            screen.blit(sprite_p1, (50, 120))
-            screen.blit(render_text(carro_p1_selecionado['nome'], 16, (255, 255, 255), bold=True, pixel_style=True), (50, 175))
+            screen.blit(render_text(t("jogo.p1"), 20, (255, 255, 255), bold=True, pixel_style=True), (50, 130))
+            screen.blit(sprite_p1, (50, 155))
+            screen.blit(render_text(carro_p1_selecionado['nome'], 16, (255, 255, 255), bold=True, pixel_style=True), (50, 155 + nova_altura + 10))
             
             # Instruções removidas conforme solicitado
             
@@ -2409,6 +3520,8 @@ def selecionar_carros_loop(screen):
                 if botao_usar_rect_p2:
                     usar_hover_p2 = botao_usar_rect_p2.collidepoint(pygame.mouse.get_pos())
                     usar_selecionado = carro_selecionado_p2
+                    # Verificar se está selecionado pelo controle
+                    selecionado_controle = (botao_selecionado_controle == "usar")
                     if usar_selecionado:
                         cor_usar = (50, 140, 90) if usar_hover_p2 else (40, 120, 80)
                         cor_borda_usar = (100, 200, 150)
@@ -2419,6 +3532,16 @@ def selecionar_carros_loop(screen):
                         cor_texto_usar = (255, 255, 255)
                     pygame.draw.rect(screen, cor_usar, botao_usar_rect_p2)
                     pygame.draw.rect(screen, cor_borda_usar, botao_usar_rect_p2, 2)
+                    # Desenhar cursor do controle (caixa animada)
+                    if selecionado_controle and gerenciador_gamepad.obter_numero_controles() > 0:
+                        tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                        cursor_rect = pygame.Rect(
+                            botao_usar_rect_p2.x - tamanho_cursor,
+                            botao_usar_rect_p2.y - tamanho_cursor,
+                            botao_usar_rect_p2.width + tamanho_cursor * 2,
+                            botao_usar_rect_p2.height + tamanho_cursor * 2
+                        )
+                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
                     texto_usar = render_text(t("menu.oficina.usar"), 18, cor_texto_usar, bold=True, pixel_style=True)
                     texto_usar_x = botao_usar_rect_p2.x + (botao_usar_rect_p2.width - texto_usar.get_width()) // 2
                     texto_usar_y = botao_usar_rect_p2.y + (botao_usar_rect_p2.height - texto_usar.get_height()) // 2
@@ -2427,21 +3550,42 @@ def selecionar_carros_loop(screen):
                 # Botão UPGRADE (azul ciano)
                 if botao_upgrade_rect_p2:
                     upgrade_hover_p2 = botao_upgrade_rect_p2.collidepoint(pygame.mouse.get_pos())
+                    selecionado_controle = (botao_selecionado_controle == "upgrade")
                     cor_upgrade = (80, 150, 200) if upgrade_hover_p2 else (60, 120, 180)
                     pygame.draw.rect(screen, cor_upgrade, botao_upgrade_rect_p2)
                     pygame.draw.rect(screen, (100, 220, 255), botao_upgrade_rect_p2, 2)
+                    # Desenhar cursor do controle (caixa animada)
+                    if selecionado_controle and gerenciador_gamepad.obter_numero_controles() > 0:
+                        tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                        cursor_rect = pygame.Rect(
+                            botao_upgrade_rect_p2.x - tamanho_cursor,
+                            botao_upgrade_rect_p2.y - tamanho_cursor,
+                            botao_upgrade_rect_p2.width + tamanho_cursor * 2,
+                            botao_upgrade_rect_p2.height + tamanho_cursor * 2
+                        )
+                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
                     texto_upgrade = render_text(t("menu.oficina.upgrade"), 14, (255, 255, 255), bold=True, pixel_style=True)
                     texto_upgrade_x = botao_upgrade_rect_p2.x + (botao_upgrade_rect_p2.width - texto_upgrade.get_width()) // 2
                     texto_upgrade_y = botao_upgrade_rect_p2.y + (botao_upgrade_rect_p2.height - texto_upgrade.get_height()) // 2
                     screen.blit(texto_upgrade, (texto_upgrade_x, texto_upgrade_y))
                     
-                    # NÃO desenhar ícone de exclamação na oficina (conforme solicitado pelo usuário)
-                    # O ícone só aparece no menu principal quando há transição de "sem dinheiro" para "com dinheiro"
+                    # Desenhar ícone de notificação se houver upgrades disponíveis
+                    if icon_exclamacao_oficina is not None and verificar_upgrades_disponiveis(carro_atual['prefixo_cor']):
+                        # Animação de vibração (tremer) ao invés de piscar
+                        vibracao_x = 2.0 * math.sin(tempo_animacao_exclamacao_oficina * 8.0)  # Vibração mais rápida
+                        vibracao_y = 2.0 * math.cos(tempo_animacao_exclamacao_oficina * 8.0)  # Vibração vertical também
+                        # Tamanho fixo (sem pulso)
+                        icon_largura, icon_altura = icon_exclamacao_oficina.get_size()
+                        # Posicionar no canto superior direito do botão
+                        exclamacao_x = botao_upgrade_rect_p2.x + botao_upgrade_rect_p2.width - icon_largura - 5 + int(vibracao_x)
+                        exclamacao_y = botao_upgrade_rect_p2.y + 5 + int(vibracao_y)
+                        screen.blit(icon_exclamacao_oficina, (exclamacao_x, exclamacao_y))
                 
                 # Botão VENDER (vermelho) - P2 - sempre vermelho quando carro é possuído
                 if botao_vender_rect_p2:
                     pode_vender = gerenciador_progresso.contar_carros_desbloqueados() > 1
                     vender_hover_p2 = botao_vender_rect_p2.collidepoint(pygame.mouse.get_pos())
+                    selecionado_controle = (botao_selecionado_controle == "vender")
                     # Sempre vermelho quando pode vender, vermelho escuro quando não pode
                     if pode_vender:
                         cor_vender = (200, 100, 100) if vender_hover_p2 else (150, 80, 80)
@@ -2453,6 +3597,16 @@ def selecionar_carros_loop(screen):
                         cor_texto_vender = (255, 255, 255)
                     pygame.draw.rect(screen, cor_vender, botao_vender_rect_p2)
                     pygame.draw.rect(screen, cor_borda_vender, botao_vender_rect_p2, 2)
+                    # Desenhar cursor do controle (caixa animada)
+                    if selecionado_controle and gerenciador_gamepad.obter_numero_controles() > 0:
+                        tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                        cursor_rect = pygame.Rect(
+                            botao_vender_rect_p2.x - tamanho_cursor,
+                            botao_vender_rect_p2.y - tamanho_cursor,
+                            botao_vender_rect_p2.width + tamanho_cursor * 2,
+                            botao_vender_rect_p2.height + tamanho_cursor * 2
+                        )
+                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
                     texto_vender = render_text(t("menu.oficina.vender"), 16, cor_texto_vender, bold=True, pixel_style=True)
                     texto_vender_x = botao_vender_rect_p2.x + (botao_vender_rect_p2.width - texto_vender.get_width()) // 2
                     texto_vender_y = botao_vender_rect_p2.y + (botao_vender_rect_p2.height - texto_vender.get_height()) // 2
@@ -2461,9 +3615,20 @@ def selecionar_carros_loop(screen):
                 # Botão "Concluído" (verde) - sempre aparece
                 if botao_concluido_rect_p2:
                     concluido_hover_p2 = botao_concluido_rect_p2.collidepoint(pygame.mouse.get_pos())
+                    selecionado_controle = (botao_selecionado_controle == "concluido")
                     cor_concluido = (50, 200, 100) if concluido_hover_p2 else (40, 180, 80)
                     pygame.draw.rect(screen, cor_concluido, botao_concluido_rect_p2)
                     pygame.draw.rect(screen, (100, 255, 150), botao_concluido_rect_p2, 2)
+                    # Desenhar cursor do controle (caixa animada)
+                    if selecionado_controle and gerenciador_gamepad.obter_numero_controles() > 0:
+                        tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                        cursor_rect = pygame.Rect(
+                            botao_concluido_rect_p2.x - tamanho_cursor,
+                            botao_concluido_rect_p2.y - tamanho_cursor,
+                            botao_concluido_rect_p2.width + tamanho_cursor * 2,
+                            botao_concluido_rect_p2.height + tamanho_cursor * 2
+                        )
+                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
                     texto_concluido = render_text(t("menu.oficina.concluido"), 18, (255, 255, 255), bold=True, pixel_style=True)
                     texto_concluido_x = botao_concluido_rect_p2.x + (botao_concluido_rect_p2.width - texto_concluido.get_width()) // 2
                     texto_concluido_y = botao_concluido_rect_p2.y + (botao_concluido_rect_p2.height - texto_concluido.get_height()) // 2
@@ -2471,6 +3636,7 @@ def selecionar_carros_loop(screen):
             else:
                 if botao_comprar_rect_p2:
                     comprar_hover_p2 = botao_comprar_rect_p2.collidepoint(pygame.mouse.get_pos())
+                    selecionado_controle = (botao_selecionado_controle == "comprar")
                     if gerenciador_progresso.tem_dinheiro(preco):
                         cor_comprar = (180, 150, 70) if comprar_hover_p2 else (150, 120, 50)
                         cor_borda_comprar = (255, 220, 100)
@@ -2481,6 +3647,16 @@ def selecionar_carros_loop(screen):
                         cor_texto_comprar = (100, 100, 100)
                     pygame.draw.rect(screen, cor_comprar, botao_comprar_rect_p2)
                     pygame.draw.rect(screen, cor_borda_comprar, botao_comprar_rect_p2, 2)
+                    # Desenhar cursor do controle (caixa animada)
+                    if selecionado_controle and gerenciador_gamepad.obter_numero_controles() > 0:
+                        tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                        cursor_rect = pygame.Rect(
+                            botao_comprar_rect_p2.x - tamanho_cursor,
+                            botao_comprar_rect_p2.y - tamanho_cursor,
+                            botao_comprar_rect_p2.width + tamanho_cursor * 2,
+                            botao_comprar_rect_p2.height + tamanho_cursor * 2
+                        )
+                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
                     texto_comprar = render_text(t("menu.oficina.comprar"), 14, cor_texto_comprar, bold=True, pixel_style=True)
                     texto_comprar_x = botao_comprar_rect_p2.x + (botao_comprar_rect_p2.width - texto_comprar.get_width()) // 2
                     texto_comprar_y = botao_comprar_rect_p2.y + (botao_comprar_rect_p2.height - texto_comprar.get_height()) // 2
@@ -2614,6 +3790,10 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
     # Índice do upgrade atual (navegação como na garagem)
     upgrade_atual = 0
     
+    # Animação do cursor do controle
+    animacao_cursor = 0.0
+    velocidade_animacao_cursor = 3.0
+    
     # Variáveis para transição entre upgrades
     transicao_ativa = False
     transicao_tempo = 0.0
@@ -2659,12 +3839,58 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
         # Atualizar transição
         atualizar_transicao(dt)
         
+        # Atualizar animação do cursor do controle
+        animacao_cursor += dt * velocidade_animacao_cursor
+        if animacao_cursor >= 1.0:
+            animacao_cursor = 0.0
+        
         mouse_x, mouse_y = pygame.mouse.get_pos()
         upgrade_hover = None
         
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 return False
+            
+            # Processar eventos de controle ANTES de outros eventos
+            if gerenciador_gamepad.obter_numero_controles() > 0:
+                from core.menu_controles import processar_eventos_controle_menu
+                tempo_atual = pygame.time.get_ticks()
+                # Para navegação horizontal (esquerda/direita), passar número de upgrades
+                resultado_controle = processar_eventos_controle_menu(ev, upgrade_atual, len(upgrades_disponiveis), joystick_id=0, tempo_atual=tempo_atual)
+                if resultado_controle:
+                    acao = resultado_controle.get("acao")
+                    if acao == "esquerda" and "opcao" in resultado_controle and not transicao_ativa:
+                        nova_opcao = resultado_controle["opcao"]
+                        if nova_opcao != upgrade_atual:
+                            iniciar_transicao(-1, upgrade_atual)
+                            upgrade_atual = nova_opcao
+                    elif acao == "direita" and "opcao" in resultado_controle and not transicao_ativa:
+                        nova_opcao = resultado_controle["opcao"]
+                        if nova_opcao != upgrade_atual:
+                            iniciar_transicao(1, upgrade_atual)
+                            upgrade_atual = nova_opcao
+                    elif acao == "confirmar":
+                        # Comprar upgrade (mesma lógica do clique do mouse)
+                        upgrade_atual_tipo = upgrades_disponiveis[upgrade_atual][0]
+                        nivel_atual = gerenciador_progresso.obter_upgrade(prefixo_cor, upgrade_atual_tipo)
+                        if nivel_atual < 5:
+                            preco = gerenciador_progresso.calcular_preco_upgrade(upgrade_atual_tipo, nivel_atual)
+                            if gerenciador_progresso.comprar_upgrade(prefixo_cor, upgrade_atual_tipo, preco):
+                                # Verificar se todos os upgrades estão maximizados
+                                from core.achievements import gerenciador_achievements
+                                upgrades_carro = gerenciador_progresso.obter_todos_upgrades(prefixo_cor)
+                                todos_maximizados = all(nivel >= 5 for nivel in upgrades_carro.values() if isinstance(nivel, int))
+                                if todos_maximizados:
+                                    gerenciador_achievements.atualizar_estatistica("upgrades_maximizados", incrementar=True)
+                                    gerenciador_achievements.verificar_achievements(gerenciador_progresso)
+                                nome_upgrade = upgrades_disponiveis[upgrade_atual][1]
+                                popup_musica.mostrar(t("mensagens.upgrade_comprado").format(nome_carro, nome_upgrade), tipo="outra")
+                            else:
+                                popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
+                    elif acao == "cancelar":
+                        return True
+                    continue
+            
             if ev.type == pygame.KEYDOWN:
                 if ev.key == pygame.K_ESCAPE:
                     return True
@@ -2783,6 +4009,17 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                 # Borda arredondada no quadrado
                 pygame.draw.rect(screen, (100, 220, 255), (x_atual - 20, y_atual - 20, quadrado_tamanho, quadrado_tamanho), 3, border_radius=15)
                 
+                # Desenhar cursor do controle (caixa animada) ao redor do upgrade atual durante transição
+                if gerenciador_gamepad.obter_numero_controles() > 0:
+                    tamanho_cursor = 5 + int(3 * abs(math.sin(animacao_cursor * math.pi)))
+                    cursor_rect = pygame.Rect(
+                        x_atual - 20 - tamanho_cursor,
+                        y_atual - 20 - tamanho_cursor,
+                        quadrado_tamanho + tamanho_cursor * 2,
+                        quadrado_tamanho + tamanho_cursor * 2
+                    )
+                    pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 4, border_radius=15 + tamanho_cursor)
+                
                 screen.blit(icon_atual, (x_atual, y_atual))
             
             # Durante transição, não mostrar informações (apenas ícones)
@@ -2819,6 +4056,17 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                     screen.blit(quadrado_blur, (quadrado_x, quadrado_y))
                     # Borda arredondada no quadrado
                     pygame.draw.rect(screen, (100, 220, 255), (quadrado_x, quadrado_y, quadrado_tamanho, quadrado_tamanho), 3, border_radius=15)
+                
+                # Desenhar cursor do controle (caixa animada) ao redor do upgrade atual
+                if gerenciador_gamepad.obter_numero_controles() > 0:
+                    tamanho_cursor = 5 + int(3 * abs(math.sin(animacao_cursor * math.pi)))
+                    cursor_rect = pygame.Rect(
+                        quadrado_x - tamanho_cursor,
+                        quadrado_y - tamanho_cursor,
+                        quadrado_tamanho + tamanho_cursor * 2,
+                        quadrado_tamanho + tamanho_cursor * 2
+                    )
+                    pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 4, border_radius=15 + tamanho_cursor)
                 
                 # Efeito de hover (aumentar tamanho)
                 if upgrade_hover == upgrade_atual_tipo:
@@ -2984,6 +4232,12 @@ def submenu_audio(screen):
 
     hover_animation = [0.0] * len(opcoes_audio)
     hover_speed = 8.0  # Velocidade aumentada
+    
+    # Variáveis para barra deslizante de volume
+    volume_dragging = False
+    volume_bar_width = 200
+    volume_bar_height = 8
+    volume_indicator_size = 16
 
     while True:
         dt = clock.tick(FPS) / 1000.0  # Converter para segundos
@@ -3000,16 +4254,131 @@ def submenu_audio(screen):
                 voltar_rect = pygame.Rect(caixa_x + 20, voltar_y - 5, caixa_largura - 40, 50)
                 if voltar_rect.collidepoint(mouse_x, mouse_y):
                     return True
-                # clique em opções só vale dentro da caixa
-                if mouse_in_caixa:
-                    idx = verificar_clique_opcao(mouse_x, mouse_y, opcoes_audio,
-                                                 caixa_x, caixa_y, caixa_largura, 50, 80, None, 0)
-                    if idx >= 0:
-                        opcao_atual = idx
+                
+                # Verificar clique na barra de volume
+                volume_idx = -1
+                for i, (nome, chave) in enumerate(opcoes_audio):
+                    if chave == "volume_musica":
+                        volume_idx = i
+                        break
+                
+                if volume_idx >= 0:
+                    y_volume = caixa_y + 80 + volume_idx * 50
+                    volume_bar_x = caixa_x + 250
+                    volume_bar_y = y_volume + 10
+                    volume_bar_rect = pygame.Rect(volume_bar_x, volume_bar_y - volume_bar_height // 2, volume_bar_width, volume_bar_height)
+                    
+                    # Verificar se clicou na barra ou no indicador
+                    volume_value = CONFIGURACOES["audio"]["volume_musica"]
+                    indicator_x = volume_bar_x + int(volume_value * volume_bar_width) - volume_indicator_size // 2
+                    indicator_rect = pygame.Rect(indicator_x, volume_bar_y - volume_indicator_size // 2, volume_indicator_size, volume_indicator_size)
+                    
+                    if volume_bar_rect.collidepoint(mouse_x, mouse_y) or indicator_rect.collidepoint(mouse_x, mouse_y):
+                        volume_dragging = True
+                        # Atualizar volume baseado na posição do clique
+                        relative_x = mouse_x - volume_bar_x
+                        new_volume = max(0.0, min(1.0, relative_x / volume_bar_width))
+                        CONFIGURACOES["audio"]["volume_musica"] = new_volume
+                        salvar_configuracoes()
+                        # Atualizar volume no gerenciador de música
+                        try:
+                            from core.musica import gerenciador_musica
+                            gerenciador_musica.definir_volume(new_volume)
+                        except:
+                            pass
+                    else:
+                        # clique em opções só vale dentro da caixa
+                        if mouse_in_caixa:
+                            idx = verificar_clique_opcao(mouse_x, mouse_y, opcoes_audio,
+                                                         caixa_x, caixa_y, caixa_largura, 50, 80, None, 0)
+                            if idx >= 0:
+                                opcao_atual = idx
+                                chave = opcoes_audio[opcao_atual][1]
+                                if chave in ["musica_habilitada", "musica_no_menu", "musica_no_jogo", "musica_aleatoria"]:
+                                    CONFIGURACOES["audio"][chave] = not CONFIGURACOES["audio"][chave]
+                                    salvar_configuracoes()
+                else:
+                    # clique em opções só vale dentro da caixa
+                    if mouse_in_caixa:
+                        idx = verificar_clique_opcao(mouse_x, mouse_y, opcoes_audio,
+                                                     caixa_x, caixa_y, caixa_largura, 50, 80, None, 0)
+                        if idx >= 0:
+                            opcao_atual = idx
+                            chave = opcoes_audio[opcao_atual][1]
+                            if chave in ["musica_habilitada", "musica_no_menu", "musica_no_jogo", "musica_aleatoria"]:
+                                CONFIGURACOES["audio"][chave] = not CONFIGURACOES["audio"][chave]
+                                salvar_configuracoes()
+            
+            elif ev.type == pygame.MOUSEBUTTONUP and ev.button == 1:
+                volume_dragging = False
+            
+            elif ev.type == pygame.MOUSEMOTION:
+                if volume_dragging:
+                    mouse_x = ev.pos[0]
+                    volume_idx = -1
+                    for i, (nome, chave) in enumerate(opcoes_audio):
+                        if chave == "volume_musica":
+                            volume_idx = i
+                            break
+                    
+                    if volume_idx >= 0:
+                        y_volume = caixa_y + 80 + volume_idx * 50
+                        volume_bar_x = caixa_x + 250
+                        relative_x = mouse_x - volume_bar_x
+                        new_volume = max(0.0, min(1.0, relative_x / volume_bar_width))
+                        CONFIGURACOES["audio"]["volume_musica"] = new_volume
+                        salvar_configuracoes()
+                        # Atualizar volume no gerenciador de música
+                        try:
+                            from core.musica import gerenciador_musica
+                            gerenciador_musica.definir_volume(new_volume)
+                        except:
+                            pass
+            # Processar eventos de controle
+            if gerenciador_gamepad.obter_numero_controles() > 0:
+                from core.menu_controles import processar_eventos_controle_menu
+                tempo_atual = pygame.time.get_ticks()
+                resultado_controle = processar_eventos_controle_menu(ev, opcao_atual, len(opcoes_audio), joystick_id=0, tempo_atual=tempo_atual)
+                if resultado_controle:
+                    acao = resultado_controle.get("acao")
+                    if acao == "cima" and "opcao" in resultado_controle:
+                        opcao_atual = resultado_controle["opcao"]
+                    elif acao == "baixo" and "opcao" in resultado_controle:
+                        opcao_atual = resultado_controle["opcao"]
+                    elif acao == "esquerda":
+                        # Ajustar volume para baixo se estiver na opção de volume
+                        chave = opcoes_audio[opcao_atual][1]
+                        if chave == "volume_musica":
+                            CONFIGURACOES["audio"]["volume_musica"] = max(0.0, CONFIGURACOES["audio"]["volume_musica"] - 0.1)
+                            salvar_configuracoes()
+                            try:
+                                from core.musica import gerenciador_musica
+                                gerenciador_musica.definir_volume(CONFIGURACOES["audio"]["volume_musica"])
+                            except:
+                                pass
+                    elif acao == "direita":
+                        # Ajustar volume para cima se estiver na opção de volume
+                        chave = opcoes_audio[opcao_atual][1]
+                        if chave == "volume_musica":
+                            CONFIGURACOES["audio"]["volume_musica"] = min(1.0, CONFIGURACOES["audio"]["volume_musica"] + 0.1)
+                            salvar_configuracoes()
+                            try:
+                                from core.musica import gerenciador_musica
+                                gerenciador_musica.definir_volume(CONFIGURACOES["audio"]["volume_musica"])
+                            except:
+                                pass
+                    elif acao == "confirmar":
+                        # Processar ação da opção atual
                         chave = opcoes_audio[opcao_atual][1]
                         if chave in ["musica_habilitada", "musica_no_menu", "musica_no_jogo", "musica_aleatoria"]:
                             CONFIGURACOES["audio"][chave] = not CONFIGURACOES["audio"][chave]
                             salvar_configuracoes()
+                        elif chave == "voltar":
+                            return True
+                    elif acao == "cancelar":
+                        return True
+                    continue
+            
             elif ev.type == pygame.KEYDOWN:
                 if ev.key == pygame.K_ESCAPE:
                     return True
@@ -3028,10 +4397,20 @@ def submenu_audio(screen):
                     if opcoes_audio[opcao_atual][1] == "volume_musica":
                         CONFIGURACOES["audio"]["volume_musica"] = max(0.0, CONFIGURACOES["audio"]["volume_musica"] - 0.1)
                         salvar_configuracoes()
+                        try:
+                            from core.musica import gerenciador_musica
+                            gerenciador_musica.definir_volume(CONFIGURACOES["audio"]["volume_musica"])
+                        except:
+                            pass
                 elif ev.key in (pygame.K_RIGHT, pygame.K_d):
                     if opcoes_audio[opcao_atual][1] == "volume_musica":
                         CONFIGURACOES["audio"]["volume_musica"] = min(1.0, CONFIGURACOES["audio"]["volume_musica"] + 0.1)
                         salvar_configuracoes()
+                        try:
+                            from core.musica import gerenciador_musica
+                            gerenciador_musica.definir_volume(CONFIGURACOES["audio"]["volume_musica"])
+                        except:
+                            pass
 
         # fundo/overlay/caixa
         screen.blit(bg, (0, 0))
@@ -3112,14 +4491,35 @@ def submenu_audio(screen):
 
             if chave == "voltar":
                 texto = render_text(nome, 24, cor_texto, bold=True, pixel_style=True)
+                screen.blit(texto, (caixa_x + 30, y))
             elif chave == "volume_musica":
-                valor = f"{CONFIGURACOES['audio'][chave]:.1f}"
-                texto = render_text(f"{nome}: {valor}", 20, cor_texto, bold=True, pixel_style=True)
+                texto = render_text(f"{nome}:", 20, cor_texto, bold=True, pixel_style=True)
+                screen.blit(texto, (caixa_x + 30, y))
+                
+                # Desenhar barra deslizante de volume
+                volume_bar_x = caixa_x + 250
+                volume_bar_y = y + 10
+                volume_value = CONFIGURACOES["audio"]["volume_musica"]
+                
+                # Barra de fundo
+                pygame.draw.rect(screen, (50, 50, 50), (volume_bar_x, volume_bar_y - volume_bar_height // 2, volume_bar_width, volume_bar_height))
+                pygame.draw.rect(screen, (100, 100, 100), (volume_bar_x, volume_bar_y - volume_bar_height // 2, volume_bar_width, volume_bar_height), 1)
+                
+                # Barra preenchida (indicando volume atual)
+                filled_width = int(volume_value * volume_bar_width)
+                if filled_width > 0:
+                    pygame.draw.rect(screen, (0, 200, 255), (volume_bar_x, volume_bar_y - volume_bar_height // 2, filled_width, volume_bar_height))
+                
+                # Indicador (bolinha)
+                indicator_x = volume_bar_x + int(volume_value * volume_bar_width) - volume_indicator_size // 2
+                indicator_color = (220, 220, 220) if volume_dragging else (180, 180, 180)
+                pygame.draw.circle(screen, indicator_color, (indicator_x + volume_indicator_size // 2, volume_bar_y), volume_indicator_size // 2)
+                pygame.draw.circle(screen, (255, 255, 255), (indicator_x + volume_indicator_size // 2, volume_bar_y), volume_indicator_size // 2, 2)
             else:
                 from core.i18n import t
                 valor = t("jogo.sim") if CONFIGURACOES["audio"][chave] else t("jogo.nao")
                 texto = render_text(f"{nome}: {valor}", 20, cor_texto, bold=True, pixel_style=True)
-            screen.blit(texto, (caixa_x + 30, y))
+                screen.blit(texto, (caixa_x + 30, y))
 
         # voltar
         voltar_y = caixa_y + caixa_altura - 60
@@ -3167,6 +4567,9 @@ def submenu_controles(screen):
 
     # scroll
     scroll_offset = 0
+    scroll_dragging = False
+    scroll_drag_start_y = 0
+    scroll_drag_start_offset = 0.0
     altura_item = 45
     altura_total_opcoes = len(opcoes_controles) * altura_item
     altura_area_visivel = caixa_altura - 200
@@ -3174,7 +4577,7 @@ def submenu_controles(screen):
     
     while True:
         dt = clock.tick(FPS)
-        
+
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 return False
@@ -3187,18 +4590,115 @@ def submenu_controles(screen):
                 if voltar_rect.collidepoint(mouse_x, mouse_y):
                     return True
 
-                # clique nas opções (respeitando scroll)
-                idx = verificar_clique_opcao(
-                    mouse_x, mouse_y, opcoes_controles,
-                    caixa_x, caixa_y, caixa_largura,
-                    altura_item, 80, None, scroll_offset
-                )
-                if idx >= 0:
-                    opcao_atual = idx
+                # Verificar clique na scrollbar
+                if max_scroll > 0:
+                    scrollbar_width = 12
+                    scrollbar_x = caixa_x + caixa_largura - scrollbar_width - 5
+                    scrollbar_y = caixa_y + 80
+                    scrollbar_height = altura_area_visivel
+                    scrollbar_rect = pygame.Rect(scrollbar_x, scrollbar_y, scrollbar_width, scrollbar_height)
+                    if scrollbar_rect.collidepoint(mouse_x, mouse_y):
+                        scroll_dragging = True
+                        scroll_drag_start_y = mouse_y
+                        scroll_drag_start_offset = scroll_offset
+                    else:
+                        # clique nas opções (respeitando scroll)
+                        idx = verificar_clique_opcao(
+                            mouse_x, mouse_y, opcoes_controles,
+                            caixa_x, caixa_y, caixa_largura,
+                            altura_item, 80, None, scroll_offset
+                        )
+                        if idx >= 0:
+                            opcao_atual = idx
+                else:
+                    # clique nas opções (respeitando scroll)
+                    idx = verificar_clique_opcao(
+                        mouse_x, mouse_y, opcoes_controles,
+                        caixa_x, caixa_y, caixa_largura,
+                        altura_item, 80, None, scroll_offset
+                    )
+                    if idx >= 0:
+                        opcao_atual = idx
+
+            elif ev.type == pygame.MOUSEBUTTONUP and ev.button == 1:
+                scroll_dragging = False
+
+            elif ev.type == pygame.MOUSEMOTION:
+                if scroll_dragging and max_scroll > 0:
+                    mouse_y = ev.pos[1]
+                    delta_y = mouse_y - scroll_drag_start_y
+                    scrollbar_height = altura_area_visivel
+                    indicator_height = max(30, int(scrollbar_height * 0.3))
+                    scroll_max = scrollbar_height - indicator_height
+                    if scroll_max > 0:
+                        scroll_ratio = delta_y / scroll_max
+                        new_offset = scroll_drag_start_offset + (scroll_ratio * max_scroll)
+                        scroll_offset = max(0, min(max_scroll, new_offset))
 
             elif ev.type == pygame.MOUSEWHEEL:
                 scroll_offset = max(0, min(max_scroll, scroll_offset - ev.y * 30))
 
+            # Processar eventos de controle
+            if gerenciador_gamepad.obter_numero_controles() > 0:
+                from core.menu_controles import processar_eventos_controle_menu
+                tempo_atual = pygame.time.get_ticks()
+                resultado_controle = processar_eventos_controle_menu(ev, opcao_atual, len(opcoes_controles), joystick_id=0, tempo_atual=tempo_atual)
+                if resultado_controle:
+                    acao = resultado_controle.get("acao")
+                    if acao == "cima" and "opcao" in resultado_controle:
+                        nova_opcao = resultado_controle["opcao"]
+                        if nova_opcao != opcao_atual:
+                            opcao_atual = nova_opcao
+                            # Ajustar scroll para seguir a opção selecionada
+                            altura_total_opcoes = len(opcoes_controles) * altura_item
+                            altura_area_visivel = caixa_altura - 200
+                            max_scroll = max(0, altura_total_opcoes - altura_area_visivel)
+                            # Calcular posição Y da opção na lista (sem scroll)
+                            opcao_y_lista = opcao_atual * altura_item
+                            # Área visível: de 0 até altura_area_visivel (sem sobrepor o botão voltar)
+                            topo_area_visivel = 0
+                            fundo_area_visivel = altura_area_visivel
+                            # Calcular posição Y da opção na tela (considerando scroll atual)
+                            opcao_y_tela = opcao_y_lista - scroll_offset
+                            # Ajustar scroll se necessário
+                            if opcao_y_tela < topo_area_visivel:
+                                # Opção está acima da área visível - aumentar scroll para que ela apareça
+                                scroll_offset = opcao_y_lista - topo_area_visivel
+                            elif opcao_y_tela + altura_item > fundo_area_visivel:
+                                # Opção está abaixo da área visível - diminuir scroll para que ela apareça
+                                scroll_offset = opcao_y_lista + altura_item - fundo_area_visivel
+                            # Garantir que scroll está dentro dos limites
+                            scroll_offset = max(0, min(max_scroll, scroll_offset))
+                    elif acao == "baixo" and "opcao" in resultado_controle:
+                        nova_opcao = resultado_controle["opcao"]
+                        if nova_opcao != opcao_atual:
+                            opcao_atual = nova_opcao
+                            # Ajustar scroll para seguir a opção selecionada
+                            altura_total_opcoes = len(opcoes_controles) * altura_item
+                            altura_area_visivel = caixa_altura - 200
+                            max_scroll = max(0, altura_total_opcoes - altura_area_visivel)
+                            # Calcular posição Y da opção na lista (sem scroll)
+                            opcao_y_lista = opcao_atual * altura_item
+                            # Área visível: de 0 até altura_area_visivel (sem sobrepor o botão voltar)
+                            topo_area_visivel = 0
+                            fundo_area_visivel = altura_area_visivel
+                            # Calcular posição Y da opção na tela (considerando scroll atual)
+                            opcao_y_tela = opcao_y_lista - scroll_offset
+                            # Ajustar scroll se necessário
+                            if opcao_y_tela < topo_area_visivel:
+                                # Opção está acima da área visível - aumentar scroll para que ela apareça
+                                scroll_offset = opcao_y_lista - topo_area_visivel
+                            elif opcao_y_tela + altura_item > fundo_area_visivel:
+                                # Opção está abaixo da área visível - diminuir scroll para que ela apareça
+                                scroll_offset = opcao_y_lista + altura_item - fundo_area_visivel
+                            # Garantir que scroll está dentro dos limites
+                            scroll_offset = max(0, min(max_scroll, scroll_offset))
+                    elif acao == "confirmar":
+                        if opcao_atual >= len(opcoes_controles) - 1:
+                            return True
+                    elif acao == "cancelar":
+                        return True
+            
             elif ev.type == pygame.KEYDOWN:
                 if ev.key == pygame.K_ESCAPE:
                     return True
@@ -3306,15 +4806,138 @@ def submenu_controles(screen):
 
         # scrollbar
         if max_scroll > 0:
-            desenhar_scrollbar(screen, scroll_offset, max_scroll, caixa_x, caixa_y, caixa_largura, caixa_altura)
+            desenhar_scrollbar(screen, scroll_offset, max_scroll, caixa_x, caixa_y, caixa_largura, caixa_altura, scroll_dragging)
 
         pygame.display.flip()
 
-def submenu_video(screen):
+def mostrar_dialogo_confirmacao_resolucao(screen_ref, bg, nova_resolucao, resolucao_anterior):
+    """Mostra diálogo de confirmação para mudança de resolução com timer de 30 segundos"""
+    from config import CONFIGURACOES, salvar_configuracoes
+    from core.i18n import t
+    
+    print(f"DEBUG: Mostrando diálogo de confirmação. Nova resolução: {nova_resolucao}, Anterior: {resolucao_anterior}")
+    
+    # Aplicar nova resolução temporariamente
+    fullscreen = CONFIGURACOES["video"]["fullscreen"]
+    tela_cheia_sem_bordas = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
+    display_flags = 0
+    if fullscreen:
+        display_flags |= pygame.FULLSCREEN
+    elif tela_cheia_sem_bordas:
+        display_flags |= pygame.NOFRAME
+    
+    # Criar nova tela com a nova resolução
+    screen = pygame.display.set_mode(nova_resolucao, display_flags)
+    nova_largura, nova_altura = nova_resolucao
+    
+    # Recarregar background com nova resolução
+    bg_novo = scale_to_cover(pygame.image.load(CAMINHO_MENU).convert_alpha(), nova_largura, nova_altura)
+    
+    clock = pygame.time.Clock()
+    tempo_inicial = pygame.time.get_ticks()
+    tempo_limite = 30000  # 30 segundos em milissegundos
+    confirmado = False
+    
+    # Variáveis para os botões
+    caixa_largura = 700
+    caixa_altura = 350
+    caixa_x = (nova_largura - caixa_largura) // 2
+    caixa_y = (nova_altura - caixa_altura) // 2
+    
+    botao_manter_rect = pygame.Rect(caixa_x + 50, caixa_y + caixa_altura - 80, 200, 50)
+    botao_reverter_rect = pygame.Rect(caixa_x + caixa_largura - 250, caixa_y + caixa_altura - 80, 200, 50)
+    
+    print(f"DEBUG: Diálogo iniciado. Caixa em ({caixa_x}, {caixa_y}), tamanho ({caixa_largura}, {caixa_altura})")
+    
+    while True:
+        dt = clock.tick(FPS) / 1000.0
+        tempo_atual = pygame.time.get_ticks()
+        tempo_decorrido = tempo_atual - tempo_inicial
+        tempo_restante = max(0, (tempo_limite - tempo_decorrido) // 1000)
+        
+        # Se o timer expirou, reverter
+        if tempo_decorrido >= tempo_limite:
+            return False
+        
+        for ev in pygame.event.get():
+            if ev.type == pygame.QUIT:
+                return False
+            elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                if botao_manter_rect.collidepoint(mouse_x, mouse_y):
+                    confirmado = True
+                    return True
+                elif botao_reverter_rect.collidepoint(mouse_x, mouse_y):
+                    return False
+            elif ev.type == pygame.KEYDOWN:
+                if ev.key == pygame.K_RETURN or ev.key == pygame.K_SPACE:
+                    confirmado = True
+                    return True
+                elif ev.key == pygame.K_ESCAPE:
+                    return False
+        
+        # Desenhar
+        screen.blit(bg_novo, (0, 0))
+        
+        # Overlay escuro
+        overlay = pygame.Surface((nova_largura, nova_altura), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        screen.blit(overlay, (0, 0))
+        
+        # Caixa do diálogo
+        caixa_fundo = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+        caixa_fundo.fill((0, 0, 0, 200))
+        screen.blit(caixa_fundo, (caixa_x, caixa_y))
+        pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
+        
+        # Texto principal
+        texto_pergunta = render_text(t("video.confirmar_resolucao"), 26, (255, 255, 255), bold=True, pixel_style=True)
+        texto_pergunta_x = caixa_x + (caixa_largura - texto_pergunta.get_width()) // 2
+        screen.blit(texto_pergunta, (texto_pergunta_x, caixa_y + 50))
+        
+        # Informação da resolução
+        texto_resolucao = render_text(f"{nova_resolucao[0]}x{nova_resolucao[1]}", 24, (0, 200, 255), bold=True, pixel_style=True)
+        texto_resolucao_x = caixa_x + (caixa_largura - texto_resolucao.get_width()) // 2
+        screen.blit(texto_resolucao, (texto_resolucao_x, caixa_y + 120))
+        
+        # Timer
+        texto_timer = render_text(t("video.tempo_restante").format(tempo_restante), 22, (255, 200, 0), bold=True, pixel_style=True)
+        texto_timer_x = caixa_x + (caixa_largura - texto_timer.get_width()) // 2
+        screen.blit(texto_timer, (texto_timer_x, caixa_y + 180))
+        
+        # Botões
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        manter_hover = botao_manter_rect.collidepoint(mouse_x, mouse_y)
+        reverter_hover = botao_reverter_rect.collidepoint(mouse_x, mouse_y)
+        
+        # Botão Manter
+        cor_manter = (0, 200, 255) if manter_hover else (100, 150, 200)
+        pygame.draw.rect(screen, cor_manter, botao_manter_rect)
+        pygame.draw.rect(screen, (255, 255, 255), botao_manter_rect, 2)
+        texto_manter = render_text(t("video.manter"), 22, (255, 255, 255), bold=True, pixel_style=True)
+        texto_manter_x = botao_manter_rect.centerx - texto_manter.get_width() // 2
+        texto_manter_y = botao_manter_rect.centery - texto_manter.get_height() // 2
+        screen.blit(texto_manter, (texto_manter_x, texto_manter_y))
+        
+        # Botão Reverter
+        cor_reverter = (255, 100, 100) if reverter_hover else (200, 100, 100)
+        pygame.draw.rect(screen, cor_reverter, botao_reverter_rect)
+        pygame.draw.rect(screen, (255, 255, 255), botao_reverter_rect, 2)
+        texto_reverter = render_text(t("video.reverter"), 22, (255, 255, 255), bold=True, pixel_style=True)
+        texto_reverter_x = botao_reverter_rect.centerx - texto_reverter.get_width() // 2
+        texto_reverter_y = botao_reverter_rect.centery - texto_reverter.get_height() // 2
+        screen.blit(texto_reverter, (texto_reverter_x, texto_reverter_y))
+        
+        pygame.display.flip()
+
+def submenu_video(screen_ref):
     """Submenu de configurações de vídeo"""
     from config import CONFIGURACOES, salvar_configuracoes
+    screen = screen_ref
     bg_raw = pygame.image.load(CAMINHO_MENU).convert_alpha()
-    bg = scale_to_cover(bg_raw, LARGURA, ALTURA)
+    # Usar resolução atual do screen ao invés de LARGURA e ALTURA globais
+    largura_atual, altura_atual = screen.get_size()
+    bg = scale_to_cover(bg_raw, largura_atual, altura_atual)
 
     from core.i18n import t
     opcoes_video = [
@@ -3333,14 +4956,17 @@ def submenu_video(screen):
 
     caixa_largura = 500
     caixa_altura = 400
-    caixa_x = (LARGURA - caixa_largura) // 2
-    caixa_y = (ALTURA - caixa_altura) // 2
+    caixa_x = (largura_atual - caixa_largura) // 2
+    caixa_y = (altura_atual - caixa_altura) // 2
 
     hover_animation = [0.0] * len(opcoes_video)
     hover_speed = 8.0  # Velocidade aumentada
 
     # scroll
     scroll_offset = 0
+    scroll_dragging = False
+    scroll_drag_start_y = 0
+    scroll_drag_start_offset = 0.0
     altura_item = 50
     altura_total_opcoes = len(opcoes_video) * altura_item
     altura_area_visivel = caixa_altura - 200
@@ -3359,18 +4985,248 @@ def submenu_video(screen):
                 voltar_y = caixa_y + caixa_altura - 60
                 voltar_rect = pygame.Rect(caixa_x + 20, voltar_y - 5, caixa_largura - 50, altura_item)
                 if voltar_rect.collidepoint(mouse_x, mouse_y):
+                    print("DEBUG: Clique no botão voltar")
                     return True
-                if mouse_in_caixa:
+                
+                # Verificar clique na scrollbar
+                if max_scroll > 0:
+                    scrollbar_width = 12
+                    scrollbar_x = caixa_x + caixa_largura - scrollbar_width - 5
+                    scrollbar_y = caixa_y + 80
+                    scrollbar_height = altura_area_visivel
+                    scrollbar_rect = pygame.Rect(scrollbar_x, scrollbar_y, scrollbar_width, scrollbar_height)
+                    if scrollbar_rect.collidepoint(mouse_x, mouse_y):
+                        scroll_dragging = True
+                        scroll_drag_start_y = mouse_y
+                        scroll_drag_start_offset = scroll_offset
+                    elif mouse_in_caixa:
+                        idx = verificar_clique_opcao(mouse_x, mouse_y, opcoes_video,
+                                                     caixa_x, caixa_y, caixa_largura, altura_item, 80, None, scroll_offset)
+                        if idx >= 0:
+                            opcao_atual = idx
+                            chave = opcoes_video[opcao_atual][1]
+                            if chave == "resolucao":
+                                # Alterar resolução ao clicar (ciclar para próxima)
+                                resolucoes = [(1280, 720), (1920, 1080), (1366, 768), (1600, 900)]
+                                resolucao_atual = CONFIGURACOES["video"]["resolucao"]
+                                try:
+                                    idx_res = resolucoes.index(resolucao_atual)
+                                    nova_resolucao = resolucoes[(idx_res + 1) % len(resolucoes)]
+                                except ValueError:
+                                    nova_resolucao = resolucoes[0]
+                                
+                                CONFIGURACOES["video"]["resolucao"] = nova_resolucao
+                                salvar_configuracoes()
+                                # Recarregar background com nova resolução
+                                bg = scale_to_cover(bg_raw, nova_resolucao[0], nova_resolucao[1])
+                                # Atualizar screen e retornar
+                                fullscreen = CONFIGURACOES["video"]["fullscreen"]
+                                tela_cheia_sem_bordas = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
+                                display_flags = 0
+                                if fullscreen:
+                                    display_flags |= pygame.FULLSCREEN
+                                elif tela_cheia_sem_bordas:
+                                    display_flags |= pygame.NOFRAME
+                                screen = pygame.display.set_mode(nova_resolucao, display_flags)
+                                return (True, screen)
+                            elif chave in ["fullscreen", "tela_cheia_sem_bordas"]:
+                                # Salvar estado anterior
+                                fullscreen_anterior = CONFIGURACOES["video"]["fullscreen"]
+                                tela_cheia_sem_bordas_anterior = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
+                                
+                                # Alterar estado temporariamente
+                                CONFIGURACOES["video"][chave] = not CONFIGURACOES["video"][chave]
+                                
+                                # Aplicar mudança temporariamente e mostrar diálogo de confirmação
+                                resolucao = CONFIGURACOES["video"]["resolucao"]
+                                fullscreen = CONFIGURACOES["video"]["fullscreen"]
+                                tela_cheia_sem_bordas = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
+                                display_flags = 0
+                                if fullscreen:
+                                    display_flags |= pygame.FULLSCREEN
+                                elif tela_cheia_sem_bordas:
+                                    display_flags |= pygame.NOFRAME
+                                
+                                resultado_confirmacao = mostrar_dialogo_confirmacao_resolucao(screen, bg, resolucao, resolucao)
+                                
+                                if resultado_confirmacao:
+                                    # Usuário confirmou, manter nova configuração
+                                    salvar_configuracoes()
+                                    screen = pygame.display.set_mode(resolucao, display_flags)
+                                    return (True, screen)
+                                else:
+                                    # Usuário não confirmou ou timer expirou, reverter
+                                    CONFIGURACOES["video"]["fullscreen"] = fullscreen_anterior
+                                    CONFIGURACOES["video"]["tela_cheia_sem_bordas"] = tela_cheia_sem_bordas_anterior
+                                    salvar_configuracoes()
+                                    # Aplicar configuração anterior
+                                    display_flags = 0
+                                    if fullscreen_anterior:
+                                        display_flags |= pygame.FULLSCREEN
+                                    elif tela_cheia_sem_bordas_anterior:
+                                        display_flags |= pygame.NOFRAME
+                                    screen = pygame.display.set_mode(resolucao, display_flags)
+                                    return (True, screen)
+                            elif chave in ["qualidade_alta", "vsync", "mostrar_fps"]:
+                                CONFIGURACOES["video"][chave] = not CONFIGURACOES["video"][chave]
+                                salvar_configuracoes()
+                elif mouse_in_caixa:
                     idx = verificar_clique_opcao(mouse_x, mouse_y, opcoes_video,
                                                  caixa_x, caixa_y, caixa_largura, altura_item, 80, None, scroll_offset)
                     if idx >= 0:
                         opcao_atual = idx
                         chave = opcoes_video[opcao_atual][1]
-                        if chave in ["fullscreen", "tela_cheia_sem_bordas", "qualidade_alta", "vsync", "mostrar_fps"]:
+                        if chave == "resolucao":
+                            # Alterar resolução ao clicar (ciclar para próxima)
+                            resolucoes = [(1280, 720), (1920, 1080), (1366, 768), (1600, 900)]
+                            resolucao_atual = CONFIGURACOES["video"]["resolucao"]
+                            try:
+                                idx_res = resolucoes.index(resolucao_atual)
+                                nova_resolucao = resolucoes[(idx_res + 1) % len(resolucoes)]
+                            except ValueError:
+                                nova_resolucao = resolucoes[0]
+                            
+                            CONFIGURACOES["video"]["resolucao"] = nova_resolucao
+                            salvar_configuracoes()
+                            # Recarregar background com nova resolução
+                            bg = scale_to_cover(bg_raw, nova_resolucao[0], nova_resolucao[1])
+                            # Atualizar variáveis de tamanho
+                            largura_atual, altura_atual = nova_resolucao
+                            caixa_x = (largura_atual - caixa_largura) // 2
+                            caixa_y = (altura_atual - caixa_altura) // 2
+                            # Atualizar screen e retornar
+                            fullscreen = CONFIGURACOES["video"]["fullscreen"]
+                            tela_cheia_sem_bordas = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
+                            display_flags = 0
+                            if fullscreen:
+                                display_flags |= pygame.FULLSCREEN
+                            elif tela_cheia_sem_bordas:
+                                display_flags |= pygame.NOFRAME
+                            screen = pygame.display.set_mode(nova_resolucao, display_flags)
+                            return (True, screen)
+                        elif chave in ["fullscreen", "tela_cheia_sem_bordas"]:
+                            # Salvar estado anterior
+                            fullscreen_anterior = CONFIGURACOES["video"]["fullscreen"]
+                            tela_cheia_sem_bordas_anterior = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
+                            
+                            # Alterar estado temporariamente
+                            CONFIGURACOES["video"][chave] = not CONFIGURACOES["video"][chave]
+                            
+                            # Aplicar mudança temporariamente e mostrar diálogo de confirmação
+                            resolucao = CONFIGURACOES["video"]["resolucao"]
+                            fullscreen = CONFIGURACOES["video"]["fullscreen"]
+                            tela_cheia_sem_bordas = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
+                            display_flags = 0
+                            if fullscreen:
+                                display_flags |= pygame.FULLSCREEN
+                            elif tela_cheia_sem_bordas:
+                                display_flags |= pygame.NOFRAME
+                            
+                            resultado_confirmacao = mostrar_dialogo_confirmacao_resolucao(screen, bg, resolucao, resolucao)
+                            
+                            if resultado_confirmacao:
+                                # Usuário confirmou, manter nova configuração
+                                salvar_configuracoes()
+                                screen = pygame.display.set_mode(resolucao, display_flags)
+                                return (True, screen)
+                            else:
+                                # Usuário não confirmou ou timer expirou, reverter
+                                CONFIGURACOES["video"]["fullscreen"] = fullscreen_anterior
+                                CONFIGURACOES["video"]["tela_cheia_sem_bordas"] = tela_cheia_sem_bordas_anterior
+                                salvar_configuracoes()
+                                # Aplicar configuração anterior
+                                display_flags = 0
+                                if fullscreen_anterior:
+                                    display_flags |= pygame.FULLSCREEN
+                                elif tela_cheia_sem_bordas_anterior:
+                                    display_flags |= pygame.NOFRAME
+                                screen = pygame.display.set_mode(resolucao, display_flags)
+                                return (True, screen)
+                        elif chave in ["qualidade_alta", "vsync", "mostrar_fps"]:
                             CONFIGURACOES["video"][chave] = not CONFIGURACOES["video"][chave]
                             salvar_configuracoes()
+
+            elif ev.type == pygame.MOUSEBUTTONUP and ev.button == 1:
+                scroll_dragging = False
+
+            elif ev.type == pygame.MOUSEMOTION:
+                if scroll_dragging and max_scroll > 0:
+                    mouse_y = ev.pos[1]
+                    delta_y = mouse_y - scroll_drag_start_y
+                    scrollbar_height = altura_area_visivel
+                    indicator_height = max(30, int(scrollbar_height * 0.3))
+                    scroll_max = scrollbar_height - indicator_height
+                    if scroll_max > 0:
+                        scroll_ratio = delta_y / scroll_max
+                        new_offset = scroll_drag_start_offset + (scroll_ratio * max_scroll)
+                        scroll_offset = max(0, min(max_scroll, new_offset))
+
             elif ev.type == pygame.MOUSEWHEEL:
                 scroll_offset = max(0, min(max_scroll, scroll_offset - ev.y * 30))
+            # Processar eventos de controle
+            if gerenciador_gamepad.obter_numero_controles() > 0:
+                from core.menu_controles import processar_eventos_controle_menu
+                tempo_atual = pygame.time.get_ticks()
+                resultado_controle = processar_eventos_controle_menu(ev, opcao_atual, len(opcoes_video), joystick_id=0, tempo_atual=tempo_atual)
+                if resultado_controle:
+                    acao = resultado_controle.get("acao")
+                    if acao == "cima" and "opcao" in resultado_controle:
+                        nova_opcao = resultado_controle["opcao"]
+                        if nova_opcao != opcao_atual:
+                            opcao_atual = nova_opcao
+                            # Ajustar scroll para seguir a opção selecionada
+                            altura_total_opcoes = len(opcoes_video) * altura_item
+                            altura_area_visivel = caixa_altura - 200
+                            max_scroll = max(0, altura_total_opcoes - altura_area_visivel)
+                            # Calcular posição Y da opção na lista (sem scroll)
+                            opcao_y_lista = opcao_atual * altura_item
+                            # Área visível: de 0 até altura_area_visivel (sem sobrepor o botão voltar)
+                            topo_area_visivel = 0
+                            fundo_area_visivel = altura_area_visivel
+                            # Calcular posição Y da opção na tela (considerando scroll atual)
+                            opcao_y_tela = opcao_y_lista - scroll_offset
+                            # Ajustar scroll se necessário
+                            if opcao_y_tela < topo_area_visivel:
+                                # Opção está acima da área visível - aumentar scroll para que ela apareça
+                                scroll_offset = opcao_y_lista - topo_area_visivel
+                            elif opcao_y_tela + altura_item > fundo_area_visivel:
+                                # Opção está abaixo da área visível - diminuir scroll para que ela apareça
+                                scroll_offset = opcao_y_lista + altura_item - fundo_area_visivel
+                            # Garantir que scroll está dentro dos limites
+                            scroll_offset = max(0, min(max_scroll, scroll_offset))
+                    elif acao == "baixo" and "opcao" in resultado_controle:
+                        nova_opcao = resultado_controle["opcao"]
+                        if nova_opcao != opcao_atual:
+                            opcao_atual = nova_opcao
+                            # Ajustar scroll para seguir a opção selecionada
+                            altura_total_opcoes = len(opcoes_video) * altura_item
+                            altura_area_visivel = caixa_altura - 200
+                            max_scroll = max(0, altura_total_opcoes - altura_area_visivel)
+                            # Calcular posição Y da opção na lista (sem scroll)
+                            opcao_y_lista = opcao_atual * altura_item
+                            # Área visível: de 0 até altura_area_visivel (sem sobrepor o botão voltar)
+                            topo_area_visivel = 0
+                            fundo_area_visivel = altura_area_visivel
+                            # Calcular posição Y da opção na tela (considerando scroll atual)
+                            opcao_y_tela = opcao_y_lista - scroll_offset
+                            # Ajustar scroll se necessário
+                            if opcao_y_tela < topo_area_visivel:
+                                # Opção está acima da área visível - aumentar scroll para que ela apareça
+                                scroll_offset = opcao_y_lista - topo_area_visivel
+                            elif opcao_y_tela + altura_item > fundo_area_visivel:
+                                # Opção está abaixo da área visível - diminuir scroll para que ela apareça
+                                scroll_offset = opcao_y_lista + altura_item - fundo_area_visivel
+                            # Garantir que scroll está dentro dos limites
+                            scroll_offset = max(0, min(max_scroll, scroll_offset))
+                    elif acao == "confirmar":
+                        # Processar ação da opção atual (similar ao ENTER)
+                        chave = opcoes_video[opcao_atual][1]
+                        if chave == "voltar":
+                            return True
+                    elif acao == "cancelar":
+                        return True
+                    continue
+            
             elif ev.type == pygame.KEYDOWN:
                 if ev.key == pygame.K_ESCAPE:
                     return True
@@ -3382,18 +5238,159 @@ def submenu_video(screen):
                     chave = opcoes_video[opcao_atual][1]
                     if chave == "voltar":
                         return True
+                    elif chave == "resolucao":
+                        # Alterar resolução ao pressionar ENTER/SPACE (ciclar para próxima)
+                        resolucoes = [(1280, 720), (1920, 1080), (1366, 768), (1600, 900)]
+                        resolucao_atual = CONFIGURACOES["video"]["resolucao"]
+                        try:
+                            idx_res = resolucoes.index(resolucao_atual)
+                            nova_resolucao = resolucoes[(idx_res + 1) % len(resolucoes)]
+                        except ValueError:
+                            nova_resolucao = resolucoes[0]
+                        
+                        CONFIGURACOES["video"]["resolucao"] = nova_resolucao
+                        salvar_configuracoes()
+                        # Recarregar background com nova resolução
+                        bg = scale_to_cover(bg_raw, nova_resolucao[0], nova_resolucao[1])
+                        # Atualizar variáveis de tamanho
+                        largura_atual, altura_atual = nova_resolucao
+                        caixa_x = (largura_atual - caixa_largura) // 2
+                        caixa_y = (altura_atual - caixa_altura) // 2
+                        # Atualizar screen e retornar
+                        fullscreen = CONFIGURACOES["video"]["fullscreen"]
+                        tela_cheia_sem_bordas = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
+                        display_flags = 0
+                        if fullscreen:
+                            display_flags |= pygame.FULLSCREEN
+                        elif tela_cheia_sem_bordas:
+                            display_flags |= pygame.NOFRAME
+                        screen = pygame.display.set_mode(nova_resolucao, display_flags)
+                        return (True, screen)
+                    elif chave in ["fullscreen", "tela_cheia_sem_bordas"]:
+                        # Salvar estado anterior
+                        fullscreen_anterior = CONFIGURACOES["video"]["fullscreen"]
+                        tela_cheia_sem_bordas_anterior = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
+                        
+                        # Alterar estado temporariamente
+                        CONFIGURACOES["video"][chave] = not CONFIGURACOES["video"][chave]
+                        
+                        # Aplicar mudança temporariamente e mostrar diálogo de confirmação
+                        resolucao = CONFIGURACOES["video"]["resolucao"]
+                        fullscreen = CONFIGURACOES["video"]["fullscreen"]
+                        tela_cheia_sem_bordas = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
+                        display_flags = 0
+                        if fullscreen:
+                            display_flags |= pygame.FULLSCREEN
+                        elif tela_cheia_sem_bordas:
+                            display_flags |= pygame.NOFRAME
+                        
+                        resultado_confirmacao = mostrar_dialogo_confirmacao_resolucao(screen, bg, resolucao, resolucao)
+                        
+                        if resultado_confirmacao:
+                            # Usuário confirmou, manter nova configuração
+                            salvar_configuracoes()
+                            screen = pygame.display.set_mode(resolucao, display_flags)
+                            return (True, screen)
+                        else:
+                            # Usuário não confirmou ou timer expirou, reverter
+                            CONFIGURACOES["video"]["fullscreen"] = fullscreen_anterior
+                            CONFIGURACOES["video"]["tela_cheia_sem_bordas"] = tela_cheia_sem_bordas_anterior
+                            salvar_configuracoes()
+                            # Aplicar configuração anterior
+                            display_flags = 0
+                            if fullscreen_anterior:
+                                display_flags |= pygame.FULLSCREEN
+                            elif tela_cheia_sem_bordas_anterior:
+                                display_flags |= pygame.NOFRAME
+                            screen = pygame.display.set_mode(resolucao, display_flags)
+                            return (True, screen)
                     elif chave in ["fullscreen", "tela_cheia_sem_bordas", "qualidade_alta", "vsync", "mostrar_fps"]:
                         CONFIGURACOES["video"][chave] = not CONFIGURACOES["video"][chave]
                         salvar_configuracoes()
+                        
+                        if chave in ["fullscreen", "tela_cheia_sem_bordas"]:
+                            resolucao = CONFIGURACOES["video"]["resolucao"]
+                            fullscreen = CONFIGURACOES["video"]["fullscreen"]
+                            tela_cheia_sem_bordas = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
+                            display_flags = 0
+                            if fullscreen:
+                                display_flags |= pygame.FULLSCREEN
+                            elif tela_cheia_sem_bordas:
+                                display_flags |= pygame.NOFRAME
+                            nova_tela = pygame.display.set_mode(resolucao, display_flags)
+                            screen = nova_tela
+                            return (True, nova_tela)
                 elif ev.key in (pygame.K_LEFT, pygame.K_a):
                     if opcoes_video[opcao_atual][1] == "resolucao":
                         resolucoes = [(1280, 720), (1920, 1080), (1366, 768), (1600, 900)]
+                        resolucao_atual = CONFIGURACOES["video"]["resolucao"]
                         try:
-                            idx = resolucoes.index(CONFIGURACOES["video"]["resolucao"])
-                            CONFIGURACOES["video"]["resolucao"] = resolucoes[(idx - 1) % len(resolucoes)]
+                            idx = resolucoes.index(resolucao_atual)
+                            nova_resolucao = resolucoes[(idx - 1) % len(resolucoes)]
                         except ValueError:
-                            CONFIGURACOES["video"]["resolucao"] = resolucoes[0]
+                            nova_resolucao = resolucoes[0]
+                        
+                        CONFIGURACOES["video"]["resolucao"] = nova_resolucao
                         salvar_configuracoes()
+                        # Recarregar background com nova resolução
+                        bg = scale_to_cover(bg_raw, nova_resolucao[0], nova_resolucao[1])
+                        # Atualizar variáveis de tamanho
+                        largura_atual, altura_atual = nova_resolucao
+                        caixa_x = (largura_atual - caixa_largura) // 2
+                        caixa_y = (altura_atual - caixa_altura) // 2
+                        # Atualizar screen e retornar
+                        fullscreen = CONFIGURACOES["video"]["fullscreen"]
+                        tela_cheia_sem_bordas = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
+                        display_flags = 0
+                        if fullscreen:
+                            display_flags |= pygame.FULLSCREEN
+                        elif tela_cheia_sem_bordas:
+                            display_flags |= pygame.NOFRAME
+                        screen = pygame.display.set_mode(nova_resolucao, display_flags)
+                        return (True, screen)
+                    elif opcoes_video[opcao_atual][1] in ["fullscreen", "tela_cheia_sem_bordas"]:
+                        chave = opcoes_video[opcao_atual][1]
+                        # Salvar estado anterior
+                        fullscreen_anterior = CONFIGURACOES["video"]["fullscreen"]
+                        tela_cheia_sem_bordas_anterior = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
+                        
+                        # Alterar estado temporariamente
+                        CONFIGURACOES["video"][chave] = not CONFIGURACOES["video"][chave]
+                        
+                        # Aplicar mudança temporariamente e mostrar diálogo de confirmação
+                        resolucao = CONFIGURACOES["video"]["resolucao"]
+                        fullscreen = CONFIGURACOES["video"]["fullscreen"]
+                        tela_cheia_sem_bordas = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
+                        display_flags = 0
+                        if fullscreen:
+                            display_flags |= pygame.FULLSCREEN
+                        elif tela_cheia_sem_bordas:
+                            display_flags |= pygame.NOFRAME
+                        
+                        resultado_confirmacao = mostrar_dialogo_confirmacao_resolucao(screen, bg, resolucao, resolucao)
+                        
+                        if resultado_confirmacao:
+                            # Usuário confirmou, manter nova resolução
+                            CONFIGURACOES["video"]["resolucao"] = nova_resolucao
+                            salvar_configuracoes()
+                            # Recarregar background com nova resolução
+                            bg = scale_to_cover(bg_raw, nova_resolucao[0], nova_resolucao[1])
+                        else:
+                            # Usuário não confirmou ou timer expirou, reverter
+                            CONFIGURACOES["video"]["resolucao"] = resolucao_anterior
+                            salvar_configuracoes()
+                            # Recarregar background com resolução anterior
+                            bg = scale_to_cover(bg_raw, resolucao_anterior[0], resolucao_anterior[1])
+                            # Aplicar resolução anterior
+                            fullscreen = CONFIGURACOES["video"]["fullscreen"]
+                            tela_cheia_sem_bordas = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
+                            display_flags = 0
+                            if fullscreen:
+                                display_flags |= pygame.FULLSCREEN
+                            elif tela_cheia_sem_bordas:
+                                display_flags |= pygame.NOFRAME
+                            screen = pygame.display.set_mode(resolucao_anterior, display_flags)
+                            return (True, screen)
                     elif opcoes_video[opcao_atual][1] == "fps_max":
                         fps_opcoes = [30, 60, 120, 144, 200, 300]
                         try:
@@ -3405,12 +5402,70 @@ def submenu_video(screen):
                 elif ev.key in (pygame.K_RIGHT, pygame.K_d):
                     if opcoes_video[opcao_atual][1] == "resolucao":
                         resolucoes = [(1280, 720), (1920, 1080), (1366, 768), (1600, 900)]
+                        resolucao_atual = CONFIGURACOES["video"]["resolucao"]
                         try:
-                            idx = resolucoes.index(CONFIGURACOES["video"]["resolucao"])
-                            CONFIGURACOES["video"]["resolucao"] = resolucoes[(idx + 1) % len(resolucoes)]
+                            idx = resolucoes.index(resolucao_atual)
+                            nova_resolucao = resolucoes[(idx + 1) % len(resolucoes)]
                         except ValueError:
-                            CONFIGURACOES["video"]["resolucao"] = resolucoes[0]
+                            nova_resolucao = resolucoes[0]
+                        
+                        CONFIGURACOES["video"]["resolucao"] = nova_resolucao
                         salvar_configuracoes()
+                        # Recarregar background com nova resolução
+                        bg = scale_to_cover(bg_raw, nova_resolucao[0], nova_resolucao[1])
+                        # Atualizar variáveis de tamanho
+                        largura_atual, altura_atual = nova_resolucao
+                        caixa_x = (largura_atual - caixa_largura) // 2
+                        caixa_y = (altura_atual - caixa_altura) // 2
+                        # Atualizar screen e retornar
+                        fullscreen = CONFIGURACOES["video"]["fullscreen"]
+                        tela_cheia_sem_bordas = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
+                        display_flags = 0
+                        if fullscreen:
+                            display_flags |= pygame.FULLSCREEN
+                        elif tela_cheia_sem_bordas:
+                            display_flags |= pygame.NOFRAME
+                        screen = pygame.display.set_mode(nova_resolucao, display_flags)
+                        return (True, screen)
+                    elif opcoes_video[opcao_atual][1] in ["fullscreen", "tela_cheia_sem_bordas"]:
+                        chave = opcoes_video[opcao_atual][1]
+                        # Salvar estado anterior
+                        fullscreen_anterior = CONFIGURACOES["video"]["fullscreen"]
+                        tela_cheia_sem_bordas_anterior = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
+                        
+                        # Alterar estado temporariamente
+                        CONFIGURACOES["video"][chave] = not CONFIGURACOES["video"][chave]
+                        
+                        # Aplicar mudança temporariamente e mostrar diálogo de confirmação
+                        resolucao = CONFIGURACOES["video"]["resolucao"]
+                        fullscreen = CONFIGURACOES["video"]["fullscreen"]
+                        tela_cheia_sem_bordas = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
+                        display_flags = 0
+                        if fullscreen:
+                            display_flags |= pygame.FULLSCREEN
+                        elif tela_cheia_sem_bordas:
+                            display_flags |= pygame.NOFRAME
+                        
+                        resultado_confirmacao = mostrar_dialogo_confirmacao_resolucao(screen, bg, resolucao, resolucao)
+                        
+                        if resultado_confirmacao:
+                            # Usuário confirmou, manter nova configuração
+                            salvar_configuracoes()
+                            screen = pygame.display.set_mode(resolucao, display_flags)
+                            return (True, screen)
+                        else:
+                            # Usuário não confirmou ou timer expirou, reverter
+                            CONFIGURACOES["video"]["fullscreen"] = fullscreen_anterior
+                            CONFIGURACOES["video"]["tela_cheia_sem_bordas"] = tela_cheia_sem_bordas_anterior
+                            salvar_configuracoes()
+                            # Aplicar configuração anterior
+                            display_flags = 0
+                            if fullscreen_anterior:
+                                display_flags |= pygame.FULLSCREEN
+                            elif tela_cheia_sem_bordas_anterior:
+                                display_flags |= pygame.NOFRAME
+                            screen = pygame.display.set_mode(resolucao, display_flags)
+                            return (True, screen)
                     elif opcoes_video[opcao_atual][1] == "fps_max":
                         fps_opcoes = [30, 60, 120, 144, 200, 300]
                         try:
@@ -3466,7 +5521,8 @@ def submenu_video(screen):
         # opções (respeitando área visível)
         for i, (nome, chave) in enumerate(opcoes_video):
             y = caixa_y + 80 + i * altura_item - scroll_offset
-            if y < caixa_y + 80 or y > caixa_y + caixa_altura - 80:
+            # Verificar se está dentro da área visível (acima do botão voltar)
+            if y < caixa_y + 80 or y + altura_item > caixa_y + caixa_altura - 80:
                 continue
 
             hover_progress = 0.0 if (i == opcao_atual) else hover_animation[i]
@@ -3526,7 +5582,7 @@ def submenu_video(screen):
 
         # scrollbar
         if max_scroll > 0:
-            desenhar_scrollbar(screen, scroll_offset, max_scroll, caixa_x, caixa_y, caixa_largura, caixa_altura)
+            desenhar_scrollbar(screen, scroll_offset, max_scroll, caixa_x, caixa_y, caixa_largura, caixa_altura, scroll_dragging)
 
         pygame.display.flip()
 
@@ -3593,6 +5649,28 @@ def submenu_idioma(screen):
                                 # Recarregar opções de idioma para atualizar os textos
                                 opcoes_idioma = recarregar_opcoes_idioma()
                                 opcao_voltar = (t("menu.idioma.voltar"), "voltar")
+            # Processar eventos de controle
+            if gerenciador_gamepad.obter_numero_controles() > 0:
+                from core.menu_controles import processar_eventos_controle_menu
+                tempo_atual = pygame.time.get_ticks()
+                resultado_controle = processar_eventos_controle_menu(ev, opcao_atual, len(opcoes_idioma), joystick_id=0, tempo_atual=tempo_atual)
+                if resultado_controle:
+                    acao = resultado_controle.get("acao")
+                    if acao == "cima" and "opcao" in resultado_controle:
+                        opcao_atual = resultado_controle["opcao"]
+                    elif acao == "baixo" and "opcao" in resultado_controle:
+                        opcao_atual = resultado_controle["opcao"]
+                    elif acao == "confirmar":
+                        # Selecionar idioma
+                        chave = opcoes_idioma[opcao_atual][1]
+                        CONFIGURACOES["idioma"] = chave
+                        salvar_configuracoes()
+                        from core.i18n import inicializar_idioma
+                        inicializar_idioma()
+                    elif acao == "cancelar":
+                        return True
+                    continue
+            
             elif ev.type == pygame.KEYDOWN:
                 if ev.key == pygame.K_ESCAPE:
                     return True
@@ -3748,7 +5826,50 @@ def opcoes_loop(screen):
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 return False
-            elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+            
+            # Processar eventos de controle ANTES de outros eventos
+            controle_processado = False
+            if gerenciador_gamepad.obter_numero_controles() > 0:
+                from core.menu_controles import processar_eventos_controle_menu
+                tempo_atual = pygame.time.get_ticks()
+                resultado_controle = processar_eventos_controle_menu(ev, opcao_atual, len(opcoes_principais), joystick_id=0, tempo_atual=tempo_atual)
+                if resultado_controle:
+                    controle_processado = True
+                    acao = resultado_controle.get("acao")
+                    if acao == "cima" and "opcao" in resultado_controle:
+                        opcao_atual = resultado_controle["opcao"]
+                    elif acao == "baixo" and "opcao" in resultado_controle:
+                        opcao_atual = resultado_controle["opcao"]
+                    elif acao == "confirmar":
+                        chave = opcoes_principais[opcao_atual][1]
+                        if chave == "voltar":
+                            return True
+                        elif chave == "audio":
+                            if not submenu_audio(screen):
+                                return False
+                        elif chave == "controles":
+                            if not submenu_controles(screen):
+                                return False
+                        elif chave == "video":
+                            resultado = submenu_video(screen)
+                            if isinstance(resultado, tuple) and len(resultado) == 2:
+                                voltar, nova_tela = resultado
+                                screen = nova_tela
+                                if not voltar:
+                                    return False
+                            elif not resultado:
+                                return False
+                        elif chave == "idioma":
+                            if not submenu_idioma(screen):
+                                return False
+                    elif acao == "cancelar":
+                        return True
+            
+            # Se processou evento de controle, não processar mouse/teclado para esse evento
+            if controle_processado:
+                continue
+            
+            if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                 mouse_x, mouse_y = pygame.mouse.get_pos()
                 # clique só vale se estiver dentro da caixa
                 mouse_in_caixa = (caixa_x <= mouse_x <= caixa_x + caixa_largura and
@@ -3771,7 +5892,13 @@ def opcoes_loop(screen):
                             if not submenu_controles(screen):
                                 return False
                         elif chave == "video":
-                            if not submenu_video(screen):
+                            resultado = submenu_video(screen)
+                            if isinstance(resultado, tuple) and len(resultado) == 2:
+                                voltar, nova_tela = resultado
+                                screen = nova_tela
+                                if not voltar:
+                                    return False
+                            elif not resultado:
                                 return False
                         elif chave == "idioma":
                             if not submenu_idioma(screen):
@@ -3794,7 +5921,13 @@ def opcoes_loop(screen):
                         if submenu_controles(screen):
                             continue
                     elif chave == "video":
-                        if submenu_video(screen):
+                        resultado = submenu_video(screen)
+                        if isinstance(resultado, tuple) and len(resultado) == 2:
+                            voltar, nova_tela = resultado
+                            screen = nova_tela
+                            if voltar:
+                                continue
+                        elif resultado:
                             continue
                     elif chave == "idioma":
                         if submenu_idioma(screen):
@@ -3965,6 +6098,29 @@ def modo_jogo_loop(screen):
     caixa_x = (LARGURA - caixa_largura) // 2
     caixa_y = (ALTURA - caixa_altura) // 2
     
+    # Variáveis para cursor do controle (indicador visual)
+    # Navegação: cima/baixo navega entre linhas, esquerda/direita navega dentro da linha
+    # Estrutura: linhas de opções, cada linha pode ter múltiplas opções horizontais
+    # Formato: {y_pos: [(secao, indice, x, y), ...]}
+    linhas_opcoes = {
+        caixa_y + 120: [("modo", 0, caixa_x + 50, caixa_y + 120)],  # 1 Jogador
+        caixa_y + 170: [("modo", 1, caixa_x + 50, caixa_y + 170)],  # 2 Jogadores
+        caixa_y + 260: [("tipo", 0, caixa_x + 50, caixa_y + 260), ("tipo", 2, caixa_x + 270, caixa_y + 260)],  # Corrida, Ghost (horizontal)
+        caixa_y + 310: [("tipo", 1, caixa_x + 50, caixa_y + 310)],  # Drift
+        caixa_y + 390: [("voltas", 0, caixa_x + 50, caixa_y + 390), ("voltas", 1, caixa_x + 230, caixa_y + 390), ("voltas", 2, caixa_x + 410, caixa_y + 390)],  # 1, 2, 3 voltas (horizontal)
+        caixa_y + 480: [("dificuldade", 0, caixa_x + 50, caixa_y + 480), ("dificuldade", 1, caixa_x + 230, caixa_y + 480), ("dificuldade", 2, caixa_x + 410, caixa_y + 480)],  # Fácil, Médio, Difícil (horizontal)
+        caixa_y + caixa_altura - 60: [("iniciar", 0, caixa_x + 50, caixa_y + caixa_altura - 60), ("voltar", 0, caixa_x + 270, caixa_y + caixa_altura - 53)]  # Iniciar, Voltar (horizontal)
+    }
+    
+    # Lista ordenada de linhas Y para navegação vertical
+    linhas_y_ordenadas = sorted(linhas_opcoes.keys())
+    
+    # Estado de navegação: linha atual e opção horizontal atual
+    linha_atual_idx = 0  # Índice na lista de linhas Y
+    opcao_horizontal_atual = 0  # Índice da opção dentro da linha atual
+    animacao_cursor = 0.0  # Animação do cursor (0.0 a 1.0)
+    velocidade_animacao_cursor = 3.0  # Velocidade da animação
+    
     # Animações de hover
     hover_animation_modo = [0.0] * len(opcoes_modo)
     hover_animation_tipo = [0.0] * len(opcoes_tipo)
@@ -3983,10 +6139,139 @@ def modo_jogo_loop(screen):
         mouse_x, mouse_y = pygame.mouse.get_pos()
         popup_musica.verificar_hover(mouse_x, mouse_y)
         
+        # Atualizar animação do cursor
+        animacao_cursor += dt * velocidade_animacao_cursor
+        
+        # Processar navegação contínua quando botão está sendo mantido pressionado
+        if gerenciador_gamepad.obter_numero_controles() > 0:
+            from core.menu_controles import processar_navegacao_hold
+            tempo_atual = pygame.time.get_ticks()
+            resultado_hold = processar_navegacao_hold(joystick_id=0, tempo_atual=tempo_atual)
+            if resultado_hold:
+                acao = resultado_hold.get("acao")
+                linha_y_atual = linhas_y_ordenadas[linha_atual_idx]
+                opcoes_na_linha = linhas_opcoes[linha_y_atual]
+                num_opcoes_horizontal = len(opcoes_na_linha)
+                
+                if acao == "cima" and resultado_hold.get("fonte") == "hold":
+                    if linha_atual_idx > 0:
+                        linha_atual_idx -= 1
+                        linha_y_atual = linhas_y_ordenadas[linha_atual_idx]
+                        opcoes_na_linha = linhas_opcoes[linha_y_atual]
+                        opcao_horizontal_atual = min(opcao_horizontal_atual, len(opcoes_na_linha) - 1)
+                elif acao == "baixo" and resultado_hold.get("fonte") == "hold":
+                    if linha_atual_idx < len(linhas_y_ordenadas) - 1:
+                        linha_atual_idx += 1
+                        linha_y_atual = linhas_y_ordenadas[linha_atual_idx]
+                        opcoes_na_linha = linhas_opcoes[linha_y_atual]
+                        opcao_horizontal_atual = min(opcao_horizontal_atual, len(opcoes_na_linha) - 1)
+                elif acao == "esquerda" and resultado_hold.get("fonte") == "hold":
+                    opcao_horizontal_atual = max(0, opcao_horizontal_atual - 1)
+                elif acao == "direita" and resultado_hold.get("fonte") == "hold":
+                    opcao_horizontal_atual = min(len(opcoes_na_linha) - 1, opcao_horizontal_atual + 1)
+        
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 return False
-            elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+            
+            # Processar eventos de controle ANTES de outros eventos
+            controle_processado = False
+            if gerenciador_gamepad.obter_numero_controles() > 0:
+                from core.menu_controles import processar_eventos_controle_menu
+                tempo_atual = pygame.time.get_ticks()
+                
+                # Obter linha atual e opções horizontais
+                linha_y_atual = linhas_y_ordenadas[linha_atual_idx]
+                opcoes_na_linha = linhas_opcoes[linha_y_atual]
+                num_opcoes_horizontal = len(opcoes_na_linha)
+                
+                # Processar eventos: para cima/baixo, passar 0 opções (navegação entre linhas)
+                # Para esquerda/direita, passar número de opções horizontais
+                # Chamar duas vezes: uma para cima/baixo (0 opções) e outra para esquerda/direita (num_opcoes_horizontal)
+                resultado_controle_vertical = processar_eventos_controle_menu(ev, opcao_horizontal_atual, 0, joystick_id=0, tempo_atual=tempo_atual)
+                resultado_controle_horizontal = processar_eventos_controle_menu(ev, opcao_horizontal_atual, num_opcoes_horizontal, joystick_id=0, tempo_atual=tempo_atual)
+                
+                # Priorizar resultado vertical (cima/baixo) se existir, senão usar horizontal (esquerda/direita)
+                # Para esquerda/direita, sempre usar resultado_horizontal (que tem num_opcoes correto)
+                if resultado_controle_vertical and resultado_controle_vertical.get("acao") in ("cima", "baixo"):
+                    resultado_controle = resultado_controle_vertical
+                elif resultado_controle_horizontal and resultado_controle_horizontal.get("acao") in ("esquerda", "direita"):
+                    resultado_controle = resultado_controle_horizontal
+                else:
+                    resultado_controle = resultado_controle_vertical or resultado_controle_horizontal
+                
+                if resultado_controle:
+                    controle_processado = True
+                    acao = resultado_controle.get("acao")
+                    if acao == "cima":
+                        # Navegar para linha anterior
+                        if linha_atual_idx > 0:
+                            linha_atual_idx -= 1
+                            linha_y_atual = linhas_y_ordenadas[linha_atual_idx]
+                            opcoes_na_linha = linhas_opcoes[linha_y_atual]
+                            # Ajustar opção horizontal para não ultrapassar
+                            opcao_horizontal_atual = min(opcao_horizontal_atual, len(opcoes_na_linha) - 1)
+                    elif acao == "baixo":
+                        # Navegar para próxima linha
+                        if linha_atual_idx < len(linhas_y_ordenadas) - 1:
+                            linha_atual_idx += 1
+                            linha_y_atual = linhas_y_ordenadas[linha_atual_idx]
+                            opcoes_na_linha = linhas_opcoes[linha_y_atual]
+                            # Ajustar opção horizontal para não ultrapassar
+                            opcao_horizontal_atual = min(opcao_horizontal_atual, len(opcoes_na_linha) - 1)
+                    elif acao == "esquerda":
+                        # Navegar para opção anterior na linha horizontal
+                        if "opcao" in resultado_controle:
+                            opcao_horizontal_atual = max(0, resultado_controle["opcao"])
+                        else:
+                            # Se não tem opção, calcular manualmente
+                            opcao_horizontal_atual = max(0, opcao_horizontal_atual - 1)
+                    elif acao == "direita":
+                        # Navegar para próxima opção na linha horizontal
+                        if "opcao" in resultado_controle:
+                            opcao_horizontal_atual = min(len(opcoes_na_linha) - 1, resultado_controle["opcao"])
+                        else:
+                            # Se não tem opção, calcular manualmente
+                            opcao_horizontal_atual = min(len(opcoes_na_linha) - 1, opcao_horizontal_atual + 1)
+                    elif acao == "confirmar":
+                        # Selecionar a opção atual ou iniciar jogo
+                        linha_y_atual = linhas_y_ordenadas[linha_atual_idx]
+                        opcoes_na_linha = linhas_opcoes[linha_y_atual]
+                        if opcao_horizontal_atual < len(opcoes_na_linha):
+                            secao, indice, _, _ = opcoes_na_linha[opcao_horizontal_atual]
+                            if secao == "modo":
+                                opcao_modo_atual = indice
+                                modo_jogo_atual = opcoes_modo[opcao_modo_atual][1]
+                            elif secao == "tipo":
+                                opcao_tipo_atual = indice
+                                tipo_jogo_atual = opcoes_tipo[opcao_tipo_atual][1]
+                            elif secao == "voltas":
+                                if tipo_jogo_atual in (TipoJogo.CORRIDA, TipoJogo.DRIFT, TipoJogo.GHOST):
+                                    opcao_voltas_atual = indice
+                                    voltas_atual = opcoes_voltas[opcao_voltas_atual][1]
+                            elif secao == "dificuldade":
+                                if modo_jogo_atual == ModoJogo.UM_JOGADOR or modo_jogo_atual == ModoJogo.DOIS_JOGADORES:
+                                    opcao_dificuldade_atual = indice
+                                    dificuldade_ia_atual = opcoes_dificuldade[opcao_dificuldade_atual][1]
+                            elif secao == "iniciar":
+                                # Abrir seleção de fase antes de iniciar o jogo (não seleciona, apenas inicia)
+                                fase_selecionada = selecionar_fase_loop(screen)
+                                if fase_selecionada is not None:
+                                    return (modo_jogo_atual, tipo_jogo_atual, voltas_atual, dificuldade_ia_atual, fase_selecionada)
+                                # Se cancelou a seleção de fase, continuar no menu
+                                continue
+                            elif secao == "voltar":
+                                # Voltar ao menu principal
+                                return None
+                    elif acao == "cancelar":
+                        # Voltar
+                        return None
+            
+            # Se processou evento de controle, não processar mouse/teclado para esse evento
+            if controle_processado:
+                continue
+            
+            if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                 # Verificar clique no pop-up de música primeiro
                 clique_popup = popup_musica.verificar_clique(ev.pos[0], ev.pos[1])
                 if clique_popup == "anterior":
@@ -4236,6 +6521,26 @@ def modo_jogo_loop(screen):
                 opcao_fundo.fill(cor_fundo)
                 screen.blit(opcao_fundo, (caixa_x + 50, y - 5))
             
+            # Desenhar cursor do controle (caixa animada) para modo
+            # Verificar se esta opção está sendo navegada (não selecionada)
+            cursor_na_opcao = False
+            if linha_atual_idx < len(linhas_y_ordenadas):
+                linha_y_atual = linhas_y_ordenadas[linha_atual_idx]
+                opcoes_na_linha = linhas_opcoes[linha_y_atual]
+                if opcao_horizontal_atual < len(opcoes_na_linha):
+                    secao_cursor, indice_cursor, _, _ = opcoes_na_linha[opcao_horizontal_atual]
+                    if secao_cursor == "modo" and indice_cursor == i:
+                        cursor_na_opcao = True
+            if cursor_na_opcao and gerenciador_gamepad.obter_numero_controles() > 0:
+                tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                cursor_rect = pygame.Rect(
+                    caixa_x + 50 - tamanho_cursor,
+                    y - 5 - tamanho_cursor,
+                    200 + tamanho_cursor * 2,
+                    40 + tamanho_cursor * 2
+                )
+                pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
+            
             # Desenhar texto
             texto = render_text(nome, 20, cor_texto, bold=True, pixel_style=True)
             screen.blit(texto, (caixa_x + 60, y))
@@ -4295,6 +6600,26 @@ def modo_jogo_loop(screen):
                 opcao_fundo.fill(cor_fundo)
                 screen.blit(opcao_fundo, (x, y - 5))
             
+            # Desenhar cursor do controle (caixa animada) para tipo
+            # Verificar se esta opção está sendo navegada (não selecionada)
+            cursor_na_opcao = False
+            if linha_atual_idx < len(linhas_y_ordenadas):
+                linha_y_atual = linhas_y_ordenadas[linha_atual_idx]
+                opcoes_na_linha = linhas_opcoes[linha_y_atual]
+                if opcao_horizontal_atual < len(opcoes_na_linha):
+                    secao_cursor, indice_cursor, _, _ = opcoes_na_linha[opcao_horizontal_atual]
+                    if secao_cursor == "tipo" and indice_cursor == i:
+                        cursor_na_opcao = True
+            if cursor_na_opcao and gerenciador_gamepad.obter_numero_controles() > 0:
+                tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                cursor_rect = pygame.Rect(
+                    x - tamanho_cursor,
+                    y - 5 - tamanho_cursor,
+                    200 + tamanho_cursor * 2,
+                    40 + tamanho_cursor * 2
+                )
+                pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
+            
             # Desenhar texto
             texto = render_text(nome, 20, cor_texto, bold=True, pixel_style=True)
             screen.blit(texto, (x + 10, y))
@@ -4338,6 +6663,26 @@ def modo_jogo_loop(screen):
                     opcao_fundo = pygame.Surface((140, 40), pygame.SRCALPHA)
                     opcao_fundo.fill(cor_fundo)
                     screen.blit(opcao_fundo, (x, y - 5))
+                
+                # Desenhar cursor do controle (caixa animada) para voltas
+                # Verificar se esta opção está sendo navegada (não selecionada)
+                cursor_na_opcao = False
+                if linha_atual_idx < len(linhas_y_ordenadas):
+                    linha_y_atual = linhas_y_ordenadas[linha_atual_idx]
+                    opcoes_na_linha = linhas_opcoes[linha_y_atual]
+                    if opcao_horizontal_atual < len(opcoes_na_linha):
+                        secao_cursor, indice_cursor, _, _ = opcoes_na_linha[opcao_horizontal_atual]
+                        if secao_cursor == "voltas" and indice_cursor == i:
+                            cursor_na_opcao = True
+                if cursor_na_opcao and gerenciador_gamepad.obter_numero_controles() > 0:
+                    tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                    cursor_rect = pygame.Rect(
+                        x - tamanho_cursor,
+                        y - 5 - tamanho_cursor,
+                        140 + tamanho_cursor * 2,
+                        40 + tamanho_cursor * 2
+                    )
+                    pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
                 
                 # Desenhar texto centralizado
                 texto = render_text(nome, 18, cor_texto, bold=True, pixel_style=True)
@@ -4392,6 +6737,26 @@ def modo_jogo_loop(screen):
                     opcao_fundo.fill(cor_fundo)
                     screen.blit(opcao_fundo, (x, y - 5))
                 
+                # Desenhar cursor do controle (caixa animada) para dificuldade
+                # Verificar se esta opção está sendo navegada (não selecionada)
+                cursor_na_opcao = False
+                if linha_atual_idx < len(linhas_y_ordenadas):
+                    linha_y_atual = linhas_y_ordenadas[linha_atual_idx]
+                    opcoes_na_linha = linhas_opcoes[linha_y_atual]
+                    if opcao_horizontal_atual < len(opcoes_na_linha):
+                        secao_cursor, indice_cursor, _, _ = opcoes_na_linha[opcao_horizontal_atual]
+                        if secao_cursor == "dificuldade" and indice_cursor == i:
+                            cursor_na_opcao = True
+                if cursor_na_opcao and gerenciador_gamepad.obter_numero_controles() > 0:
+                    tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                    cursor_rect = pygame.Rect(
+                        x - tamanho_cursor,
+                        y - 5 - tamanho_cursor,
+                        140 + tamanho_cursor * 2,
+                        40 + tamanho_cursor * 2
+                    )
+                    pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
+                
                 # Desenhar texto centralizado
                 texto = render_text(nome, 18, cor_texto, bold=True, pixel_style=True)
                 texto_x = x + (140 - texto.get_width()) // 2  # Centralizar horizontalmente
@@ -4412,9 +6777,30 @@ def modo_jogo_loop(screen):
         voltar_hover = voltar_rect.collidepoint(mouse_x, mouse_y)
         if voltar_hover:
             pygame.draw.rect(screen, (0, 200, 255, 50), voltar_rect)
-        from core.i18n import t
         voltar_texto = render_text(t("menu.selecionar_mapa.voltar"), 24, (0, 200, 255) if voltar_hover else (255, 255, 255), bold=True, pixel_style=True)
         screen.blit(voltar_texto, (caixa_x + 280, caixa_y + caixa_altura - 53))
+        
+        # Desenhar cursor do controle (caixa animada) para botão iniciar e voltar
+        if linha_atual_idx < len(linhas_y_ordenadas):
+            linha_y_atual = linhas_y_ordenadas[linha_atual_idx]
+            opcoes_na_linha = linhas_opcoes[linha_y_atual]
+            if opcao_horizontal_atual < len(opcoes_na_linha):
+                secao_cursor, indice_cursor, x_cursor, y_cursor = opcoes_na_linha[opcao_horizontal_atual]
+                if secao_cursor in ("iniciar", "voltar") and gerenciador_gamepad.obter_numero_controles() > 0:
+                    tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                    if secao_cursor == "iniciar":
+                        cursor_largura = 200
+                        cursor_altura = 50
+                    else:  # voltar
+                        cursor_largura = 200
+                        cursor_altura = 40
+                    cursor_rect = pygame.Rect(
+                        x_cursor - tamanho_cursor,
+                        y_cursor - tamanho_cursor,
+                        cursor_largura + tamanho_cursor * 2,
+                        cursor_altura + tamanho_cursor * 2
+                    )
+                    pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
         
         
         # Desenhar popup de música
@@ -4491,6 +6877,13 @@ def selecionar_fase_loop(screen):
     fase_selecionada = 1
     clock = pygame.time.Clock()
     
+    # Variáveis para cursor do controle (indicador visual)
+    animacao_cursor = 0.0  # Animação do cursor (0.0 a 1.0)
+    velocidade_animacao_cursor = 3.0  # Velocidade da animação
+    
+    # Variável para rastrear se o botão voltar está selecionado
+    voltar_selecionado = False
+    
     # Layout
     caixa_largura = 700
     caixa_altura = 550
@@ -4517,27 +6910,146 @@ def selecionar_fase_loop(screen):
         gerenciador_musica.verificar_fim_musica()
         popup_musica.atualizar(dt)
         
+        # Atualizar animação do cursor do controle
+        animacao_cursor += dt * velocidade_animacao_cursor
+        if animacao_cursor >= 1.0:
+            animacao_cursor = 0.0
+        
         mouse_x, mouse_y = pygame.mouse.get_pos()
         popup_musica.verificar_hover(mouse_x, mouse_y)
         
-        # Atualizar animações de hover
-        for i in range(9):
-            fase_num = i + 1
-            col = i % colunas
-            linha = i // colunas
-            x = grid_x + col * (minimapa_tamanho + espacamento)
-            y = grid_y + linha * (minimapa_tamanho + espacamento)
-            rect = pygame.Rect(x, y, minimapa_tamanho, minimapa_tamanho)
-            
-            is_hovering = rect.collidepoint(mouse_x, mouse_y)
-            if is_hovering:
-                hover_animation[i] = min(1.0, hover_animation[i] + hover_speed * dt)
-            else:
-                hover_animation[i] = max(0.0, hover_animation[i] - hover_speed * dt)
+        # Atualizar animações de hover (apenas se o botão voltar não estiver selecionado)
+        if not voltar_selecionado:
+            for i in range(9):
+                fase_num = i + 1
+                col = i % colunas
+                linha = i // colunas
+                x = grid_x + col * (minimapa_tamanho + espacamento)
+                y = grid_y + linha * (minimapa_tamanho + espacamento)
+                rect = pygame.Rect(x, y, minimapa_tamanho, minimapa_tamanho)
+                
+                is_hovering = rect.collidepoint(mouse_x, mouse_y)
+                if is_hovering:
+                    hover_animation[i] = min(1.0, hover_animation[i] + hover_speed * dt)
+                else:
+                    hover_animation[i] = max(0.0, hover_animation[i] - hover_speed * dt)
+        else:
+            # Se o botão voltar está selecionado, desativar todos os hovers dos mapas
+            for i in range(9):
+                hover_animation[i] = max(0.0, hover_animation[i] - hover_speed * dt * 2)
         
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 return None
+            
+            # Processar eventos de controle ANTES de outros eventos
+            controle_processado = False
+            if gerenciador_gamepad.obter_numero_controles() > 0:
+                from core.menu_controles import processar_eventos_controle_menu
+                tempo_atual = pygame.time.get_ticks()
+                
+                # Grid navigation (3x3)
+                # Calcular posição atual no grid
+                fase_idx = fase_selecionada - 1  # Converter para índice 0-8
+                linha_atual = fase_idx // colunas
+                col_atual = fase_idx % colunas
+                
+                # Processar o evento baseado no tipo de ação
+                # Para D-pad: botão 11=cima, 12=baixo, 13=esquerda, 14=direita
+                # Para analógico: eixo 1=vertical, eixo 0=horizontal
+                resultado_final = None
+                
+                if ev.type == pygame.JOYBUTTONDOWN:
+                    if ev.button == 11:  # D-pad Up
+                        if voltar_selecionado:
+                            # Se voltar está selecionado, voltar para a última linha do grid
+                            voltar_selecionado = False
+                            fase_selecionada = 7  # Última linha, primeira coluna
+                            controle_processado = True
+                        else:
+                            resultado_final = processar_eventos_controle_menu(ev, linha_atual, 0, joystick_id=0, tempo_atual=tempo_atual)
+                    elif ev.button == 12:  # D-pad Down
+                        if voltar_selecionado:
+                            # Já está no voltar, não fazer nada
+                            controle_processado = True
+                        else:
+                            resultado_final = processar_eventos_controle_menu(ev, linha_atual, 0, joystick_id=0, tempo_atual=tempo_atual)
+                    elif ev.button == 13:  # D-pad Left
+                        if not voltar_selecionado:
+                            resultado_final = processar_eventos_controle_menu(ev, col_atual, colunas, joystick_id=0, tempo_atual=tempo_atual)
+                    elif ev.button == 14:  # D-pad Right
+                        if not voltar_selecionado:
+                            resultado_final = processar_eventos_controle_menu(ev, col_atual, colunas, joystick_id=0, tempo_atual=tempo_atual)
+                    elif ev.button == 0:  # X - confirmar
+                        if voltar_selecionado:
+                            return None  # Voltar
+                        else:
+                            return fase_selecionada
+                    elif ev.button == 1:  # Circle - cancelar
+                        return None
+                elif ev.type == pygame.JOYAXISMOTION:
+                    if ev.axis == 1:  # Eixo vertical
+                        if voltar_selecionado:
+                            # Se voltar está selecionado, processar movimento para voltar ao grid
+                            valor = ev.value
+                            if valor < -0.7:  # Movimento para cima
+                                voltar_selecionado = False
+                                fase_selecionada = 7  # Última linha, primeira coluna
+                                controle_processado = True
+                        else:
+                            resultado_final = processar_eventos_controle_menu(ev, linha_atual, 0, joystick_id=0, tempo_atual=tempo_atual)
+                    elif ev.axis == 0:  # Eixo horizontal
+                        if not voltar_selecionado:
+                            resultado_final = processar_eventos_controle_menu(ev, col_atual, colunas, joystick_id=0, tempo_atual=tempo_atual)
+                
+                # Processar o resultado final
+                if resultado_final:
+                    controle_processado = True
+                    acao = resultado_final.get("acao")
+                    
+                    if acao == "cima":
+                        # Mover para linha acima
+                        nova_linha = max(0, linha_atual - 1)
+                        fase_selecionada = nova_linha * colunas + col_atual + 1
+                        voltar_selecionado = False
+                    elif acao == "baixo":
+                        # Mover para linha abaixo
+                        nova_linha = min(2, linha_atual + 1)  # Máximo 2 linhas (0, 1, 2)
+                        if nova_linha == 2 and linha_atual == 2:
+                            # Se já está na última linha e pressionou baixo novamente, ir para voltar
+                            voltar_selecionado = True
+                        else:
+                            fase_selecionada = nova_linha * colunas + col_atual + 1
+                            voltar_selecionado = False
+                    elif acao == "esquerda":
+                        # Mover para coluna à esquerda
+                        if "opcao" in resultado_final:
+                            nova_col = resultado_final["opcao"]
+                        else:
+                            nova_col = max(0, col_atual - 1)
+                        fase_selecionada = linha_atual * colunas + nova_col + 1
+                        voltar_selecionado = False
+                    elif acao == "direita":
+                        # Mover para coluna à direita
+                        if "opcao" in resultado_final:
+                            nova_col = resultado_final["opcao"]
+                        else:
+                            nova_col = min(colunas - 1, col_atual + 1)
+                        fase_selecionada = linha_atual * colunas + nova_col + 1
+                        voltar_selecionado = False
+                    elif acao == "confirmar":
+                        if voltar_selecionado:
+                            return None
+                        else:
+                            return fase_selecionada
+                    elif acao == "cancelar":
+                        return None
+                
+            
+            # Se processou evento de controle, não processar mouse/teclado para esse evento
+            if controle_processado:
+                continue
+            
             if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                 # Verificar clique em minimapa
                 for i in range(9):
@@ -4563,14 +7075,27 @@ def selecionar_fase_loop(screen):
             elif ev.type == pygame.KEYDOWN:
                 if ev.key == pygame.K_ESCAPE:
                     return None
-                elif ev.key in (pygame.K_LEFT, pygame.K_a):
-                    fase_selecionada = max(1, fase_selecionada - 1)
+                # Grid navigation (3x3)
+                fase_idx = fase_selecionada - 1  # Converter para índice 0-8
+                linha_atual = fase_idx // colunas
+                col_atual = fase_idx % colunas
+                
+                if ev.key in (pygame.K_LEFT, pygame.K_a):
+                    # Mover para coluna à esquerda
+                    nova_col = max(0, col_atual - 1)
+                    fase_selecionada = linha_atual * colunas + nova_col + 1
                 elif ev.key in (pygame.K_RIGHT, pygame.K_d):
-                    fase_selecionada = min(9, fase_selecionada + 1)
+                    # Mover para coluna à direita
+                    nova_col = min(colunas - 1, col_atual + 1)
+                    fase_selecionada = linha_atual * colunas + nova_col + 1
                 elif ev.key in (pygame.K_UP, pygame.K_w):
-                    fase_selecionada = max(1, fase_selecionada - 3)
+                    # Mover para linha acima
+                    nova_linha = max(0, linha_atual - 1)
+                    fase_selecionada = nova_linha * colunas + col_atual + 1
                 elif ev.key in (pygame.K_DOWN, pygame.K_s):
-                    fase_selecionada = min(9, fase_selecionada + 3)
+                    # Mover para linha abaixo
+                    nova_linha = min(2, linha_atual + 1)  # Máximo 2 linhas (0, 1, 2)
+                    fase_selecionada = nova_linha * colunas + col_atual + 1
                 elif ev.key == pygame.K_RETURN or ev.key == pygame.K_SPACE:
                     return fase_selecionada
                 elif ev.key == pygame.K_m:
@@ -4607,8 +7132,9 @@ def selecionar_fase_loop(screen):
             y = grid_y + linha * (minimapa_tamanho + espacamento)
             
             # Cores baseadas na seleção e hover
-            is_selected = (fase_num == fase_selecionada)
-            hover_progress = hover_animation[i]
+            # Se o botão voltar está selecionado, não mostrar nenhum mapa como selecionado
+            is_selected = (fase_num == fase_selecionada) and not voltar_selecionado
+            hover_progress = hover_animation[i] if not voltar_selecionado else 0.0
             
             if is_selected:
                 cor_borda = (0, 200, 255)
@@ -4617,8 +7143,8 @@ def selecionar_fase_loop(screen):
                 cor_borda = (128, 128, 128)
                 espessura_borda = 2
             
-            # Aplicar hover
-            if hover_progress > 0:
+            # Aplicar hover apenas se o botão voltar não estiver selecionado
+            if hover_progress > 0 and not voltar_selecionado:
                 cor_borda_hover = (0, 255, 0)
                 cor_borda = (
                     int(cor_borda[0] + (cor_borda_hover[0] - cor_borda[0]) * hover_progress),
@@ -4629,6 +7155,17 @@ def selecionar_fase_loop(screen):
             # Desenhar fundo do minimapa
             pygame.draw.rect(screen, (0, 0, 0), (x, y, minimapa_tamanho, minimapa_tamanho))
             pygame.draw.rect(screen, cor_borda, (x, y, minimapa_tamanho, minimapa_tamanho), espessura_borda)
+            
+            # Desenhar cursor do controle (caixa animada) para fase selecionada
+            if is_selected and gerenciador_gamepad.obter_numero_controles() > 0:
+                tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                cursor_rect = pygame.Rect(
+                    x - tamanho_cursor,
+                    y - tamanho_cursor,
+                    minimapa_tamanho + tamanho_cursor * 2,
+                    minimapa_tamanho + tamanho_cursor * 2
+                )
+                pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
             
             # Desenhar minimapa se disponível (usar versão já redimensionada do cache)
             if fase_num in minimapas_redimensionados:
@@ -4669,7 +7206,17 @@ def selecionar_fase_loop(screen):
         voltar_hover = voltar_rect.collidepoint(mouse_x, mouse_y)
         if voltar_hover:
             pygame.draw.rect(screen, (0, 200, 255, 50), voltar_rect)
-        voltar_texto = render_text("VOLTAR", 20, (0, 200, 255) if voltar_hover else (255, 255, 255), bold=True, pixel_style=True)
+        # Desenhar cursor do controle (caixa animada) para botão voltar APENAS se estiver selecionado
+        if voltar_selecionado and gerenciador_gamepad.obter_numero_controles() > 0:
+            tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+            cursor_rect = pygame.Rect(
+                voltar_rect.x - tamanho_cursor,
+                voltar_rect.y - tamanho_cursor,
+                voltar_rect.width + tamanho_cursor * 2,
+                voltar_rect.height + tamanho_cursor * 2
+            )
+            pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
+        voltar_texto = render_text("VOLTAR", 20, (0, 200, 255) if (voltar_hover or voltar_selecionado) else (255, 255, 255), bold=True, pixel_style=True)
         voltar_texto_x = voltar_x + (voltar_largura - voltar_texto.get_width()) // 2
         voltar_texto_y = voltar_y + (voltar_altura - voltar_texto.get_height()) // 2
         screen.blit(voltar_texto, (voltar_texto_x, voltar_texto_y))
@@ -4682,7 +7229,7 @@ def selecionar_fase_loop(screen):
 def recordes_loop(screen):
     """Tela de recordes mostrando melhores tempos por pista (corrida e drift)"""
     from core.progresso import gerenciador_progresso
-    from config import CAMINHO_TROFEU_OURO, CAMINHO_TROFEU_PRATA, CAMINHO_TROFEU_BRONZE, CAMINHO_TROFEU_VAZIO
+    from config import CAMINHO_TROFEU_OURO, CAMINHO_TROFEU_PRATA, CAMINHO_TROFEU_BRONZE, CAMINHO_TROFEU_VAZIO, DIR_ICONS
     
     bg_raw = pygame.image.load(CAMINHO_MENU).convert_alpha()
     bg = scale_to_cover(bg_raw, LARGURA, ALTURA)
@@ -4701,13 +7248,28 @@ def recordes_loop(screen):
     except:
         trofeu_ouro = trofeu_prata = trofeu_bronze = trofeu_vazio = None
     
+    # Carregar ícone de recorde vazio
+    recorde_vazio = None
+    caminho_recorde_vazio = os.path.join(DIR_ICONS, "recorde_vazio.png")
+    if os.path.exists(caminho_recorde_vazio):
+        try:
+            recorde_vazio_raw = pygame.image.load(caminho_recorde_vazio).convert_alpha()
+            recorde_vazio = pygame.transform.scale(recorde_vazio_raw, (40, 40))
+        except:
+            pass
+    
     clock = pygame.time.Clock()
     
-    # Layout - aumentar altura para duas seções
-    caixa_largura = 900
+    # Layout - três seções lado a lado
+    caixa_largura = 1200
     caixa_altura = 650
     caixa_x = (LARGURA - caixa_largura) // 2
     caixa_y = (ALTURA - caixa_altura) // 2
+    
+    # Estado de seleção (cursor começa no botão voltar)
+    voltar_selecionado = True
+    import math
+    animacao_cursor = 0.0
     
     def formatar_tempo(tempo):
         """Formata tempo em segundos para MM:SS.CC"""
@@ -4731,16 +7293,57 @@ def recordes_loop(screen):
     while True:
         dt = clock.tick(FPS) / 1000.0
         
+        # Atualizar animação do cursor
+        animacao_cursor += dt * 3.0
+        
         gerenciador_musica.verificar_fim_musica()
         popup_musica.atualizar(dt)
         
         mouse_x, mouse_y = pygame.mouse.get_pos()
         popup_musica.verificar_hover(mouse_x, mouse_y)
         
+        # Verificar estado contínuo do controle para "hold"
+        if gerenciador_gamepad.obter_numero_controles() > 0:
+            from core.menu_controles import obter_estado_controle_menu
+            estado_controle = obter_estado_controle_menu(joystick_id=0)
+            tempo_atual = pygame.time.get_ticks()
+            
+            # Processar navegação contínua quando botão está sendo mantido pressionado
+            if voltar_selecionado:
+                # Se está no botão voltar, qualquer ação de navegação não faz nada (só confirmar/cancelar)
+                pass
+            else:
+                # Se não está no botão voltar, navegação não faz sentido (só tem um botão)
+                pass
+        
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 return False
-            elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+            
+            # Processar eventos de controle
+            controle_processado = False
+            if gerenciador_gamepad.obter_numero_controles() > 0:
+                from core.menu_controles import processar_eventos_controle_menu
+                tempo_atual = pygame.time.get_ticks()
+                resultado_controle = processar_eventos_controle_menu(ev, 0, 1, joystick_id=0, tempo_atual=tempo_atual)
+                if resultado_controle:
+                    controle_processado = True
+                    acao = resultado_controle.get("acao")
+                    if acao == "cancelar":
+                        return True
+                    elif acao == "confirmar":
+                        # Voltar (mesma lógica do clique)
+                        return True
+                    elif acao in ("cima", "baixo", "esquerda", "direita"):
+                        # Navegação não faz sentido na tela de recordes (só tem um botão)
+                        # Mas manter o cursor no botão voltar
+                        voltar_selecionado = True
+            
+            # Se processou evento de controle, não processar mouse/teclado para esse evento
+            if controle_processado:
+                continue
+            
+            if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                 voltar_largura = 120
                 voltar_altura = 40
                 voltar_x = caixa_x + (caixa_largura - voltar_largura) // 2
@@ -4777,63 +7380,74 @@ def recordes_loop(screen):
         fonte_item = pygame.font.SysFont("consolas", 16)
         fonte_secao = pygame.font.SysFont("consolas", 20, bold=True)
         
+        # Criar superfície para conteúdo com scroll
+        conteudo_surface = pygame.Surface((caixa_largura, caixa_altura - 100), pygame.SRCALPHA)
+        conteudo_surface.fill((0, 0, 0, 0))
+        
         # === SEÇÃO CORRIDA ===
         from core.i18n import t
-        y_secao_corrida = caixa_y + 70
+        y_secao_corrida = 20
         titulo_corrida = fonte_secao.render(t("recordes.corrida"), True, (0, 200, 255))
-        screen.blit(titulo_corrida, (caixa_x + 30, y_secao_corrida))
+        conteudo_surface.blit(titulo_corrida, (30, y_secao_corrida))
         
         y_inicial_corrida = y_secao_corrida + 35
-        x_pista = caixa_x + 30
-        x_trofeu = caixa_x + 150
-        x_tempo = caixa_x + 220
+        x_pista = 30
+        x_trofeu = 150
+        x_tempo = 220
         
         # Cabeçalhos corrida
         cabecalho_pista = fonte_cabecalho.render(t("recordes.pista"), True, (255, 255, 255))
         cabecalho_trofeu = fonte_cabecalho.render(t("recordes.trofeu"), True, (255, 255, 255))
         cabecalho_tempo = fonte_cabecalho.render(t("recordes.melhor_tempo"), True, (255, 255, 255))
         
-        screen.blit(cabecalho_pista, (x_pista, y_inicial_corrida))
-        screen.blit(cabecalho_trofeu, (x_trofeu, y_inicial_corrida))
-        screen.blit(cabecalho_tempo, (x_tempo, y_inicial_corrida))
+        conteudo_surface.blit(cabecalho_pista, (x_pista, y_inicial_corrida))
+        conteudo_surface.blit(cabecalho_trofeu, (x_trofeu, y_inicial_corrida))
+        conteudo_surface.blit(cabecalho_tempo, (x_tempo, y_inicial_corrida))
         
         # Linha separadora
-        pygame.draw.line(screen, (128, 128, 128), 
-                        (caixa_x + 20, y_inicial_corrida + 30), 
-                        (caixa_x + caixa_largura // 2 - 20, y_inicial_corrida + 30), 2)
+        pygame.draw.line(conteudo_surface, (128, 128, 128), 
+                        (20, y_inicial_corrida + 30), 
+                        (caixa_largura // 3 - 20, y_inicial_corrida + 30), 2)
         
         # Listar recordes de corrida das 9 pistas
         y_atual = y_inicial_corrida + 45
         for pista_num in range(1, 10):
             # Nome da pista
             texto_pista = fonte_item.render(t("recordes.pista_numero").format(pista_num), True, (255, 255, 255))
-            screen.blit(texto_pista, (x_pista, y_atual))
+            conteudo_surface.blit(texto_pista, (x_pista, y_atual))
             
             # Troféu (sempre mostrar, vazio se não ganhou)
             trofeu_tipo = gerenciador_progresso.obter_trofeu(pista_num)
-            if trofeu_tipo == "ouro" and trofeu_ouro:
-                screen.blit(trofeu_ouro, (x_trofeu, y_atual - 5))
+            recorde = gerenciador_progresso.obter_recorde(pista_num)
+            
+            # Se não tem recorde, mostrar ícone de recorde vazio
+            if recorde is None:
+                if recorde_vazio:
+                    conteudo_surface.blit(recorde_vazio, (x_trofeu, y_atual - 5))
+                elif trofeu_vazio:
+                    conteudo_surface.blit(trofeu_vazio, (x_trofeu, y_atual - 5))
+            elif trofeu_tipo == "ouro" and trofeu_ouro:
+                conteudo_surface.blit(trofeu_ouro, (x_trofeu, y_atual - 5))
             elif trofeu_tipo == "prata" and trofeu_prata:
-                screen.blit(trofeu_prata, (x_trofeu, y_atual - 5))
+                conteudo_surface.blit(trofeu_prata, (x_trofeu, y_atual - 5))
             elif trofeu_tipo == "bronze" and trofeu_bronze:
-                screen.blit(trofeu_bronze, (x_trofeu, y_atual - 5))
+                conteudo_surface.blit(trofeu_bronze, (x_trofeu, y_atual - 5))
             else:
                 if trofeu_vazio:
-                    screen.blit(trofeu_vazio, (x_trofeu, y_atual - 5))
+                    conteudo_surface.blit(trofeu_vazio, (x_trofeu, y_atual - 5))
             
             # Tempo
-            recorde = gerenciador_progresso.obter_recorde(pista_num)
             texto_tempo = fonte_item.render(formatar_tempo(recorde), True, 
                                           (0, 255, 0) if recorde else (128, 128, 128))
-            screen.blit(texto_tempo, (x_tempo, y_atual))
+            conteudo_surface.blit(texto_tempo, (x_tempo, y_atual))
             
-            y_atual += 35
+            y_atual += 45
         
         # === SEÇÃO DRIFT ===
-        y_secao_drift = caixa_y + 70
-        x_drift = caixa_x + caixa_largura // 2 + 30
+        y_secao_drift = 20
+        x_drift = caixa_largura // 3 + 30
         titulo_drift = fonte_secao.render(t("recordes.drift"), True, (255, 200, 0))
-        screen.blit(titulo_drift, (x_drift, y_secao_drift))
+        conteudo_surface.blit(titulo_drift, (x_drift, y_secao_drift))
         
         y_inicial_drift = y_secao_drift + 35
         x_pista_drift = x_drift
@@ -4845,14 +7459,14 @@ def recordes_loop(screen):
         cabecalho_trofeu_drift = fonte_cabecalho.render(t("recordes.trofeu"), True, (255, 255, 255))
         cabecalho_score = fonte_cabecalho.render(t("jogo.melhor_score"), True, (255, 255, 255))
         
-        screen.blit(cabecalho_pista_drift, (x_pista_drift, y_inicial_drift))
-        screen.blit(cabecalho_trofeu_drift, (x_trofeu_drift, y_inicial_drift))
-        screen.blit(cabecalho_score, (x_score_drift, y_inicial_drift))
+        conteudo_surface.blit(cabecalho_pista_drift, (x_pista_drift, y_inicial_drift))
+        conteudo_surface.blit(cabecalho_trofeu_drift, (x_trofeu_drift, y_inicial_drift))
+        conteudo_surface.blit(cabecalho_score, (x_score_drift, y_inicial_drift))
         
         # Linha separadora
-        pygame.draw.line(screen, (128, 128, 128), 
+        pygame.draw.line(conteudo_surface, (128, 128, 128), 
                         (x_drift - 10, y_inicial_drift + 30), 
-                        (caixa_x + caixa_largura - 20, y_inicial_drift + 30), 2)
+                        (caixa_largura // 3 * 2 - 20, y_inicial_drift + 30), 2)
         
         # Função para determinar troféu por pontuação
         def obter_trofeu_por_pontuacao(pontuacao):
@@ -4873,28 +7487,112 @@ def recordes_loop(screen):
         for pista_num in range(1, 10):
             # Nome da pista
             texto_pista = fonte_item.render(t("recordes.pista_numero").format(pista_num), True, (255, 255, 255))
-            screen.blit(texto_pista, (x_pista_drift, y_atual_drift))
+            conteudo_surface.blit(texto_pista, (x_pista_drift, y_atual_drift))
             
             # Troféu baseado na pontuação
             recorde_drift = gerenciador_progresso.obter_recorde_drift(pista_num)
             trofeu_tipo_drift = obter_trofeu_por_pontuacao(recorde_drift)
-            if trofeu_tipo_drift == "ouro" and trofeu_ouro:
-                screen.blit(trofeu_ouro, (x_trofeu_drift, y_atual_drift - 5))
+            
+            # Se não tem recorde, mostrar ícone de recorde vazio
+            if recorde_drift is None:
+                if recorde_vazio:
+                    conteudo_surface.blit(recorde_vazio, (x_trofeu_drift, y_atual_drift - 5))
+                elif trofeu_vazio:
+                    conteudo_surface.blit(trofeu_vazio, (x_trofeu_drift, y_atual_drift - 5))
+            elif trofeu_tipo_drift == "ouro" and trofeu_ouro:
+                conteudo_surface.blit(trofeu_ouro, (x_trofeu_drift, y_atual_drift - 5))
             elif trofeu_tipo_drift == "prata" and trofeu_prata:
-                screen.blit(trofeu_prata, (x_trofeu_drift, y_atual_drift - 5))
+                conteudo_surface.blit(trofeu_prata, (x_trofeu_drift, y_atual_drift - 5))
             elif trofeu_tipo_drift == "bronze" and trofeu_bronze:
-                screen.blit(trofeu_bronze, (x_trofeu_drift, y_atual_drift - 5))
+                conteudo_surface.blit(trofeu_bronze, (x_trofeu_drift, y_atual_drift - 5))
             else:
                 # Sempre mostrar troféu vazio se não ganhou troféu
                 if trofeu_vazio:
-                    screen.blit(trofeu_vazio, (x_trofeu_drift, y_atual_drift - 5))
+                    conteudo_surface.blit(trofeu_vazio, (x_trofeu_drift, y_atual_drift - 5))
             
             # Score
             texto_score = fonte_item.render(formatar_score(recorde_drift), True, 
                                           (255, 200, 0) if recorde_drift else (128, 128, 128))
-            screen.blit(texto_score, (x_score_drift, y_atual_drift))
+            conteudo_surface.blit(texto_score, (x_score_drift, y_atual_drift))
             
-            y_atual_drift += 35
+            y_atual_drift += 45
+        
+        # === SEÇÃO RELÓGIO ===
+        from core.ghost import GerenciadorGhosts
+        gerenciador_ghosts = GerenciadorGhosts()
+        
+        y_secao_relogio = 20
+        x_relogio = caixa_largura // 3 * 2 + 30
+        titulo_relogio = fonte_secao.render(t("recordes.relogio"), True, (100, 255, 100))
+        conteudo_surface.blit(titulo_relogio, (x_relogio, y_secao_relogio))
+        
+        y_inicial_relogio = y_secao_relogio + 35
+        x_pista_relogio = x_relogio
+        x_trofeu_relogio = x_relogio + 120
+        x_tempo_relogio = x_relogio + 200
+        
+        # Cabeçalhos relógio
+        cabecalho_pista_relogio = fonte_cabecalho.render(t("recordes.pista"), True, (255, 255, 255))
+        cabecalho_trofeu_relogio = fonte_cabecalho.render(t("recordes.trofeu"), True, (255, 255, 255))
+        cabecalho_tempo_relogio = fonte_cabecalho.render(t("recordes.melhor_tempo"), True, (255, 255, 255))
+        
+        conteudo_surface.blit(cabecalho_pista_relogio, (x_pista_relogio, y_inicial_relogio))
+        conteudo_surface.blit(cabecalho_trofeu_relogio, (x_trofeu_relogio, y_inicial_relogio))
+        conteudo_surface.blit(cabecalho_tempo_relogio, (x_tempo_relogio, y_inicial_relogio))
+        
+        # Linha separadora
+        pygame.draw.line(conteudo_surface, (128, 128, 128), 
+                        (x_relogio - 10, y_inicial_relogio + 30), 
+                        (caixa_largura - 20, y_inicial_relogio + 30), 2)
+        
+        # Listar recordes de relógio das 9 pistas
+        y_atual_relogio = y_inicial_relogio + 45
+        for pista_num in range(1, 10):
+            # Nome da pista
+            texto_pista = fonte_item.render(t("recordes.pista_numero").format(pista_num), True, (255, 255, 255))
+            conteudo_surface.blit(texto_pista, (x_pista_relogio, y_atual_relogio))
+            
+            # Verificar se há ghost (que indica que há um recorde)
+            ghost = gerenciador_ghosts.obter_ghost(pista_num)
+            if ghost and len(ghost) > 0:
+                # Calcular tempo do ghost (último frame tem o tempo)
+                tempo_ghost = ghost[-1][0] if ghost else None
+                
+                # Troféu baseado no tempo (usar mesmo sistema de troféus de corrida)
+                trofeu_tipo = gerenciador_progresso.obter_trofeu(pista_num)
+                
+                # Se não tem tempo de ghost, mostrar ícone de recorde vazio
+                if tempo_ghost is None:
+                    if recorde_vazio:
+                        conteudo_surface.blit(recorde_vazio, (x_trofeu_relogio, y_atual_relogio - 5))
+                    elif trofeu_vazio:
+                        conteudo_surface.blit(trofeu_vazio, (x_trofeu_relogio, y_atual_relogio - 5))
+                elif trofeu_tipo == "ouro" and trofeu_ouro:
+                    conteudo_surface.blit(trofeu_ouro, (x_trofeu_relogio, y_atual_relogio - 5))
+                elif trofeu_tipo == "prata" and trofeu_prata:
+                    conteudo_surface.blit(trofeu_prata, (x_trofeu_relogio, y_atual_relogio - 5))
+                elif trofeu_tipo == "bronze" and trofeu_bronze:
+                    conteudo_surface.blit(trofeu_bronze, (x_trofeu_relogio, y_atual_relogio - 5))
+                else:
+                    if trofeu_vazio:
+                        conteudo_surface.blit(trofeu_vazio, (x_trofeu_relogio, y_atual_relogio - 5))
+                
+                # Tempo
+                texto_tempo = fonte_item.render(formatar_tempo(tempo_ghost), True, (100, 255, 100))
+                conteudo_surface.blit(texto_tempo, (x_tempo_relogio, y_atual_relogio))
+            else:
+                # Sem recorde
+                if recorde_vazio:
+                    conteudo_surface.blit(recorde_vazio, (x_trofeu_relogio, y_atual_relogio - 5))
+                elif trofeu_vazio:
+                    conteudo_surface.blit(trofeu_vazio, (x_trofeu_relogio, y_atual_relogio - 5))
+                texto_tempo = fonte_item.render(formatar_tempo(None), True, (128, 128, 128))
+                conteudo_surface.blit(texto_tempo, (x_tempo_relogio, y_atual_relogio))
+            
+            y_atual_relogio += 45
+        
+        # Blitar conteúdo
+        screen.blit(conteudo_surface, (caixa_x, caixa_y + 100))
         
         # Botão voltar
         voltar_largura = 120
@@ -4905,7 +7603,17 @@ def recordes_loop(screen):
         voltar_hover = voltar_rect.collidepoint(mouse_x, mouse_y)
         if voltar_hover:
             pygame.draw.rect(screen, (0, 200, 255, 50), voltar_rect)
-        voltar_texto = render_text("VOLTAR", 20, (0, 200, 255) if voltar_hover else (255, 255, 255), bold=True, pixel_style=True)
+        # Desenhar cursor do controle (caixa animada) para botão voltar se estiver selecionado
+        if voltar_selecionado and gerenciador_gamepad.obter_numero_controles() > 0:
+            tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+            cursor_rect = pygame.Rect(
+                voltar_rect.x - tamanho_cursor,
+                voltar_rect.y - tamanho_cursor,
+                voltar_rect.width + tamanho_cursor * 2,
+                voltar_rect.height + tamanho_cursor * 2
+            )
+            pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
+        voltar_texto = render_text("VOLTAR", 20, (0, 200, 255) if (voltar_hover or voltar_selecionado) else (255, 255, 255), bold=True, pixel_style=True)
         voltar_texto_x = voltar_x + (voltar_largura - voltar_texto.get_width()) // 2
         voltar_texto_y = voltar_y + (voltar_altura - voltar_texto.get_height()) // 2
         screen.blit(voltar_texto, (voltar_texto_x, voltar_texto_y))
@@ -4964,7 +7672,12 @@ def run():
         return  # Usuário fechou a janela na splash screen
     
     while True:
-        escolha = menu_loop(screen)
+        resultado_menu = menu_loop(screen)
+        if isinstance(resultado_menu, tuple) and len(resultado_menu) == 2:
+            escolha, nova_tela = resultado_menu
+            screen = nova_tela
+        else:
+            escolha = resultado_menu
         
         if escolha == Escolha.JOGAR:
             # Abrir tela de seleção de modo de jogo primeiro

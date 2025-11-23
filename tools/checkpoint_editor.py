@@ -26,7 +26,6 @@ import re
 import json
 from pathlib import Path
 
-# Adicionar o diretório src ao path para importar módulos
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from config import LARGURA, ALTURA, FPS, MAPAS_DISPONIVEIS
@@ -113,7 +112,6 @@ class CheckpointEditor:
             return
         
         try:
-            # Calcular limites reais da pista
             limites = self.pista_tiles.calcular_limites_reais_pista(self.numero_pista)
             min_x, min_y, max_x, max_y = limites
             
@@ -276,7 +274,6 @@ class CheckpointEditor:
         if len(self.mapas_disponiveis) <= 1:
             return False
 
-        # Salvar automaticamente antes de trocar
         if self.checkpoints:
             self.salvar_checkpoints()
 
@@ -290,7 +287,6 @@ class CheckpointEditor:
         self.checkpoint_selecionado = -1
         self.checkpoint_em_arraste = -1
         self.carregar_mapa()
-        # carregar_mapa() já invoca carregar_checkpoints()
         print(f"Pista alterada para: GRIP Pista {self.numero_pista}")
         return True
     
@@ -332,11 +328,9 @@ class CheckpointEditor:
                 print(f"Erro: Arquivo não encontrado: {caminho_laps_grip}")
                 return False
             
-            # Ler arquivo atual
             with open(caminho_laps_grip, 'r', encoding='utf-8') as f:
                 linhas = f.readlines()
             
-            # Encontrar o bloco da pista atual
             inicio_bloco = None
             fim_bloco = None
             for i, linha in enumerate(linhas):
@@ -351,7 +345,6 @@ class CheckpointEditor:
                 return False
             
             if fim_bloco is None:
-                # Se não encontrou fim, procurar pelo próximo if/elif ou final da função
                 for i in range(inicio_bloco + 1, len(linhas)):
                     linha_stripped = linhas[i].strip()
                     if linha_stripped.startswith('elif numero_pista ==') or linha_stripped.startswith('else:'):
@@ -360,31 +353,25 @@ class CheckpointEditor:
                 if fim_bloco is None:
                     fim_bloco = len(linhas) - 1
             
-            # Gerar novo código para os checkpoints
             centro_x, centro_y = 2500, 2500
             novo_codigo = []
             novo_codigo.append(f"    if numero_pista == {self.numero_pista}:\n")
             
-            # Adicionar checkpoints individuais (com ângulo)
             for i, cp in enumerate(self.checkpoints):
                 x, y = cp[0], cp[1]
                 angulo = cp[2] if len(cp) > 2 else 0
                 offset_x = x - centro_x
                 offset_y = y - centro_y
-                # Incluir ângulo no checkpoint: (x, y, angulo)
                 novo_codigo.append(f"        checkpoint_{i+1} = (centro_x + {offset_x:.0f}, centro_y + {offset_y:.0f}, {angulo:.0f})  # Ângulo: {angulo:.0f}°\n")
             
-            # Adicionar lista de checkpoints
             novo_codigo.append("        # Checkpoints com ângulo: (x, y, angulo) ou (x, y) para cálculo automático\n")
             novo_codigo.append("        checkpoints = [\n")
             for i in range(len(self.checkpoints)):
                 novo_codigo.append(f"            tuple(checkpoint_{i+1}),\n")
             novo_codigo.append("        ]\n")
             
-            # Substituir o bloco
             novas_linhas = linhas[:inicio_bloco] + novo_codigo + linhas[fim_bloco:]
             
-            # Salvar arquivo
             with open(caminho_laps_grip, 'w', encoding='utf-8') as f:
                 f.writelines(novas_linhas)
             
@@ -399,12 +386,10 @@ class CheckpointEditor:
     def trocar_mapa_por_id(self, numero_pista):
         """Troca para uma nova pista GRIP (1-9)."""
         if 1 <= numero_pista <= 9:
-            # Salvar checkpoints e spawn points atuais da pista anterior
             if self.checkpoints or self.spawn_points:
                 self.salvar_checkpoints()
                 print(f"Dados da pista {self.numero_pista} salvos antes de trocar")
 
-            # Trocar para nova pista
             self.numero_pista = numero_pista
             self.indice_mapa_atual = numero_pista - 1
             self.mapa_atual = f"Pista_{numero_pista}"
@@ -413,9 +398,7 @@ class CheckpointEditor:
             self.spawn_selecionado = -1
             self.spawn_em_arraste = -1
             
-            # Carregar mapa e checkpoints da nova pista
             self.carregar_mapa()
-            # carregar_mapa() já invoca carregar_checkpoints()
             print(f"Trocado para pista GRIP: {numero_pista}")
             return True
         return False
@@ -437,7 +420,6 @@ class CheckpointEditor:
         
         mundo_x, mundo_y = self.camera.tela_para_mundo(x, y)
         
-        # Encontrar checkpoint mais próximo
         melhor_indice = -1
         menor_distancia = float('inf')
         
@@ -456,10 +438,8 @@ class CheckpointEditor:
         """Rotaciona um checkpoint em incremento graus"""
         if 0 <= indice < len(self.checkpoints):
             cp = self.checkpoints[indice]
-            # Garantir que tem ângulo
             if len(cp) == 2:
                 cp.append(0)
-            # Rotacionar
             cp[2] = (cp[2] + incremento) % 360
             print(f"Checkpoint {indice + 1} rotacionado para {cp[2]:.0f}°")
     
@@ -467,7 +447,6 @@ class CheckpointEditor:
         """Move um checkpoint para uma nova posição"""
         if 0 <= indice < len(self.checkpoints):
             cp = self.checkpoints[indice]
-            # Preservar ângulo se existir
             if len(cp) > 2:
                 self.checkpoints[indice] = [int(novo_x), int(novo_y), cp[2]]
             else:
@@ -489,7 +468,6 @@ class CheckpointEditor:
         
         mundo_x, mundo_y = self.camera.tela_para_mundo(x, y)
         
-        # Encontrar spawn point mais próximo
         melhor_indice = -1
         menor_distancia = float('inf')
         
@@ -534,8 +512,6 @@ class CheckpointEditor:
     def encontrar_checkpoint_proximo(self, x, y, raio_base=30):
         """Encontra o checkpoint mais próximo da posição especificada com raio baseado n-o zoom."""
         mundo_x, mundo_y = self.camera.tela_para_mundo(x, y)
-        
-        # Ajustar raio baseado no zoom
         raio = max(15, int(raio_base * self.camera.zoom))
         
         melhor_indice = -1

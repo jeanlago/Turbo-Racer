@@ -7,6 +7,15 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+## [3.2.5] - 2025-11-23
+
+### Modificado
+- **Limpeza de Código** - Removidos comentários inúteis e redundantes de todos os arquivos
+- **Documentação Atualizada** - README e CHANGELOG atualizados com data de 23 de novembro de 2025
+- **Código Mais Limpo** - Mantidos apenas comentários essenciais (docstrings importantes e explicações de lógica complexa)
+
+---
+
 ## [3.2.4] - 2025-11-22
 
 ### Adicionado

@@ -34,6 +34,60 @@ class Particula:
         alpha = int(self.alpha0 * fade_curve)
         return scale, alpha
 
+class EmissorColisao:
+    """Emissor de partículas para colisões (faíscas)"""
+    def __init__(self):
+        self.ps = []
+        self.max_particulas = 30
+        self._frame_atual = 0
+    
+    def spawn(self, x, y, normal_x, normal_y, intensidade=1.0):
+        """Cria partículas de faíscas na posição de colisão"""
+        if len(self.ps) >= self.max_particulas:
+            return
+        
+        num_particulas = int(5 * intensidade)
+        for _ in range(min(num_particulas, 10)):
+            if len(self.ps) >= self.max_particulas:
+                break
+            
+            ang = math.atan2(normal_y, normal_x) + random.uniform(-math.pi/3, math.pi/3)
+            v = random.uniform(100, 200) * intensidade
+            vx = math.cos(ang) * v
+            vy = math.sin(ang) * v
+            life = random.uniform(0.3, 0.6)
+            
+            p = Particula(
+                x, y, vx, vy, life,
+                random.uniform(0, 360),
+                0.5, 0.2, 255, 0,
+                "faisca"
+            )
+            self.ps.append(p)
+    
+    def update(self, dt):
+        for p in self.ps:
+            p.update(dt)
+        self.ps = [p for p in self.ps if p.alive()]
+    
+    def draw(self, surface, camera=None):
+        for p in self.ps:
+            if not p.alive():
+                continue
+            scale, alpha = p.interp()
+            if camera:
+                sx, sy = camera.mundo_para_tela(p.x, p.y)
+            else:
+                sx, sy = int(p.x), int(p.y)
+            
+            cor = (255, 200, 50, alpha)
+            tamanho = int(3 * scale)
+            if tamanho > 0:
+                particula_surf = pygame.Surface((tamanho * 2, tamanho * 2), pygame.SRCALPHA)
+                pygame.draw.circle(particula_surf, cor[:3], (tamanho, tamanho), tamanho)
+                particula_surf.set_alpha(alpha)
+                surface.blit(particula_surf, (sx - tamanho, sy - tamanho))
+
 class EmissorFumaca:
     def __init__(self):
         # Carregar texturas de fumaça
@@ -56,8 +110,8 @@ class EmissorFumaca:
         
         self.ps = []
         self._accum = 0.0
-        self.max_particulas = 80  # Equilibrado para boa performance e efeitos visuais
-        self._particulas_por_frame = 2  # 2 partículas por frame para efeitos visuais
+        self.max_particulas = 80
+        self._particulas_por_frame = 2
         self._frame_atual = 0
 
     def spawn(self, x, y, dirx, diry, taxa_qps, dt):

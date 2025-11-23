@@ -20,6 +20,9 @@ from core.progresso import gerenciador_progresso
 from core.ghost import GhostRecorder, GhostPlayer, gerenciador_ghosts
 from core.achievements import gerenciador_achievements
 from core.popup_achievement import popup_achievement
+from core.estatisticas import gerenciador_estatisticas
+from core.desafios import gerenciador_desafios
+from core.gamepad_manager import gerenciador_gamepad
 from config import CAMINHO_MENU
 
 def carregar_configuracoes_garagem():
@@ -77,7 +80,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     tela_cheia_sem_bordas = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
     qualidade_alta = CONFIGURACOES["video"]["qualidade_alta"]
     vsync = CONFIGURACOES["video"]["vsync"]
-    fps_max = max(CONFIGURACOES["video"]["fps_max"], 200)  # mínimo 200
+    fps_max = max(CONFIGURACOES["video"]["fps_max"], 200)
 
     flags_display = 0
     if fullscreen:
@@ -315,11 +318,28 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             return None
         
         titulo, subtitulo, trofeu, posicao, pontuacao, recompensa, opcao_atual, hover_animation = estado
-        opcoes = [
-            ("REINICIAR JOGO", "reiniciar"),
-            ("TROCAR CARRO", "trocar_carro"),
-            ("MENU PRINCIPAL", "menu")
-        ]
+        # Verificar se está em modo 2 jogadores e se o outro jogador ainda não terminou
+        mostrar_espectador = False
+        if modo_jogo == ModoJogo.DOIS_JOGADORES:
+            if lado == 'esquerdo' and estado_fim_jogo_p2 is None:
+                # Player 1 terminou, mas player 2 ainda não
+                mostrar_espectador = True
+            elif lado == 'direito' and estado_fim_jogo_p1 is None:
+                # Player 2 terminou, mas player 1 ainda não
+                mostrar_espectador = True
+        
+        # Se o outro jogador ainda não terminou, mostrar apenas opção de assistir
+        if mostrar_espectador:
+            opcoes = [
+                ("ASSISTIR JOGADOR", "espectador")
+            ]
+        else:
+            # Ambos terminaram ou modo 1 jogador - mostrar todas as opções
+            opcoes = [
+                ("REINICIAR JOGO", "reiniciar"),
+                ("TROCAR CARRO", "trocar_carro"),
+                ("MENU PRINCIPAL", "menu")
+            ]
         
         caixa_largura = 500
         caixa_altura = 650
@@ -333,10 +353,29 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             caixa_x = (LARGURA - caixa_largura) // 2
             caixa_y = (ALTURA - caixa_altura) // 2
         
-        altura_total_opcoes = 3 * 60
+        altura_total_opcoes = len(opcoes) * 60
         offset_opcoes = caixa_y + caixa_altura - altura_total_opcoes - 20
         if ev.type == pygame.QUIT:
             return "sair"
+        from core.gamepad_manager import gerenciador_gamepad
+        if gerenciador_gamepad.obter_numero_controles() > 0:
+            from core.menu_controles import processar_eventos_controle_menu
+            tempo_atual = pygame.time.get_ticks()
+            resultado_controle = processar_eventos_controle_menu(ev, estado[6], len(opcoes), joystick_id=0, tempo_atual=tempo_atual)
+            if resultado_controle:
+                acao = resultado_controle.get("acao")
+                if acao == "cima" and "opcao" in resultado_controle:
+                    estado[6] = resultado_controle["opcao"]
+                elif acao == "baixo" and "opcao" in resultado_controle:
+                    estado[6] = resultado_controle["opcao"]
+                elif acao == "confirmar":
+                    chave = opcoes[estado[6]][1]
+                    return chave
+                elif acao == "cancelar":
+                    return "menu"
+                else:
+                    return None
+        
         elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
             mouse_x, mouse_y = ev.pos
             if lado == 'esquerdo' and mouse_x >= LARGURA // 2:
@@ -372,11 +411,28 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         from core.menu import render_text, verificar_clique_opcao
         
         titulo, subtitulo, trofeu, posicao, pontuacao, recompensa, opcao_atual, hover_animation = estado
-        opcoes = [
-            ("REINICIAR JOGO", "reiniciar"),
-            ("TROCAR CARRO", "trocar_carro"),
-            ("MENU PRINCIPAL", "menu")
-        ]
+        # Verificar se está em modo 2 jogadores e se o outro jogador ainda não terminou
+        mostrar_espectador = False
+        if modo_jogo == ModoJogo.DOIS_JOGADORES:
+            if lado == 'esquerdo' and estado_fim_jogo_p2 is None:
+                # Player 1 terminou, mas player 2 ainda não
+                mostrar_espectador = True
+            elif lado == 'direito' and estado_fim_jogo_p1 is None:
+                # Player 2 terminou, mas player 1 ainda não
+                mostrar_espectador = True
+        
+        # Se o outro jogador ainda não terminou, mostrar apenas opção de assistir
+        if mostrar_espectador:
+            opcoes = [
+                ("ASSISTIR JOGADOR", "espectador")
+            ]
+        else:
+            # Ambos terminaram ou modo 1 jogador - mostrar todas as opções
+            opcoes = [
+                ("REINICIAR JOGO", "reiniciar"),
+                ("TROCAR CARRO", "trocar_carro"),
+                ("MENU PRINCIPAL", "menu")
+            ]
         
         caixa_largura = 500
         caixa_altura = 650
@@ -390,7 +446,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             caixa_x = (LARGURA - caixa_largura) // 2
             caixa_y = (ALTURA - caixa_altura) // 2
         
-        altura_total_opcoes = 3 * 60
+        altura_total_opcoes = len(opcoes) * 60
         offset_opcoes = caixa_y + caixa_altura - altura_total_opcoes - 20
         
         if lado is None:
@@ -429,6 +485,11 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             opcao_atual = opcao_hover
             estado[6] = opcao_atual
         
+        while len(hover_animation) < len(opcoes):
+            hover_animation.append(0.0)
+        if len(hover_animation) > len(opcoes):
+            hover_animation = hover_animation[:len(opcoes)]
+        
         for i in range(len(opcoes)):
             if i == opcao_hover:
                 hover_animation[i] = min(1.0, hover_animation[i] + hover_speed * dt)
@@ -438,7 +499,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             for i in range(len(opcoes)):
                 hover_animation[i] = max(0.0, hover_animation[i] - hover_speed * dt * 1.5)
         
-        titulo_texto = render_text(titulo, 40, (255, 255, 255), bold=True, pixel_style=True)  # Reduzido de 48 para 40
+        titulo_texto = render_text(titulo, 40, (255, 255, 255), bold=True, pixel_style=True)
         titulo_x = caixa_x + (caixa_largura - titulo_texto.get_width()) // 2
         tela.blit(titulo_texto, (titulo_x, caixa_y + 20))
         
@@ -470,6 +531,15 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             rec_x = caixa_x + (caixa_largura - rec_texto.get_width()) // 2
             tela.blit(rec_texto, (rec_x, y_info))
             y_info += 50
+        
+        # Atualizar animação do cursor do controle
+        from core.gamepad_manager import gerenciador_gamepad
+        if not hasattr(desenhar_tela_fim_jogo, '_animacao_cursor'):
+            desenhar_tela_fim_jogo._animacao_cursor = 0.0
+        velocidade_animacao_cursor = 3.0
+        desenhar_tela_fim_jogo._animacao_cursor += dt * velocidade_animacao_cursor
+        if desenhar_tela_fim_jogo._animacao_cursor >= 1.0:
+            desenhar_tela_fim_jogo._animacao_cursor = 0.0
         
         for i, (nome, chave) in enumerate(opcoes):
             y = offset_opcoes + i * 60
@@ -506,11 +576,251 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 opcao_fundo.fill(cor_fundo)
                 tela.blit(opcao_fundo, (caixa_x + 20, y - 5))
             
+            if i == opcao_atual and gerenciador_gamepad.obter_numero_controles() > 0:
+                import math
+                tamanho_cursor = 3 + int(2 * abs(math.sin(desenhar_tela_fim_jogo._animacao_cursor * math.pi)))
+                opcao_rect = pygame.Rect(caixa_x + 20, y - 5, caixa_largura - 40, 60)
+                cursor_rect = pygame.Rect(
+                    opcao_rect.x - tamanho_cursor,
+                    opcao_rect.y - tamanho_cursor,
+                    opcao_rect.width + tamanho_cursor * 2,
+                    opcao_rect.height + tamanho_cursor * 2
+                )
+                pygame.draw.rect(tela, (0, 200, 255), cursor_rect, 3)
+            
             texto = render_text(nome, 24, cor_texto, bold=True, pixel_style=True)
             tela.blit(texto, (caixa_x + 30, y))
     
-    carro_p1 = CARROS_DISPONIVEIS[carro_selecionado_p1]
-    carro_p2 = CARROS_DISPONIVEIS[carro_selecionado_p2]
+    def processar_tela_resultados_finais(ev, estado_resultados):
+        """Processa eventos da tela de resultados finais quando ambos jogadores terminaram"""
+        if estado_resultados is None:
+            return None
+        
+        opcoes = estado_resultados.get("opcoes", [])
+        opcao_atual = estado_resultados.get("opcao_atual", 0)
+        
+        caixa_largura = 1200
+        caixa_altura = 650
+        caixa_x = (LARGURA - caixa_largura) // 2
+        caixa_y = (ALTURA - caixa_altura) // 2
+        
+        if ev.type == pygame.QUIT:
+            return "sair"
+        
+        from core.gamepad_manager import gerenciador_gamepad
+        if gerenciador_gamepad.obter_numero_controles() > 0:
+            from core.menu_controles import processar_eventos_controle_menu
+            tempo_atual = pygame.time.get_ticks()
+            resultado_controle = processar_eventos_controle_menu(ev, opcao_atual, len(opcoes), joystick_id=0, tempo_atual=tempo_atual)
+            if resultado_controle:
+                acao = resultado_controle.get("acao")
+                if acao == "esquerda":
+                    if "opcao" in resultado_controle:
+                        estado_resultados["opcao_atual"] = resultado_controle["opcao"]
+                    else:
+                        estado_resultados["opcao_atual"] = (opcao_atual - 1) % len(opcoes)
+                    return None
+                elif acao == "direita":
+                    if "opcao" in resultado_controle:
+                        estado_resultados["opcao_atual"] = resultado_controle["opcao"]
+                    else:
+                        estado_resultados["opcao_atual"] = (opcao_atual + 1) % len(opcoes)
+                    return None
+                elif acao == "confirmar":
+                    chave = opcoes[opcao_atual][1]
+                    return chave
+                elif acao == "cancelar":
+                    return "menu"
+                return None
+        
+        if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+            mouse_x, mouse_y = ev.pos
+            base_y = int(ALTURA * 0.85)
+            botao_largura = 180
+            botao_altura = 50
+            espacamento = 15
+            
+            for i, (nome, chave) in enumerate(opcoes):
+                if i == 0:
+                    x = (LARGURA - botao_largura) // 2 - botao_largura - espacamento
+                elif i == 1:
+                    x = (LARGURA - botao_largura) // 2
+                else:
+                    x = (LARGURA - botao_largura) // 2 + botao_largura + espacamento
+                
+                botao_rect = pygame.Rect(x, base_y, botao_largura, botao_altura)
+                if botao_rect.collidepoint(mouse_x, mouse_y):
+                    return chave
+        
+        elif ev.type == pygame.KEYDOWN:
+            if ev.key == pygame.K_ESCAPE:
+                return "menu"
+            elif ev.key in (pygame.K_LEFT, pygame.K_a):
+                estado_resultados["opcao_atual"] = (opcao_atual - 1) % len(opcoes)
+            elif ev.key in (pygame.K_RIGHT, pygame.K_d):
+                estado_resultados["opcao_atual"] = (opcao_atual + 1) % len(opcoes)
+            elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
+                chave = opcoes[opcao_atual][1]
+                return chave
+        
+        return None
+    
+    def desenhar_tela_resultados_finais(tela, estado_resultados, dt):
+        """Desenha tela de resultados finais quando ambos jogadores terminaram"""
+        if estado_resultados is None:
+            return
+        
+        from core.menu import render_text
+        from core.gamepad_manager import gerenciador_gamepad
+        import math
+        
+        resultados = estado_resultados.get("resultados", [])
+        opcoes = estado_resultados.get("opcoes", [])
+        opcao_atual = estado_resultados.get("opcao_atual", 0)
+        
+        overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        tela.blit(overlay, (0, 0))
+        
+        caixa_largura = 1200
+        caixa_altura = 650
+        caixa_x = (LARGURA - caixa_largura) // 2
+        caixa_y = (ALTURA - caixa_altura) // 2
+        
+        caixa_fundo = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+        caixa_fundo.fill((0, 0, 0, 200))
+        tela.blit(caixa_fundo, (caixa_x, caixa_y))
+        pygame.draw.rect(tela, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
+        
+        titulo = render_text("RESULTADOS FINAIS", 40, (255, 255, 255), bold=True, pixel_style=True)
+        titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
+        tela.blit(titulo, (titulo_x, caixa_y + 20))
+        
+        fonte_cabecalho = pygame.font.SysFont("consolas", 18, bold=True)
+        fonte_item = pygame.font.SysFont("consolas", 16)
+        
+        x_pos = caixa_x + 30
+        x_nome = x_pos + 60
+        x_tempo = x_nome + 200
+        x_trofeu = x_tempo + 150
+        x_dinheiro = x_trofeu + 80
+        y_cabecalho = caixa_y + 80
+        
+        cabecalho_pos = fonte_cabecalho.render("POS", True, (255, 255, 255))
+        cabecalho_nome = fonte_cabecalho.render("NOME", True, (255, 255, 255))
+        cabecalho_tempo = fonte_cabecalho.render("TEMPO", True, (255, 255, 255))
+        cabecalho_trofeu = fonte_cabecalho.render("TROFÉU", True, (255, 255, 255))
+        cabecalho_dinheiro = fonte_cabecalho.render("DINHEIRO", True, (255, 255, 255))
+        
+        tela.blit(cabecalho_pos, (x_pos, y_cabecalho))
+        tela.blit(cabecalho_nome, (x_nome, y_cabecalho))
+        tela.blit(cabecalho_tempo, (x_tempo, y_cabecalho))
+        tela.blit(cabecalho_trofeu, (x_trofeu, y_cabecalho))
+        tela.blit(cabecalho_dinheiro, (x_dinheiro, y_cabecalho))
+        
+        pygame.draw.line(tela, (128, 128, 128), (caixa_x + 20, y_cabecalho + 30), (caixa_x + caixa_largura - 20, y_cabecalho + 30), 2)
+        
+        y_atual = y_cabecalho + 45
+        for resultado in resultados:
+            pos = resultado.get("posicao", 0)
+            nome = resultado.get("nome", "")
+            tempo = resultado.get("tempo", None)
+            trofeu = resultado.get("trofeu", None)
+            dinheiro = resultado.get("dinheiro", 0)
+            
+            cor_pos = (255, 215, 0) if pos == 1 else (192, 192, 192) if pos == 2 else (205, 127, 50) if pos == 3 else (255, 255, 255)
+            texto_pos = fonte_item.render(f"{pos}º", True, cor_pos)
+            tela.blit(texto_pos, (x_pos, y_atual))
+            
+            texto_nome = fonte_item.render(nome, True, (255, 255, 255))
+            tela.blit(texto_nome, (x_nome, y_atual))
+            
+            if tempo is not None:
+                mm = int(tempo // 60)
+                ss = tempo % 60
+                tempo_str = f"{mm:02d}:{ss:05.2f}"
+                texto_tempo = fonte_item.render(tempo_str, True, (0, 255, 0))
+            else:
+                texto_tempo = fonte_item.render("--:--.--", True, (128, 128, 128))
+            tela.blit(texto_tempo, (x_tempo, y_atual))
+            
+            if trofeu:
+                trofeu_pequeno = pygame.transform.scale(trofeu, (25, 25))
+                trofeu_rect = trofeu_pequeno.get_rect(center=(x_trofeu + 20, y_atual + 10))
+                tela.blit(trofeu_pequeno, trofeu_rect)
+            
+            texto_dinheiro = fonte_item.render(f"${dinheiro}", True, (100, 255, 100))
+            tela.blit(texto_dinheiro, (x_dinheiro, y_atual))
+            
+            y_atual += 40
+        
+        base_y = int(ALTURA * 0.85)
+        botao_largura = 180
+        botao_altura = 50
+        espacamento = 15
+        
+        if not hasattr(desenhar_tela_resultados_finais, '_animacao_cursor'):
+            desenhar_tela_resultados_finais._animacao_cursor = 0.0
+        velocidade_animacao_cursor = 3.0
+        desenhar_tela_resultados_finais._animacao_cursor += dt * velocidade_animacao_cursor
+        if desenhar_tela_resultados_finais._animacao_cursor >= 1.0:
+            desenhar_tela_resultados_finais._animacao_cursor = 0.0
+        
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        
+        for i, (nome, chave) in enumerate(opcoes):
+            if i == 0:
+                x = (LARGURA - botao_largura) // 2 - botao_largura - espacamento
+            elif i == 1:
+                x = (LARGURA - botao_largura) // 2
+            else:
+                x = (LARGURA - botao_largura) // 2 + botao_largura + espacamento
+            
+            botao_rect = pygame.Rect(x, base_y, botao_largura, botao_altura)
+            botao_hover = botao_rect.collidepoint(mouse_x, mouse_y)
+            
+            if i == opcao_atual:
+                cor_fundo = (0, 200, 255, 50)
+                cor_texto = (0, 200, 255)
+            elif botao_hover:
+                cor_fundo = (0, 200, 255, 30)
+                cor_texto = (0, 200, 255)
+            else:
+                cor_fundo = (0, 0, 0, 0)
+                cor_texto = (255, 255, 255)
+            
+            if cor_fundo[3] > 0:
+                botao_fundo = pygame.Surface((botao_largura, botao_altura), pygame.SRCALPHA)
+                botao_fundo.fill(cor_fundo)
+                tela.blit(botao_fundo, (x, base_y))
+            
+            # Cursor do controle
+            if i == opcao_atual and gerenciador_gamepad.obter_numero_controles() > 0:
+                tamanho_cursor = 3 + int(2 * abs(math.sin(desenhar_tela_resultados_finais._animacao_cursor * math.pi)))
+                cursor_rect = pygame.Rect(
+                    botao_rect.x - tamanho_cursor,
+                    botao_rect.y - tamanho_cursor,
+                    botao_rect.width + tamanho_cursor * 2,
+                    botao_rect.height + tamanho_cursor * 2
+                )
+                pygame.draw.rect(tela, (0, 200, 255), cursor_rect, 3)
+            
+            texto = render_text(nome, 20, cor_texto, bold=True, pixel_style=True)
+            texto_x = x + (botao_largura - texto.get_width()) // 2
+            texto_y = base_y + (botao_altura - texto.get_height()) // 2
+            tela.blit(texto, (texto_x, texto_y))
+    
+    # Validar índices de carros antes de acessar
+    # Usar variável local para evitar conflito com imports dentro da função
+    carros_disponiveis = CARROS_DISPONIVEIS
+    
+    if carro_selecionado_p1 is None or carro_selecionado_p1 < 0 or carro_selecionado_p1 >= len(carros_disponiveis):
+        carro_selecionado_p1 = 0
+    if carro_selecionado_p2 is None or carro_selecionado_p2 < 0 or carro_selecionado_p2 >= len(carros_disponiveis):
+        carro_selecionado_p2 = 1 if len(carros_disponiveis) > 1 else 0
+    
+    carro_p1 = carros_disponiveis[carro_selecionado_p1]
+    carro_p2 = carros_disponiveis[carro_selecionado_p2]
 
     if pista_tiles is not None:
         pos_inicial_tiles = pista_tiles.obter_posicao_inicial()
@@ -700,15 +1010,17 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     ghost_recorder_p1 = GhostRecorder(intervalo_gravacao=0.05)
     ghost_player_p1 = None
     
+    principal._colisoes_na_corrida = 0
+    from core.particulas import EmissorColisao
+    principal._emissor_colisao = EmissorColisao()
+    
     if (tipo_jogo == TipoJogo.GHOST or tipo_jogo == TipoJogo.DRIFT) and modo_jogo == ModoJogo.UM_JOGADOR:
         frames_ghost = gerenciador_ghosts.obter_ghost(numero_pista)
         if frames_ghost:
             ghost_player_p1 = GhostPlayer(frames_ghost)
             print(f"Ghost carregado para pista {numero_pista} ({len(frames_ghost)} frames)")
         elif tipo_jogo == TipoJogo.GHOST:
-            # Se é modo ghost mas não há ghost disponível, avisar e voltar
             print(f"AVISO: Modo Ghost selecionado mas não há ghost disponível para pista {numero_pista}")
-            # Por enquanto, apenas avisar (o jogo continuará sem ghost)
 
     camera.set_alvo(carro1)
 
@@ -729,7 +1041,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         camera_p1.cy = 2500 + offset_y_superficie
         camera_p2.cx = 2500 + offset_x_superficie
         camera_p2.cy = 2500 + offset_y_superficie
-        # Armazenar offset para as câmeras do modo 2 jogadores
         camera_p1.offset_x = -offset_x_superficie
         camera_p1.offset_y = -offset_y_superficie
         camera_p2.offset_x = -offset_x_superficie
@@ -748,13 +1059,10 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     instancias_ia = []
     personalidades_usadas = []
     for i, carro_ia in enumerate(carros_ia):
-        # Atribuir personalidade aleatória, evitando repetições excessivas
         personalidades_disponiveis = IA.PERSONALIDADES.copy()
-        # Se já temos muitas IAs, garantir variedade
         if len(personalidades_usadas) >= len(IA.PERSONALIDADES):
             personalidades_usadas = []
         
-        # Escolher personalidade que ainda não foi usada muito
         personalidade = random.choice(personalidades_disponiveis)
         personalidades_usadas.append(personalidade)
         
@@ -767,7 +1075,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     IA4 = instancias_ia[2] if len(instancias_ia) > 2 else None
     debug_IA = True
 
-    # Modo drift agora usa checkpoints, não tempo
     jogo_pausado = False
     jogo_terminado = False
     pontuacao_final = 0
@@ -775,13 +1082,15 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     acao_fim_jogo = None
     estado_fim_jogo = None
     
-    # Estados de fim de jogo separados para modo 2 jogadores
     tela_fim_mostrada_p1 = False
     tela_fim_mostrada_p2 = False
     estado_fim_jogo_p1 = None
     estado_fim_jogo_p2 = None
+    estado_resultados_finais = None
     pontuacao_final_p1 = 0
     pontuacao_final_p2 = 0
+    p1_espectador = False
+    p2_espectador = False
     
     opcao_pausa_selecionada = 0
     opcoes_pausa = ["Continuar", "Reiniciar", "Voltar ao Menu"]
@@ -810,83 +1119,243 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         dt = relogio.tick(fps_max) / 1000.0
         dt = min(dt, max_dt)
         acumulador_dt += dt
+        
+        if corrida.iniciada and not jogo_pausado:
+            gerenciador_estatisticas.registrar_tempo_jogado(dt)
 
         gerenciador_musica.verificar_fim_musica()
+        
+        # Processar navegação contínua (hold) para telas de fim de jogo e resultados finais
+        from core.gamepad_manager import gerenciador_gamepad
+        if gerenciador_gamepad.obter_numero_controles() > 0:
+            from core.menu_controles import processar_navegacao_hold
+            tempo_atual = pygame.time.get_ticks()
+            resultado_hold = processar_navegacao_hold(joystick_id=0, tempo_atual=tempo_atual)
+            if resultado_hold:
+                acao = resultado_hold.get("acao")
+                # Navegação contínua para tela de resultados finais (apenas para hold, eventos individuais são processados no loop de eventos)
+                # Esta parte só processa quando o botão está sendo mantido pressionado
+                if estado_resultados_finais is not None and resultado_hold.get("fonte") == "hold":
+                    opcoes = estado_resultados_finais.get("opcoes", [])
+                    if acao == "esquerda":
+                        estado_resultados_finais["opcao_atual"] = (estado_resultados_finais["opcao_atual"] - 1) % len(opcoes)
+                    elif acao == "direita":
+                        estado_resultados_finais["opcao_atual"] = (estado_resultados_finais["opcao_atual"] + 1) % len(opcoes)
+                # Navegação contínua para telas de fim de jogo no modo 2 jogadores
+                elif modo_jogo == ModoJogo.DOIS_JOGADORES:
+                    if estado_fim_jogo_p1 is not None:
+                        # Calcular opções disponíveis para player 1
+                        # Se o outro jogador ainda não terminou, mostrar apenas "ASSISTIR JOGADOR"
+                        if estado_fim_jogo_p2 is None:
+                            opcoes_p1 = [
+                                ("ASSISTIR JOGADOR", "espectador")
+                            ]
+                        else:
+                            # Ambos terminaram - mostrar todas as opções
+                            opcoes_p1 = [
+                                ("REINICIAR JOGO", "reiniciar"),
+                                ("TROCAR CARRO", "trocar_carro"),
+                                ("MENU PRINCIPAL", "menu")
+                            ]
+                        
+                        if acao == "cima":
+                            estado_fim_jogo_p1[6] = (estado_fim_jogo_p1[6] - 1) % len(opcoes_p1)
+                        elif acao == "baixo":
+                            estado_fim_jogo_p1[6] = (estado_fim_jogo_p1[6] + 1) % len(opcoes_p1)
+                    if estado_fim_jogo_p2 is not None:
+                        # Calcular opções disponíveis para player 2
+                        # Se o outro jogador ainda não terminou, mostrar apenas "ASSISTIR JOGADOR"
+                        if estado_fim_jogo_p1 is None:
+                            opcoes_p2 = [
+                                ("ASSISTIR JOGADOR", "espectador")
+                            ]
+                        else:
+                            # Ambos terminaram - mostrar todas as opções
+                            opcoes_p2 = [
+                                ("REINICIAR JOGO", "reiniciar"),
+                                ("TROCAR CARRO", "trocar_carro"),
+                                ("MENU PRINCIPAL", "menu")
+                            ]
+                        
+                        if acao == "cima":
+                            estado_fim_jogo_p2[6] = (estado_fim_jogo_p2[6] - 1) % len(opcoes_p2)
+                        elif acao == "baixo":
+                            estado_fim_jogo_p2[6] = (estado_fim_jogo_p2[6] + 1) % len(opcoes_p2)
 
         for ev in pygame.event.get():
             if modo_jogo == ModoJogo.DOIS_JOGADORES:
                 evento_processado = False
+                
+                # Processar eventos da tela de resultados finais PRIMEIRO (se estiver ativa)
+                if estado_resultados_finais is not None:
+                    acao_resultados = processar_tela_resultados_finais(ev, estado_resultados_finais)
+                    # Se processou evento de controle, marcar como processado e continuar
+                    if gerenciador_gamepad.obter_numero_controles() > 0 and ev.type in (pygame.JOYHATMOTION, pygame.JOYBUTTONDOWN, pygame.JOYAXISMOTION):
+                        evento_processado = True
+                        # Se foi apenas navegação (retornou None), continuar sem processar outros eventos
+                        if acao_resultados is None:
+                            continue
+                    if acao_resultados:
+                        evento_processado = True
+                        if acao_resultados == "reiniciar":
+                            return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                        elif acao_resultados == "trocar_carro":
+                            from core.menu import selecionar_carros_loop
+                            resultado = selecionar_carros_loop(tela)
+                            if resultado and len(resultado) == 2:
+                                carro_p1_idx, carro_p2_idx = resultado
+                                if carro_p1_idx is not None and carro_p2_idx is not None:
+                                    if 0 <= carro_p1_idx < len(CARROS_DISPONIVEIS) and 0 <= carro_p2_idx < len(CARROS_DISPONIVEIS):
+                                        return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                            estado_resultados_finais = None
+                            estado_fim_jogo_p1 = None
+                            estado_fim_jogo_p2 = None
+                            continue
+                        elif acao_resultados == "menu" or acao_resultados == "sair":
+                            return
+                    # Se processou evento de resultados finais (mouse/teclado), não processar outros eventos
+                    elif ev.type in (pygame.MOUSEBUTTONDOWN, pygame.KEYDOWN):
+                        evento_processado = True
+                        continue
+                    # Se processou qualquer evento na tela de resultados finais, não processar outros
+                    if evento_processado:
+                        continue
+                
                 if estado_fim_jogo_p1 is not None:
-                    if hasattr(ev, 'pos'):
-                        if ev.pos[0] < LARGURA // 2:
-                            acao = processar_tela_fim_jogo(ev, estado_fim_jogo_p1, lado='esquerdo')
-                            if acao:
+                    if hasattr(ev, 'pos') and ev.pos[0] >= LARGURA // 2:
+                        pass
+                    else:
+                        acao = processar_tela_fim_jogo(ev, estado_fim_jogo_p1, lado='esquerdo')
+                        if acao:
+                            evento_processado = True
+                            if acao == "reiniciar":
+                                return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                            elif acao == "trocar_carro":
+                                from core.menu import selecionar_carros_loop
+                                resultado = selecionar_carros_loop(tela)
+                                if resultado and len(resultado) == 2:
+                                    carro_p1_idx, carro_p2_idx = resultado
+                                    if carro_p1_idx is not None and carro_p2_idx is not None:
+                                        if 0 <= carro_p1_idx < len(CARROS_DISPONIVEIS) and 0 <= carro_p2_idx < len(CARROS_DISPONIVEIS):
+                                            return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                                estado_fim_jogo_p1 = None
+                                continue
+                            elif acao == "espectador":
+                                p1_espectador = True
+                                estado_fim_jogo_p1 = None
+                                continue
+                            elif acao == "menu" or acao == "sair":
+                                return
+                        elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE:
+                            if estado_fim_jogo_p1 is None:
+                                jogo_pausado = not jogo_pausado
+                                opcao_pausa_selecionada = 0
                                 evento_processado = True
-                                if acao == "reiniciar":
-                                    return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
-                                elif acao == "trocar_carro":
-                                    from core.menu import selecionar_carros_loop
-                                    resultado = selecionar_carros_loop(tela)
-                                    if resultado:
-                                        carro_p1_idx, carro_p2_idx = resultado
-                                        return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
-                                    estado_fim_jogo_p1 = None
-                                    continue
-                                elif acao == "menu" or acao == "sair":
-                                    return
-                    elif ev.type == pygame.KEYDOWN:
-                        if ev.key == pygame.K_ESCAPE or estado_fim_jogo_p2 is None:
-                            acao = processar_tela_fim_jogo(ev, estado_fim_jogo_p1, lado='esquerdo')
-                            if acao:
+                        elif ev.type == pygame.JOYBUTTONDOWN and ev.button == 6:
+                            if estado_fim_jogo_p1 is None:
+                                jogo_pausado = not jogo_pausado
+                                opcao_pausa_selecionada = 0
                                 evento_processado = True
-                                if acao == "reiniciar":
-                                    return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
-                                elif acao == "trocar_carro":
-                                    from core.menu import selecionar_carros_loop
-                                    resultado = selecionar_carros_loop(tela)
-                                    if resultado:
-                                        carro_p1_idx, carro_p2_idx = resultado
-                                        return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
-                                    estado_fim_jogo_p1 = None
-                                    continue
-                                elif acao == "menu" or acao == "sair":
-                                    return
                 
                 if estado_fim_jogo_p2 is not None and not evento_processado:
-                    if hasattr(ev, 'pos'):
-                        if ev.pos[0] >= LARGURA // 2:
-                            acao = processar_tela_fim_jogo(ev, estado_fim_jogo_p2, lado='direito')
-                            if acao:
+                    if hasattr(ev, 'pos') and ev.pos[0] < LARGURA // 2:
+                        pass
+                    else:
+                        acao = processar_tela_fim_jogo(ev, estado_fim_jogo_p2, lado='direito')
+                        if acao:
+                            evento_processado = True
+                            if acao == "reiniciar":
+                                return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                            elif acao == "trocar_carro":
+                                from core.menu import selecionar_carros_loop
+                                resultado = selecionar_carros_loop(tela)
+                                if resultado and len(resultado) == 2:
+                                    carro_p1_idx, carro_p2_idx = resultado
+                                    # Validar índices antes de retornar
+                                    if carro_p1_idx is not None and carro_p2_idx is not None:
+                                        # Usar CARROS_DISPONIVEIS do escopo global
+                                        if 0 <= carro_p1_idx < len(CARROS_DISPONIVEIS) and 0 <= carro_p2_idx < len(CARROS_DISPONIVEIS):
+                                            return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                                estado_fim_jogo_p2 = None
+                                continue
+                            elif acao == "espectador":
+                                # Player 2 vira espectador do player 1
+                                p2_espectador = True
+                                estado_fim_jogo_p2 = None
+                                continue
+                            elif acao == "menu" or acao == "sair":
+                                return
+                        elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE:
+                            # Se não há tela de fim de jogo, pausar o jogo
+                            if estado_fim_jogo_p2 is None:
+                                jogo_pausado = not jogo_pausado
+                                opcao_pausa_selecionada = 0
                                 evento_processado = True
-                                if acao == "reiniciar":
-                                    return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
-                                elif acao == "trocar_carro":
-                                    from core.menu import selecionar_carros_loop
-                                    resultado = selecionar_carros_loop(tela)
-                                    if resultado:
-                                        carro_p1_idx, carro_p2_idx = resultado
-                                        return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
-                                    estado_fim_jogo_p2 = None
-                                    continue
-                                elif acao == "menu" or acao == "sair":
-                                    return
-                    elif ev.type == pygame.KEYDOWN:
-                        if ev.key == pygame.K_ESCAPE or estado_fim_jogo_p1 is None:
-                            acao = processar_tela_fim_jogo(ev, estado_fim_jogo_p2, lado='direito')
-                            if acao:
+                        elif ev.type == pygame.JOYBUTTONDOWN and ev.button == 6:
+                            # Botão Options/Start do PS5 - pausar o jogo (mesma lógica do ESC)
+                            # PS5: botão 6 = Options/Start
+                            if estado_fim_jogo_p2 is None:
+                                jogo_pausado = not jogo_pausado
+                                opcao_pausa_selecionada = 0
                                 evento_processado = True
-                                if acao == "reiniciar":
-                                    return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
-                                elif acao == "trocar_carro":
-                                    from core.menu import selecionar_carros_loop
-                                    resultado = selecionar_carros_loop(tela)
-                                    if resultado:
-                                        carro_p1_idx, carro_p2_idx = resultado
-                                        return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
-                                    estado_fim_jogo_p2 = None
-                                    continue
-                                elif acao == "menu" or acao == "sair":
-                                    return
+                
+                # Verificar se ambos terminaram para mostrar tela de resultados finais
+                if estado_fim_jogo_p1 is not None and estado_fim_jogo_p2 is not None and estado_resultados_finais is None:
+                    # Coletar informações de todos os carros
+                    todos_carros = [c for c in carros if c is not None]
+                    resultados = []
+                    
+                    for carro in todos_carros:
+                        posicao = obter_posicao_jogador(carro, todos_carros)
+                        tempo = corrida.tempo_final.get(carro)
+                        recompensa = 0
+                        trofeu = None
+                        
+                        # Determinar nome
+                        if carro == carro1:
+                            nome = "JOGADOR 1"
+                            recompensa = estado_fim_jogo_p1[5]  # recompensa_dinheiro_p1
+                            trofeu = estado_fim_jogo_p1[2]  # trofeu_p1
+                        elif carro == carro2:
+                            nome = "JOGADOR 2"
+                            recompensa = estado_fim_jogo_p2[5]  # recompensa_dinheiro_p2
+                            trofeu = estado_fim_jogo_p2[2]  # trofeu_p2
+                        else:
+                            nome = carro.nome if hasattr(carro, 'nome') else "IA"
+                            # Calcular recompensa para bots baseado na posição
+                            if posicao == 1:
+                                recompensa = 600 if dificuldade_ia == "facil" else 1500 if dificuldade_ia == "medio" else 3000
+                            elif posicao == 2:
+                                recompensa = 300 if dificuldade_ia == "facil" else 750 if dificuldade_ia == "medio" else 1500
+                            elif posicao == 3:
+                                recompensa = 150 if dificuldade_ia == "facil" else 400 if dificuldade_ia == "medio" else 800
+                            else:
+                                recompensa = 100 if dificuldade_ia == "facil" else 200 if dificuldade_ia == "medio" else 400
+                            trofeu = obter_trofeu_por_posicao(posicao) if posicao else trofeu_vazio
+                        
+                        resultados.append({
+                            "posicao": posicao,
+                            "nome": nome,
+                            "tempo": tempo,
+                            "trofeu": trofeu,
+                            "dinheiro": recompensa
+                        })
+                    
+                    # Ordenar por posição
+                    resultados.sort(key=lambda x: x["posicao"] if x["posicao"] else 999)
+                    
+                    estado_resultados_finais = {
+                        "resultados": resultados,
+                        "opcoes": [
+                            ("TROCAR CARRO", "trocar_carro"),
+                            ("REINICIAR JOGO", "reiniciar"),
+                            ("MENU PRINCIPAL", "menu")
+                        ],
+                        "opcao_atual": 0
+                    }
+                    # Limpar estados das telas individuais para evitar sobreposição
+                    estado_fim_jogo_p1 = None
+                    estado_fim_jogo_p2 = None
                 
                 if evento_processado:
                     continue
@@ -899,26 +1368,93 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         elif acao == "trocar_carro":
                             from core.menu import selecionar_carros_loop
                             resultado = selecionar_carros_loop(tela)
-                            if resultado:
+                            if resultado and len(resultado) == 2:
                                 carro_p1_idx, carro_p2_idx = resultado
-                                return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                                # Validar índices antes de retornar
+                                if carro_p1_idx is not None and carro_p2_idx is not None:
+                                    if 0 <= carro_p1_idx < len(CARROS_DISPONIVEIS) and 0 <= carro_p2_idx < len(CARROS_DISPONIVEIS):
+                                        return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
                             estado_fim_jogo = None
                             continue
                         elif acao == "menu" or acao == "sair":
+                            gerenciador_estatisticas.finalizar_sessao()
                             return
                     continue
             
             if ev.type == pygame.QUIT:
                 rodando = False
 
+            # Processar eventos de controle no menu de pausa ANTES de outros eventos
+            if jogo_pausado:
+                opcoes_pausa_formatadas = [
+                    ("CONTINUAR", "continuar"),
+                    ("REINICIAR JOGO", "reiniciar"),
+                    ("MENU PRINCIPAL", "menu")
+                ]
+                controle_processado_pausa = False
+                if gerenciador_gamepad.obter_numero_controles() > 0:
+                    from core.menu_controles import processar_eventos_controle_menu
+                    tempo_atual = pygame.time.get_ticks()
+                    resultado_controle = processar_eventos_controle_menu(ev, opcao_pausa_selecionada, len(opcoes_pausa_formatadas), joystick_id=0, tempo_atual=tempo_atual)
+                    if resultado_controle:
+                        controle_processado_pausa = True
+                        acao = resultado_controle.get("acao")
+                        if acao == "cima" and "opcao" in resultado_controle:
+                            opcao_pausa_selecionada = resultado_controle["opcao"]
+                        elif acao == "baixo" and "opcao" in resultado_controle:
+                            opcao_pausa_selecionada = resultado_controle["opcao"]
+                        elif acao == "confirmar":
+                            chave = opcoes_pausa_formatadas[opcao_pausa_selecionada][1]
+                            if chave == "continuar":
+                                jogo_pausado = False
+                            elif chave == "reiniciar":
+                                return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                            elif chave == "menu":
+                                gerenciador_estatisticas.finalizar_sessao()
+                                return
+                        elif acao == "cancelar":
+                            # Circle/B para continuar (despausar)
+                            jogo_pausado = False
+                
+                # Se processou evento de controle, não processar outros eventos
+                if controle_processado_pausa:
+                    continue
+
             elif ev.type == pygame.KEYDOWN:
                 if ev.key == pygame.K_ESCAPE:
-                    if estado_fim_jogo is not None:
-                        return
-                    elif not jogo_terminado:
-                        jogo_pausado = not jogo_pausado
-                        opcao_pausa_selecionada = 0
-                elif ev.key == pygame.K_F1:
+                    if modo_jogo == ModoJogo.DOIS_JOGADORES:
+                        # No modo 2 jogadores, verificar se há tela de fim de jogo
+                        if estado_fim_jogo_p1 is not None or estado_fim_jogo_p2 is not None:
+                            # Se há tela de fim de jogo, não fazer nada aqui (já foi processado acima)
+                            pass
+                        else:
+                            # Se não há tela de fim de jogo, pausar o jogo
+                            jogo_pausado = not jogo_pausado
+                            opcao_pausa_selecionada = 0
+                    else:
+                        # Modo 1 jogador
+                        if estado_fim_jogo is not None:
+                            return
+                        elif not jogo_terminado:
+                            jogo_pausado = not jogo_pausado
+                            opcao_pausa_selecionada = 0
+            elif ev.type == pygame.JOYBUTTONDOWN:
+                from core.gamepad_manager import gerenciador_gamepad
+                if ev.button == 6:
+                    if modo_jogo == ModoJogo.DOIS_JOGADORES:
+                        if estado_fim_jogo_p1 is not None or estado_fim_jogo_p2 is not None:
+                            pass
+                        else:
+                            jogo_pausado = not jogo_pausado
+                            opcao_pausa_selecionada = 0
+                    else:
+                        if estado_fim_jogo is not None:
+                            pass
+                        elif not jogo_terminado:
+                            jogo_pausado = not jogo_pausado
+                            opcao_pausa_selecionada = 0
+            elif ev.type == pygame.KEYDOWN:
+                if ev.key == pygame.K_F1:
                     debug_IA = not debug_IA
                     IA2.debug = IA3.debug = debug_IA
                 elif ev.key == pygame.K_h:
@@ -947,16 +1483,53 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     carro2.drift_hold = True
                 
                 if jogo_pausado:
+                    opcoes_pausa_formatadas = [
+                        ("CONTINUAR", "continuar"),
+                        ("REINICIAR JOGO", "reiniciar"),
+                        ("MENU PRINCIPAL", "menu")
+                    ]
+                    # Processar eventos de controle no menu de pausa
+                    controle_processado_pausa = False
+                    if gerenciador_gamepad.obter_numero_controles() > 0:
+                        from core.menu_controles import processar_eventos_controle_menu
+                        tempo_atual = pygame.time.get_ticks()
+                        resultado_controle = processar_eventos_controle_menu(ev, opcao_pausa_selecionada, len(opcoes_pausa_formatadas), joystick_id=0, tempo_atual=tempo_atual)
+                        if resultado_controle:
+                            controle_processado_pausa = True
+                            acao = resultado_controle.get("acao")
+                            if acao == "cima" and "opcao" in resultado_controle:
+                                opcao_pausa_selecionada = resultado_controle["opcao"]
+                            elif acao == "baixo" and "opcao" in resultado_controle:
+                                opcao_pausa_selecionada = resultado_controle["opcao"]
+                            elif acao == "confirmar":
+                                chave = opcoes_pausa_formatadas[opcao_pausa_selecionada][1]
+                                if chave == "continuar":
+                                    jogo_pausado = False
+                                elif chave == "reiniciar":
+                                    return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                                elif chave == "menu":
+                                    gerenciador_estatisticas.finalizar_sessao()
+                                    return
+                            elif acao == "cancelar":
+                                # Circle/B para continuar (despausar)
+                                jogo_pausado = False
+                    
+                    # Se processou evento de controle, não processar teclado
+                    if controle_processado_pausa:
+                        continue
+                    
                     if ev.key == pygame.K_UP or ev.key == pygame.K_w:
-                        opcao_pausa_selecionada = (opcao_pausa_selecionada - 1) % len(opcoes_pausa)
+                        opcao_pausa_selecionada = (opcao_pausa_selecionada - 1) % len(opcoes_pausa_formatadas)
                     elif ev.key == pygame.K_DOWN or ev.key == pygame.K_s:
-                        opcao_pausa_selecionada = (opcao_pausa_selecionada + 1) % len(opcoes_pausa)
+                        opcao_pausa_selecionada = (opcao_pausa_selecionada + 1) % len(opcoes_pausa_formatadas)
                     elif ev.key == pygame.K_RETURN or ev.key == pygame.K_SPACE:
-                        if opcao_pausa_selecionada == 0:
+                        chave = opcoes_pausa_formatadas[opcao_pausa_selecionada][1]
+                        if chave == "continuar":
                             jogo_pausado = False
-                        elif opcao_pausa_selecionada == 1:
+                        elif chave == "reiniciar":
                             return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
-                        elif opcao_pausa_selecionada == 2:
+                        elif chave == "menu":
+                            gerenciador_estatisticas.finalizar_sessao()
                             return
 
             elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
@@ -969,13 +1542,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     mouse_in_caixa = (caixa_x <= mouse_x <= caixa_x + caixa_largura and
                                     caixa_y <= mouse_y <= caixa_y + caixa_altura)
                     if mouse_in_caixa:
-                        altura_total_opcoes = 3 * 60
-                        offset_opcoes = caixa_y + caixa_altura - altura_total_opcoes - 20
                         opcoes_pausa_formatadas = [
                             ("CONTINUAR", "continuar"),
                             ("REINICIAR JOGO", "reiniciar"),
                             ("MENU PRINCIPAL", "menu")
                         ]
+                        altura_total_opcoes = len(opcoes_pausa_formatadas) * 60
+                        offset_opcoes = caixa_y + caixa_altura - altura_total_opcoes - 20
                         for i, (nome, chave) in enumerate(opcoes_pausa_formatadas):
                             y_opcao = offset_opcoes + i * 60
                             opcao_rect = pygame.Rect(caixa_x + 20, y_opcao - 5, caixa_largura - 40, 60)
@@ -1083,44 +1656,80 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     pontuacao_final_p1,
                     recompensa_drift_p1,
                     0,
-                    [0.0, 0.0, 0.0]
+                    [0.0, 0.0, 0.0, 0.0]  # 4 opções possíveis (incluindo "ASSISTIR JOGADOR")
                 ]
             
             if modo_jogo == ModoJogo.DOIS_JOGADORES and carro2 is not None and drift_scoring_p2 is not None:
                 if not tela_fim_mostrada_p2 and corrida.finalizou.get(carro2, False):
-                    pontuacao_final_p2 = drift_scoring_p2.points
-                    tela_fim_mostrada_p2 = True
-                    num_checkpoints = len(checkpoints) if checkpoints else 19
-                    pontuacoes_alvo = obter_pontuacoes_alvo(num_checkpoints, voltas_objetivo, dificuldade_ia)
-                    trofeu_drift_p2 = obter_trofeu_por_pontuacao(pontuacao_final_p2, pontuacoes_alvo)
-                    
-                    if not hasattr(principal, '_recompensa_drift_p2_calculada'):
-                        # Recompensas de drift baseadas na dificuldade (como Need for Speed)
-                        if dificuldade_ia == "facil":
-                            recompensa_drift_p2 = int(pontuacao_final_p2 / 150)
-                        elif dificuldade_ia == "medio":
-                            recompensa_drift_p2 = int(pontuacao_final_p2 / 120)
-                        else:  # dificil
-                            recompensa_drift_p2 = int(pontuacao_final_p2 / 100)
-                        gerenciador_progresso.adicionar_dinheiro(recompensa_drift_p2)
-                        numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
-                        chave_recorde = f"{numero_pista}_{voltas_objetivo}"
-                        if gerenciador_progresso.registrar_recorde_drift(chave_recorde, pontuacao_final_p2):
-                            print(f"Novo recorde de drift na pista {numero_pista} ({voltas_objetivo} voltas): {pontuacao_final_p2:.0f} pontos")
-                        principal._recompensa_drift_p2_calculada = recompensa_drift_p2
+                    if estado_fim_jogo_p1 is not None:
+                        # Apenas marcar como terminado e calcular dados necessários para resultados finais
+                        pontuacao_final_p2 = drift_scoring_p2.points
+                        tela_fim_mostrada_p2 = True
+                        num_checkpoints = len(checkpoints) if checkpoints else 19
+                        pontuacoes_alvo = obter_pontuacoes_alvo(num_checkpoints, voltas_objetivo, dificuldade_ia)
+                        trofeu_drift_p2 = obter_trofeu_por_pontuacao(pontuacao_final_p2, pontuacoes_alvo)
+                        
+                        if not hasattr(principal, '_recompensa_drift_p2_calculada'):
+                            # Recompensas de drift baseadas na dificuldade (como Need for Speed)
+                            if dificuldade_ia == "facil":
+                                recompensa_drift_p2 = int(pontuacao_final_p2 / 150)
+                            elif dificuldade_ia == "medio":
+                                recompensa_drift_p2 = int(pontuacao_final_p2 / 120)
+                            else:  # dificil
+                                recompensa_drift_p2 = int(pontuacao_final_p2 / 100)
+                            gerenciador_progresso.adicionar_dinheiro(recompensa_drift_p2)
+                            numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                            chave_recorde = f"{numero_pista}_{voltas_objetivo}"
+                            if gerenciador_progresso.registrar_recorde_drift(chave_recorde, pontuacao_final_p2):
+                                print(f"Novo recorde de drift na pista {numero_pista} ({voltas_objetivo} voltas): {pontuacao_final_p2:.0f} pontos")
+                            principal._recompensa_drift_p2_calculada = recompensa_drift_p2
+                        else:
+                            recompensa_drift_p2 = principal._recompensa_drift_p2_calculada
+                        
+                        estado_fim_jogo_p2 = [
+                            "DRIFT FINALIZADO!",
+                            "TODOS OS CHECKPOINTS COLETADOS!",
+                            trofeu_drift_p2,
+                            None,
+                            pontuacao_final_p2,
+                            recompensa_drift_p2,
+                            0,
+                            [0.0]
+                        ]
                     else:
-                        recompensa_drift_p2 = principal._recompensa_drift_p2_calculada
-                    
-                    estado_fim_jogo_p2 = [
-                        "DRIFT FINALIZADO!",
-                        "TODOS OS CHECKPOINTS COLETADOS!",
-                        trofeu_drift_p2,
-                        None,
-                        pontuacao_final_p2,
-                        recompensa_drift_p2,
-                        0,
-                        [0.0, 0.0, 0.0]
-                    ]
+                        pontuacao_final_p2 = drift_scoring_p2.points
+                        tela_fim_mostrada_p2 = True
+                        num_checkpoints = len(checkpoints) if checkpoints else 19
+                        pontuacoes_alvo = obter_pontuacoes_alvo(num_checkpoints, voltas_objetivo, dificuldade_ia)
+                        trofeu_drift_p2 = obter_trofeu_por_pontuacao(pontuacao_final_p2, pontuacoes_alvo)
+                        
+                        if not hasattr(principal, '_recompensa_drift_p2_calculada'):
+                            # Recompensas de drift baseadas na dificuldade (como Need for Speed)
+                            if dificuldade_ia == "facil":
+                                recompensa_drift_p2 = int(pontuacao_final_p2 / 150)
+                            elif dificuldade_ia == "medio":
+                                recompensa_drift_p2 = int(pontuacao_final_p2 / 120)
+                            else:  # dificil
+                                recompensa_drift_p2 = int(pontuacao_final_p2 / 100)
+                            gerenciador_progresso.adicionar_dinheiro(recompensa_drift_p2)
+                            numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                            chave_recorde = f"{numero_pista}_{voltas_objetivo}"
+                            if gerenciador_progresso.registrar_recorde_drift(chave_recorde, pontuacao_final_p2):
+                                print(f"Novo recorde de drift na pista {numero_pista} ({voltas_objetivo} voltas): {pontuacao_final_p2:.0f} pontos")
+                            principal._recompensa_drift_p2_calculada = recompensa_drift_p2
+                        else:
+                            recompensa_drift_p2 = principal._recompensa_drift_p2_calculada
+                        
+                        estado_fim_jogo_p2 = [
+                            "DRIFT FINALIZADO!",
+                            "TODOS OS CHECKPOINTS COLETADOS!",
+                            trofeu_drift_p2,
+                            None,
+                            pontuacao_final_p2,
+                            recompensa_drift_p2,
+                            0,
+                            [0.0, 0.0, 0.0, 0.0]  # 4 opções possíveis (incluindo "ASSISTIR JOGADOR")
+                        ]
             
             if modo_jogo != ModoJogo.DOIS_JOGADORES:
                 if corrida.finalizou.get(carro1, False):
@@ -1225,6 +1834,23 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             
                             gerenciador_achievements.atualizar_estatistica("corridas_completas", incrementar=True)
                             achievements_desbloqueados = gerenciador_achievements.verificar_achievements(gerenciador_progresso)
+                            
+                            numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                            gerenciador_estatisticas.registrar_corrida_completa(numero_pista, posicao_jogador_p1, tempo_final_p1)
+                            if novo_recorde:
+                                gerenciador_estatisticas.registrar_recorde(numero_pista)
+                                gerenciador_desafios.atualizar_progresso("estabelecer_recorde", 1, gerenciador_progresso)
+                            if posicao_jogador_p1 in [1, 2, 3]:
+                                gerenciador_estatisticas.registrar_trofeu()
+                            
+                            gerenciador_desafios.atualizar_progresso("completar_corridas", 1, gerenciador_progresso)
+                            if posicao_jogador_p1 == 1:
+                                gerenciador_desafios.atualizar_progresso("vencer_corridas", 1, gerenciador_progresso)
+                            
+                            colisoes_na_corrida = getattr(principal, '_colisoes_na_corrida', 0)
+                            if colisoes_na_corrida == 0:
+                                gerenciador_desafios.atualizar_progresso("completar_sem_colisao", 1, gerenciador_progresso)
+                            principal._colisoes_na_corrida = 0
                             from core.i18n import t
                             for ach in achievements_desbloqueados:
                                 nome_traduzido = t(f"achievements.{ach['id']}")
@@ -1246,104 +1872,577 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         None,
                         recompensa_dinheiro_p1,
                         0,
+                        [0.0, 0.0, 0.0, 0.0]  # 4 opções possíveis (incluindo "ASSISTIR JOGADOR")
+                    ]
+                
+                if carro2 is not None and not tela_fim_mostrada_p2 and corrida.finalizou.get(carro2, False):
+                    if estado_fim_jogo_p1 is not None:
+                        # Apenas marcar como terminado e calcular dados necessários para resultados finais
+                        tela_fim_mostrada_p2 = True
+                        todos_carros = [c for c in carros if c is not None]
+                        posicao_jogador_p2 = obter_posicao_jogador(carro2, todos_carros)
+                        
+                        # Calcular recompensa
+                        if posicao_jogador_p2 == 1:
+                            if dificuldade_ia == "facil":
+                                recompensa_dinheiro_p2 = 600
+                            elif dificuldade_ia == "medio":
+                                recompensa_dinheiro_p2 = 1500
+                            else:  # dificil
+                                recompensa_dinheiro_p2 = 3000
+                        elif posicao_jogador_p2 == 2:
+                            if dificuldade_ia == "facil":
+                                recompensa_dinheiro_p2 = 300
+                            elif dificuldade_ia == "medio":
+                                recompensa_dinheiro_p2 = 750
+                            else:  # dificil
+                                recompensa_dinheiro_p2 = 1500
+                        elif posicao_jogador_p2 == 3:
+                            if dificuldade_ia == "facil":
+                                recompensa_dinheiro_p2 = 150
+                            elif dificuldade_ia == "medio":
+                                recompensa_dinheiro_p2 = 400
+                            else:  # dificil
+                                recompensa_dinheiro_p2 = 800
+                        else:
+                            if dificuldade_ia == "facil":
+                                recompensa_dinheiro_p2 = 100
+                            elif dificuldade_ia == "medio":
+                                recompensa_dinheiro_p2 = 200
+                            else:  # dificil
+                                recompensa_dinheiro_p2 = 400
+                        
+                        if not hasattr(principal, '_recompensa_corrida_p2_calculada'):
+                            gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro_p2)
+                            principal._recompensa_corrida_p2_calculada = recompensa_dinheiro_p2
+                        else:
+                            recompensa_dinheiro_p2 = principal._recompensa_corrida_p2_calculada
+                        
+                        trofeu_p2 = obter_trofeu_por_posicao(posicao_jogador_p2) if posicao_jogador_p2 else trofeu_vazio
+                        
+                        if posicao_jogador_p2 is not None:
+                            tempo_final_p2 = corrida.tempo_final.get(carro2)
+                            if tempo_final_p2 is not None:
+                                numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                                
+                                if gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p2):
+                                    print(f"Novo recorde na pista {numero_pista}: {tempo_final_p2:.2f}s")
+                                
+                                if posicao_jogador_p2 == 1:
+                                    gerenciador_progresso.registrar_trofeu(numero_pista, "ouro")
+                                elif posicao_jogador_p2 == 2:
+                                    gerenciador_progresso.registrar_trofeu(numero_pista, "prata")
+                                elif posicao_jogador_p2 == 3:
+                                    gerenciador_progresso.registrar_trofeu(numero_pista, "bronze")
+                        
+                        estado_fim_jogo_p2 = [
+                            "CORRIDA FINALIZADA!",
+                            "",
+                            trofeu_p2,
+                            posicao_jogador_p2,
+                            None,
+                            recompensa_dinheiro_p2,
+                            0,
+                            [0.0]
+                        ]
+                        # Criar tela de resultados finais imediatamente (não esperar próximo ciclo do loop de eventos)
+                        # Duplicar a lógica de criação da tela de resultados finais aqui
+                        if estado_fim_jogo_p1 is not None and estado_fim_jogo_p2 is not None and estado_resultados_finais is None:
+                            todos_carros = [c for c in carros if c is not None]
+                            resultados = []
+                            
+                            for carro in todos_carros:
+                                posicao = obter_posicao_jogador(carro, todos_carros)
+                                tempo = corrida.tempo_final.get(carro)
+                                recompensa = 0
+                                trofeu = None
+                                
+                                if carro == carro1:
+                                    nome = "JOGADOR 1"
+                                    recompensa = estado_fim_jogo_p1[5]
+                                    trofeu = estado_fim_jogo_p1[2]
+                                elif carro == carro2:
+                                    nome = "JOGADOR 2"
+                                    recompensa = estado_fim_jogo_p2[5]
+                                    trofeu = estado_fim_jogo_p2[2]
+                                else:
+                                    nome = carro.nome if hasattr(carro, 'nome') else "IA"
+                                    if posicao == 1:
+                                        recompensa = 600 if dificuldade_ia == "facil" else 1500 if dificuldade_ia == "medio" else 3000
+                                    elif posicao == 2:
+                                        recompensa = 300 if dificuldade_ia == "facil" else 750 if dificuldade_ia == "medio" else 1500
+                                    elif posicao == 3:
+                                        recompensa = 150 if dificuldade_ia == "facil" else 400 if dificuldade_ia == "medio" else 800
+                                    else:
+                                        recompensa = 100 if dificuldade_ia == "facil" else 200 if dificuldade_ia == "medio" else 400
+                                    trofeu = obter_trofeu_por_posicao(posicao) if posicao else trofeu_vazio
+                                
+                                resultados.append({
+                                    "posicao": posicao,
+                                    "nome": nome,
+                                    "tempo": tempo,
+                                    "trofeu": trofeu,
+                                    "dinheiro": recompensa
+                                })
+                            
+                            resultados.sort(key=lambda x: x["posicao"] if x["posicao"] else 999)
+                            
+                            estado_resultados_finais = {
+                                "resultados": resultados,
+                                "opcoes": [
+                                    ("TROCAR CARRO", "trocar_carro"),
+                                    ("REINICIAR JOGO", "reiniciar"),
+                                    ("MENU PRINCIPAL", "menu")
+                                ],
+                                "opcao_atual": 0
+                            }
+                            estado_fim_jogo_p1 = None
+                            estado_fim_jogo_p2 = None
+                    else:
+                        vencedor_p2 = None
+                        recompensa_dinheiro_p2 = 0
+                        posicao_jogador_p2 = None
+                        
+                        todos_carros = [c for c in carros if c is not None]
+                        posicao_jogador_p2 = obter_posicao_jogador(carro2, todos_carros)
+                        
+                        if posicao_jogador_p2 == 1:
+                            vencedor_p2 = "JOGADOR 2 VENCEU!"
+                            if dificuldade_ia == "facil":
+                                recompensa_dinheiro_p2 = 600
+                            elif dificuldade_ia == "medio":
+                                recompensa_dinheiro_p2 = 1500
+                            else:  # dificil
+                                recompensa_dinheiro_p2 = 3000
+                        elif posicao_jogador_p2 == 2:
+                            vencedor_p2 = "CORRIDA FINALIZADA!"
+                            if dificuldade_ia == "facil":
+                                recompensa_dinheiro_p2 = 300
+                            elif dificuldade_ia == "medio":
+                                recompensa_dinheiro_p2 = 750
+                            else:  # dificil
+                                recompensa_dinheiro_p2 = 1500
+                        elif posicao_jogador_p2 == 3:
+                            vencedor_p2 = "CORRIDA FINALIZADA!"
+                            if dificuldade_ia == "facil":
+                                recompensa_dinheiro_p2 = 150
+                            elif dificuldade_ia == "medio":
+                                recompensa_dinheiro_p2 = 400
+                            else:  # dificil
+                                recompensa_dinheiro_p2 = 800
+                        else:
+                            vencedor_p2 = "CORRIDA FINALIZADA!"
+                            if dificuldade_ia == "facil":
+                                recompensa_dinheiro_p2 = 100
+                            elif dificuldade_ia == "medio":
+                                recompensa_dinheiro_p2 = 200
+                            else:  # dificil
+                                recompensa_dinheiro_p2 = 400
+                        
+                        if not hasattr(principal, '_recompensa_corrida_p2_calculada'):
+                            gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro_p2)
+                            principal._recompensa_corrida_p2_calculada = recompensa_dinheiro_p2
+                        else:
+                            recompensa_dinheiro_p2 = principal._recompensa_corrida_p2_calculada
+                        
+                        tela_fim_mostrada_p2 = True
+                        trofeu_p2 = obter_trofeu_por_posicao(posicao_jogador_p2) if posicao_jogador_p2 else trofeu_vazio
+                        
+                        if posicao_jogador_p2 is not None:
+                            tempo_final_p2 = corrida.tempo_final.get(carro2)
+                            if tempo_final_p2 is not None:
+                                numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                                
+                                if gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p2):
+                                    print(f"Novo recorde na pista {numero_pista}: {tempo_final_p2:.2f}s")
+                                
+                                if posicao_jogador_p2 == 1:
+                                    gerenciador_progresso.registrar_trofeu(numero_pista, "ouro")
+                                elif posicao_jogador_p2 == 2:
+                                    gerenciador_progresso.registrar_trofeu(numero_pista, "prata")
+                                elif posicao_jogador_p2 == 3:
+                                    gerenciador_progresso.registrar_trofeu(numero_pista, "bronze")
+                        
+                        tempo_final_formatado_p2 = None
+                        if posicao_jogador_p2 is not None:
+                            tempo_final_p2 = corrida.tempo_final.get(carro2)
+                            if tempo_final_p2 is not None:
+                                mm = int(tempo_final_p2 // 60)
+                                ss = tempo_final_p2 % 60
+                                tempo_final_formatado_p2 = f"Tempo: {mm:02d}:{ss:05.2f}"
+                        
+                        estado_fim_jogo_p2 = [
+                            vencedor_p2,
+                            tempo_final_formatado_p2 or "",  # Mostrar tempo ao invés de "CORRIDA FINALIZADA!" duplicado
+                            trofeu_p2,
+                            posicao_jogador_p2,
+                            None,
+                            recompensa_dinheiro_p2,
+                            0,
+                            [0.0, 0.0, 0.0, 0.0]  # 4 opções possíveis (incluindo "ASSISTIR JOGADOR")
+                        ]
+
+        if tipo_jogo == TipoJogo.CORRIDA and corrida.iniciada:
+            if modo_jogo == ModoJogo.DOIS_JOGADORES:
+                # Se player 2 está assistindo player 1 e player 1 terminou, sair do modo espectador
+                if p2_espectador and carro1 is not None and corrida.finalizou.get(carro1, False):
+                    p2_espectador = False
+                
+                if not tela_fim_mostrada_p1 and corrida.finalizou.get(carro1, False):
+                    vencedor_p1 = None
+                    recompensa_dinheiro_p1 = 0
+                    posicao_jogador_p1 = None
+                    
+                    todos_carros = [c for c in carros if c is not None]
+                    posicao_jogador_p1 = obter_posicao_jogador(carro1, todos_carros)
+                    
+                    if posicao_jogador_p1 == 1:
+                        vencedor_p1 = "JOGADOR 1 VENCEU!"
+                        if dificuldade_ia == "facil":
+                            recompensa_dinheiro_p1 = 600
+                        elif dificuldade_ia == "medio":
+                            recompensa_dinheiro_p1 = 1500
+                        else:  # dificil
+                            recompensa_dinheiro_p1 = 3000
+                    elif posicao_jogador_p1 == 2:
+                        vencedor_p1 = "CORRIDA FINALIZADA!"
+                        if dificuldade_ia == "facil":
+                            recompensa_dinheiro_p1 = 300
+                        elif dificuldade_ia == "medio":
+                            recompensa_dinheiro_p1 = 750
+                        else:  # dificil
+                            recompensa_dinheiro_p1 = 1500
+                    elif posicao_jogador_p1 == 3:
+                        vencedor_p1 = "CORRIDA FINALIZADA!"
+                        if dificuldade_ia == "facil":
+                            recompensa_dinheiro_p1 = 150
+                        elif dificuldade_ia == "medio":
+                            recompensa_dinheiro_p1 = 400
+                        else:  # dificil
+                            recompensa_dinheiro_p1 = 800
+                    else:
+                        vencedor_p1 = "CORRIDA FINALIZADA!"
+                        if dificuldade_ia == "facil":
+                            recompensa_dinheiro_p1 = 100
+                        elif dificuldade_ia == "medio":
+                            recompensa_dinheiro_p1 = 200
+                        else:  # dificil
+                            recompensa_dinheiro_p1 = 400
+                    
+                    if not hasattr(principal, '_recompensa_corrida_p1_calculada'):
+                        gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro_p1)
+                        principal._recompensa_corrida_p1_calculada = recompensa_dinheiro_p1
+                    else:
+                        recompensa_dinheiro_p1 = principal._recompensa_corrida_p1_calculada
+                    
+                    tela_fim_mostrada_p1 = True
+                    trofeu_p1 = obter_trofeu_por_posicao(posicao_jogador_p1) if posicao_jogador_p1 else trofeu_vazio
+                    
+                    if posicao_jogador_p1 is not None:
+                        tempo_final_p1 = corrida.tempo_final.get(carro1)
+                        if tempo_final_p1 is not None:
+                            numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                            
+                            novo_recorde = gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p1)
+                            if novo_recorde:
+                                print(f"Novo recorde na pista {numero_pista}: {tempo_final_p1:.2f}s")
+                                gerenciador_achievements.atualizar_estatistica("recordes_estabelecidos", incrementar=True)
+                            
+                            if posicao_jogador_p1 == 1:
+                                gerenciador_progresso.registrar_trofeu(numero_pista, "ouro")
+                                if not gerenciador_achievements.esta_desbloqueado("trofeu_ouro"):
+                                    if gerenciador_achievements.desbloquear("trofeu_ouro", gerenciador_progresso):
+                                        from core.achievements import ACHIEVEMENTS
+                                        from core.i18n import t
+                                        ach_trofeu = ACHIEVEMENTS["trofeu_ouro"]
+                                        nome_traduzido = t("achievements.trofeu_ouro")
+                                        popup_achievement.mostrar(nome_traduzido, ach_trofeu['recompensa'])
+                            elif posicao_jogador_p1 == 2:
+                                gerenciador_progresso.registrar_trofeu(numero_pista, "prata")
+                            elif posicao_jogador_p1 == 3:
+                                gerenciador_progresso.registrar_trofeu(numero_pista, "bronze")
+                            
+                            gerenciador_achievements.atualizar_estatistica("corridas_completas", incrementar=True)
+                            achievements_desbloqueados = gerenciador_achievements.verificar_achievements(gerenciador_progresso)
+                            
+                            numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                            gerenciador_estatisticas.registrar_corrida_completa(numero_pista, posicao_jogador_p1, tempo_final_p1)
+                            if novo_recorde:
+                                gerenciador_estatisticas.registrar_recorde(numero_pista)
+                                gerenciador_desafios.atualizar_progresso("estabelecer_recorde", 1, gerenciador_progresso)
+                            if posicao_jogador_p1 in [1, 2, 3]:
+                                gerenciador_estatisticas.registrar_trofeu()
+                            
+                            gerenciador_desafios.atualizar_progresso("completar_corridas", 1, gerenciador_progresso)
+                            if posicao_jogador_p1 == 1:
+                                # A vitória já é registrada em registrar_corrida_completa quando posicao_final == 1
+                                gerenciador_desafios.atualizar_progresso("vencer_corridas", 1, gerenciador_progresso)
+                            
+                            colisoes_na_corrida = getattr(principal, '_colisoes_na_corrida', 0)
+                            if colisoes_na_corrida == 0:
+                                gerenciador_desafios.atualizar_progresso("completar_sem_colisao", 1, gerenciador_progresso)
+                            principal._colisoes_na_corrida = 0
+                            from core.i18n import t
+                            for ach in achievements_desbloqueados:
+                                nome_traduzido = t(f"achievements.{ach['id']}")
+                                popup_achievement.mostrar(nome_traduzido, ach['recompensa'])
+                    
+                    tempo_final_formatado_p1 = None
+                    if posicao_jogador_p1 is not None:
+                        tempo_final_p1 = corrida.tempo_final.get(carro1)
+                        if tempo_final_p1 is not None:
+                            mm = int(tempo_final_p1 // 60)
+                            ss = tempo_final_p1 % 60
+                            tempo_final_formatado_p1 = f"Tempo: {mm:02d}:{ss:05.2f}"
+                    
+                    estado_fim_jogo_p1 = [
+                        vencedor_p1,
+                        tempo_final_formatado_p1 or "",
+                        trofeu_p1,
+                        posicao_jogador_p1,
+                        None,
+                        recompensa_dinheiro_p1,
+                        0,
                         [0.0, 0.0, 0.0]
                     ]
                 
                 if carro2 is not None and not tela_fim_mostrada_p2 and corrida.finalizou.get(carro2, False):
-                    vencedor_p2 = None
-                    recompensa_dinheiro_p2 = 0
-                    posicao_jogador_p2 = None
-                    
-                    todos_carros = [c for c in carros if c is not None]
-                    posicao_jogador_p2 = obter_posicao_jogador(carro2, todos_carros)
-                    
-                    if posicao_jogador_p2 == 1:
-                        vencedor_p2 = "JOGADOR 2 VENCEU!"
-                        if dificuldade_ia == "facil":
-                            recompensa_dinheiro_p2 = 600
-                        elif dificuldade_ia == "medio":
-                            recompensa_dinheiro_p2 = 1500
-                        else:  # dificil
-                            recompensa_dinheiro_p2 = 3000
-                    elif posicao_jogador_p2 == 2:
-                        vencedor_p2 = "CORRIDA FINALIZADA!"
-                        if dificuldade_ia == "facil":
-                            recompensa_dinheiro_p2 = 300
-                        elif dificuldade_ia == "medio":
-                            recompensa_dinheiro_p2 = 750
-                        else:  # dificil
-                            recompensa_dinheiro_p2 = 1500
-                    elif posicao_jogador_p2 == 3:
-                        vencedor_p2 = "CORRIDA FINALIZADA!"
-                        if dificuldade_ia == "facil":
-                            recompensa_dinheiro_p2 = 150
-                        elif dificuldade_ia == "medio":
-                            recompensa_dinheiro_p2 = 400
-                        else:  # dificil
-                            recompensa_dinheiro_p2 = 800
-                    else:
-                        vencedor_p2 = "CORRIDA FINALIZADA!"
-                        if dificuldade_ia == "facil":
-                            recompensa_dinheiro_p2 = 100
-                        elif dificuldade_ia == "medio":
-                            recompensa_dinheiro_p2 = 200
-                        else:  # dificil
-                            recompensa_dinheiro_p2 = 400
-                    
-                    if not hasattr(principal, '_recompensa_corrida_p2_calculada'):
-                        gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro_p2)
-                        principal._recompensa_corrida_p2_calculada = recompensa_dinheiro_p2
-                    else:
-                        recompensa_dinheiro_p2 = principal._recompensa_corrida_p2_calculada
-                    
-                    tela_fim_mostrada_p2 = True
-                    trofeu_p2 = obter_trofeu_por_posicao(posicao_jogador_p2) if posicao_jogador_p2 else trofeu_vazio
-                    
-                    if posicao_jogador_p2 is not None:
-                        tempo_final_p2 = corrida.tempo_final.get(carro2)
-                        if tempo_final_p2 is not None:
-                            numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                    if estado_fim_jogo_p1 is not None:
+                        # Apenas marcar como terminado e calcular dados necessários para resultados finais
+                        tela_fim_mostrada_p2 = True
+                        todos_carros = [c for c in carros if c is not None]
+                        posicao_jogador_p2 = obter_posicao_jogador(carro2, todos_carros)
+                        
+                        # Calcular recompensa
+                        if posicao_jogador_p2 == 1:
+                            if dificuldade_ia == "facil":
+                                recompensa_dinheiro_p2 = 600
+                            elif dificuldade_ia == "medio":
+                                recompensa_dinheiro_p2 = 1500
+                            else:  # dificil
+                                recompensa_dinheiro_p2 = 3000
+                        elif posicao_jogador_p2 == 2:
+                            if dificuldade_ia == "facil":
+                                recompensa_dinheiro_p2 = 300
+                            elif dificuldade_ia == "medio":
+                                recompensa_dinheiro_p2 = 750
+                            else:  # dificil
+                                recompensa_dinheiro_p2 = 1500
+                        elif posicao_jogador_p2 == 3:
+                            if dificuldade_ia == "facil":
+                                recompensa_dinheiro_p2 = 150
+                            elif dificuldade_ia == "medio":
+                                recompensa_dinheiro_p2 = 400
+                            else:  # dificil
+                                recompensa_dinheiro_p2 = 800
+                        else:
+                            if dificuldade_ia == "facil":
+                                recompensa_dinheiro_p2 = 100
+                            elif dificuldade_ia == "medio":
+                                recompensa_dinheiro_p2 = 200
+                            else:  # dificil
+                                recompensa_dinheiro_p2 = 400
+                        
+                        if not hasattr(principal, '_recompensa_corrida_p2_calculada'):
+                            gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro_p2)
+                            principal._recompensa_corrida_p2_calculada = recompensa_dinheiro_p2
+                        else:
+                            recompensa_dinheiro_p2 = principal._recompensa_corrida_p2_calculada
+                        
+                        trofeu_p2 = obter_trofeu_por_posicao(posicao_jogador_p2) if posicao_jogador_p2 else trofeu_vazio
+                        
+                        if posicao_jogador_p2 is not None:
+                            tempo_final_p2 = corrida.tempo_final.get(carro2)
+                            if tempo_final_p2 is not None:
+                                numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                                
+                                if gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p2):
+                                    print(f"Novo recorde na pista {numero_pista}: {tempo_final_p2:.2f}s")
+                                
+                                if posicao_jogador_p2 == 1:
+                                    gerenciador_progresso.registrar_trofeu(numero_pista, "ouro")
+                                elif posicao_jogador_p2 == 2:
+                                    gerenciador_progresso.registrar_trofeu(numero_pista, "prata")
+                                elif posicao_jogador_p2 == 3:
+                                    gerenciador_progresso.registrar_trofeu(numero_pista, "bronze")
+                        
+                        estado_fim_jogo_p2 = [
+                            "CORRIDA FINALIZADA!",
+                            "",
+                            trofeu_p2,
+                            posicao_jogador_p2,
+                            None,
+                            recompensa_dinheiro_p2,
+                            0,
+                            [0.0]
+                        ]
+                        # Criar tela de resultados finais imediatamente (não esperar próximo ciclo do loop de eventos)
+                        # Duplicar a lógica de criação da tela de resultados finais aqui
+                        if estado_fim_jogo_p1 is not None and estado_fim_jogo_p2 is not None and estado_resultados_finais is None:
+                            todos_carros = [c for c in carros if c is not None]
+                            resultados = []
                             
-                            if gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p2):
-                                print(f"Novo recorde na pista {numero_pista}: {tempo_final_p2:.2f}s")
+                            for carro in todos_carros:
+                                posicao = obter_posicao_jogador(carro, todos_carros)
+                                tempo = corrida.tempo_final.get(carro)
+                                recompensa = 0
+                                trofeu = None
+                                
+                                if carro == carro1:
+                                    nome = "JOGADOR 1"
+                                    recompensa = estado_fim_jogo_p1[5]
+                                    trofeu = estado_fim_jogo_p1[2]
+                                elif carro == carro2:
+                                    nome = "JOGADOR 2"
+                                    recompensa = estado_fim_jogo_p2[5]
+                                    trofeu = estado_fim_jogo_p2[2]
+                                else:
+                                    nome = carro.nome if hasattr(carro, 'nome') else "IA"
+                                    if posicao == 1:
+                                        recompensa = 600 if dificuldade_ia == "facil" else 1500 if dificuldade_ia == "medio" else 3000
+                                    elif posicao == 2:
+                                        recompensa = 300 if dificuldade_ia == "facil" else 750 if dificuldade_ia == "medio" else 1500
+                                    elif posicao == 3:
+                                        recompensa = 150 if dificuldade_ia == "facil" else 400 if dificuldade_ia == "medio" else 800
+                                    else:
+                                        recompensa = 100 if dificuldade_ia == "facil" else 200 if dificuldade_ia == "medio" else 400
+                                    trofeu = obter_trofeu_por_posicao(posicao) if posicao else trofeu_vazio
+                                
+                                resultados.append({
+                                    "posicao": posicao,
+                                    "nome": nome,
+                                    "tempo": tempo,
+                                    "trofeu": trofeu,
+                                    "dinheiro": recompensa
+                                })
                             
-                            if posicao_jogador_p2 == 1:
-                                gerenciador_progresso.registrar_trofeu(numero_pista, "ouro")
-                            elif posicao_jogador_p2 == 2:
-                                gerenciador_progresso.registrar_trofeu(numero_pista, "prata")
-                            elif posicao_jogador_p2 == 3:
-                                gerenciador_progresso.registrar_trofeu(numero_pista, "bronze")
-                    
-                    tempo_final_formatado_p2 = None
-                    if posicao_jogador_p2 is not None:
-                        tempo_final_p2 = corrida.tempo_final.get(carro2)
-                        if tempo_final_p2 is not None:
-                            mm = int(tempo_final_p2 // 60)
-                            ss = tempo_final_p2 % 60
-                            tempo_final_formatado_p2 = f"Tempo: {mm:02d}:{ss:05.2f}"
-                    
-                    estado_fim_jogo_p2 = [
-                        vencedor_p2,
-                        tempo_final_formatado_p2 or "",  # Mostrar tempo ao invés de "CORRIDA FINALIZADA!" duplicado
-                        trofeu_p2,
-                        posicao_jogador_p2,
-                        None,
-                        recompensa_dinheiro_p2,
-                        0,
-                        [0.0, 0.0, 0.0]
-                    ]
+                            resultados.sort(key=lambda x: x["posicao"] if x["posicao"] else 999)
+                            
+                            estado_resultados_finais = {
+                                "resultados": resultados,
+                                "opcoes": [
+                                    ("TROCAR CARRO", "trocar_carro"),
+                                    ("REINICIAR JOGO", "reiniciar"),
+                                    ("MENU PRINCIPAL", "menu")
+                                ],
+                                "opcao_atual": 0
+                            }
+                            estado_fim_jogo_p1 = None
+                            estado_fim_jogo_p2 = None
+                    else:
+                        vencedor_p2 = None
+                        recompensa_dinheiro_p2 = 0
+                        posicao_jogador_p2 = None
+                        
+                        todos_carros = [c for c in carros if c is not None]
+                        posicao_jogador_p2 = obter_posicao_jogador(carro2, todos_carros)
+                        
+                        if posicao_jogador_p2 == 1:
+                            vencedor_p2 = "JOGADOR 2 VENCEU!"
+                            if dificuldade_ia == "facil":
+                                recompensa_dinheiro_p2 = 600
+                            elif dificuldade_ia == "medio":
+                                recompensa_dinheiro_p2 = 1500
+                            else:  # dificil
+                                recompensa_dinheiro_p2 = 3000
+                        elif posicao_jogador_p2 == 2:
+                            vencedor_p2 = "CORRIDA FINALIZADA!"
+                            if dificuldade_ia == "facil":
+                                recompensa_dinheiro_p2 = 300
+                            elif dificuldade_ia == "medio":
+                                recompensa_dinheiro_p2 = 750
+                            else:  # dificil
+                                recompensa_dinheiro_p2 = 1500
+                        elif posicao_jogador_p2 == 3:
+                            vencedor_p2 = "CORRIDA FINALIZADA!"
+                            if dificuldade_ia == "facil":
+                                recompensa_dinheiro_p2 = 150
+                            elif dificuldade_ia == "medio":
+                                recompensa_dinheiro_p2 = 400
+                            else:  # dificil
+                                recompensa_dinheiro_p2 = 800
+                        else:
+                            vencedor_p2 = "CORRIDA FINALIZADA!"
+                            if dificuldade_ia == "facil":
+                                recompensa_dinheiro_p2 = 100
+                            elif dificuldade_ia == "medio":
+                                recompensa_dinheiro_p2 = 200
+                            else:  # dificil
+                                recompensa_dinheiro_p2 = 400
+                        
+                        if not hasattr(principal, '_recompensa_corrida_p2_calculada'):
+                            gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro_p2)
+                            principal._recompensa_corrida_p2_calculada = recompensa_dinheiro_p2
+                        else:
+                            recompensa_dinheiro_p2 = principal._recompensa_corrida_p2_calculada
+                        
+                        tela_fim_mostrada_p2 = True
+                        trofeu_p2 = obter_trofeu_por_posicao(posicao_jogador_p2) if posicao_jogador_p2 else trofeu_vazio
+                        
+                        if posicao_jogador_p2 is not None:
+                            tempo_final_p2 = corrida.tempo_final.get(carro2)
+                            if tempo_final_p2 is not None:
+                                numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                                
+                                if gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p2):
+                                    print(f"Novo recorde na pista {numero_pista}: {tempo_final_p2:.2f}s")
+                                
+                                if posicao_jogador_p2 == 1:
+                                    gerenciador_progresso.registrar_trofeu(numero_pista, "ouro")
+                                elif posicao_jogador_p2 == 2:
+                                    gerenciador_progresso.registrar_trofeu(numero_pista, "prata")
+                                elif posicao_jogador_p2 == 3:
+                                    gerenciador_progresso.registrar_trofeu(numero_pista, "bronze")
+                        
+                        tempo_final_formatado_p2 = None
+                        if posicao_jogador_p2 is not None:
+                            tempo_final_p2 = corrida.tempo_final.get(carro2)
+                            if tempo_final_p2 is not None:
+                                mm = int(tempo_final_p2 // 60)
+                                ss = tempo_final_p2 % 60
+                                tempo_final_formatado_p2 = f"Tempo: {mm:02d}:{ss:05.2f}"
+                        
+                        estado_fim_jogo_p2 = [
+                            vencedor_p2,
+                            tempo_final_formatado_p2 or "",
+                            trofeu_p2,
+                            posicao_jogador_p2,
+                            None,
+                            recompensa_dinheiro_p2,
+                            0,
+                            [0.0, 0.0, 0.0]
+                        ]
 
         alguem_venceu = corrida.alguem_finalizou()
 
         while acumulador_dt >= dt_fixo:
-            pode_controlar_p1 = (modo_jogo != ModoJogo.DOIS_JOGADORES or estado_fim_jogo_p1 is None)
-            pode_controlar_p2 = (modo_jogo != ModoJogo.DOIS_JOGADORES or estado_fim_jogo_p2 is None)
+            # Se a tela de resultados finais está ativa, ninguém pode controlar
+            pode_controlar_p1 = (modo_jogo != ModoJogo.DOIS_JOGADORES or estado_fim_jogo_p1 is None) and not p1_espectador and estado_resultados_finais is None
+            pode_controlar_p2 = (modo_jogo != ModoJogo.DOIS_JOGADORES or estado_fim_jogo_p2 is None) and not p2_espectador and estado_resultados_finais is None
             pode_controlar_geral_p1 = (estado_fim_jogo is None and pode_controlar_p1)
             
             if corrida.pode_controlar() and not jogo_pausado and pode_controlar_geral_p1:
                 pos_antes = (carro1.x, carro1.y)
-                carro1.atualizar(teclas, None, dt_fixo, camera, superficie_pista_renderizada)
+                # Obter inputs de controle ou usar teclado
+                inputs_p1 = gerenciador_gamepad.obter_inputs_carro("p1", teclas)
+                carro1.atualizar(teclas, None, dt_fixo, camera, superficie_pista_renderizada, inputs_controle=inputs_p1)
                 pos_depois = (carro1.x, carro1.y)
+                
+                distancia_frame = math.sqrt((pos_depois[0] - pos_antes[0])**2 + (pos_depois[1] - pos_antes[1])**2)
+                gerenciador_estatisticas.registrar_distancia(distancia_frame)
+                
+                if getattr(carro1, 'drift_ativado', False):
+                    gerenciador_estatisticas.registrar_drift()
+                
+                turbo_pressionado = (inputs_p1.get("turbo", False) if inputs_p1 else False) or (teclas[carro1.turbo_key] if carro1.turbo_key else False)
+                if turbo_pressionado:
+                    gerenciador_estatisticas.registrar_turbo()
+                    if not hasattr(principal, '_ultimo_turbo_frame'):
+                        principal._ultimo_turbo_frame = -1
+                    frame_atual = pygame.time.get_ticks() // 100
+                    if frame_atual != principal._ultimo_turbo_frame:
+                        principal._ultimo_turbo_frame = frame_atual
+                        gerenciador_desafios.atualizar_progresso("usar_turbo", 1, gerenciador_progresso)
                 dist_movimento = ((pos_depois[0] - pos_antes[0])**2 + (pos_depois[1] - pos_antes[1])**2)**0.5
                 if dist_movimento > 100:
                     print(f"AVISO: Possível teleporte detectado! De {pos_antes} para {pos_depois} (distância: {dist_movimento})")
@@ -1362,7 +2461,9 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             if carro2 is not None and not jogo_pausado:
                 if modo_jogo == ModoJogo.DOIS_JOGADORES:
                     if pode_controlar_p2 and corrida.pode_controlar():
-                        carro2.atualizar(teclas, None, dt_fixo, camera, superficie_pista_renderizada)
+                        # Obter inputs de controle ou usar teclado
+                        inputs_p2 = gerenciador_gamepad.obter_inputs_carro("p2", teclas)
+                        carro2.atualizar(teclas, None, dt_fixo, camera, superficie_pista_renderizada, inputs_controle=inputs_p2)
                 elif USAR_IA_NO_CARRO_2 and corrida.iniciada:
                     if not corrida.finalizou.get(carro2, False):
                         outros_carros_p2 = [c for c in carros if c != carro2]
@@ -1434,14 +2535,35 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         carro1.vy -= ny * impulso * fator_massa1 * carro1.m
                         carro2.vx += nx * impulso * fator_massa2 * carro2.m
                         carro2.vy += ny * impulso * fator_massa2 * carro2.m
+                        
+                        ponto_colisao_x = (carro1.x + carro2.x) / 2
+                        ponto_colisao_y = (carro1.y + carro2.y) / 2
+                        intensidade = min(abs(v_rel) / 50.0, 2.0)
+                        if hasattr(principal, '_emissor_colisao'):
+                            principal._emissor_colisao.spawn(ponto_colisao_x, ponto_colisao_y, nx, ny, intensidade)
                 
                 for i, carro_a in enumerate(carros):
                     for j, carro_b in enumerate(carros[i+1:], start=i+1):
-                        if detectar_colisao_carros(carro_a, carro_b):
-                            resolver_colisao_carros(carro_a, carro_b, dt_fixo)
+                        # Não processar colisões se algum dos carros já terminou
+                        carro_a_terminou = corrida.finalizou.get(carro_a, False)
+                        carro_b_terminou = corrida.finalizou.get(carro_b, False)
+                        if not carro_a_terminou and not carro_b_terminou:
+                            if detectar_colisao_carros(carro_a, carro_b):
+                                resolver_colisao_carros(carro_a, carro_b, dt_fixo)
+                                if carro_a == carro1 or carro_b == carro1:
+                                    numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                                    gerenciador_estatisticas.registrar_colisao(numero_pista)
+                                    principal._colisoes_na_corrida = getattr(principal, '_colisoes_na_corrida', 0) + 1
                 
+                voltas_antes = corrida.voltas.get(carro1, 0)
                 for c in carros:
                     corrida.atualizar_progresso_carro(c)
+                
+                voltas_depois = corrida.voltas.get(carro1, 0)
+                if voltas_depois > voltas_antes:
+                    numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                    gerenciador_estatisticas.registrar_volta(numero_pista)
+                    gerenciador_desafios.atualizar_progresso("completar_voltas", 1, gerenciador_progresso)
 
                 if tipo_jogo == TipoJogo.DRIFT:
                     jogo_terminado_p1 = (modo_jogo == ModoJogo.DOIS_JOGADORES and estado_fim_jogo_p1 is not None) or (modo_jogo != ModoJogo.DOIS_JOGADORES and jogo_terminado)
@@ -1528,10 +2650,16 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             superficie_p1 = pygame.Surface((metade_largura, ALTURA))
             superficie_p2 = pygame.Surface((metade_largura, ALTURA))
 
-            camera_p1.set_alvo(carro1)
+            # Se player 1 é espectador, seguir carro 2, senão seguir carro 1
+            if p1_espectador and carro2 is not None:
+                camera_p1.set_alvo(carro2)
+            else:
+                camera_p1.set_alvo(carro1)
             
-            if hasattr(carro1, 'vx') and hasattr(carro1, 'vy'):
-                vel_sq_p1 = carro1.vx*carro1.vx + carro1.vy*carro1.vy
+            # Se player 1 é espectador, usar velocidade do carro 2 para zoom
+            carro_para_zoom_p1 = carro2 if p1_espectador and carro2 is not None else carro1
+            if hasattr(carro_para_zoom_p1, 'vx') and hasattr(carro_para_zoom_p1, 'vy'):
+                vel_sq_p1 = carro_para_zoom_p1.vx*carro_para_zoom_p1.vx + carro_para_zoom_p1.vy*carro_para_zoom_p1.vy
                 velocidade_p1 = math.sqrt(vel_sq_p1) if vel_sq_p1 > 0.01 else 0.0
                 if velocidade_p1 < 20:
                     zoom_p1 = 1.6
@@ -1554,8 +2682,14 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             carros_visiveis_p1 = [carro for carro in carros if camera_p1.esta_visivel(carro.x, carro.y, 30)]
             for carro in carros_visiveis_p1:
                 carro.desenhar(superficie_p1, camera=camera_p1)
-            checkpoint_atual_p1 = corrida.proximo_checkpoint.get(carro1, 0) 
-            if not corrida.finalizou.get(carro1, False) and checkpoints:
+            # Se player 1 é espectador, mostrar checkpoint do player 2
+            if p1_espectador and carro2 is not None:
+                checkpoint_atual_p1 = corrida.proximo_checkpoint.get(carro2, 0)
+                carro_para_checkpoint = carro2
+            else:
+                checkpoint_atual_p1 = corrida.proximo_checkpoint.get(carro1, 0)
+                carro_para_checkpoint = carro1
+            if not corrida.finalizou.get(carro_para_checkpoint, False) and checkpoints:
                 idx_cp = checkpoint_atual_p1 % len(checkpoints)
                 cp = checkpoints[idx_cp]
                 if len(cp) >= 3:
@@ -1588,10 +2722,16 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     superficie_p1.blit(fundo_texto, (texto_rect.x - 4, texto_rect.y - 2))
                     superficie_p1.blit(texto_checkpoint, texto_rect)
 
-            camera_p2.set_alvo(carro2)
+            # Se player 2 é espectador, seguir carro 1, senão seguir carro 2
+            if p2_espectador and carro1 is not None:
+                camera_p2.set_alvo(carro1)
+            else:
+                camera_p2.set_alvo(carro2)
             
-            if hasattr(carro2, 'vx') and hasattr(carro2, 'vy'):
-                vel_sq_p2 = carro2.vx*carro2.vx + carro2.vy*carro2.vy
+            # Se player 2 é espectador, usar velocidade do carro 1 para zoom
+            carro_para_zoom_p2 = carro1 if p2_espectador and carro1 is not None else carro2
+            if hasattr(carro_para_zoom_p2, 'vx') and hasattr(carro_para_zoom_p2, 'vy'):
+                vel_sq_p2 = carro_para_zoom_p2.vx*carro_para_zoom_p2.vx + carro_para_zoom_p2.vy*carro_para_zoom_p2.vy
                 velocidade_p2 = math.sqrt(vel_sq_p2) if vel_sq_p2 > 0.01 else 0.0
                 if velocidade_p2 < 20:
                     zoom_p2 = 1.6
@@ -1647,6 +2787,11 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     fundo_texto2.fill((0, 0, 0, 200))
                     superficie_p2.blit(fundo_texto2, (texto_rect2.x - 4, texto_rect2.y - 2))
                     superficie_p2.blit(texto_checkpoint2, texto_rect2)
+            
+            if hasattr(principal, '_emissor_colisao'):
+                principal._emissor_colisao.update(dt_fixo)
+                principal._emissor_colisao.draw(superficie_p1, camera_p1)
+                principal._emissor_colisao.draw(superficie_p2, camera_p2)
 
             tela.blit(superficie_p1, (0, 0))
             tela.blit(superficie_p2, (metade_largura, 0))
@@ -1665,10 +2810,12 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     carro_ia.skidmarks.desenhar(tela, camera)
             if carro2 is not None:
                 carro2.skidmarks.desenhar(tela, camera)
-            # Desenhar ghost (para modo ghost ou drift, 1 jogador)
+            
+            principal._emissor_colisao.update(dt_fixo)
+            principal._emissor_colisao.draw(tela, camera)
+            
             if (tipo_jogo == TipoJogo.GHOST or tipo_jogo == TipoJogo.DRIFT) and modo_jogo == ModoJogo.UM_JOGADOR and ghost_player_p1 is not None:
                 if ghost_player_p1.esta_ativo() and camera.esta_visivel(ghost_player_p1.x, ghost_player_p1.y, 40):
-                    # Desenhar ghost com transparência
                     sx, sy = camera.mundo_para_tela(ghost_player_p1.x, ghost_player_p1.y)
                     if hasattr(carro1, 'sprite_base'):
                         angulo_ghost = ghost_player_p1.angulo
@@ -1678,6 +2825,10 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         sprite_ghost_alpha.set_alpha(120)
                         rect_ghost = sprite_ghost_alpha.get_rect(center=(int(sx), int(sy)))
                         tela.blit(sprite_ghost_alpha, rect_ghost.topleft)
+            
+            if hasattr(principal, '_emissor_colisao'):
+                principal._emissor_colisao.update(dt_fixo)
+                principal._emissor_colisao.draw(tela, camera)
             
             carros_visiveis = [carro for carro in carros if camera.esta_visivel(carro.x, carro.y, 40)]
             if len(carros_visiveis) > 2:
@@ -1850,10 +3001,17 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         corrida.desenhar_semaforo(tela, largura_atual, altura_atual)
         
         if modo_jogo == ModoJogo.DOIS_JOGADORES:
-            if estado_fim_jogo_p1 is not None:
-                desenhar_tela_fim_jogo(tela, estado_fim_jogo_p1, dt, lado='esquerdo')
-            if estado_fim_jogo_p2 is not None:
-                desenhar_tela_fim_jogo(tela, estado_fim_jogo_p2, dt, lado='direito')
+            # Se ambos terminaram, mostrar tela de resultados finais
+            if estado_resultados_finais is not None:
+                desenhar_tela_resultados_finais(tela, estado_resultados_finais, dt)
+            else:
+                # Caso contrário, mostrar telas individuais
+                # Só mostrar tela individual se o outro jogador ainda não terminou
+                if estado_fim_jogo_p1 is not None and estado_fim_jogo_p2 is None:
+                    desenhar_tela_fim_jogo(tela, estado_fim_jogo_p1, dt, lado='esquerdo')
+                elif estado_fim_jogo_p2 is not None and estado_fim_jogo_p1 is None:
+                    desenhar_tela_fim_jogo(tela, estado_fim_jogo_p2, dt, lado='direito')
+                # Se ambos terminaram, não desenhar telas individuais (resultados finais será criado no próximo ciclo)
         else:
             if estado_fim_jogo is not None:
                 desenhar_tela_fim_jogo(tela, estado_fim_jogo, dt)
@@ -2062,18 +3220,31 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     if i != opcao_pausa_selecionada:
                         principal._hover_animation_pause[i] = max(0.0, principal._hover_animation_pause[i] - hover_speed * dt * 1.5)
             
+            # Desenhar cursor do controle se houver controle conectado
+            animacao_cursor_pausa = getattr(principal, '_animacao_cursor_pausa', 0.0)
+            if gerenciador_gamepad.obter_numero_controles() > 0:
+                principal._animacao_cursor_pausa = animacao_cursor_pausa = (animacao_cursor_pausa + 3.0 * dt) % (2.0 * 3.14159)
+            
             for i, (nome, chave) in enumerate(opcoes_pausa_formatadas):
                 y_opcao = offset_opcoes + i * 60
                 hover_progress = principal._hover_animation_pause[i]
                 
                 if i == opcao_pausa_selecionada:
                     cor = (255, 255, 255)
+                    # Desenhar cursor do controle
+                    if gerenciador_gamepad.obter_numero_controles() > 0:
+                        cursor_alpha = int(128 + 127 * abs(math.sin(animacao_cursor_pausa)))
+                        cursor_rect = pygame.Rect(caixa_x + 20, y_opcao - 5, caixa_largura - 40, 60)
+                        pygame.draw.rect(tela, (0, 200, 255), cursor_rect, 3)
+                        cursor_surface = pygame.Surface((cursor_rect.width, cursor_rect.height), pygame.SRCALPHA)
+                        cursor_surface.fill((0, 200, 255, cursor_alpha // 4))
+                        tela.blit(cursor_surface, cursor_rect.topleft)
                 elif hover_progress > 0.1:
                     cor = (200, 200, 255)
                 else:
                     cor = (150, 150, 150)
                 
-                if hover_progress > 0:
+                if hover_progress > 0 and i != opcao_pausa_selecionada:
                     hover_alpha = int(30 * hover_progress)
                     hover_rect = pygame.Rect(caixa_x + 20, y_opcao - 5, caixa_largura - 40, 60)
                     hover_surface = pygame.Surface((hover_rect.width, hover_rect.height), pygame.SRCALPHA)
