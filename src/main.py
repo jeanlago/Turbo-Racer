@@ -17,10 +17,12 @@ from core.hud import HUD
 from core.game_modes import ModoJogo, TipoJogo
 from core.drift_scoring import DriftScoring
 from core.progresso import gerenciador_progresso
+from core.ghost import GhostRecorder, GhostPlayer, gerenciador_ghosts
+from core.achievements import gerenciador_achievements
+from core.popup_achievement import popup_achievement
 from config import CAMINHO_MENU
 
 def carregar_configuracoes_garagem():
-    """Carrega configurações da garagem do arquivo JSON gerado pelo GarageEditor"""
     try:
         from config import DIR_PROJETO
         caminho_garage_config = os.path.join(DIR_PROJETO, 'data', 'garage_config.json')
@@ -142,7 +144,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     
     checkpoint_manager = CheckpointManager(mapa_atual, checkpoints_iniciais=checkpoints, numero_pista=numero_pista)
     
-    # Usar checkpoints do checkpoint_manager (que carrega do JSON se disponível)
     if checkpoint_manager.checkpoints:
         checkpoints = []
         for cp in checkpoint_manager.checkpoints:
@@ -248,6 +249,44 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             'prata': pontuacao_prata,
             'bronze': pontuacao_bronze
         }
+    
+    def obter_tempos_alvo(numero_pista, voltas=1, dificuldade="medio"):
+        tempo_base_por_volta = 32.0
+        recorde_pista = gerenciador_progresso.obter_recorde(numero_pista)
+        if recorde_pista is not None:
+            tempo_base_por_volta = recorde_pista / voltas * 1.1
+        
+        tempo_base_total = tempo_base_por_volta * voltas
+        
+        if dificuldade == "facil":
+            multiplicador = 1.4
+        elif dificuldade == "dificil":
+            multiplicador = 0.75
+        else:
+            multiplicador = 1.0
+        
+        tempo_ouro = tempo_base_total * multiplicador
+        tempo_prata = tempo_ouro * 1.15
+        tempo_bronze = tempo_ouro * 1.35
+        
+        return {
+            'ouro': tempo_ouro,
+            'prata': tempo_prata,
+            'bronze': tempo_bronze
+        }
+    
+    def obter_trofeu_por_tempo(tempo, tempos_alvo=None):
+        if tempos_alvo is None or tempo is None:
+            return trofeu_vazio
+        
+        if tempo <= tempos_alvo['ouro']:
+            return trofeu_ouro
+        elif tempo <= tempos_alvo['prata']:
+            return trofeu_prata
+        elif tempo <= tempos_alvo['bronze']:
+            return trofeu_bronze
+        else:
+            return trofeu_vazio
     
     def obter_trofeu_por_pontuacao(pontuacao, pontuacoes_alvo=None):
         if pontuacoes_alvo:
@@ -399,7 +438,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             for i in range(len(opcoes)):
                 hover_animation[i] = max(0.0, hover_animation[i] - hover_speed * dt * 1.5)
         
-        titulo_texto = render_text(titulo, 48, (255, 255, 255), bold=True, pixel_style=True)
+        titulo_texto = render_text(titulo, 40, (255, 255, 255), bold=True, pixel_style=True)  # Reduzido de 48 para 40
         titulo_x = caixa_x + (caixa_largura - titulo_texto.get_width()) // 2
         tela.blit(titulo_texto, (titulo_x, caixa_y + 20))
         
@@ -622,7 +661,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         carros.append(carro2)
 
     carros_ia = []
-    if tipo_jogo != TipoJogo.DRIFT:
+    if tipo_jogo != TipoJogo.DRIFT and tipo_jogo != TipoJogo.GHOST:
         if modo_jogo == ModoJogo.DOIS_JOGADORES:
             num_ias = 2
         else:
@@ -657,6 +696,19 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
     for c in carros:
         corrida.registrar_carro(c)
+    
+    ghost_recorder_p1 = GhostRecorder(intervalo_gravacao=0.05)
+    ghost_player_p1 = None
+    
+    if (tipo_jogo == TipoJogo.GHOST or tipo_jogo == TipoJogo.DRIFT) and modo_jogo == ModoJogo.UM_JOGADOR:
+        frames_ghost = gerenciador_ghosts.obter_ghost(numero_pista)
+        if frames_ghost:
+            ghost_player_p1 = GhostPlayer(frames_ghost)
+            print(f"Ghost carregado para pista {numero_pista} ({len(frames_ghost)} frames)")
+        elif tipo_jogo == TipoJogo.GHOST:
+            # Se é modo ghost mas não há ghost disponível, avisar e voltar
+            print(f"AVISO: Modo Ghost selecionado mas não há ghost disponível para pista {numero_pista}")
+            # Por enquanto, apenas avisar (o jogo continuará sem ghost)
 
     camera.set_alvo(carro1)
 
@@ -671,10 +723,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     camera_p2 = None
     if modo_jogo == ModoJogo.DOIS_JOGADORES and carro2 is not None:
         metade_largura = LARGURA // 2
-        # Usar os mesmos limites da câmera principal (superfície expandida)
         camera_p1 = Camera(metade_largura, ALTURA, largura_pista, altura_pista, zoom=1.6)
         camera_p2 = Camera(metade_largura, ALTURA, largura_pista, altura_pista, zoom=1.6)
-        # Posição inicial das câmeras (centro da pista no sistema original)
         camera_p1.cx = 2500 + offset_x_superficie
         camera_p1.cy = 2500 + offset_y_superficie
         camera_p2.cx = 2500 + offset_x_superficie
@@ -910,7 +960,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             return
 
             elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                # Processar clique do mouse no pause
                 if jogo_pausado:
                     caixa_largura = 500
                     caixa_altura = 400
@@ -1015,6 +1064,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     chave_recorde = f"{numero_pista}_{voltas_objetivo}"
                     if gerenciador_progresso.registrar_recorde_drift(chave_recorde, pontuacao_final_p1):
                         print(f"Novo recorde de drift na pista {numero_pista} ({voltas_objetivo} voltas): {pontuacao_final_p1:.0f} pontos")
+                    voltas_completas = corrida.voltas.get(carro1, 0)
+                    gerenciador_achievements.atualizar_estatistica("voltas_drift", voltas_completas)
+                    achievements_desbloqueados = gerenciador_achievements.verificar_achievements(gerenciador_progresso)
+                    from core.i18n import t
+                    for ach in achievements_desbloqueados:
+                        nome_traduzido = t(f"achievements.{ach['id']}")
+                        popup_achievement.mostrar(nome_traduzido, ach['recompensa'])
                     principal._recompensa_drift_p1_calculada = recompensa_drift_p1
                 else:
                     recompensa_drift_p1 = principal._recompensa_drift_p1_calculada
@@ -1071,7 +1127,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     jogo_terminado = True
                     pontuacao_final = drift_scoring.points
 
-        if tipo_jogo == TipoJogo.CORRIDA and corrida.iniciada:
+        if tipo_jogo == TipoJogo.GHOST and corrida.iniciada:
             if modo_jogo == ModoJogo.DOIS_JOGADORES:
                 if not tela_fim_mostrada_p1 and corrida.finalizou.get(carro1, False):
                     vencedor_p1 = None
@@ -1128,19 +1184,63 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         if tempo_final_p1 is not None:
                             numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                             
-                            if gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p1):
+                            # Verificar recorde ANTES de registrar (para comparar com o ghost)
+                            recorde_antes = gerenciador_progresso.obter_recorde(numero_pista)
+                            
+                            novo_recorde = gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p1)
+                            if novo_recorde:
                                 print(f"Novo recorde na pista {numero_pista}: {tempo_final_p1:.2f}s")
+                                # Atualizar estatística de recordes
+                                gerenciador_achievements.atualizar_estatistica("recordes_estabelecidos", incrementar=True)
+                            
+                            if tipo_jogo == TipoJogo.GHOST:
+                                if ghost_recorder_p1 and ghost_recorder_p1.gravando:
+                                    salvar_ghost = False
+                                    if recorde_antes is None or tempo_final_p1 < recorde_antes:
+                                        salvar_ghost = True
+                                    
+                                    if salvar_ghost:
+                                        ghost_recorder_p1.parar_gravacao()
+                                        frames_gravados = ghost_recorder_p1.obter_dados()
+                                        if frames_gravados and len(frames_gravados) > 0:
+                                            gerenciador_ghosts.salvar_ghost(numero_pista, frames_gravados)
+                                            print(f"Ghost salvo para pista {numero_pista} ({len(frames_gravados)} frames)")
+                                    else:
+                                        if ghost_recorder_p1 and ghost_recorder_p1.gravando:
+                                            ghost_recorder_p1.parar_gravacao()
                             
                             if posicao_jogador_p1 == 1:
                                 gerenciador_progresso.registrar_trofeu(numero_pista, "ouro")
+                                if not gerenciador_achievements.esta_desbloqueado("trofeu_ouro"):
+                                    if gerenciador_achievements.desbloquear("trofeu_ouro", gerenciador_progresso):
+                                        from core.achievements import ACHIEVEMENTS
+                                        from core.i18n import t
+                                        ach_trofeu = ACHIEVEMENTS["trofeu_ouro"]
+                                        nome_traduzido = t("achievements.trofeu_ouro")
+                                        popup_achievement.mostrar(nome_traduzido, ach_trofeu['recompensa'])
                             elif posicao_jogador_p1 == 2:
                                 gerenciador_progresso.registrar_trofeu(numero_pista, "prata")
                             elif posicao_jogador_p1 == 3:
                                 gerenciador_progresso.registrar_trofeu(numero_pista, "bronze")
+                            
+                            gerenciador_achievements.atualizar_estatistica("corridas_completas", incrementar=True)
+                            achievements_desbloqueados = gerenciador_achievements.verificar_achievements(gerenciador_progresso)
+                            from core.i18n import t
+                            for ach in achievements_desbloqueados:
+                                nome_traduzido = t(f"achievements.{ach['id']}")
+                                popup_achievement.mostrar(nome_traduzido, ach['recompensa'])
+                    
+                    tempo_final_formatado_p1 = None
+                    if posicao_jogador_p1 is not None:
+                        tempo_final_p1 = corrida.tempo_final.get(carro1)
+                        if tempo_final_p1 is not None:
+                            mm = int(tempo_final_p1 // 60)
+                            ss = tempo_final_p1 % 60
+                            tempo_final_formatado_p1 = f"Tempo: {mm:02d}:{ss:05.2f}"
                     
                     estado_fim_jogo_p1 = [
                         vencedor_p1,
-                        "CORRIDA FINALIZADA!",
+                        tempo_final_formatado_p1 or "",  # Mostrar tempo ao invés de "CORRIDA FINALIZADA!" duplicado
                         trofeu_p1,
                         posicao_jogador_p1,
                         None,
@@ -1214,9 +1314,17 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             elif posicao_jogador_p2 == 3:
                                 gerenciador_progresso.registrar_trofeu(numero_pista, "bronze")
                     
+                    tempo_final_formatado_p2 = None
+                    if posicao_jogador_p2 is not None:
+                        tempo_final_p2 = corrida.tempo_final.get(carro2)
+                        if tempo_final_p2 is not None:
+                            mm = int(tempo_final_p2 // 60)
+                            ss = tempo_final_p2 % 60
+                            tempo_final_formatado_p2 = f"Tempo: {mm:02d}:{ss:05.2f}"
+                    
                     estado_fim_jogo_p2 = [
                         vencedor_p2,
-                        "CORRIDA FINALIZADA!",
+                        tempo_final_formatado_p2 or "",  # Mostrar tempo ao invés de "CORRIDA FINALIZADA!" duplicado
                         trofeu_p2,
                         posicao_jogador_p2,
                         None,
@@ -1242,6 +1350,14 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     if pista_tiles is not None:
                         carro1.x, carro1.y = pos_antes
                         print(f"Posição restaurada para: {pos_antes}")
+                
+                # Gravar ghost (para modo relógio ou drift, 1 jogador)
+                if (tipo_jogo == TipoJogo.GHOST or tipo_jogo == TipoJogo.DRIFT) and modo_jogo == ModoJogo.UM_JOGADOR:
+                    if ghost_recorder_p1:
+                        if not ghost_recorder_p1.gravando and corrida.iniciada:
+                            ghost_recorder_p1.iniciar_gravacao()
+                        if ghost_recorder_p1.gravando:
+                            ghost_recorder_p1.atualizar(dt_fixo, carro1)
 
             if carro2 is not None and not jogo_pausado:
                 if modo_jogo == ModoJogo.DOIS_JOGADORES:
@@ -1254,6 +1370,12 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 elif corrida.pode_controlar():
                     carro2.atualizar(teclas, None, dt_fixo, camera, superficie_pista_renderizada)
 
+            if (tipo_jogo == TipoJogo.GHOST or tipo_jogo == TipoJogo.DRIFT) and modo_jogo == ModoJogo.UM_JOGADOR and ghost_player_p1 is not None:
+                if not ghost_player_p1.esta_ativo() and corrida.iniciada:
+                    ghost_player_p1.iniciar()
+                if ghost_player_p1.esta_ativo():
+                    ghost_player_p1.atualizar(dt_fixo)
+            
             if not jogo_pausado and corrida.iniciada:
                 for i, (carro_ia, instancia_ia) in enumerate(zip(carros_ia, instancias_ia)):
                     if not corrida.finalizou.get(carro_ia, False):
@@ -1269,17 +1391,14 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 carro_ia.x, carro_ia.y = pos_antes_bot
                                 print(f"Posição do bot {carro_ia.nome} restaurada para: {pos_antes_bot}")
 
-                # Sistema de colisão entre carros
                 def detectar_colisao_carros(carro1, carro2):
-                    """Detecta colisão entre dois carros usando círculos"""
                     dx = carro1.x - carro2.x
                     dy = carro1.y - carro2.y
                     distancia = math.sqrt(dx*dx + dy*dy)
-                    raio_carro = 28.0  # Raio ajustado para detectar quando sprites se tocam
+                    raio_carro = 28.0
                     return distancia < (raio_carro * 2)
                 
                 def resolver_colisao_carros(carro1, carro2, dt):
-                    """Resolve colisão física entre dois carros"""
                     dx = carro1.x - carro2.x
                     dy = carro1.y - carro2.y
                     distancia = math.sqrt(dx*dx + dy*dy)
@@ -1287,22 +1406,15 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     if distancia < 0.01:
                         distancia = 0.01
                     
-                    # Normalizar direção
                     nx = dx / distancia
                     ny = dy / distancia
-                    
-                    # Calcular velocidades relativas
                     v1x, v1y = carro1.vx, carro1.vy
                     v2x, v2y = carro2.vx, carro2.vy
-                    
-                    # Velocidade relativa na direção da colisão
                     v_rel = (v1x - v2x) * nx + (v1y - v2y) * ny
                     
-                    # Se os carros estão se afastando, não aplicar colisão
                     if v_rel > 0:
                         return
                     
-                    # Separar os carros para evitar sobreposição (distância mínima = 56px)
                     distancia_minima = 56.0
                     sobreposicao = (distancia_minima - distancia) * 0.5
                     if sobreposicao > 0:
@@ -1311,14 +1423,10 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         carro2.x -= nx * sobreposicao
                         carro2.y -= ny * sobreposicao
                     
-                    # Aplicar força de colisão (rebote elástico parcial)
                     massa_total = carro1.m + carro2.m
                     if massa_total > 0:
-                        # Fator de elasticidade (0.3 = 30% de rebote, 70% de amortecimento)
                         elasticidade = 0.3
                         impulso = (1.0 + elasticidade) * v_rel / massa_total
-                        
-                        # Aplicar impulso baseado na massa
                         fator_massa1 = carro2.m / massa_total
                         fator_massa2 = carro1.m / massa_total
                         
@@ -1327,7 +1435,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         carro2.vx += nx * impulso * fator_massa2 * carro2.m
                         carro2.vy += ny * impulso * fator_massa2 * carro2.m
                 
-                # Verificar e resolver colisões entre todos os pares de carros
                 for i, carro_a in enumerate(carros):
                     for j, carro_b in enumerate(carros[i+1:], start=i+1):
                         if detectar_colisao_carros(carro_a, carro_b):
@@ -1397,6 +1504,11 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             if hasattr(carro1, 'vx') and hasattr(carro1, 'vy'):
                 vel_sq = carro1.vx*carro1.vx + carro1.vy*carro1.vy
                 velocidade = math.sqrt(vel_sq) if vel_sq > 0.01 else 0.0
+                if hasattr(carro1, 'velocidade_kmh'):
+                    velocidade_atual_kmh = carro1.velocidade_kmh
+                    velocidade_maxima = gerenciador_achievements.obter_estatistica("velocidade_maxima")
+                    if velocidade_atual_kmh > velocidade_maxima:
+                        gerenciador_achievements.atualizar_estatistica("velocidade_maxima", velocidade_atual_kmh)
                 if velocidade < 20:
                     zoom = 1.8
                 elif velocidade < 50:
@@ -1553,6 +1665,20 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     carro_ia.skidmarks.desenhar(tela, camera)
             if carro2 is not None:
                 carro2.skidmarks.desenhar(tela, camera)
+            # Desenhar ghost (para modo ghost ou drift, 1 jogador)
+            if (tipo_jogo == TipoJogo.GHOST or tipo_jogo == TipoJogo.DRIFT) and modo_jogo == ModoJogo.UM_JOGADOR and ghost_player_p1 is not None:
+                if ghost_player_p1.esta_ativo() and camera.esta_visivel(ghost_player_p1.x, ghost_player_p1.y, 40):
+                    # Desenhar ghost com transparência
+                    sx, sy = camera.mundo_para_tela(ghost_player_p1.x, ghost_player_p1.y)
+                    if hasattr(carro1, 'sprite_base'):
+                        angulo_ghost = ghost_player_p1.angulo
+                        sprite_ghost = pygame.transform.rotozoom(carro1.sprite_base, angulo_ghost, camera.zoom)
+                        # Criar superfície com transparência (alpha = 120/255 = ~47%)
+                        sprite_ghost_alpha = sprite_ghost.copy()
+                        sprite_ghost_alpha.set_alpha(120)
+                        rect_ghost = sprite_ghost_alpha.get_rect(center=(int(sx), int(sy)))
+                        tela.blit(sprite_ghost_alpha, rect_ghost.topleft)
+            
             carros_visiveis = [carro for carro in carros if camera.esta_visivel(carro.x, carro.y, 40)]
             if len(carros_visiveis) > 2:
                 carros_ordenados = sorted(
@@ -1777,26 +1903,99 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro)
                 
                 tela_fim_mostrada = True
-                trofeu = obter_trofeu_por_posicao(posicao_jogador) if posicao_jogador else trofeu_vazio
                 
-                if posicao_jogador is not None:
+                if tipo_jogo == TipoJogo.GHOST:
                     tempo_final = corrida.tempo_final.get(carro1)
                     if tempo_final is not None:
                         numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
-                        
-                        if gerenciador_progresso.registrar_recorde(numero_pista, tempo_final):
-                            print(f"Novo recorde na pista {numero_pista}: {tempo_final:.2f}s")
-                        
-                        if posicao_jogador == 1:
+                        tempos_alvo = obter_tempos_alvo(numero_pista, voltas_objetivo, dificuldade_ia)
+                        trofeu = obter_trofeu_por_tempo(tempo_final, tempos_alvo)
+                        if trofeu == trofeu_ouro:
                             gerenciador_progresso.registrar_trofeu(numero_pista, "ouro")
-                        elif posicao_jogador == 2:
+                        elif trofeu == trofeu_prata:
                             gerenciador_progresso.registrar_trofeu(numero_pista, "prata")
-                        elif posicao_jogador == 3:
+                        elif trofeu == trofeu_bronze:
                             gerenciador_progresso.registrar_trofeu(numero_pista, "bronze")
+                    else:
+                        trofeu = trofeu_vazio
+                else:
+                    trofeu = obter_trofeu_por_posicao(posicao_jogador) if posicao_jogador else trofeu_vazio
+                
+                tempo_final = corrida.tempo_final.get(carro1)
+                if tempo_final is not None:
+                    numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                    
+                    # Verificar recorde ANTES de registrar (para comparar com o ghost)
+                    recorde_antes = gerenciador_progresso.obter_recorde(numero_pista)
+                    
+                    novo_recorde = gerenciador_progresso.registrar_recorde(numero_pista, tempo_final)
+                    if novo_recorde:
+                        print(f"Novo recorde na pista {numero_pista}: {tempo_final:.2f}s")
+                        # Atualizar estatística de recordes
+                        gerenciador_achievements.atualizar_estatistica("recordes_estabelecidos", incrementar=True)
+                        
+                        # Salvar ghost (sempre no modo relógio se melhor, ou quando novo recorde no modo drift)
+                        if (tipo_jogo == TipoJogo.GHOST or tipo_jogo == TipoJogo.DRIFT):
+                            if ghost_recorder_p1 and ghost_recorder_p1.gravando:
+                                salvar_ghost = False
+                                if tipo_jogo == TipoJogo.GHOST:
+                                    if recorde_antes is None or tempo_final < recorde_antes:
+                                        salvar_ghost = True
+                                elif tipo_jogo == TipoJogo.DRIFT and novo_recorde:
+                                    salvar_ghost = True
+                                
+                                if salvar_ghost:
+                                    ghost_recorder_p1.parar_gravacao()
+                                    frames_gravados = ghost_recorder_p1.obter_dados()
+                                    if frames_gravados and len(frames_gravados) > 0:
+                                        gerenciador_ghosts.salvar_ghost(numero_pista, frames_gravados)
+                                        print(f"Ghost salvo para pista {numero_pista} ({len(frames_gravados)} frames)")
+                                else:
+                                    if ghost_recorder_p1 and ghost_recorder_p1.gravando:
+                                        ghost_recorder_p1.parar_gravacao()
+                        
+                        if tipo_jogo == TipoJogo.GHOST:
+                            if trofeu == trofeu_ouro:
+                                if not gerenciador_achievements.esta_desbloqueado("trofeu_ouro"):
+                                    if gerenciador_achievements.desbloquear("trofeu_ouro", gerenciador_progresso):
+                                        from core.achievements import ACHIEVEMENTS
+                                        from core.i18n import t
+                                        ach_trofeu = ACHIEVEMENTS["trofeu_ouro"]
+                                        nome_traduzido = t("achievements.trofeu_ouro")
+                                        popup_achievement.mostrar(nome_traduzido, ach_trofeu['recompensa'])
+                        else:
+                            if posicao_jogador == 1:
+                                gerenciador_progresso.registrar_trofeu(numero_pista, "ouro")
+                                if not gerenciador_achievements.esta_desbloqueado("trofeu_ouro"):
+                                    if gerenciador_achievements.desbloquear("trofeu_ouro", gerenciador_progresso):
+                                        from core.achievements import ACHIEVEMENTS
+                                        from core.i18n import t
+                                        ach_trofeu = ACHIEVEMENTS["trofeu_ouro"]
+                                        nome_traduzido = t("achievements.trofeu_ouro")
+                                        popup_achievement.mostrar(nome_traduzido, ach_trofeu['recompensa'])
+                            elif posicao_jogador == 2:
+                                gerenciador_progresso.registrar_trofeu(numero_pista, "prata")
+                            elif posicao_jogador == 3:
+                                gerenciador_progresso.registrar_trofeu(numero_pista, "bronze")
+                        
+                        gerenciador_achievements.atualizar_estatistica("corridas_completas", incrementar=True)
+                        achievements_desbloqueados = gerenciador_achievements.verificar_achievements(gerenciador_progresso)
+                        from core.i18n import t
+                        for ach in achievements_desbloqueados:
+                            nome_traduzido = t(f"achievements.{ach['id']}")
+                            popup_achievement.mostrar(nome_traduzido, ach['recompensa'])
+                
+                tempo_final_formatado = None
+                if posicao_jogador is not None:
+                    tempo_final = corrida.tempo_final.get(carro1)
+                    if tempo_final is not None:
+                        mm = int(tempo_final // 60)
+                        ss = tempo_final % 60
+                        tempo_final_formatado = f"Tempo: {mm:02d}:{ss:05.2f}"
                 
                 estado_fim_jogo = [
                     vencedor,
-                    "CORRIDA FINALIZADA!",
+                    tempo_final_formatado or "",  # Mostrar tempo ao invés de "CORRIDA FINALIZADA!" duplicado
                     trofeu,
                     posicao_jogador,
                     None,
@@ -1884,6 +2083,10 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 opcao_texto = render_text(nome, 32, cor, bold=True, pixel_style=True)
                 opcao_x = caixa_x + (caixa_largura - opcao_texto.get_width()) // 2
                 tela.blit(opcao_texto, (opcao_x, y_opcao))
+
+        # Atualizar e desenhar popup de achievements
+        popup_achievement.atualizar(dt)
+        popup_achievement.desenhar(tela)
 
         pygame.display.update()
 

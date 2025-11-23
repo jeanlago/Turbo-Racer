@@ -4,7 +4,7 @@
       "pressione_qualquer_botao": "APPUYEZ SUR N'IMPORTE QUELLE TOUCHE POUR COMMENCER"
     },
     "principal": {
-      "selecionar_carros": "SÉLECTIONNER VOITURES",
+      "selecionar_carros": "GARAGE",
       "jogar": "JOUER",
       "recordes": "RECORDS",
       "opcoes": "OPTIONS",
@@ -55,7 +55,10 @@
       "confirmar": "CONFIRMER",
       "usar": "UTILISER",
       "upgrade": "AMÉLIORER",
-      "vender": "VENDRE"
+      "vender": "VENDRE",
+      "dois_jogadores": "2 JOUEURS",
+      "um_jogador": "1 JOUEUR",
+      "concluido": "TERMINÉ"
     },
     "upgrades": {
       "titulo": "AMÉLIORATIONS - {}",
@@ -169,7 +172,8 @@
     "medio": "MOYEN",
     "dificil": "DIFFICILE",
     "dificuldade_ia": "DIFFICULTÉ IA:",
-    "dificuldade_pontuacao": "DIFFICULTÉ (SCORE):"
+    "dificuldade_pontuacao": "DIFFICULTÉ (SCORE):",
+    "dificuldade_tempo": "DIFFICULTÉ (TEMPS):"
   },
   "audio": {
     "titulo": "PARAMÈTRES AUDIO",
@@ -205,6 +209,32 @@
   "titulo_jogo": {
     "menu": "Turbo Racer — Menu",
     "jogo": "Turbo Racer"
+  },
+  "achievements": {
+    "titulo": "SUCCÈS",
+    "desbloqueados": "Débloqués",
+    "primeira_corrida": "Première Course",
+    "primeira_corrida_desc": "Terminez votre première course",
+    "velocista": "Vélociste",
+    "velocista_desc": "Atteignez 200 km/h",
+    "drift_master": "Maître du Drift",
+    "drift_master_desc": "Terminez 10 tours en mode drift",
+    "sem_colisao": "Pilote Propre",
+    "sem_colisao_desc": "Terminez une course sans collisions",
+    "trofeu_ouro": "Champion",
+    "trofeu_ouro_desc": "Gagnez un trophée d'or",
+    "colecionador": "Collectionneur",
+    "colecionador_desc": "Débloquez 5 voitures",
+    "perfeccionista": "Perfectionniste",
+    "perfeccionista_desc": "Terminez 10 courses sans erreurs",
+    "recordista": "Recordman",
+    "recordista_desc": "Établissez 5 nouveaux records",
+    "upgrade_completo": "Réglé",
+    "upgrade_completo_desc": "Maximisez toutes les améliorations d'une voiture",
+    "veterano": "Vétéran",
+    "veterano_desc": "Terminez 50 courses",
+    "desbloqueado": "Débloqué!",
+    "recompensa": "Récompense: ${}"
   }
 }
 

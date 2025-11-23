@@ -4,7 +4,7 @@
       "pressione_qualquer_botao": "APERTE QUALQUER BOTÃO PARA INICIAR"
     },
     "principal": {
-      "selecionar_carros": "SELECIONAR CARROS",
+      "selecionar_carros": "OFICINA",
       "jogar": "JOGAR",
       "recordes": "RECORDES",
       "opcoes": "OPÇÕES",
@@ -55,7 +55,10 @@
       "confirmar": "CONFIRMAR",
       "usar": "USAR",
       "upgrade": "UPGRADE",
-      "vender": "VENDER"
+      "vender": "VENDER",
+      "dois_jogadores": "2 JOGADORES",
+      "um_jogador": "1 JOGADOR",
+      "concluido": "CONCLUÍDO"
     },
     "upgrades": {
       "titulo": "UPGRADES - {}",
@@ -147,7 +150,8 @@
     "1_jogador": "1 JOGADOR",
     "2_jogadores": "2 JOGADORES",
     "corrida": "CORRIDA",
-    "drift": "DRIFT"
+    "drift": "DRIFT",
+    "ghost": "RELÓGIO"
   },
   "recordes": {
     "corrida": "CORRIDA",
@@ -169,7 +173,8 @@
     "medio": "MÉDIO",
     "dificil": "DIFÍCIL",
     "dificuldade_ia": "DIFICULDADE DA IA:",
-    "dificuldade_pontuacao": "DIFICULDADE (PONTUAÇÃO):"
+    "dificuldade_pontuacao": "DIFICULDADE (PONTUAÇÃO):",
+    "dificuldade_tempo": "DIFICULDADE (TEMPO):"
   },
   "audio": {
     "titulo": "CONFIGURAÇÕES DE ÁUDIO",
@@ -205,6 +210,56 @@
   "titulo_jogo": {
     "menu": "Turbo Racer — Menu",
     "jogo": "Turbo Racer"
+  },
+  "achievements": {
+    "titulo": "CONQUISTAS",
+    "desbloqueados": "Desbloqueados",
+    "primeira_corrida": "Primeira Corrida",
+    "primeira_corrida_desc": "Complete sua primeira corrida",
+    "velocista": "Velocista",
+    "velocista_desc": "Alcance 200 km/h",
+    "velocista_pro": "Velocista Pro",
+    "velocista_pro_desc": "Alcance 250 km/h",
+    "velocidade_extrema": "Velocidade Extrema",
+    "velocidade_extrema_desc": "Alcance 300 km/h",
+    "drift_master": "Mestre do Drift",
+    "drift_master_desc": "Complete 10 voltas em modo drift",
+    "drift_expert": "Expert em Drift",
+    "drift_expert_desc": "Complete 25 voltas em modo drift",
+    "drift_legend": "Lenda do Drift",
+    "drift_legend_desc": "Complete 50 voltas em modo drift",
+    "sem_colisao": "Piloto Limpo",
+    "sem_colisao_desc": "Complete uma corrida sem colisões",
+    "sem_colisao_mestre": "Mestre da Precisão",
+    "sem_colisao_mestre_desc": "Complete 5 corridas sem colisões",
+    "trofeu_ouro": "Campeão",
+    "trofeu_ouro_desc": "Ganhe um troféu de ouro",
+    "colecionador": "Colecionador",
+    "colecionador_desc": "Desbloqueie 5 carros",
+    "colecionador_pro": "Colecionador Pro",
+    "colecionador_pro_desc": "Desbloqueie 10 carros",
+    "perfeccionista": "Perfeccionista",
+    "perfeccionista_desc": "Complete 10 corridas sem erros",
+    "perfeccionista_mestre": "Mestre Perfeccionista",
+    "perfeccionista_mestre_desc": "Complete 25 corridas sem erros",
+    "sem_erros_perfeito": "Perfeição Absoluta",
+    "sem_erros_perfeito_desc": "Complete 50 corridas sem erros",
+    "recordista": "Recordista",
+    "recordista_desc": "Estabeleça 5 novos recordes",
+    "recordista_pro": "Recordista Pro",
+    "recordista_pro_desc": "Estabeleça 10 novos recordes",
+    "upgrade_completo": "Tunado",
+    "upgrade_completo_desc": "Maximize todos os upgrades de um carro",
+    "upgrade_mestre": "Mestre da Tunagem",
+    "upgrade_mestre_desc": "Maximize todos os upgrades de 3 carros",
+    "veterano": "Veterano",
+    "veterano_desc": "Complete 50 corridas",
+    "lenda": "Lenda",
+    "lenda_desc": "Complete 100 corridas",
+    "piloto_estrella": "Piloto Estrela",
+    "piloto_estrella_desc": "Complete 200 corridas",
+    "desbloqueado": "Desbloqueado!",
+    "recompensa": "Recompensa: ${}"
   }
 }
 

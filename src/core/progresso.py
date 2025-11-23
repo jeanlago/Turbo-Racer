@@ -10,11 +10,13 @@ class GerenciadorProgresso:
     
     def __init__(self):
         self.dinheiro = 0
-        self.carros_desbloqueados = set()  # Set de prefixos de carros desbloqueados
-        self.recordes_corrida = {}  # {numero_pista: melhor_tempo}
-        self.recordes_drift = {}  # {numero_pista: melhor_score}
-        self.trofeus = {}  # {numero_pista: "ouro"/"prata"/"bronze"/None}
-        self.upgrades = {}  # {prefixo_cor: {tipo_upgrade: nivel}} - nivel de 0 a 5
+        self.carros_desbloqueados = set()
+        self.recordes_corrida = {}
+        self.recordes_drift = {}
+        self.trofeus = {}
+        self.upgrades = {}
+        self.carro_p1_atual = None
+        self.carro_p2_atual = None
         self.carregar()
     
     def carregar(self):
@@ -34,6 +36,8 @@ class GerenciadorProgresso:
                     self.recordes_drift = data.get('recordes_drift', {})
                     self.trofeus = data.get('trofeus', {})
                     self.upgrades = data.get('upgrades', {})
+                    self.carro_p1_atual = data.get('carro_p1_atual', None)
+                    self.carro_p2_atual = data.get('carro_p2_atual', None)
                     
                     # Garantir que upgrades seja um dicionário válido antes de migrar
                     if not isinstance(self.upgrades, dict):
@@ -90,6 +94,8 @@ class GerenciadorProgresso:
                 self.recordes_drift = {}
                 self.trofeus = {}
                 self.upgrades = {}
+                self.carro_p1_atual = None
+                self.carro_p2_atual = None
         else:
             self.dinheiro = 5000  # Dinheiro inicial aumentado para permitir compra de carros iniciais
             self.carros_desbloqueados = {'Car1'}
@@ -105,7 +111,9 @@ class GerenciadorProgresso:
                 'recordes_corrida': self.recordes_corrida,
                 'recordes_drift': self.recordes_drift,
                 'trofeus': self.trofeus,
-                'upgrades': self.upgrades
+                'upgrades': self.upgrades,
+                'carro_p1_atual': self.carro_p1_atual,
+                'carro_p2_atual': self.carro_p2_atual
             }
             with open(CAMINHO_PROGRESSO, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
@@ -171,6 +179,19 @@ class GerenciadorProgresso:
     def contar_carros_desbloqueados(self):
         """Retorna a quantidade de carros desbloqueados"""
         return len(self.carros_desbloqueados)
+    
+    def definir_carro_atual(self, carro_p1=None, carro_p2=None):
+        if carro_p1 is not None:
+            self.carro_p1_atual = carro_p1
+        if carro_p2 is not None:
+            self.carro_p2_atual = carro_p2
+        self.salvar()
+    
+    def obter_carro_atual(self, jogador=1):
+        if jogador == 1:
+            return self.carro_p1_atual
+        else:
+            return self.carro_p2_atual
     
     def registrar_recorde(self, numero_pista, tempo):
         """Registra um novo recorde de corrida para uma pista (se for melhor)"""

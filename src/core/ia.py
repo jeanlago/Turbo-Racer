@@ -754,48 +754,42 @@ class IA:
         self.atualizar_estado_curva(carro, dt)
         
         acelerar = True
-        frear_re = False
+        frear_re = False  # frear_re é para dar RÉ, não para frear! Para frear, apenas não acelerar.
         
+        # Se está na grama, não acelerar (mas não dar ré!)
         if na_grama:
-            frear_re = True
             acelerar = False
+            frear_re = False  # NÃO dar ré na grama
         
         # Aplicar fator de freio da personalidade
         distancia_freio_curva_ajustada = self.distancia_freio_curva * self.fator_freio
         distancia_freio_checkpoint_ajustada = self.distancia_freio_checkpoint * self.fator_freio
         
+        # Para frear, apenas não acelerar (NÃO usar frear_re que é para dar ré!)
         if self.curvatura_futura > 0.12:
             if distancia < distancia_freio_curva_ajustada * 3.0:
                 if velocidade_atual > self.velocidade_max_curva * 0.4:
-                    frear_re = True
-                    acelerar = False
+                    acelerar = False  # Frear sem dar ré
             if velocidade_atual > self.velocidade_max_curva * 0.5:
-                frear_re = True
-                acelerar = False
+                acelerar = False  # Frear sem dar ré
         elif self.curvatura_futura > 0.08:
             if distancia < distancia_freio_curva_ajustada * 2.5:
                 if velocidade_atual > self.velocidade_max_curva * 0.5:
-                    frear_re = True
-                    acelerar = False
+                    acelerar = False  # Frear sem dar ré
         elif self.curvatura_futura > 0.05:
             if distancia < distancia_freio_curva_ajustada * 1.8:
                 if velocidade_atual > self.velocidade_max_curva * 0.65:
-                    frear_re = True
-                    acelerar = False
+                    acelerar = False  # Frear sem dar ré
         
         if abs(diff_angulo) > 45 and velocidade_atual > self.velocidade_max_curva * 0.9:
-            frear_re = True
-            acelerar = False
+            acelerar = False  # Frear sem dar ré
         elif abs(diff_angulo) > 35 and velocidade_atual > self.velocidade_max_curva * 1.0:
-            frear_re = True
-            acelerar = False
+            acelerar = False  # Frear sem dar ré
         elif abs(diff_angulo) > 30 and velocidade_atual > self.velocidade_max_curva * 1.1:
-            frear_re = True
-            acelerar = False
+            acelerar = False  # Frear sem dar ré
         
         if distancia < distancia_freio_checkpoint_ajustada and velocidade_atual > 1.2:
-            frear_re = True
-            acelerar = False
+            acelerar = False  # Frear sem dar ré
         
         velocidade_max_curva_ajustada = self.velocidade_max_curva
         if self.curvatura_atual > 0.12:
@@ -808,55 +802,44 @@ class IA:
             velocidade_max_curva_ajustada = self.velocidade_max_curva * 0.85
         
         if abs(diff_angulo) > self.angulo_max_curva and velocidade_atual > velocidade_max_curva_ajustada:
-            frear_re = True
-            acelerar = False
+            acelerar = False  # Frear sem dar ré
         
         if self.curvatura_atual > 0.12:
             velocidade_max_curva_fechada = self.velocidade_max_curva * 0.2
             if velocidade_atual > velocidade_max_curva_fechada:
-                frear_re = True
-                acelerar = False
+                acelerar = False  # Frear sem dar ré
         elif self.curvatura_atual > 0.08:
             velocidade_max_curva_fechada = self.velocidade_max_curva * 0.4
             if velocidade_atual > velocidade_max_curva_fechada:
-                frear_re = True
-                acelerar = False
+                acelerar = False  # Frear sem dar ré
         elif self.curvatura_atual > 0.05:
             velocidade_max_curva_fechada = self.velocidade_max_curva * 0.65
             if velocidade_atual > velocidade_max_curva_fechada and abs(diff_angulo) > 15:
-                frear_re = True
-                acelerar = False
+                acelerar = False  # Frear sem dar ré
         elif self.curvatura_atual > 0.03:
             if abs(diff_angulo) > 30 and velocidade_atual > self.velocidade_max_curva * 0.8:
-                frear_re = True
-                acelerar = False
+                acelerar = False  # Frear sem dar ré
         
         if distancia < distancia_freio_curva_ajustada and velocidade_atual > self.velocidade_maxima * 0.8:
-            frear_re = True
-            acelerar = False
+            acelerar = False  # Frear sem dar ré
         
         if self.curvatura_atual > 0.10:
             distancia_freio_ajustada = distancia_freio_curva_ajustada * 3.5
             if distancia < distancia_freio_ajustada and velocidade_atual > self.velocidade_maxima * 0.3:
-                frear_re = True
-                acelerar = False
+                acelerar = False  # Frear sem dar ré
         elif self.curvatura_atual > 0.08:
             distancia_freio_ajustada = distancia_freio_curva_ajustada * 2.5
             if distancia < distancia_freio_ajustada and velocidade_atual > self.velocidade_maxima * 0.4:
-                frear_re = True
-                acelerar = False
+                acelerar = False  # Frear sem dar ré
         elif self.curvatura_atual > 0.05:
             distancia_freio_ajustada = distancia_freio_curva_ajustada * 1.6
             if distancia < distancia_freio_ajustada and velocidade_atual > self.velocidade_maxima * 0.6 and abs(diff_angulo) > 25:
-                frear_re = True
-                acelerar = False
+                acelerar = False  # Frear sem dar ré
         
         if abs(diff_angulo) > 70 and velocidade_atual > 0.8:
-            frear_re = True
-            acelerar = False
+            acelerar = False  # Frear sem dar ré
         elif abs(diff_angulo) > 60 and velocidade_atual > self.velocidade_max_curva * 0.8:
-            frear_re = True
-            acelerar = False
+            acelerar = False  # Frear sem dar ré
         
         # Aplicar fator de aceleração da personalidade
         if abs(diff_angulo) < 12 and distancia > distancia_freio_checkpoint_ajustada and velocidade_atual < self.velocidade_maxima * (0.9 * self.fator_aceleracao):
@@ -879,23 +862,18 @@ class IA:
                 frear_re = False
         
         if self.estado_curva == "entrando_curva" and velocidade_atual > self.velocidade_alvo:
-            frear_re = True
-            acelerar = False
+            acelerar = False  # Frear sem dar ré
         elif self.estado_curva == "curva" and velocidade_atual > self.velocidade_alvo * 1.2:
-            frear_re = True
-            acelerar = False
+            acelerar = False  # Frear sem dar ré
         elif self.estado_curva == "curva" and self.curvatura_atual > 0.10:
             if velocidade_atual > self.velocidade_alvo * 0.7:
-                frear_re = True
-                acelerar = False
+                acelerar = False  # Frear sem dar ré
         elif self.estado_curva == "curva" and self.curvatura_atual > 0.08:
             if velocidade_atual > self.velocidade_alvo * 0.8:
-                frear_re = True
-                acelerar = False
+                acelerar = False  # Frear sem dar ré
         elif self.estado_curva == "curva" and self.curvatura_atual > 0.05:
             if velocidade_atual > self.velocidade_alvo * 0.9:
-                frear_re = True
-                acelerar = False
+                acelerar = False  # Frear sem dar ré
         elif self.estado_curva == "reta" and velocidade_atual < self.velocidade_alvo * 0.8:
             acelerar = True
             frear_re = False
@@ -938,8 +916,8 @@ class IA:
                     acelerar = True
                     frear_re = False
                 else:
-                    frear_re = True
-                    acelerar = False
+                    acelerar = False  # Frear sem dar ré (NÃO usar frear_re!)
+                    frear_re = False
             elif self.curvatura_atual > 0.08:
                 if abs(diff_angulo) < 25 and velocidade_atual < self.velocidade_max_curva * 0.75:
                     acelerar = True

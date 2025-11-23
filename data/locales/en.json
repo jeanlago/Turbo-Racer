@@ -4,7 +4,7 @@
       "pressione_qualquer_botao": "PRESS ANY BUTTON TO START"
     },
     "principal": {
-      "selecionar_carros": "SELECT CARS",
+      "selecionar_carros": "GARAGE",
       "jogar": "PLAY",
       "recordes": "RECORDS",
       "opcoes": "OPTIONS",
@@ -55,7 +55,10 @@
       "confirmar": "CONFIRM",
       "usar": "USE",
       "upgrade": "UPGRADE",
-      "vender": "SELL"
+      "vender": "SELL",
+      "dois_jogadores": "2 PLAYERS",
+      "um_jogador": "1 PLAYER",
+      "concluido": "DONE"
     },
     "upgrades": {
       "titulo": "UPGRADES - {}",
@@ -169,7 +172,8 @@
     "medio": "MEDIUM",
     "dificil": "HARD",
     "dificuldade_ia": "AI DIFFICULTY:",
-    "dificuldade_pontuacao": "DIFFICULTY (SCORE):"
+    "dificuldade_pontuacao": "DIFFICULTY (SCORE):",
+    "dificuldade_tempo": "DIFFICULTY (TIME):"
   },
   "audio": {
     "titulo": "AUDIO SETTINGS",
@@ -205,6 +209,32 @@
   "titulo_jogo": {
     "menu": "Turbo Racer — Menu",
     "jogo": "Turbo Racer"
+  },
+  "achievements": {
+    "titulo": "ACHIEVEMENTS",
+    "desbloqueados": "Unlocked",
+    "primeira_corrida": "First Race",
+    "primeira_corrida_desc": "Complete your first race",
+    "velocista": "Speedster",
+    "velocista_desc": "Reach 200 km/h",
+    "drift_master": "Drift Master",
+    "drift_master_desc": "Complete 10 drift laps",
+    "sem_colisao": "Clean Driver",
+    "sem_colisao_desc": "Complete a race without collisions",
+    "trofeu_ouro": "Champion",
+    "trofeu_ouro_desc": "Win a gold trophy",
+    "colecionador": "Collector",
+    "colecionador_desc": "Unlock 5 cars",
+    "perfeccionista": "Perfectionist",
+    "perfeccionista_desc": "Complete 10 races without errors",
+    "recordista": "Record Breaker",
+    "recordista_desc": "Set 5 new records",
+    "upgrade_completo": "Tuned",
+    "upgrade_completo_desc": "Maximize all upgrades of a car",
+    "veterano": "Veteran",
+    "veterano_desc": "Complete 50 races",
+    "desbloqueado": "Unlocked!",
+    "recompensa": "Reward: ${}"
   }
 }
 

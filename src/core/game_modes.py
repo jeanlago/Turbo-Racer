@@ -7,3 +7,4 @@ class ModoJogo(Enum):
 class TipoJogo(Enum):
     CORRIDA = 0
     DRIFT = 1
+    GHOST = 2

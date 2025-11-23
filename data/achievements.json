@@ -1,0 +1,15 @@
+{
+  "achievements_desbloqueados": [
+  ],
+  "achievements_visualizados": [],
+  "estatisticas": {
+    "corridas_completas": 0,
+    "voltas_drift": 0,
+    "recordes_estabelecidos": 0,
+    "carros_desbloqueados": 0,
+    "corridas_sem_colisao": 0,
+    "corridas_sem_erros": 0,
+    "velocidade_maxima": 0,
+    "upgrades_maximizados": 0
+  }
+}

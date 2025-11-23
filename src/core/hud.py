@@ -523,6 +523,28 @@ class HUD:
                     texto_voltas = texto_traducao.format(voltas_atual, voltas_objetivo)
                 except:
                     texto_voltas = f"Voltas: {voltas_atual}/{voltas_objetivo}"
+        elif tipo_jogo == TipoJogo.GHOST:
+            # Modo Ghost: mostrar tempo ao invés de posição
+            if corrida.iniciada:
+                tempo_total = corrida.tempo_global
+                minutos = int(tempo_total // 60)
+                segundos = int(tempo_total % 60)
+                centesimos = int((tempo_total % 1) * 100)
+                texto_posicao = f"{minutos:02d}:{segundos:02d}.{centesimos:02d}"
+            else:
+                texto_posicao = "00:00.00"
+            
+            voltas_atual = corrida.voltas.get(carro, 0)
+            voltas_objetivo = corrida.voltas_objetivo
+            from core.i18n import t
+            texto_traducao = t("jogo.hud.voltas")
+            if texto_traducao == "jogo.hud.voltas":
+                texto_voltas = f"Voltas: {voltas_atual}/{voltas_objetivo}"
+            else:
+                try:
+                    texto_voltas = texto_traducao.format(voltas_atual, voltas_objetivo)
+                except:
+                    texto_voltas = f"Voltas: {voltas_atual}/{voltas_objetivo}"
         else:
             # Calcular posição atual do carro em tempo real
             def calcular_posicao_atual(carro_alvo, todos_carros):

@@ -4,7 +4,7 @@
       "pressione_qualquer_botao": "PRESIONA CUALQUIER BOTÓN PARA COMENZAR"
     },
     "principal": {
-      "selecionar_carros": "SELECCIONAR COCHES",
+      "selecionar_carros": "TALLER",
       "jogar": "JUGAR",
       "recordes": "RÉCORDS",
       "opcoes": "OPCIONES",
@@ -55,7 +55,10 @@
       "confirmar": "CONFIRMAR",
       "usar": "USAR",
       "upgrade": "MEJORAR",
-      "vender": "VENDER"
+      "vender": "VENDER",
+      "dois_jogadores": "2 JUGADORES",
+      "um_jogador": "1 JUGADOR",
+      "concluido": "COMPLETADO"
     },
     "upgrades": {
       "titulo": "MEJORAS - {}",
@@ -169,7 +172,8 @@
     "medio": "MEDIO",
     "dificil": "DIFÍCIL",
     "dificuldade_ia": "DIFICULTAD DE IA:",
-    "dificuldade_pontuacao": "DIFICULTAD (PUNTUACIÓN):"
+    "dificuldade_pontuacao": "DIFICULTAD (PUNTUACIÓN):",
+    "dificuldade_tempo": "DIFICULTAD (TIEMPO):"
   },
   "audio": {
     "titulo": "CONFIGURACIONES DE AUDIO",
@@ -205,6 +209,32 @@
   "titulo_jogo": {
     "menu": "Turbo Racer — Menú",
     "jogo": "Turbo Racer"
+  },
+  "achievements": {
+    "titulo": "LOGROS",
+    "desbloqueados": "Desbloqueados",
+    "primeira_corrida": "Primera Carrera",
+    "primeira_corrida_desc": "Completa tu primera carrera",
+    "velocista": "Velocista",
+    "velocista_desc": "Alcanza 200 km/h",
+    "drift_master": "Maestro del Drift",
+    "drift_master_desc": "Completa 10 vueltas en modo drift",
+    "sem_colisao": "Piloto Limpio",
+    "sem_colisao_desc": "Completa una carrera sin colisiones",
+    "trofeu_ouro": "Campeón",
+    "trofeu_ouro_desc": "Gana un trofeo de oro",
+    "colecionador": "Coleccionista",
+    "colecionador_desc": "Desbloquea 5 coches",
+    "perfeccionista": "Perfeccionista",
+    "perfeccionista_desc": "Completa 10 carreras sin errores",
+    "recordista": "Récord",
+    "recordista_desc": "Establece 5 nuevos récords",
+    "upgrade_completo": "Tuneado",
+    "upgrade_completo_desc": "Maximiza todas las mejoras de un coche",
+    "veterano": "Veterano",
+    "veterano_desc": "Completa 50 carreras",
+    "desbloqueado": "¡Desbloqueado!",
+    "recompensa": "Recompensa: ${}"
   }
 }
 
