@@ -15,9 +15,12 @@
       "volume": "VOLUME",
       "controles": "CONTROLS",
       "graficos": "GRAPHICS",
+      "jogo": "GAME",
       "idioma": "LANGUAGE",
       "voltar": "BACK"
     },
+    "confirmar": "CONFIRM",
+    "cancelar": "CANCEL",
     "idioma": {
       "titulo": "SELECT LANGUAGE",
       "portugues": "PORTUGUÊS",
@@ -122,7 +125,10 @@
     "sim": "YES",
     "nao": "NO",
     "p1": "P1:",
-    "p2": "P2:"
+    "p2": "P2:",
+    "titulo": "GAME SETTINGS",
+    "confirmar_upgrade": "CONFIRM UPGRADE",
+    "voltar": "BACK"
   },
   "tipos_tracao": {
     "rear": "REAR",

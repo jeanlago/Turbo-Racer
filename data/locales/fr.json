@@ -15,9 +15,12 @@
       "volume": "VOLUME",
       "controles": "CONTRÔLES",
       "graficos": "GRAPHIQUES",
+      "jogo": "JEU",
       "idioma": "LANGUE",
       "voltar": "RETOUR"
     },
+    "confirmar": "CONFIRMER",
+    "cancelar": "ANNULER",
     "idioma": {
       "titulo": "SÉLECTIONNER LA LANGUE",
       "portugues": "PORTUGUÊS",
@@ -122,7 +125,10 @@
     "sim": "OUI",
     "nao": "NON",
     "p1": "P1:",
-    "p2": "P2:"
+    "p2": "P2:",
+    "titulo": "PARAMÈTRES DU JEU",
+    "confirmar_upgrade": "CONFIRMER L'AMÉLIORATION",
+    "voltar": "RETOUR"
   },
   "tipos_tracao": {
     "rear": "ARRIÈRE",

@@ -15,9 +15,12 @@
       "volume": "VOLUME",
       "controles": "CONTROLES",
       "graficos": "GRÁFICOS",
+      "jogo": "JOGO",
       "idioma": "IDIOMA",
       "voltar": "VOLTAR"
     },
+    "confirmar": "CONFIRMAR",
+    "cancelar": "CANCELAR",
     "idioma": {
       "titulo": "SELECIONAR IDIOMA",
       "portugues": "PORTUGUÊS",
@@ -122,7 +125,10 @@
     "sim": "SIM",
     "nao": "NÃO",
     "p1": "P1:",
-    "p2": "P2:"
+    "p2": "P2:",
+    "titulo": "CONFIGURAÇÕES DE JOGO",
+    "confirmar_upgrade": "CONFIRMAR UPGRADE",
+    "voltar": "VOLTAR"
   },
   "tipos_tracao": {
     "rear": "TRASEIRA",

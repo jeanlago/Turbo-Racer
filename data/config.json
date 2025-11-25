@@ -32,7 +32,8 @@
     "dificuldade_IA": 1.0,
     "modo_drift": true,
     "mostrar_fps": true,
-    "mostrar_debug": false
+    "mostrar_debug": false,
+    "confirmar_upgrade": true
   },
   "idioma": {
     "idioma_atual": "pt"

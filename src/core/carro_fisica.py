@@ -277,7 +277,7 @@ class CarroFisica:
         
         return x_corrigido, y_corrigido
 
-    def atualizar(self, teclas, superficie_mascara, dt, camera=None, superficie_pista_renderizada=None, inputs_controle=None):
+    def atualizar(self, teclas, superficie_mascara, dt, camera=None, superficie_pista_renderizada=None, inputs_controle=None, player_id=None):
         """
         Atualiza o carro com inputs de teclado ou controle
         
@@ -288,6 +288,7 @@ class CarroFisica:
             camera: câmera do jogo
             superficie_pista_renderizada: superfície da pista
             inputs_controle: dict com inputs de controle {"acelerar", "frear", "direita", "esquerda", "turbo"}
+            player_id: "p1" ou "p2" para identificar qual tecla de freio de mão usar no teclado
         """
         if inputs_controle is not None:
             # Usar inputs de controle se fornecidos
@@ -298,16 +299,6 @@ class CarroFisica:
             turbo_pressed = inputs_controle.get("turbo", False)
             freio_mao_pressed = inputs_controle.get("freio_mao", False)
             drift_pressed = inputs_controle.get("drift", False)
-            # DEBUG: Mostrar quando freio de mão ou drift é pressionado
-            if freio_mao_pressed:
-                print(f"[DEBUG CARRO] Freio de mão pressionado (R1)")
-            if drift_pressed:
-                print(f"[DEBUG CARRO] Drift pressionado (Square)")
-            # Ativar/desativar freio de mão ou drift
-            if freio_mao_pressed or drift_pressed:
-                self.ativar_drift()
-            else:
-                self.desativar_drift()
         else:
             # Usar teclado (comportamento padrão)
             acelerar = teclas[self.controles[0]]
@@ -318,6 +309,20 @@ class CarroFisica:
             turbo_pressed = False
             if self.turbo_key is not None:
                 turbo_pressed = bool(teclas[self.turbo_key])
+            
+            # Freio de mão do teclado: Space para P1, K_KP0 para P2
+            freio_mao_pressed = False
+            if player_id == "p1":
+                freio_mao_pressed = teclas[pygame.K_SPACE]
+            elif player_id == "p2":
+                freio_mao_pressed = teclas[pygame.K_KP0]
+            drift_pressed = False
+
+        # Ativar/desativar freio de mão ou drift (tanto de controle quanto de teclado)
+        if freio_mao_pressed or drift_pressed:
+            self.ativar_drift()
+        else:
+            self.desativar_drift()
 
         self._step(acelerar, direita, esquerda, frear_re, turbo_pressed, superficie_mascara, dt, camera, superficie_pista_renderizada)
 

@@ -1,15 +1,15 @@
 {
   "estatisticas_gerais": {
-    "tempo_total_jogado": 1482.8259999988104,
-    "distancia_total": 226980.62629488236,
-    "corridas_completas": 21,
+    "tempo_total_jogado": 1919.1809999997092,
+    "distancia_total": 254872.95328314297,
+    "corridas_completas": 24,
     "corridas_vencidas": 2,
-    "voltas_completas": 23,
-    "colisoes_totais": 16283,
-    "drifts_totais": 0,
-    "turbo_usado": 27830,
+    "voltas_completas": 42,
+    "colisoes_totais": 16979,
+    "drifts_totais": 707,
+    "turbo_usado": 32264,
     "recordes_estabelecidos": 3,
-    "trofeus_ganhos": 19
+    "trofeus_ganhos": 21
   },
   "estatisticas_por_pista": {
     "1": {
@@ -17,8 +17,8 @@
       "corridas_vencidas": 1,
       "melhor_tempo": 34.273999999999845,
       "melhor_posicao": 1,
-      "voltas_completas": 12,
-      "colisoes": 15799,
+      "voltas_completas": 13,
+      "colisoes": 15929,
       "recordes_estabelecidos": 0
     },
     "2": {
@@ -31,12 +31,12 @@
       "recordes_estabelecidos": 0
     },
     "3": {
-      "corridas_completas": 10,
+      "corridas_completas": 13,
       "corridas_vencidas": 1,
       "melhor_tempo": 6.1919999999999575,
       "melhor_posicao": 1,
-      "voltas_completas": 10,
-      "colisoes": 445,
+      "voltas_completas": 28,
+      "colisoes": 1011,
       "recordes_estabelecidos": 3
     }
   }

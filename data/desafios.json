@@ -3,54 +3,54 @@
     {
       "tipo": "estabelecer_recorde",
       "objetivo": 1,
-      "recompensa": 895,
+      "recompensa": 530,
       "descricao": "Estabeleça um novo recorde",
-      "id": "diario_20251123_0",
+      "id": "diario_20251125_3",
       "progresso": 0
     },
     {
-      "tipo": "vencer_corridas",
-      "objetivo": 1,
-      "recompensa": 471,
-      "descricao": "Vença 2 corridas em 1º lugar",
-      "id": "diario_20251123_0",
+      "tipo": "usar_turbo",
+      "objetivo": 95,
+      "recompensa": 202,
+      "descricao": "Use o turbo 88 vezes",
+      "id": "diario_20251125_3",
       "progresso": 0
     },
     {
-      "tipo": "completar_voltas",
-      "objetivo": 15,
-      "recompensa": 308,
-      "descricao": "Complete 13 voltas",
-      "id": "diario_20251123_0",
+      "tipo": "usar_turbo",
+      "objetivo": 78,
+      "recompensa": 301,
+      "descricao": "Use o turbo 97 vezes",
+      "id": "diario_20251125_3",
       "progresso": 0
     }
   ],
   "desafios_semanais": [
     {
-      "tipo": "completar_corridas",
-      "objetivo": 13,
-      "recompensa": 2895,
-      "descricao": "Complete 10 corridas",
-      "id": "semanal_202546_0",
+      "tipo": "completar_voltas",
+      "objetivo": 85,
+      "recompensa": 1674,
+      "descricao": "Complete 83 voltas",
+      "id": "semanal_202547_2",
       "progresso": 0
     },
     {
-      "tipo": "completar_voltas",
-      "objetivo": 83,
-      "recompensa": 1678,
-      "descricao": "Complete 89 voltas",
-      "id": "semanal_202546_0",
+      "tipo": "vencer_corridas",
+      "objetivo": 10,
+      "recompensa": 2007,
+      "descricao": "Vença 10 corridas em 1º lugar",
+      "id": "semanal_202547_2",
       "progresso": 0
     }
   ],
   "missoes_pista": {},
   "progresso": {
-    "diario_20251123_0": 2,
-    "semanal_202546_0": 1
+    "semanal_202547_2": 2
   },
   "completados": [
+    "diario_20251124_3",
     "diario_20251123_0"
   ],
-  "ultima_atualizacao_diaria": "2025-11-23",
-  "ultima_atualizacao_semanal": "2025-W47"
+  "ultima_atualizacao_diaria": "2025-11-25",
+  "ultima_atualizacao_semanal": "2025-W48"
 }

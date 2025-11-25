@@ -268,7 +268,8 @@ CONFIGURACOES = {
         "dificuldade_IA": 1.0,
         "modo_drift": True,
         "mostrar_fps": False,
-        "mostrar_debug": False
+        "mostrar_debug": False,
+        "confirmar_upgrade": True
     },
     "idioma": {
         "idioma_atual": "pt"

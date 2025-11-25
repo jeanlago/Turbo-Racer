@@ -1,0 +1,48 @@
+{
+  "dinheiro": 2923381,
+  "carros_desbloqueados": [
+    "Car2",
+    "Car3",
+    "Car4",
+    "Car1"
+  ],
+  "recordes_corrida": {
+    "1": 31.715000000000785,
+    "3": 3.7709999999999746
+  },
+  "recordes_drift": {},
+  "trofeus": {
+    "1": "ouro",
+    "3": "ouro"
+  },
+  "upgrades": {
+    "Car1": {
+      "motor": 5,
+      "filtro_ar": 3,
+      "ecu": 4,
+      "transmissao": 3,
+      "rodas": 4,
+      "suspensao": 3,
+      "nitro": 5
+    },
+    "Car2": {
+      "nitro": 5,
+      "motor": 5,
+      "transmissao": 5,
+      "suspensao": 5,
+      "rodas": 5,
+      "ecu": 5,
+      "filtro_ar": 5
+    },
+    "Car3": {
+      "motor": 3
+    }
+  },
+  "carro_p1_atual": 0,
+  "carro_p2_atual": 1,
+  "ultima_compra_alien": {
+    "tipo": "upgrade_especial",
+    "quantidade": 1,
+    "tipo_upgrade": "motor"
+  }
+}

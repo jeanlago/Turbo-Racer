@@ -201,28 +201,50 @@ class GamepadManager:
                 "frear": bool,
                 "direita": bool,
                 "esquerda": bool,
-                "turbo": bool
+                "turbo": bool,
+                "freio_mao": bool,
+                "drift": bool
             } ou None se deve usar teclado
         """
         config = self.controles_config.get(player_id, {})
         joystick_id = config.get("joystick_id", 0)
         
-        if joystick_id >= len(self.joysticks) or joystick_id < 0:
-            return None
+        # Obter inputs do controle
+        acelerar_input = None
+        frear_input = None
+        direita_input = None
+        esquerda_input = None
+        turbo_input = None
+        freio_mao_input = None
+        drift_input = None
         
-        # Obter inputs do controle (sem fallback para teclado aqui)
-        acelerar_input = self.obter_input(player_id, "acelerar", None)
-        frear_input = self.obter_input(player_id, "frear", None)
-        direita_input = self.obter_input(player_id, "direita", None)
-        esquerda_input = self.obter_input(player_id, "esquerda", None)
-        turbo_input = self.obter_input(player_id, "turbo", None)
-        freio_mao_input = self.obter_input(player_id, "freio_mao", None)
-        drift_input = self.obter_input(player_id, "drift", None)
+        if joystick_id < len(self.joysticks) and joystick_id >= 0:
+            acelerar_input = self.obter_input(player_id, "acelerar", None)
+            frear_input = self.obter_input(player_id, "frear", None)
+            direita_input = self.obter_input(player_id, "direita", None)
+            esquerda_input = self.obter_input(player_id, "esquerda", None)
+            turbo_input = self.obter_input(player_id, "turbo", None)
+            freio_mao_input = self.obter_input(player_id, "freio_mao", None)
+            drift_input = self.obter_input(player_id, "drift", None)
         
-        # Se nenhum input de controle está ativo, usar teclado
+        # Verificar se há input de controle ativo
         tem_input_controle = (acelerar_input or frear_input or direita_input or esquerda_input or turbo_input or freio_mao_input or drift_input)
+        
+        # Se não há controle conectado ou nenhum input ativo, usar teclado
         if not tem_input_controle and teclas is not None:
+            # Se não há controle, retornar None para usar teclado padrão
+            # O freio de mão do teclado será adicionado no main.py
             return None
+        
+        # Se há controle mas não tem freio_mao configurado, usar teclado como fallback
+        if joystick_id < len(self.joysticks) and joystick_id >= 0:
+            import pygame
+            if not freio_mao_input and not drift_input and teclas is not None:
+                # Adicionar freio de mão do teclado como fallback se não estiver configurado no controle
+                if player_id == "p1":
+                    freio_mao_input = freio_mao_input or teclas[pygame.K_SPACE]
+                elif player_id == "p2":
+                    freio_mao_input = freio_mao_input or teclas[pygame.K_KP0]
         
         # Converter inputs para booleanos com threshold
         return {

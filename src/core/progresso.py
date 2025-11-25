@@ -17,6 +17,8 @@ class GerenciadorProgresso:
         self.upgrades = {}
         self.carro_p1_atual = None
         self.carro_p2_atual = None
+        # Rastreamento de compras do mercador alien para diálogos raros do Crank
+        self.ultima_compra_alien = None  # {'tipo': 'golpe'|'upgrade_especial'|'multi_upgrade', 'quantidade': int, 'tipo_upgrade': str}
         self.carregar()
     
     def carregar(self):
@@ -38,6 +40,7 @@ class GerenciadorProgresso:
                     self.upgrades = data.get('upgrades', {})
                     self.carro_p1_atual = data.get('carro_p1_atual', None)
                     self.carro_p2_atual = data.get('carro_p2_atual', None)
+                    self.ultima_compra_alien = data.get('ultima_compra_alien', None)
                     
                     # Garantir que upgrades seja um dicionário válido antes de migrar
                     if not isinstance(self.upgrades, dict):
@@ -113,7 +116,8 @@ class GerenciadorProgresso:
                 'trofeus': self.trofeus,
                 'upgrades': self.upgrades,
                 'carro_p1_atual': self.carro_p1_atual,
-                'carro_p2_atual': self.carro_p2_atual
+                'carro_p2_atual': self.carro_p2_atual,
+                'ultima_compra_alien': self.ultima_compra_alien
             }
             with open(CAMINHO_PROGRESSO, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
@@ -271,6 +275,24 @@ class GerenciadorProgresso:
             self.salvar()
             return True
         return False
+    
+    def registrar_compra_alien(self, tipo, quantidade=1, tipo_upgrade=None):
+        """Registra uma compra do mercador alien para diálogos raros do Crank"""
+        self.ultima_compra_alien = {
+            'tipo': tipo,  # 'golpe', 'upgrade_especial', 'multi_upgrade'
+            'quantidade': quantidade,
+            'tipo_upgrade': tipo_upgrade
+        }
+        self.salvar()
+    
+    def obter_ultima_compra_alien(self):
+        """Obtém a última compra do mercador alien"""
+        return self.ultima_compra_alien
+    
+    def limpar_ultima_compra_alien(self):
+        """Limpa o registro da última compra do mercador alien"""
+        self.ultima_compra_alien = None
+        self.salvar()
     
     def calcular_preco_upgrade(self, tipo_upgrade, nivel_atual):
         """Calcula o preço do próximo nível de upgrade"""

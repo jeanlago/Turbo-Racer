@@ -232,7 +232,30 @@ def render_text(text, size, color=(255,255,255), bold=True, pixel_style=True):
                 except:
                     continue
     else:
-        font = pygame.font.SysFont("arial", size, bold=bold)
+        # Usar fonte padrão do sistema que suporta acentos (não pixel art)
+        system_fonts = [
+            "arial",           # Arial (fallback padrão)
+            "segoe ui",        # Segoe UI (Windows moderno)
+            "tahoma",          # Tahoma (Windows)
+            "verdana",         # Verdana (legível)
+            "helvetica",       # Helvetica (macOS)
+            "sans-serif"       # Genérico
+        ]
+        
+        font = None
+        for font_name in system_fonts:
+            try:
+                font = pygame.font.SysFont(font_name, size, bold=bold)
+                # Testar se a fonte funciona renderizando um caractere
+                test_surface = font.render("A", True, (255, 255, 255))
+                if test_surface.get_width() > 0:
+                    break
+            except:
+                continue
+        
+        # Fallback final
+        if font is None:
+            font = pygame.font.Font(None, size)
     
     # Renderizar texto com contorno para estilo pixel art
     if pixel_style and size >= 14:
@@ -1988,6 +2011,15 @@ def verificar_upgrades_disponiveis(prefixo_cor):
 
 def selecionar_carros_loop(screen):
     global _tinha_dinheiro_anterior
+    from core.crank import crank
+    
+    # Verificar se deve mostrar tutorial do Crank (primeira vez na oficina)
+    if not crank.tutorial_mostrado and not crank.ativo:
+        crank.mostrar_tutorial()
+    
+    # Verificar se deve mostrar diálogo raro sobre compras do mercador alien (chance rara)
+    if crank.tutorial_mostrado and not crank.ativo:
+        crank.verificar_aparecer_dialogo_alien()
     
     # Ao entrar na oficina, se havia uma notificação ativa (transição detectada),
     # "consumir" a notificação atualizando o estado anterior para True
@@ -2300,7 +2332,17 @@ def selecionar_carros_loop(screen):
                 botao_concluido_x_p2 = botoes_x_inicial_p2  # Alinhar com o primeiro botão
                 botao_concluido_rect_p2 = pygame.Rect(botao_concluido_x_p2, botao_concluido_y_p2, botao_concluido_largura_p2, botao_altura_p2)
         
-        for ev in pygame.event.get():
+        eventos = list(pygame.event.get())
+        
+        # Processar Crank primeiro (se ativo) - tem prioridade máxima
+        if crank.ativo:
+            resultado_crank = crank.processar_eventos(eventos)
+            if resultado_crank == "fechado":
+                crank.fechar()
+            # Filtrar eventos de mouse e teclado que o Crank processa
+            eventos = [ev for ev in eventos if not (ev.type in (pygame.MOUSEBUTTONDOWN, pygame.KEYDOWN) and crank.ativo)]
+        
+        for ev in eventos:
             if ev.type == pygame.QUIT:
                 return None, None
             
@@ -3704,6 +3746,10 @@ def selecionar_carros_loop(screen):
         popup_musica.atualizar(dt)
         popup_musica.desenhar(screen)
         
+        # Desenhar Crank (se ativo) - tem prioridade máxima
+        if crank.ativo:
+            crank.desenhar_dialogo(screen, dt)
+        
         pygame.display.flip()
 
 def aplicar_blur(surface, fator=4):
@@ -3720,6 +3766,9 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
     """Tela de upgrades para um carro específico - estilo Need for Speed 2015"""
     from core.i18n import t
     from core.progresso import gerenciador_progresso
+    from core.glub import glub
+    from core.crank import crank
+    from config import DIR_PROJETO
     import os
     
     # Verificar se o carro está desbloqueado
@@ -3728,6 +3777,14 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
     if not carro_desbloqueado:
         popup_musica.mostrar(t("mensagens.comprar_carro_primeiro"), tipo="outra")
         return True  # Volta para seleção de carros
+    
+    # Verificar se deve mostrar tutorial de upgrades do Crank (primeira vez)
+    if not crank.tutorial_upgrades_mostrado and not crank.ativo:
+        crank.mostrar_tutorial_upgrades()
+    
+    # Verificar se o Crank deve aparecer por dano crítico (apenas na tela de upgrades)
+    if not crank.ativo:
+        crank.verificar_aparecer_dano_critico()
     
     # Capturar fundo atual se não foi fornecido
     if fundo_garagem is None:
@@ -3847,12 +3904,68 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
         mouse_x, mouse_y = pygame.mouse.get_pos()
         upgrade_hover = None
         
-        for ev in pygame.event.get():
+        eventos = list(pygame.event.get())
+        
+        # Processar Crank primeiro (se ativo) - tem prioridade máxima
+        if crank.ativo:
+            resultado_crank = crank.processar_eventos(eventos)
+            if resultado_crank == "confirmado":
+                # Upgrade confirmado, realizar a compra
+                if crank.upgrade_pendente:
+                    upgrade_info = crank.upgrade_pendente
+                    if gerenciador_progresso.comprar_upgrade(upgrade_info['prefixo_cor'], upgrade_info['tipo'], upgrade_info['preco']):
+                        # Tocar som de compra
+                        try:
+                            som_compra_path = os.path.join(DIR_PROJETO, "assets", "sounds", "purchase", "caixa.mp3")
+                            if os.path.exists(som_compra_path):
+                                som_compra = pygame.mixer.Sound(som_compra_path)
+                                som_compra.play()
+                        except Exception as e:
+                            print(f"Erro ao tocar som de compra: {e}")
+                        
+                        # Verificar se todos os upgrades estão maximizados
+                        from core.achievements import gerenciador_achievements
+                        upgrades_carro = gerenciador_progresso.obter_todos_upgrades(upgrade_info['prefixo_cor'])
+                        todos_maximizados = all(nivel >= 5 for nivel in upgrades_carro.values() if isinstance(nivel, int))
+                        if todos_maximizados:
+                            gerenciador_achievements.atualizar_estatistica("upgrades_maximizados", incrementar=True)
+                            gerenciador_achievements.verificar_achievements(gerenciador_progresso)
+                        
+                        nome_upgrade = upgrades_disponiveis[upgrade_atual][1]
+                        popup_musica.mostrar(t("mensagens.upgrade_comprado").format(nome_carro, nome_upgrade), tipo="outra")
+                        
+                        # Verificar se o Glub deve aparecer
+                        if not glub.ativo:
+                            glub.verificar_aparecer(upgrade_info['tipo'], upgrade_info['nivel'], upgrade_info['prefixo_cor'])
+                    else:
+                        popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
+                    crank.upgrade_pendente = None
+                crank.fechar()
+            elif resultado_crank == "cancelado":
+                # Upgrade cancelado
+                crank.upgrade_pendente = None
+                crank.fechar()
+            elif resultado_crank == "fechado":
+                crank.fechar()
+            # Filtrar eventos de mouse e teclado que o Crank processa
+            eventos = [ev for ev in eventos if not (ev.type in (pygame.MOUSEBUTTONDOWN, pygame.KEYDOWN) and crank.ativo)]
+        
+        # Processar Glub (se ativo e Crank não estiver ativo) - antes de outros eventos
+        if glub.ativo and not crank.ativo:
+            resultado_glub = glub.processar_eventos(eventos, prefixo_cor=prefixo_cor)
+            if resultado_glub in ["vendido", "recusado", "fechado"]:
+                if resultado_glub == "vendido":
+                    popup_musica.mostrar("Peça vendida para o Glub!", tipo="outra")
+                # Continuar processando eventos normalmente
+        
+        for ev in eventos:
             if ev.type == pygame.QUIT:
                 return False
             
-            # Processar eventos de controle ANTES de outros eventos
-            if gerenciador_gamepad.obter_numero_controles() > 0:
+            # Processar eventos de controle (mas não bloquear mouse)
+            # Apenas processar eventos de controle, não eventos de mouse/teclado
+            # Isso permite que mouse e controle funcionem independentemente
+            if gerenciador_gamepad.obter_numero_controles() > 0 and ev.type in (pygame.JOYHATMOTION, pygame.JOYBUTTONDOWN, pygame.JOYAXISMOTION):
                 from core.menu_controles import processar_eventos_controle_menu
                 tempo_atual = pygame.time.get_ticks()
                 # Para navegação horizontal (esquerda/direita), passar número de upgrades
@@ -3874,19 +3987,31 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                         upgrade_atual_tipo = upgrades_disponiveis[upgrade_atual][0]
                         nivel_atual = gerenciador_progresso.obter_upgrade(prefixo_cor, upgrade_atual_tipo)
                         if nivel_atual < 5:
-                            preco = gerenciador_progresso.calcular_preco_upgrade(upgrade_atual_tipo, nivel_atual)
-                            if gerenciador_progresso.comprar_upgrade(prefixo_cor, upgrade_atual_tipo, preco):
-                                # Verificar se todos os upgrades estão maximizados
-                                from core.achievements import gerenciador_achievements
-                                upgrades_carro = gerenciador_progresso.obter_todos_upgrades(prefixo_cor)
-                                todos_maximizados = all(nivel >= 5 for nivel in upgrades_carro.values() if isinstance(nivel, int))
-                                if todos_maximizados:
-                                    gerenciador_achievements.atualizar_estatistica("upgrades_maximizados", incrementar=True)
-                                    gerenciador_achievements.verificar_achievements(gerenciador_progresso)
-                                nome_upgrade = upgrades_disponiveis[upgrade_atual][1]
-                                popup_musica.mostrar(t("mensagens.upgrade_comprado").format(nome_carro, nome_upgrade), tipo="outra")
+                            # Verificar se pode comprar (bloqueio por dano crítico)
+                            pode_comprar, motivo = crank.pode_comprar_upgrade(upgrade_atual_tipo)
+                            if not pode_comprar and motivo == "dano_critico":
+                                crank.bloquear_upgrade_dano_critico(upgrade_atual_tipo)
                             else:
-                                popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
+                                preco_base = gerenciador_progresso.calcular_preco_upgrade(upgrade_atual_tipo, nivel_atual)
+                                # Aplicar multiplicador do humor do Crank
+                                preco = crank.calcular_preco_com_humor(preco_base)
+                                nivel_antigo = nivel_atual  # Salvar nível antigo antes de comprar
+                                if gerenciador_progresso.comprar_upgrade(prefixo_cor, upgrade_atual_tipo, preco):
+                                    # Verificar se todos os upgrades estão maximizados
+                                    from core.achievements import gerenciador_achievements
+                                    upgrades_carro = gerenciador_progresso.obter_todos_upgrades(prefixo_cor)
+                                    todos_maximizados = all(nivel >= 5 for nivel in upgrades_carro.values() if isinstance(nivel, int))
+                                    if todos_maximizados:
+                                        gerenciador_achievements.atualizar_estatistica("upgrades_maximizados", incrementar=True)
+                                        gerenciador_achievements.verificar_achievements(gerenciador_progresso)
+                                    nome_upgrade = upgrades_disponiveis[upgrade_atual][1]
+                                    popup_musica.mostrar(t("mensagens.upgrade_comprado").format(nome_carro, nome_upgrade), tipo="outra")
+                                    
+                                    # Verificar se o Glub deve aparecer (após compra bem-sucedida)
+                                    if not glub.ativo:
+                                        glub.verificar_aparecer(upgrade_atual_tipo, nivel_antigo, prefixo_cor)
+                                else:
+                                    popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
                     elif acao == "cancelar":
                         return True
                     continue
@@ -3917,19 +4042,48 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                 if icon_rect.collidepoint(mouse_x, mouse_y):
                     nivel_atual = gerenciador_progresso.obter_upgrade(prefixo_cor, upgrade_atual_tipo)
                     if nivel_atual < 5:
-                        preco = gerenciador_progresso.calcular_preco_upgrade(upgrade_atual_tipo, nivel_atual)
-                        if gerenciador_progresso.comprar_upgrade(prefixo_cor, upgrade_atual_tipo, preco):
-                            # Verificar se todos os upgrades estão maximizados
-                            from core.achievements import gerenciador_achievements
-                            upgrades_carro = gerenciador_progresso.obter_todos_upgrades(prefixo_cor)
-                            todos_maximizados = all(nivel >= 5 for nivel in upgrades_carro.values() if isinstance(nivel, int))
-                            if todos_maximizados:
-                                gerenciador_achievements.atualizar_estatistica("upgrades_maximizados", incrementar=True)
-                                gerenciador_achievements.verificar_achievements(gerenciador_progresso)
-                            nome_upgrade = upgrades_disponiveis[upgrade_atual][1]
-                            popup_musica.mostrar(t("mensagens.upgrade_comprado").format(nome_carro, nome_upgrade), tipo="outra")
+                        # Verificar se pode comprar (bloqueio por dano crítico)
+                        pode_comprar, motivo = crank.pode_comprar_upgrade(upgrade_atual_tipo)
+                        if not pode_comprar and motivo == "dano_critico":
+                            crank.bloquear_upgrade_dano_critico(upgrade_atual_tipo)
                         else:
-                            popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
+                            preco_base = gerenciador_progresso.calcular_preco_upgrade(upgrade_atual_tipo, nivel_atual)
+                            # Aplicar multiplicador do humor do Crank
+                            preco = crank.calcular_preco_com_humor(preco_base)
+                            nivel_antigo = nivel_atual  # Salvar nível antigo antes de comprar
+                            
+                            # Verificar se precisa de confirmação
+                            from config import CONFIGURACOES
+                            precisa_confirmacao = CONFIGURACOES.get("jogo", {}).get("confirmar_upgrade", True)
+                            
+                            if precisa_confirmacao and not crank.ativo:
+                                # Mostrar diálogo de confirmação
+                                crank.mostrar_confirmacao_upgrade(upgrade_atual_tipo, preco, nivel_atual, prefixo_cor)
+                            elif gerenciador_progresso.comprar_upgrade(prefixo_cor, upgrade_atual_tipo, preco):
+                                # Tocar som de compra
+                                try:
+                                    som_compra_path = os.path.join(DIR_PROJETO, "assets", "sounds", "purchase", "caixa.mp3")
+                                    if os.path.exists(som_compra_path):
+                                        som_compra = pygame.mixer.Sound(som_compra_path)
+                                        som_compra.play()
+                                except Exception as e:
+                                    print(f"Erro ao tocar som de compra: {e}")
+                                
+                                # Verificar se todos os upgrades estão maximizados
+                                from core.achievements import gerenciador_achievements
+                                upgrades_carro = gerenciador_progresso.obter_todos_upgrades(prefixo_cor)
+                                todos_maximizados = all(nivel >= 5 for nivel in upgrades_carro.values() if isinstance(nivel, int))
+                                if todos_maximizados:
+                                    gerenciador_achievements.atualizar_estatistica("upgrades_maximizados", incrementar=True)
+                                    gerenciador_achievements.verificar_achievements(gerenciador_progresso)
+                                nome_upgrade = upgrades_disponiveis[upgrade_atual][1]
+                                popup_musica.mostrar(t("mensagens.upgrade_comprado").format(nome_carro, nome_upgrade), tipo="outra")
+                                
+                                # Verificar se o Glub deve aparecer (após compra bem-sucedida)
+                                if not glub.ativo:
+                                    glub.verificar_aparecer(upgrade_atual_tipo, nivel_antigo, prefixo_cor)
+                            else:
+                                popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
                 
                 voltar_rect = pygame.Rect(LARGURA // 2 - 100, ALTURA - 80, 200, 50)
                 if voltar_rect.collidepoint(mouse_x, mouse_y):
@@ -4085,7 +4239,9 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                 
                 # Informações do upgrade abaixo do ícone
                 nivel_atual = gerenciador_progresso.obter_upgrade(prefixo_cor, upgrade_atual_tipo)
-                preco = gerenciador_progresso.calcular_preco_upgrade(upgrade_atual_tipo, nivel_atual)
+                preco_base = gerenciador_progresso.calcular_preco_upgrade(upgrade_atual_tipo, nivel_atual)
+                # Aplicar multiplicador do humor do Crank
+                preco = crank.calcular_preco_com_humor(preco_base)
                 pode_comprar = nivel_atual < 5 and gerenciador_progresso.tem_dinheiro(preco)
                 
                 # Nome do upgrade (afastado do ícone)
@@ -4203,6 +4359,13 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
         
         popup_musica.atualizar(dt)
         popup_musica.desenhar(screen)
+        
+        # Desenhar Crank (se ativo) - tem prioridade máxima
+        if crank.ativo:
+            crank.desenhar_dialogo(screen, dt)
+        # Desenhar Glub (se ativo e Crank não estiver ativo)
+        elif glub.ativo:
+            glub.desenhar_dialogo(screen, dt)
         
         pygame.display.flip()
 
@@ -5353,6 +5516,7 @@ def submenu_video(screen_ref):
                         # Salvar estado anterior
                         fullscreen_anterior = CONFIGURACOES["video"]["fullscreen"]
                         tela_cheia_sem_bordas_anterior = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
+                        resolucao_anterior = CONFIGURACOES["video"]["resolucao"]  # Salvar resolução anterior
                         
                         # Alterar estado temporariamente
                         CONFIGURACOES["video"][chave] = not CONFIGURACOES["video"][chave]
@@ -5367,20 +5531,20 @@ def submenu_video(screen_ref):
                         elif tela_cheia_sem_bordas:
                             display_flags |= pygame.NOFRAME
                         
-                        resultado_confirmacao = mostrar_dialogo_confirmacao_resolucao(screen, bg, resolucao, resolucao)
+                        resultado_confirmacao = mostrar_dialogo_confirmacao_resolucao(screen, bg, resolucao, resolucao_anterior)
                         
                         if resultado_confirmacao:
-                            # Usuário confirmou, manter nova resolução
-                            CONFIGURACOES["video"]["resolucao"] = nova_resolucao
+                            # Usuário confirmou, manter nova configuração
                             salvar_configuracoes()
-                            # Recarregar background com nova resolução
-                            bg = scale_to_cover(bg_raw, nova_resolucao[0], nova_resolucao[1])
+                            # Recarregar background com resolução atual
+                            bg = scale_to_cover(bg_raw, resolucao[0], resolucao[1])
                         else:
                             # Usuário não confirmou ou timer expirou, reverter
-                            CONFIGURACOES["video"]["resolucao"] = resolucao_anterior
+                            CONFIGURACOES["video"][chave] = not CONFIGURACOES["video"][chave]  # Reverter mudança
+                            CONFIGURACOES["video"]["resolucao"] = resolucao_anterior  # type: ignore
                             salvar_configuracoes()
                             # Recarregar background com resolução anterior
-                            bg = scale_to_cover(bg_raw, resolucao_anterior[0], resolucao_anterior[1])
+                            bg = scale_to_cover(bg_raw, resolucao_anterior[0], resolucao_anterior[1])  # type: ignore
                             # Aplicar resolução anterior
                             fullscreen = CONFIGURACOES["video"]["fullscreen"]
                             tela_cheia_sem_bordas = CONFIGURACOES["video"]["tela_cheia_sem_bordas"]
@@ -5389,7 +5553,7 @@ def submenu_video(screen_ref):
                                 display_flags |= pygame.FULLSCREEN
                             elif tela_cheia_sem_bordas:
                                 display_flags |= pygame.NOFRAME
-                            screen = pygame.display.set_mode(resolucao_anterior, display_flags)
+                            screen = pygame.display.set_mode(resolucao_anterior, display_flags)  # type: ignore
                             return (True, screen)
                     elif opcoes_video[opcao_atual][1] == "fps_max":
                         fps_opcoes = [30, 60, 120, 144, 200, 300]
@@ -5800,6 +5964,7 @@ def opcoes_loop(screen):
             (t("menu.opcoes.volume"), "audio"),
             (t("menu.opcoes.controles"), "controles"),
             (t("menu.opcoes.graficos"), "video"),
+            (t("menu.opcoes.jogo"), "jogo"),
             (t("menu.opcoes.idioma"), "idioma"),
             (t("menu.opcoes.voltar"), "voltar")
         ]
@@ -5810,8 +5975,8 @@ def opcoes_loop(screen):
     clock = pygame.time.Clock()
 
     # caixa
-    caixa_largura = 400
-    caixa_altura = 500
+    caixa_largura = 500
+    caixa_altura = 600
     caixa_x = (LARGURA - caixa_largura) // 2
     caixa_y = (ALTURA - caixa_altura) // 2
 
@@ -5859,6 +6024,9 @@ def opcoes_loop(screen):
                                     return False
                             elif not resultado:
                                 return False
+                        elif chave == "jogo":
+                            if not submenu_jogo(screen):
+                                return False
                         elif chave == "idioma":
                             if not submenu_idioma(screen):
                                 return False
@@ -5878,7 +6046,7 @@ def opcoes_loop(screen):
                     opcao_clicada = verificar_clique_opcao(
                         mouse_x, mouse_y, opcoes_principais,
                         caixa_x, caixa_y, caixa_largura,
-                        altura_item=50, offset_y=80, opcao_largura=350, scroll_offset=0
+                        altura_item=50, offset_y=80, opcao_largura=450, scroll_offset=0
                     )
                     if opcao_clicada >= 0:
                         opcao_atual = opcao_clicada
@@ -5899,6 +6067,9 @@ def opcoes_loop(screen):
                                 if not voltar:
                                     return False
                             elif not resultado:
+                                return False
+                        elif chave == "jogo":
+                            if not submenu_jogo(screen):
                                 return False
                         elif chave == "idioma":
                             if not submenu_idioma(screen):
@@ -5929,6 +6100,9 @@ def opcoes_loop(screen):
                                 continue
                         elif resultado:
                             continue
+                    elif chave == "jogo":
+                        if not submenu_jogo(screen):
+                            return False
                     elif chave == "idioma":
                         if submenu_idioma(screen):
                             # Recarregar opções após voltar do submenu de idioma
@@ -5947,8 +6121,8 @@ def opcoes_loop(screen):
         overlay.fill((0, 0, 0, 50))
         screen.blit(overlay, (0, 0))
 
-        caixa_largura = 400
-        caixa_altura = 500
+        caixa_largura = 500
+        caixa_altura = 600
         caixa_x = (LARGURA - caixa_largura) // 2
         caixa_y = (ALTURA - caixa_altura) // 2
 
@@ -5962,7 +6136,7 @@ def opcoes_loop(screen):
             opcao_hover = verificar_clique_opcao(
                 mouse_x, mouse_y, opcoes_principais,
                 caixa_x, caixa_y, caixa_largura,
-                altura_item=50, offset_y=80, opcao_largura=350, scroll_offset=0
+                altura_item=50, offset_y=80, opcao_largura=450, scroll_offset=0
             )
         if opcao_hover >= 0:
             opcao_atual = opcao_hover
@@ -5994,7 +6168,7 @@ def opcoes_loop(screen):
                          (caixa_x + caixa_largura - 20, titulo_y + titulo.get_height() + 10), 2)
 
         # opções
-        opcao_largura = 350
+        opcao_largura = 450
         opcao_altura = 50
         opcao_x = caixa_x + (caixa_largura - opcao_largura) // 2
         opcao_y_inicial = titulo_y + titulo.get_height() + 40
@@ -6041,6 +6215,151 @@ def opcoes_loop(screen):
             texto_x = opcao_x + (opcao_largura - texto_opcao.get_width()) // 2
             texto_y = opcao_y + (opcao_altura - texto_opcao.get_height()) // 2
             screen.blit(texto_opcao, (texto_x, texto_y))
+
+        pygame.display.flip()
+
+def submenu_jogo(screen):
+    """Submenu de configurações de jogo"""
+    from config import CONFIGURACOES, salvar_configuracoes
+    bg_raw = pygame.image.load(CAMINHO_MENU).convert_alpha()
+    bg = scale_to_cover(bg_raw, LARGURA, ALTURA)
+
+    from core.i18n import t
+    opcoes_jogo = [
+        (t("jogo.confirmar_upgrade"), "confirmar_upgrade")
+    ]
+    opcao_voltar = (t("jogo.voltar"), "voltar")
+
+    opcao_atual = 0
+    clock = pygame.time.Clock()
+
+    caixa_largura = 500
+    caixa_altura = 400
+    caixa_x = (LARGURA - caixa_largura) // 2
+    caixa_y = (ALTURA - caixa_altura) // 2
+
+    hover_animation = [0.0] * len(opcoes_jogo)
+    hover_speed = 8.0
+
+    while True:
+        dt = clock.tick(FPS) / 1000.0
+
+        for ev in pygame.event.get():
+            if ev.type == pygame.QUIT:
+                return False
+            elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                mouse_in_caixa = (caixa_x <= mouse_x <= caixa_x + caixa_largura and
+                                  caixa_y <= mouse_y <= caixa_y + caixa_altura)
+                # voltar
+                voltar_y = caixa_y + caixa_altura - 60
+                voltar_rect = pygame.Rect(caixa_x + 20, voltar_y - 5, caixa_largura - 40, 50)
+                if voltar_rect.collidepoint(mouse_x, mouse_y):
+                    return True
+                
+                # clique em opções só vale dentro da caixa
+                if mouse_in_caixa:
+                    idx = verificar_clique_opcao(mouse_x, mouse_y, opcoes_jogo,
+                                                 caixa_x, caixa_y, caixa_largura, 50, 80, None, 0)
+                    if idx >= 0:
+                        opcao_atual = idx
+                        chave = opcoes_jogo[opcao_atual][1]
+                        if chave == "confirmar_upgrade":
+                            if "jogo" not in CONFIGURACOES:
+                                CONFIGURACOES["jogo"] = {}
+                            CONFIGURACOES["jogo"][chave] = not CONFIGURACOES["jogo"].get(chave, True)
+                            salvar_configuracoes()
+            elif ev.type == pygame.KEYDOWN:
+                if ev.key == pygame.K_ESCAPE:
+                    return True
+                elif ev.key in (pygame.K_UP, pygame.K_w):
+                    opcao_atual = (opcao_atual - 1) % len(opcoes_jogo)
+                elif ev.key in (pygame.K_DOWN, pygame.K_s):
+                    opcao_atual = (opcao_atual + 1) % len(opcoes_jogo)
+                elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
+                    chave = opcoes_jogo[opcao_atual][1]
+                    if chave == "confirmar_upgrade":
+                        if "jogo" not in CONFIGURACOES:
+                            CONFIGURACOES["jogo"] = {}
+                        CONFIGURACOES["jogo"][chave] = not CONFIGURACOES["jogo"].get(chave, True)
+                        salvar_configuracoes()
+
+        # Atualizar animações hover
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        mouse_in_caixa = (caixa_x <= mouse_x <= caixa_x + caixa_largura and
+                          caixa_y <= mouse_y <= caixa_y + caixa_altura)
+        
+        for i in range(len(opcoes_jogo)):
+            if i == opcao_atual:
+                hover_animation[i] = 0.0
+            else:
+                y_opcao = caixa_y + 80 + i * 50
+                opcao_rect = pygame.Rect(caixa_x + 20, y_opcao - 5, caixa_largura - 40, 50)
+                if opcao_rect.collidepoint(mouse_x, mouse_y) and mouse_in_caixa:
+                    hover_animation[i] = min(1.0, hover_animation[i] + dt * hover_speed)
+                else:
+                    hover_animation[i] = max(0.0, hover_animation[i] - dt * hover_speed)
+
+        screen.blit(bg, (0, 0))
+
+        # Caixa de opções
+        caixa_fundo = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+        caixa_fundo.fill((20, 20, 20, 240))
+        screen.blit(caixa_fundo, (caixa_x, caixa_y))
+        pygame.draw.rect(screen, (100, 220, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 2)
+
+        # Título
+        titulo = render_text(t("menu.opcoes.jogo"), 36, (100, 220, 255), bold=True, pixel_style=True)
+        titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
+        titulo_y = caixa_y + 20
+        screen.blit(titulo, (titulo_x, titulo_y))
+
+        # Opções
+        for i, (nome, chave) in enumerate(opcoes_jogo):
+            y_opcao = caixa_y + 80 + i * 50
+            opcao_rect = pygame.Rect(caixa_x + 20, y_opcao - 5, caixa_largura - 40, 50)
+            
+            hover_progress = hover_animation[i] if i != opcao_atual else 0.0
+            
+            if i == opcao_atual:
+                cor_fundo = (0, 200, 255, 50)
+                cor_texto = (0, 200, 255)
+            else:
+                cor_fundo = (0, 0, 0, int(30 * hover_progress))
+                cor_texto = (255, 255, 255) if hover_progress == 0 else (0, 200, 255)
+            
+            if cor_fundo[3] > 0:
+                opcao_fundo = pygame.Surface((opcao_rect.width, opcao_rect.height), pygame.SRCALPHA)
+                opcao_fundo.fill(cor_fundo)
+                screen.blit(opcao_fundo, opcao_rect.topleft)
+            
+            pygame.draw.rect(screen, (100, 220, 255), opcao_rect, 2)
+            
+            # Valor da opção (ON/OFF)
+            valor = CONFIGURACOES.get("jogo", {}).get(chave, True)
+            valor_texto = "ON" if valor else "OFF"
+            texto_valor = render_text(valor_texto, 24, cor_texto, bold=True, pixel_style=True)
+            valor_x = opcao_rect.right - texto_valor.get_width() - 20
+            valor_y = y_opcao + (50 - texto_valor.get_height()) // 2
+            screen.blit(texto_valor, (valor_x, valor_y))
+            
+            # Nome da opção
+            texto_opcao = render_text(nome, 24, cor_texto, bold=True, pixel_style=True)
+            texto_x = opcao_rect.x + 20
+            texto_y = y_opcao + (50 - texto_opcao.get_height()) // 2
+            screen.blit(texto_opcao, (texto_x, texto_y))
+
+        # Botão voltar
+        voltar_y = caixa_y + caixa_altura - 60
+        voltar_rect = pygame.Rect(caixa_x + 20, voltar_y - 5, caixa_largura - 40, 50)
+        voltar_hover = voltar_rect.collidepoint(mouse_x, mouse_y)
+        cor_voltar = (100, 150, 200) if voltar_hover else (80, 120, 180)
+        pygame.draw.rect(screen, cor_voltar, voltar_rect)
+        pygame.draw.rect(screen, (100, 220, 255), voltar_rect, 2)
+        voltar_texto = render_text(t("jogo.voltar"), 22, (255, 255, 255), bold=True, pixel_style=True)
+        voltar_texto_x = voltar_rect.x + (voltar_rect.width - voltar_texto.get_width()) // 2
+        voltar_texto_y = voltar_rect.y + (voltar_rect.height - voltar_texto.get_height()) // 2
+        screen.blit(voltar_texto, (voltar_texto_x, voltar_texto_y))
 
         pygame.display.flip()
 

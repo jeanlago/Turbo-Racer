@@ -24,6 +24,14 @@
       "tipo": "button",
       "index": 0
     },
+    "freio_mao": {
+      "tipo": "button",
+      "index": 2
+    },
+    "drift": {
+      "tipo": "button",
+      "index": 2
+    },
     "joystick_id": 0
   },
   "p2": {
@@ -50,6 +58,14 @@
     "turbo": {
       "tipo": "button",
       "index": 0
+    },
+    "freio_mao": {
+      "tipo": "button",
+      "index": 2
+    },
+    "drift": {
+      "tipo": "button",
+      "index": 2
     },
     "joystick_id": 1
   }
