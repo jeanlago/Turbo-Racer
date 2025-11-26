@@ -17,14 +17,14 @@ CAMINHO_REX_DATA = os.path.join(DIR_PROJETO, "data", "rex.json")
 
 # Caminhos dos sprites
 CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "rival")
-SPRITE_COMPETITIVE = os.path.join(CAMINHO_SPRITES, "competitive.png")
-SPRITE_MOCKING = os.path.join(CAMINHO_SPRITES, "mocking.png")
-SPRITE_ANGRY = os.path.join(CAMINHO_SPRITES, "angry.png")
-SPRITE_CHALLENGING = os.path.join(CAMINHO_SPRITES, "challenging.png")
-SPRITE_SCHEMING = os.path.join(CAMINHO_SPRITES, "scheming.png")
+SPRITE_COMPETITIVE = os.path.join(CAMINHO_SPRITES, "competitivo.png")
+SPRITE_MOCKING = os.path.join(CAMINHO_SPRITES, "zombando.png")
+SPRITE_ANGRY = os.path.join(CAMINHO_SPRITES, "ameaça.png")
+SPRITE_CHALLENGING = os.path.join(CAMINHO_SPRITES, "campeao_1.png")
+SPRITE_SCHEMING = os.path.join(CAMINHO_SPRITES, "desdem.png")
 
 # Caminho da cena de fundo
-CAMINHO_CENA_FUNDO = os.path.join(DIR_PROJETO, "assets", "images", "pista_corrida.png")
+CAMINHO_CENA_FUNDO = os.path.join(DIR_PROJETO, "assets", "images", "ui", "pista_corrida.png")
 
 class Rex:
     """Rex - Rival do jogador que aparece após a primeira corrida"""
@@ -51,32 +51,24 @@ class Rex:
         self.texto_completo = ""  # Texto completo a ser exibido
         self.texto_exibido = ""  # Texto já exibido (animação)
         self.tempo_animacao = 0.0  # Tempo acumulado para animação
-        self.velocidade_texto = 50.0  # Caracteres por segundo
+        self.velocidade_texto = 80.0  # Caracteres por segundo (igual ao Barão e Crank)
+        
+        # Sistema de nome revelado
+        # Nota: nome_revelado é carregado em carregar_estado()
+        # Não resetar aqui, senão sobrescreve o estado salvo!
         
     def carregar_estado(self):
-        """Carrega o estado do Rex"""
-        if os.path.exists(CAMINHO_REX_DATA):
-            try:
-                with open(CAMINHO_REX_DATA, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    self.primeira_aparicao_mostrada = data.get('primeira_aparicao_mostrada', False)
-            except Exception as e:
-                print(f"Erro ao carregar estado do Rex: {e}")
-                self.primeira_aparicao_mostrada = False
-        else:
-            self.primeira_aparicao_mostrada = False
+        """Carrega o estado do Rex do progresso.json"""
+        from core.progresso import gerenciador_progresso
+        self.primeira_aparicao_mostrada = gerenciador_progresso.rex_primeira_aparicao_mostrada
+        self.nome_revelado = gerenciador_progresso.rex_nome_revelado
     
     def salvar_estado(self):
-        """Salva o estado do Rex"""
-        try:
-            os.makedirs(os.path.dirname(CAMINHO_REX_DATA), exist_ok=True)
-            data = {
-                'primeira_aparicao_mostrada': self.primeira_aparicao_mostrada
-            }
-            with open(CAMINHO_REX_DATA, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2)
-        except Exception as e:
-            print(f"Erro ao salvar estado do Rex: {e}")
+        """Salva o estado do Rex no progresso.json"""
+        from core.progresso import gerenciador_progresso
+        gerenciador_progresso.rex_primeira_aparicao_mostrada = self.primeira_aparicao_mostrada
+        gerenciador_progresso.rex_nome_revelado = getattr(self, 'nome_revelado', False)
+        gerenciador_progresso.salvar()
     
     def carregar_sprites(self):
         """Carrega os sprites do Rex"""
@@ -123,10 +115,10 @@ class Rex:
             
             # Carregar cena de fundo
             if os.path.exists(CAMINHO_CENA_FUNDO):
-                self.sprite_fundo = pygame.image.load(CAMINHO_CENA_FUNDO).convert_alpha()
+                self.sprite_fundo = pygame.image.load(CAMINHO_CENA_FUNDO).convert()
                 # Redimensionar para a tela
                 self.sprite_fundo = pygame.transform.scale(self.sprite_fundo, (LARGURA, ALTURA))
-                print(f"✓ Cena de fundo carregada")
+                print(f"✓ Cena de fundo carregada: {CAMINHO_CENA_FUNDO}")
             else:
                 print(f"✗ AVISO: Cena de fundo não encontrada: {CAMINHO_CENA_FUNDO}")
                 self.sprite_fundo = None
@@ -268,6 +260,13 @@ class Rex:
         self.texto_completo = texto
         self.texto_exibido = ""
         self.tempo_animacao = 0.0
+        
+        # Verificar se o texto contém o nome do personagem e marcar como revelado
+        if not getattr(self, 'nome_revelado', False):
+            texto_lower = texto.lower()
+            if "rex" in texto_lower or "eu sou" in texto_lower or "meu nome" in texto_lower:
+                self.nome_revelado = True
+                self.salvar_estado()
     
     def _atualizar_animacao_texto(self, dt):
         """Atualiza animação de texto letra por letra"""
@@ -346,11 +345,18 @@ class Rex:
             overlay.fill((0, 0, 0, 200))
             tela.blit(overlay, (0, 0))
         
-        # Desenhar sprite do Rex
+        # Desenhar sprite do Rex (reduzido)
         if self.sprite_atual:
-            sprite_x = LARGURA // 2 - self.sprite_atual.get_width() // 2
-            sprite_y = ALTURA // 2 - self.sprite_atual.get_height() // 2 - 100
-            tela.blit(self.sprite_atual, (sprite_x, sprite_y))
+            # Redimensionar sprite para 70% do tamanho original
+            sprite_original_w = self.sprite_atual.get_width()
+            sprite_original_h = self.sprite_atual.get_height()
+            sprite_novo_w = int(sprite_original_w * 0.7)
+            sprite_novo_h = int(sprite_original_h * 0.7)
+            sprite_redimensionado = pygame.transform.scale(self.sprite_atual, (sprite_novo_w, sprite_novo_h))
+            
+            sprite_x = LARGURA // 2 - sprite_novo_w // 2
+            sprite_y = ALTURA // 2 - sprite_novo_h // 2 - 50  # Reduzido de -100 para -50 (mais baixo)
+            tela.blit(sprite_redimensionado, (sprite_x, sprite_y))
         
         # Desenhar caixa de diálogo
         caixa_largura = 1000
@@ -364,19 +370,21 @@ class Rex:
         pygame.draw.rect(tela, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
         
         # Desenhar nome do personagem
-        nome_texto = render_text("REX", 24, (255, 200, 0), bold=True, pixel_style=True)
+        nome_display = "???" if not getattr(self, 'nome_revelado', False) else "REX"
+        nome_texto = render_text(nome_display, 24, (255, 200, 0), bold=True, pixel_style=True)
         tela.blit(nome_texto, (caixa_x + 20, caixa_y + 10))
         
-        # Desenhar texto do diálogo
+        # Desenhar texto do diálogo usando render_text com pixel_style
         if self.texto_exibido:
-            fonte = pygame.font.SysFont("consolas", 18)
-            # Quebrar texto em linhas
+            # Quebrar texto em linhas usando render_text para medir largura
             palavras = self.texto_exibido.split(' ')
             linhas = []
             linha_atual = ""
             for palavra in palavras:
                 teste_linha = linha_atual + (" " if linha_atual else "") + palavra
-                largura_teste = fonte.size(teste_linha)[0]
+                # Usar render_text para medir a largura corretamente
+                teste_render = render_text(teste_linha, 18, (255, 255, 255), bold=False, pixel_style=True)
+                largura_teste = teste_render.get_width()
                 if largura_teste <= caixa_largura - 40:
                     linha_atual = teste_linha
                 else:
@@ -388,8 +396,8 @@ class Rex:
             
             y_texto = caixa_y + 50
             for linha in linhas:
-                texto_surface = fonte.render(linha, True, (255, 255, 255))
-                tela.blit(texto_surface, (caixa_x + 20, y_texto))
+                linha_render = render_text(linha, 18, (255, 255, 255), bold=False, pixel_style=True)
+                tela.blit(linha_render, (caixa_x + 20, y_texto))
                 y_texto += 25
         
         # Desenhar indicador de continuar

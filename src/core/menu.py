@@ -627,11 +627,15 @@ def desenhar_tela_achievements(screen, dt):
 
 # Variáveis globais para animação do cursor nas telas
 _estatisticas_animacao_cursor = 0.0
+_estatisticas_scroll_offset = 0.0
+_estatisticas_scroll_dragging = False
+_estatisticas_scroll_drag_start_y = 0
+_estatisticas_scroll_drag_start_offset = 0
 _desafios_animacao_cursor = 0.0
 
 def desenhar_tela_estatisticas(screen, dt):
     """Desenha a tela de estatísticas detalhadas"""
-    global _estatisticas_animacao_cursor
+    global _estatisticas_animacao_cursor, _estatisticas_scroll_offset
     from core.i18n import t
     from core.estatisticas import gerenciador_estatisticas
     
@@ -659,7 +663,44 @@ def desenhar_tela_estatisticas(screen, dt):
     screen.blit(titulo, (titulo_x, caixa_y + 20))
     
     stats_gerais = gerenciador_estatisticas.obter_estatisticas_gerais()
-    y_atual = caixa_y + 90
+    
+    # Adicionar seção de recordes (tempos e scores)
+    from core.progresso import gerenciador_progresso
+    
+    def formatar_tempo_estat(tempo):
+        """Formata tempo em segundos para MM:SS.CC"""
+        if tempo is None:
+            return "--:--.--"
+        minutos = int(tempo // 60)
+        segundos = int(tempo % 60)
+        centesimos = int((tempo % 1) * 100)
+        return f"{minutos:02d}:{segundos:02d}.{centesimos:02d}"
+    
+    def formatar_score_estat(score):
+        """Formata score para exibição"""
+        if score is None:
+            return "--"
+        score_int = int(score)
+        if score_int >= 1000:
+            return f"{score_int:,}".replace(",", ".")
+        return str(score_int)
+    
+    # Coletar recordes de corrida
+    recordes_corrida_texto = []
+    for pista_num in range(1, 10):
+        recorde = gerenciador_progresso.obter_recorde(pista_num)
+        if recorde is not None:
+            recordes_corrida_texto.append(f"Pista {pista_num}: {formatar_tempo_estat(recorde)}")
+    
+    # Coletar recordes de drift
+    recordes_drift_texto = []
+    for pista_num in range(1, 10):
+        # Verificar diferentes voltas para drift
+        for voltas in [1, 2, 3]:
+            chave = f"{pista_num}_{voltas}"
+            recorde = gerenciador_progresso.obter_recorde_drift(chave)
+            if recorde is not None:
+                recordes_drift_texto.append(f"Pista {pista_num} ({voltas} volta{'s' if voltas > 1 else ''}): {formatar_score_estat(recorde)} pts")
     
     secoes = [
         ("GERAIS", [
@@ -676,19 +717,59 @@ def desenhar_tela_estatisticas(screen, dt):
         ])
     ]
     
+    # Adicionar seção de recordes de corrida se houver
+    if recordes_corrida_texto:
+        secoes.append(("MELHORES TEMPOS (CORRIDA)", recordes_corrida_texto))
+    
+    # Adicionar seção de recordes de drift se houver
+    if recordes_drift_texto:
+        secoes.append(("MELHORES SCORES (DRIFT)", recordes_drift_texto))
+    
+    # Criar superfície com scroll para conteúdo
+    conteudo_surface = pygame.Surface((caixa_largura - 60, caixa_altura - 150), pygame.SRCALPHA)
+    conteudo_surface.fill((0, 0, 0, 0))
+    
+    scroll_y = 0
+    y_conteudo = 0
+    
     for secao_nome, itens in secoes:
         secao_titulo = render_text(secao_nome, 28, (150, 200, 255), bold=True, pixel_style=True)
-        screen.blit(secao_titulo, (caixa_x + 30, y_atual))
-        y_atual += 40
+        conteudo_surface.blit(secao_titulo, (30, y_conteudo))
+        y_conteudo += 40
         
-        for i, (nome, valor) in enumerate(itens):
-            if y_atual > caixa_y + caixa_altura - 100:
-                break
-            nome_texto = render_text(nome, 18, (200, 200, 200), bold=False, pixel_style=True)
-            valor_texto = render_text(str(valor), 18, (100, 220, 255), bold=True, pixel_style=True)
-            screen.blit(nome_texto, (caixa_x + 50, y_atual))
-            screen.blit(valor_texto, (caixa_x + caixa_largura - 250, y_atual))
-            y_atual += 45
+        for item in itens:
+            if isinstance(item, tuple):
+                nome, valor = item
+                nome_texto = render_text(nome, 18, (200, 200, 200), bold=False, pixel_style=True)
+                valor_texto = render_text(str(valor), 18, (100, 220, 255), bold=True, pixel_style=True)
+                conteudo_surface.blit(nome_texto, (50, y_conteudo))
+                conteudo_surface.blit(valor_texto, (caixa_largura - 310, y_conteudo))
+            else:
+                # Item simples (string)
+                item_texto = render_text(str(item), 16, (200, 200, 200), bold=False, pixel_style=True)
+                conteudo_surface.blit(item_texto, (50, y_conteudo))
+            y_conteudo += 35
+        
+        y_conteudo += 10  # Espaço entre seções
+    
+    # Calcular scroll máximo
+    altura_total_conteudo = y_conteudo
+    scroll_max = max(0, altura_total_conteudo - area_conteudo_altura)
+    _estatisticas_scroll_offset = max(0, min(_estatisticas_scroll_offset, scroll_max))
+    
+    # Criar área de clipping para o conteúdo
+    clip_rect = pygame.Rect(caixa_x + 30, caixa_y + 80, caixa_largura - 60, area_conteudo_altura)
+    screen.set_clip(clip_rect)
+    
+    # Desenhar conteúdo com scroll
+    screen.blit(conteudo_surface, (caixa_x + 30, caixa_y + 80 - _estatisticas_scroll_offset))
+    
+    # Remover clipping
+    screen.set_clip(None)
+    
+    # Desenhar barra de scroll se necessário
+    if scroll_max > 0:
+        desenhar_scrollbar(screen, _estatisticas_scroll_offset, scroll_max, caixa_x, caixa_y, caixa_largura, caixa_altura, _estatisticas_scroll_dragging)
     
     botao_fechar_rect = pygame.Rect(caixa_x + caixa_largura - 120, caixa_y + 20, 100, 40)
     pygame.draw.rect(screen, (200, 50, 50), botao_fechar_rect)
@@ -1037,9 +1118,32 @@ def menu_loop(screen) -> Escolha:
                 resultado_controle = processar_eventos_controle_menu(ev, 0, 0, joystick_id=0, tempo_atual=tempo_atual)
                 if resultado_controle:
                     acao = resultado_controle.get("acao")
-                    if acao == "confirmar" or acao == "cancelar":
+                    global _estatisticas_scroll_offset
+                    if acao == "cima":
+                        # Scroll para cima
+                        scroll_speed = 50.0
+                        _estatisticas_scroll_offset -= scroll_speed
+                        caixa_altura = 600
+                        area_conteudo_altura = caixa_altura - 150
+                        # Calcular altura total do conteúdo (aproximado)
+                        altura_total = 800  # Valor aproximado, será recalculado no desenho
+                        scroll_max = max(0, altura_total - area_conteudo_altura)
+                        _estatisticas_scroll_offset = max(0, min(_estatisticas_scroll_offset, scroll_max))
+                        continue
+                    elif acao == "baixo":
+                        # Scroll para baixo
+                        scroll_speed = 50.0
+                        _estatisticas_scroll_offset += scroll_speed
+                        caixa_altura = 600
+                        area_conteudo_altura = caixa_altura - 150
+                        altura_total = 800  # Valor aproximado, será recalculado no desenho
+                        scroll_max = max(0, altura_total - area_conteudo_altura)
+                        _estatisticas_scroll_offset = max(0, min(_estatisticas_scroll_offset, scroll_max))
+                        continue
+                    elif acao == "confirmar" or acao == "cancelar":
                         # Fechar tela
                         tela_estatisticas_aberta = False
+                        _estatisticas_scroll_offset = 0.0
                         icone_selecionado = None
                         continue
             elif tela_desafios_aberta and gerenciador_gamepad.obter_numero_controles() > 0:
@@ -1144,6 +1248,7 @@ def menu_loop(screen) -> Escolha:
                             icone_selecionado = None
                         elif tela_estatisticas_aberta:
                             tela_estatisticas_aberta = False
+                            _estatisticas_scroll_offset = 0.0
                             icone_selecionado = None
                         elif tela_desafios_aberta:
                             tela_desafios_aberta = False
@@ -1197,6 +1302,7 @@ def menu_loop(screen) -> Escolha:
                     botao_fechar_estat = desenhar_tela_estatisticas(screen, dt)
                     if botao_fechar_estat.collidepoint(mouse_x, mouse_y):
                         tela_estatisticas_aberta = False
+                        _estatisticas_scroll_offset = 0.0
                         icone_selecionado = None  # Resetar seleção ao fechar tela
                 elif tela_desafios_aberta:
                     botao_fechar_desafios = desenhar_tela_desafios(screen, dt)
@@ -1206,6 +1312,8 @@ def menu_loop(screen) -> Escolha:
             elif ev.type == pygame.MOUSEBUTTONUP and ev.button == 1:
                 if tela_achievements_aberta:
                     _achievements_scroll_dragging = False
+                elif tela_estatisticas_aberta:
+                    _estatisticas_scroll_dragging = False
             elif ev.type == pygame.MOUSEMOTION:
                 if tela_achievements_aberta:
                     if _achievements_scroll_dragging:
@@ -1227,6 +1335,24 @@ def menu_loop(screen) -> Escolha:
                             scroll_ratio = delta_y / barra_altura
                             new_offset = _achievements_scroll_drag_start_offset + (scroll_ratio * scroll_max)
                             _achievements_scroll_offset = max(0, min(new_offset, scroll_max))
+                elif tela_estatisticas_aberta:
+                    if _estatisticas_scroll_dragging:
+                        caixa_x = (LARGURA - 800) // 2
+                        caixa_y = (ALTURA - 600) // 2
+                        area_scroll_y = caixa_y + 80
+                        area_scroll_altura = 600 - 150
+                        barra_altura = area_scroll_altura
+                        
+                        # Calcular novo offset baseado no movimento do mouse
+                        delta_y = mouse_y - _estatisticas_scroll_drag_start_y
+                        altura_total = 800  # Valor aproximado, será recalculado no desenho
+                        scroll_max = max(0, altura_total - area_scroll_altura)
+                        
+                        if scroll_max > 0:
+                            # Converter movimento do mouse em scroll
+                            scroll_ratio = delta_y / barra_altura
+                            new_offset = _estatisticas_scroll_drag_start_offset + (scroll_ratio * scroll_max)
+                            _estatisticas_scroll_offset = max(0, min(new_offset, scroll_max))
             elif ev.type == pygame.MOUSEWHEEL:
                 if tela_achievements_aberta:
                     # Scroll com roda do mouse
@@ -1246,6 +1372,22 @@ def menu_loop(screen) -> Escolha:
                         altura_total = len(achievements) * 70
                         scroll_max = max(0, altura_total - area_scroll_altura)
                         _achievements_scroll_offset = max(0, min(_achievements_scroll_offset, scroll_max))
+                    elif tela_estatisticas_aberta:
+                        # Scroll com roda do mouse
+                        caixa_x = (LARGURA - 800) // 2
+                        caixa_y = (ALTURA - 600) // 2
+                        area_scroll_y = caixa_y + 80
+                        area_scroll_altura = 600 - 150
+                        
+                        # Verificar se o mouse está sobre a área de estatísticas
+                        if caixa_x <= mouse_x <= caixa_x + 800 and area_scroll_y <= mouse_y <= area_scroll_y + area_scroll_altura:
+                            scroll_speed = 50.0  # Velocidade de scroll
+                            _estatisticas_scroll_offset -= ev.y * scroll_speed
+                            
+                            # Limitar scroll
+                            altura_total = 800  # Valor aproximado, será recalculado no desenho
+                            scroll_max = max(0, altura_total - area_scroll_altura)
+                            _estatisticas_scroll_offset = max(0, min(_estatisticas_scroll_offset, scroll_max))
             if ev.type == pygame.KEYDOWN:
                 if ev.key == pygame.K_ESCAPE:
                     if tela_achievements_aberta:
@@ -1259,6 +1401,7 @@ def menu_loop(screen) -> Escolha:
                         continue
                     elif tela_estatisticas_aberta:
                         tela_estatisticas_aberta = False
+                        _estatisticas_scroll_offset = 0.0
                         icone_selecionado = None  # Resetar seleção ao fechar tela
                         continue
                     elif tela_desafios_aberta:
@@ -2012,6 +2155,7 @@ def verificar_upgrades_disponiveis(prefixo_cor):
 def selecionar_carros_loop(screen):
     global _tinha_dinheiro_anterior
     from core.crank import crank
+    from core.barao import barao
     
     # Verificar se deve mostrar tutorial do Crank (primeira vez na oficina)
     if not crank.tutorial_mostrado and not crank.ativo:
@@ -2020,6 +2164,10 @@ def selecionar_carros_loop(screen):
     # Verificar se deve mostrar diálogo raro sobre compras do mercador alien (chance rara)
     if crank.tutorial_mostrado and not crank.ativo:
         crank.verificar_aparecer_dialogo_alien()
+    
+    # Verificar se Barão deve aparecer para oferecer empréstimo (sem dinheiro, carro quebrado)
+    if not barao.ativo and not crank.ativo:
+        barao.verificar_aparecer_oferta()
     
     # Ao entrar na oficina, se havia uma notificação ativa (transição detectada),
     # "consumir" a notificação atualizando o estado anterior para True
@@ -2044,6 +2192,7 @@ def selecionar_carros_loop(screen):
     
     carro_p1_atual_salvo = gerenciador_progresso.obter_carro_atual(1)
     if carro_p1_atual_salvo is not None and 0 <= carro_p1_atual_salvo < len(CARROS_DISPONIVEIS):
+        # Sempre usar o carro salvo, mesmo que não esteja desbloqueado (pode ter sido vendido)
         carro_p1 = carro_p1_atual_salvo
     else:
         carros_desbloqueados = [i for i, carro in enumerate(CARROS_DISPONIVEIS) if gerenciador_progresso.esta_desbloqueado(carro['prefixo_cor'])]
@@ -2232,7 +2381,7 @@ def selecionar_carros_loop(screen):
                 esta_desbloqueado_p1 = gerenciador_progresso.esta_desbloqueado(carro_atual_p1['prefixo_cor'])
             info_x_p1 = LARGURA - 300
             info_y_p1 = 180
-            info_altura_p1 = 320  # Ajustar altura para refletir o tamanho real das especificações
+            info_altura_p1 = 360  # Altura aumentada para acomodar o texto de dano
             botao_y_p1 = info_y_p1 + info_altura_p1 + 20
             botao_largura_p1 = 130
             botao_altura_p1 = 45
@@ -2290,7 +2439,7 @@ def selecionar_carros_loop(screen):
                 esta_desbloqueado_p2 = gerenciador_progresso.esta_desbloqueado(carro_atual_p2['prefixo_cor'])
             info_x_p2 = LARGURA - 300
             info_y_p2 = 180
-            info_altura_p2 = 320  # Ajustar altura para refletir o tamanho real das especificações
+            info_altura_p2 = 360  # Altura aumentada para acomodar o texto de dano
             botao_y_p2 = info_y_p2 + info_altura_p2 + 20
             botao_largura_p2 = 85  # Reduzir largura para caber 3 botões
             botao_altura_p2 = 45
@@ -2337,6 +2486,11 @@ def selecionar_carros_loop(screen):
         # Processar Crank primeiro (se ativo) - tem prioridade máxima
         if crank.ativo:
             resultado_crank = crank.processar_eventos(eventos)
+            
+            # Processar Barão se ativo
+            from core.barao import barao
+            if barao.ativo:
+                barao.processar_eventos(eventos)
             if resultado_crank == "fechado":
                 crank.fechar()
             # Filtrar eventos de mouse e teclado que o Crank processa
@@ -2597,6 +2751,8 @@ def selecionar_carros_loop(screen):
                                         if botao_upgrade_rect_p1:
                                             pode_upgrade = (carro_atual['prefixo_cor'] == "Car1") or esta_desbloqueado
                                             if pode_upgrade and fundo_sem_textos:
+                                                # Marcar que visitou a tela de upgrades para este carro
+                                                gerenciador_progresso.marcar_upgrades_visitado(carro_atual['prefixo_cor'])
                                                 if tela_upgrades(screen, carro_atual['prefixo_cor'], carro_atual['nome'], fundo_sem_textos):
                                                     pass  # Volta para seleção de carros
                                             elif not pode_upgrade:
@@ -2672,6 +2828,8 @@ def selecionar_carros_loop(screen):
                                         if botao_upgrade_rect_p1:
                                             pode_upgrade = (carro_atual['prefixo_cor'] == "Car1") or esta_desbloqueado
                                             if pode_upgrade and fundo_sem_textos:
+                                                # Marcar que visitou a tela de upgrades para este carro
+                                                gerenciador_progresso.marcar_upgrades_visitado(carro_atual['prefixo_cor'])
                                                 if tela_upgrades(screen, carro_atual['prefixo_cor'], carro_atual['nome'], fundo_sem_textos):
                                                     pass  # Volta para seleção de carros
                                             elif not pode_upgrade:
@@ -2695,6 +2853,8 @@ def selecionar_carros_loop(screen):
                                     elif botao_selecionado_controle == "upgrade":
                                         # Abrir tela de upgrades
                                         if botao_upgrade_rect_p2:
+                                            # Marcar que visitou a tela de upgrades para este carro
+                                            gerenciador_progresso.marcar_upgrades_visitado(carro_atual['prefixo_cor'])
                                             tela_upgrades_aberta = True
                                             carro_upgrade_atual = carro_p2
                                     elif botao_selecionado_controle == "vender":
@@ -2740,6 +2900,8 @@ def selecionar_carros_loop(screen):
                                     elif botao_selecionado_controle == "upgrade":
                                         # Abrir tela de upgrades
                                         if botao_upgrade_rect_p2:
+                                            # Marcar que visitou a tela de upgrades para este carro
+                                            gerenciador_progresso.marcar_upgrades_visitado(carro_atual['prefixo_cor'])
                                             tela_upgrades_aberta = True
                                             carro_upgrade_atual = carro_p2
                                     elif botao_selecionado_controle == "vender":
@@ -2813,26 +2975,56 @@ def selecionar_carros_loop(screen):
                         carro_atual = CARROS_DISPONIVEIS[carro_p1]
                         esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
                         
+                        # Verificar clique nas setas de navegação
+                        if seta_esquerda_rect_p1 and seta_esquerda_rect_p1.collidepoint(mouse_x, mouse_y) and carro_p1 > 0 and not transicao_ativa:
+                            iniciar_transicao(-1, carro_p1)
+                            carro_p1 = (carro_p1 - 1) % len(CARROS_DISPONIVEIS)
+                            carro_selecionado_p1 = (gerenciador_progresso.obter_carro_atual(1) == carro_p1)
+                            continue
+                        
+                        if seta_direita_rect_p1 and seta_direita_rect_p1.collidepoint(mouse_x, mouse_y) and carro_p1 < len(CARROS_DISPONIVEIS) - 1 and not transicao_ativa:
+                            iniciar_transicao(1, carro_p1)
+                            carro_p1 = (carro_p1 + 1) % len(CARROS_DISPONIVEIS)
+                            carro_selecionado_p1 = (gerenciador_progresso.obter_carro_atual(1) == carro_p1)
+                            continue
+                        
                         if esta_desbloqueado:
-                            # Verificar clique no botão USAR (apenas seleciona o carro, se não estiver já selecionado)
-                            if botao_usar_rect_p1 and botao_usar_rect_p1.collidepoint(mouse_x, mouse_y) and not carro_selecionado_p1:
-                                carro_selecionado_p1 = True
+                            # Verificar clique no botão USAR/REPARAR
+                            if botao_usar_rect_p1 and botao_usar_rect_p1.collidepoint(mouse_x, mouse_y):
+                                # Verificar se o carro atual está selecionado
+                                carro_atual_p1 = gerenciador_progresso.obter_carro_atual(1)
+                                carro_atual_idx = carro_p1 if carro_atual_p1 is None else carro_atual_p1
+                                if carro_atual_idx == carro_p1:
+                                    # Carro já está selecionado - reparar
+                                    from core.crank import crank
+                                    saude_carro = crank.saude_carro if hasattr(crank, 'saude_carro') else 1.0
+                                    if saude_carro < 1.0:
+                                        custo_reparo = int((1.0 - saude_carro) * 2000)
+                                        if crank.reparar_carro(custo_reparo):
+                                            popup_musica.mostrar(t("mensagens.carro_reparado").format(custo_reparo), tipo="outra")
+                                        else:
+                                            popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
+                                else:
+                                    # Selecionar o carro
+                                    carro_selecionado_p1 = True
+                                    gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1)
                             # Verificar clique no botão "Concluído"
                             elif botao_concluido_rect_p1 and botao_concluido_rect_p1.collidepoint(mouse_x, mouse_y):
+                                # Sempre salvar o carro atual antes de retornar
+                                gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1)
                                 if modo_dois_jogadores:
-                                    # P1 confirmou, vai para P2 (apenas se carro foi selecionado)
-                                    if carro_selecionado_p1:
-                                        fase_selecao = 2
+                                    # P1 confirmou, vai para P2
+                                    fase_selecao = 2
                                 else:
-                                    if carro_selecionado_p1:
-                                        gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1)
-                                        return carro_p1, carro_p2
+                                    return carro_p1, carro_p2
                             # Botão "2 JOGADORES" lateral removido (não existe mais)
                             # Verificar clique no botão UPGRADE
                             elif botao_upgrade_rect_p1 and botao_upgrade_rect_p1.collidepoint(mouse_x, mouse_y):
                                 # Verificar se carro está desbloqueado (Car1 sempre desbloqueado)
                                 pode_upgrade = (carro_atual['prefixo_cor'] == "Car1") or esta_desbloqueado
                                 if pode_upgrade and fundo_sem_textos:
+                                    # Marcar que visitou a tela de upgrades para este carro
+                                    gerenciador_progresso.marcar_upgrades_visitado(carro_atual['prefixo_cor'])
                                     if tela_upgrades(screen, carro_atual['prefixo_cor'], carro_atual['nome'], fundo_sem_textos):
                                         pass  # Volta para seleção de carros
                                 elif not pode_upgrade:
@@ -2869,6 +3061,19 @@ def selecionar_carros_loop(screen):
                         carro_atual = CARROS_DISPONIVEIS[carro_p2]
                         esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
                         
+                        # Verificar clique nas setas de navegação P2
+                        if seta_esquerda_rect_p2 and seta_esquerda_rect_p2.collidepoint(mouse_x, mouse_y) and carro_p2 > 0 and not transicao_ativa:
+                            iniciar_transicao(-1, carro_p2)
+                            carro_p2 = (carro_p2 - 1) % len(CARROS_DISPONIVEIS)
+                            carro_selecionado_p2 = (gerenciador_progresso.obter_carro_atual(2) == carro_p2)
+                            continue
+                        
+                        if seta_direita_rect_p2 and seta_direita_rect_p2.collidepoint(mouse_x, mouse_y) and carro_p2 < len(CARROS_DISPONIVEIS) - 1 and not transicao_ativa:
+                            iniciar_transicao(1, carro_p2)
+                            carro_p2 = (carro_p2 + 1) % len(CARROS_DISPONIVEIS)
+                            carro_selecionado_p2 = (gerenciador_progresso.obter_carro_atual(2) == carro_p2)
+                            continue
+                        
                         if esta_desbloqueado:
                             # Verificar clique no botão USAR (apenas seleciona o carro, se não estiver já selecionado)
                             if botao_usar_rect_p2 and botao_usar_rect_p2.collidepoint(mouse_x, mouse_y) and not carro_selecionado_p2:
@@ -2883,6 +3088,8 @@ def selecionar_carros_loop(screen):
                                 # Verificar se carro está desbloqueado (Car1 sempre desbloqueado)
                                 pode_upgrade = (carro_atual['prefixo_cor'] == "Car1") or esta_desbloqueado
                                 if pode_upgrade and fundo_sem_textos:
+                                    # Marcar que visitou a tela de upgrades para este carro
+                                    gerenciador_progresso.marcar_upgrades_visitado(carro_atual['prefixo_cor'])
                                     if tela_upgrades(screen, carro_atual['prefixo_cor'], carro_atual['nome'], fundo_sem_textos):
                                         pass  # Volta para seleção de carros
                                 elif not pode_upgrade:
@@ -2983,10 +3190,11 @@ def selecionar_carros_loop(screen):
             subtitulo_x = (LARGURA - subtitulo.get_width()) // 2
             screen.blit(subtitulo, (subtitulo_x, 85))
         
-        # Mostrar dinheiro abaixo dos botões (dourado suave harmonizado)
+        # Mostrar dinheiro no canto superior direito (dourado suave harmonizado)
         dinheiro_texto = t("menu.oficina.dinheiro").format(gerenciador_progresso.dinheiro)
         dinheiro_render = render_text(dinheiro_texto, 32, (255, 220, 100), bold=True, pixel_style=True)
-        screen.blit(dinheiro_render, (20, 70))  # Movido para baixo dos botões (20 + 40 altura botão + 10 espaçamento)
+        dinheiro_x = LARGURA - dinheiro_render.get_width() - 20
+        screen.blit(dinheiro_render, (dinheiro_x, 20))
         
         # Botões "Voltar" e "2 jogadores" acima do dinheiro
         botao_voltar_largura = 120
@@ -3088,13 +3296,49 @@ def selecionar_carros_loop(screen):
                     cadeado_y = posicao[1] + (sprite_atual.get_height() - icone_cadeado.get_height()) // 2
                     screen.blit(icone_cadeado, (cadeado_x, cadeado_y))
             
+            # Indicadores de navegação (setas) para carros P1 - desenhar DEPOIS do carro para ficar na frente
+            seta_esquerda_rect_p1 = None
+            seta_direita_rect_p1 = None
+            if len(CARROS_DISPONIVEIS) > 1:
+                # Seta esquerda (se não estiver no primeiro carro) - mesma altura da seta direita
+                if carro_p1 > 0:
+                    seta_esquerda_temp = render_text("◄", 48, (150, 220, 255), bold=True, pixel_style=True)
+                    seta_esquerda_x = 20
+                    seta_esquerda_y = 100  # Mesma altura da seta direita
+                    seta_esquerda_rect_p1 = pygame.Rect(seta_esquerda_x, seta_esquerda_y, seta_esquerda_temp.get_width(), seta_esquerda_temp.get_height())
+                    seta_esquerda_hover = seta_esquerda_rect_p1.collidepoint(pygame.mouse.get_pos())
+                    cor_seta_esquerda = (200, 255, 255) if seta_esquerda_hover else (150, 220, 255)
+                    escala_seta = 1.3 if seta_esquerda_hover else 1.0
+                    tamanho_seta = int(48 * escala_seta)
+                    seta_esquerda = render_text("◄", tamanho_seta, cor_seta_esquerda, bold=True, pixel_style=True)
+                    # Ajustar posição para centralizar quando crescer
+                    offset_x = (seta_esquerda.get_width() - seta_esquerda_temp.get_width()) // 2
+                    offset_y = (seta_esquerda.get_height() - seta_esquerda_temp.get_height()) // 2
+                    screen.blit(seta_esquerda, (seta_esquerda_x - offset_x, seta_esquerda_y - offset_y))
+                
+                # Seta direita (se não estiver no último carro) - posicionada acima dos botões
+                if carro_p1 < len(CARROS_DISPONIVEIS) - 1:
+                    seta_direita_temp = render_text("►", 48, (150, 220, 255), bold=True, pixel_style=True)
+                    seta_direita_x = LARGURA - 20 - seta_direita_temp.get_width()
+                    seta_direita_y = 100  # Posicionada acima dos botões de confirmação
+                    seta_direita_rect_p1 = pygame.Rect(seta_direita_x, seta_direita_y, seta_direita_temp.get_width(), seta_direita_temp.get_height())
+                    seta_direita_hover = seta_direita_rect_p1.collidepoint(pygame.mouse.get_pos())
+                    cor_seta_direita = (200, 255, 255) if seta_direita_hover else (150, 220, 255)
+                    escala_seta = 1.3 if seta_direita_hover else 1.0
+                    tamanho_seta = int(48 * escala_seta)
+                    seta_direita = render_text("►", tamanho_seta, cor_seta_direita, bold=True, pixel_style=True)
+                    # Ajustar posição para centralizar quando crescer
+                    offset_x = (seta_direita.get_width() - seta_direita_temp.get_width()) // 2
+                    offset_y = (seta_direita.get_height() - seta_direita_temp.get_height()) // 2
+                    screen.blit(seta_direita, (seta_direita_x - offset_x, seta_direita_y - offset_y))
+            
             # Informações do carro na lateral direita - retângulo otimizado
             info_x = LARGURA - 300  # Largura reduzida
             info_y = 180  # Posição ajustada
             
             # Fundo semi-transparente para as informações - tamanho otimizado
             info_largura = 280
-            info_altura = 320  # Altura ajustada para refletir o tamanho real das especificações
+            info_altura = 360  # Altura aumentada para acomodar o texto de dano
             if not hasattr(selecionar_carros_loop, '_info_bg_cache'):
                 info_bg = pygame.Surface((info_largura, info_altura), pygame.SRCALPHA)
                 info_bg.fill((0, 0, 0, 150))
@@ -3164,18 +3408,33 @@ def selecionar_carros_loop(screen):
             est_render = render_text(est_texto, 16, (150, 230, 255), bold=True, pixel_style=True)
             screen.blit(est_render, (info_x + 15, info_y + 240))
             
+            # Porcentagem de danos (P1) - sempre exibir se o carro visualizado é o equipado
+            from core.crank import crank
+            # Verificar se o carro atual está selecionado para mostrar o dano correto
+            carro_atual_p1_idx = gerenciador_progresso.obter_carro_atual(1)
+            # Verificar se este é o carro atual do jogador (o carro visualizado é o equipado)
+            if carro_atual_p1_idx is not None and int(carro_atual_p1_idx) == int(carro_p1):
+                saude_carro = crank.saude_carro if hasattr(crank, 'saude_carro') else 1.0
+                dano_percent = int((1.0 - saude_carro) * 100)
+                # Sempre exibir a saúde do carro, mesmo se não houver dano
+                if dano_percent > 0:
+                    dano_texto = t("menu.oficina.dano").format(dano_percent)
+                    cor_dano = (255, 150, 120) if dano_percent >= 50 else (255, 200, 120) if dano_percent >= 20 else (255, 220, 150)
+                else:
+                    dano_texto = t("menu.oficina.dano").format(0)
+                    cor_dano = (120, 240, 180)  # Verde para indicar que está saudável
+                dano_render = render_text(dano_texto, 16, cor_dano, bold=True, pixel_style=True)
+                screen.blit(dano_render, (info_x + 15, info_y + 270))
+            
             esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
             preco = carro_atual.get('preco', 0)
             
-            if esta_desbloqueado:
-                status_texto = t("menu.oficina.desbloqueado")
-                status_color = (120, 240, 180)  # Verde-água harmonizado
-            else:
+            # Só exibir status se o carro estiver bloqueado
+            if not esta_desbloqueado:
                 status_texto = t("menu.oficina.bloqueado_preco").format(preco)
                 status_color = (255, 150, 120)  # Laranja suave harmonizado
-            
-            status_render = render_text(status_texto, 20, status_color, bold=True, pixel_style=True)
-            screen.blit(status_render, (info_x + 15, info_y + 280))
+                status_render = render_text(status_texto, 20, status_color, bold=True, pixel_style=True)
+                screen.blit(status_render, (info_x + 15, info_y + 300))
             
             # Borda da caixa de informações (azul ciano harmonizado)
             pygame.draw.rect(screen, (100, 220, 255), (info_x, info_y, info_largura, info_altura), 2)
@@ -3185,16 +3444,47 @@ def selecionar_carros_loop(screen):
                 if botao_usar_rect_p1:
                     usar_hover_p1 = botao_usar_rect_p1.collidepoint(pygame.mouse.get_pos())
                     usar_selecionado = carro_selecionado_p1
+                    # Verificar se o carro atual está selecionado
+                    carro_atual_p1 = gerenciador_progresso.obter_carro_atual(1)
+                    carro_atual_idx = carro_p1 if carro_atual_p1 is None else carro_atual_p1
+                    # Garantir comparação de inteiros
+                    carro_esta_selecionado = (int(carro_atual_idx) == int(carro_p1))
+                    
                     # Verificar se está selecionado pelo controle
                     selecionado_controle = (botao_selecionado_controle == "usar")
-                    if usar_selecionado:
-                        cor_usar = (50, 140, 90) if usar_hover_p1 else (40, 120, 80)
-                        cor_borda_usar = (100, 200, 150)
-                        cor_texto_usar = (200, 200, 200)
+                    
+                    # Se o carro está selecionado, mostrar botão REPARAR
+                    if carro_esta_selecionado:
+                        from core.crank import crank
+                        saude_carro = crank.saude_carro if hasattr(crank, 'saude_carro') else 1.0
+                        if saude_carro < 1.0:
+                            custo_reparo = int((1.0 - saude_carro) * 2000)
+                            pode_reparar = gerenciador_progresso.tem_dinheiro(custo_reparo)
+                            cor_usar = (150, 200, 150) if (usar_hover_p1 and pode_reparar) else (100, 150, 100) if pode_reparar else (150, 100, 100)
+                            cor_borda_usar = (100, 220, 255)
+                            cor_texto_usar = (255, 255, 255)  # Branco para destacar
+                            # Se estiver em hover, mostrar o preço; senão, mostrar "Reparar"
+                            if usar_hover_p1:
+                                texto_botao = f"${custo_reparo}"
+                            else:
+                                texto_botao = t("menu.reparar")
+                        else:
+                            cor_usar = (50, 140, 90) if usar_hover_p1 else (40, 120, 80)
+                            cor_borda_usar = (100, 200, 150)
+                            cor_texto_usar = (255, 255, 255)  # Branco em vez de cinza para não parecer apagado
+                            texto_botao = t("menu.oficina.usar")  # Carro já está selecionado e sem dano
                     else:
-                        cor_usar = (70, 180, 120) if usar_hover_p1 else (50, 150, 100)
-                        cor_borda_usar = (120, 240, 180)
-                        cor_texto_usar = (255, 255, 255)
+                        # Carro não está selecionado - mostrar botão "USAR" com cores mais brilhantes
+                        if usar_selecionado:
+                            cor_usar = (80, 200, 120) if usar_hover_p1 else (60, 180, 100)
+                            cor_borda_usar = (120, 240, 180)
+                            cor_texto_usar = (255, 255, 255)
+                        else:
+                            cor_usar = (100, 220, 150) if usar_hover_p1 else (80, 200, 130)
+                            cor_borda_usar = (140, 255, 200)
+                            cor_texto_usar = (255, 255, 255)
+                        texto_botao = t("menu.oficina.usar")
+                    
                     pygame.draw.rect(screen, cor_usar, botao_usar_rect_p1)
                     pygame.draw.rect(screen, cor_borda_usar, botao_usar_rect_p1, 2)
                     # Desenhar cursor do controle (caixa animada)
@@ -3208,7 +3498,17 @@ def selecionar_carros_loop(screen):
                             botao_usar_rect_p1.height + tamanho_cursor * 2
                         )
                         pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
-                    texto_usar = render_text(t("menu.oficina.usar"), 18, cor_texto_usar, bold=True, pixel_style=True)
+                    # Ajustar tamanho da fonte do botão Reparar
+                    # Verificar se é botão de reparar (texto é "Reparar" ou começa com "$")
+                    is_reparar = (texto_botao == t("menu.reparar") or texto_botao.startswith("$"))
+                    # Se estiver mostrando o preço (hover), usar fonte maior; senão, fonte menor
+                    if texto_botao.startswith("$"):
+                        tamanho_fonte = 16  # Fonte maior para o preço
+                    elif is_reparar:
+                        tamanho_fonte = 14  # Fonte menor para "Reparar"
+                    else:
+                        tamanho_fonte = 18  # Fonte normal para outros botões
+                    texto_usar = render_text(texto_botao, tamanho_fonte, cor_texto_usar, bold=True, pixel_style=True)
                     texto_usar_x = botao_usar_rect_p1.x + (botao_usar_rect_p1.width - texto_usar.get_width()) // 2
                     texto_usar_y = botao_usar_rect_p1.y + (botao_usar_rect_p1.height - texto_usar.get_height()) // 2
                     screen.blit(texto_usar, (texto_usar_x, texto_usar_y))
@@ -3235,8 +3535,12 @@ def selecionar_carros_loop(screen):
                     texto_upgrade_y = botao_upgrade_rect_p1.y + (botao_upgrade_rect_p1.height - texto_upgrade.get_height()) // 2
                     screen.blit(texto_upgrade, (texto_upgrade_x, texto_upgrade_y))
                     
-                    # Desenhar ícone de notificação se houver upgrades disponíveis
-                    if icon_exclamacao_oficina is not None and verificar_upgrades_disponiveis(carro_atual['prefixo_cor']):
+                    # Desenhar ícone de notificação se houver upgrades disponíveis E ainda não visitou a tela
+                    upgrades_disponiveis_e_nao_visitado = (
+                        verificar_upgrades_disponiveis(carro_atual['prefixo_cor']) and
+                        not gerenciador_progresso.upgrades_ja_visitado(carro_atual['prefixo_cor'])
+                    )
+                    if icon_exclamacao_oficina is not None and upgrades_disponiveis_e_nao_visitado:
                         # Animação de vibração (tremer) ao invés de piscar
                         vibracao_x = 2.0 * math.sin(tempo_animacao_exclamacao_oficina * 8.0)  # Vibração mais rápida
                         vibracao_y = 2.0 * math.cos(tempo_animacao_exclamacao_oficina * 8.0)  # Vibração vertical também
@@ -3422,6 +3726,42 @@ def selecionar_carros_loop(screen):
             
             # Instruções removidas conforme solicitado
             
+            # Indicadores de navegação (setas) para carros P2
+            seta_esquerda_rect_p2 = None
+            seta_direita_rect_p2 = None
+            if len(CARROS_DISPONIVEIS) > 1:
+                # Seta esquerda (se não estiver no primeiro carro)
+                if carro_p2 > 0:
+                    seta_esquerda_temp = render_text("◄", 48, (150, 220, 255), bold=True, pixel_style=True)
+                    seta_esquerda_x = 20
+                    seta_esquerda_y = ALTURA // 2 - seta_esquerda_temp.get_height() // 2
+                    seta_esquerda_rect_p2 = pygame.Rect(seta_esquerda_x, seta_esquerda_y, seta_esquerda_temp.get_width(), seta_esquerda_temp.get_height())
+                    seta_esquerda_hover = seta_esquerda_rect_p2.collidepoint(pygame.mouse.get_pos())
+                    cor_seta_esquerda = (200, 255, 255) if seta_esquerda_hover else (150, 220, 255)
+                    escala_seta = 1.3 if seta_esquerda_hover else 1.0
+                    tamanho_seta = int(48 * escala_seta)
+                    seta_esquerda = render_text("◄", tamanho_seta, cor_seta_esquerda, bold=True, pixel_style=True)
+                    # Ajustar posição para centralizar quando crescer
+                    offset_x = (seta_esquerda.get_width() - seta_esquerda_temp.get_width()) // 2
+                    offset_y = (seta_esquerda.get_height() - seta_esquerda_temp.get_height()) // 2
+                    screen.blit(seta_esquerda, (seta_esquerda_x - offset_x, seta_esquerda_y - offset_y))
+                
+                # Seta direita (se não estiver no último carro) - posicionada acima dos botões
+                if carro_p2 < len(CARROS_DISPONIVEIS) - 1:
+                    seta_direita_temp = render_text("►", 48, (150, 220, 255), bold=True, pixel_style=True)
+                    seta_direita_x = LARGURA - 20 - seta_direita_temp.get_width()
+                    seta_direita_y = 100  # Posicionada acima dos botões de confirmação
+                    seta_direita_rect_p2 = pygame.Rect(seta_direita_x, seta_direita_y, seta_direita_temp.get_width(), seta_direita_temp.get_height())
+                    seta_direita_hover = seta_direita_rect_p2.collidepoint(pygame.mouse.get_pos())
+                    cor_seta_direita = (200, 255, 255) if seta_direita_hover else (150, 220, 255)
+                    escala_seta = 1.3 if seta_direita_hover else 1.0
+                    tamanho_seta = int(48 * escala_seta)
+                    seta_direita = render_text("►", tamanho_seta, cor_seta_direita, bold=True, pixel_style=True)
+                    # Ajustar posição para centralizar quando crescer
+                    offset_x = (seta_direita.get_width() - seta_direita_temp.get_width()) // 2
+                    offset_y = (seta_direita.get_height() - seta_direita_temp.get_height()) // 2
+                    screen.blit(seta_direita, (seta_direita_x - offset_x, seta_direita_y - offset_y))
+            
             # Carro selecionado P2 - Grande e centralizado
             if transicao_ativa:
                 # Durante transição: desenhar carro anterior saindo e novo carro entrando
@@ -3472,7 +3812,7 @@ def selecionar_carros_loop(screen):
             
             # Fundo semi-transparente para as informações - tamanho otimizado
             info_largura = 280
-            info_altura = 320  # Altura ajustada para refletir o tamanho real das especificações
+            info_altura = 360  # Altura aumentada para acomodar o texto de dano
             if not hasattr(selecionar_carros_loop, '_info_bg_cache'):
                 info_bg = pygame.Surface((info_largura, info_altura), pygame.SRCALPHA)
                 info_bg.fill((0, 0, 0, 150))
@@ -3544,15 +3884,12 @@ def selecionar_carros_loop(screen):
             esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
             preco = carro_atual.get('preco', 0)
             
-            if esta_desbloqueado:
-                status_texto = t("menu.oficina.desbloqueado")
-                status_color = (120, 240, 180)  # Verde-água harmonizado
-            else:
+            # Só exibir status se o carro estiver bloqueado
+            if not esta_desbloqueado:
                 status_texto = t("menu.oficina.bloqueado_preco").format(preco)
                 status_color = (255, 150, 120)  # Laranja suave harmonizado
-            
-            status_render = render_text(status_texto, 20, status_color, bold=True, pixel_style=True)
-            screen.blit(status_render, (info_x + 15, info_y + 280))
+                status_render = render_text(status_texto, 20, status_color, bold=True, pixel_style=True)
+                screen.blit(status_render, (info_x + 15, info_y + 300))
             
             # Borda da caixa de informações (azul ciano harmonizado)
             pygame.draw.rect(screen, (100, 220, 255), (info_x, info_y, info_largura, info_altura), 2)
@@ -3612,7 +3949,11 @@ def selecionar_carros_loop(screen):
                     screen.blit(texto_upgrade, (texto_upgrade_x, texto_upgrade_y))
                     
                     # Desenhar ícone de notificação se houver upgrades disponíveis
-                    if icon_exclamacao_oficina is not None and verificar_upgrades_disponiveis(carro_atual['prefixo_cor']):
+                    upgrades_disponiveis_e_nao_visitado_p2 = (
+                        verificar_upgrades_disponiveis(carro_atual['prefixo_cor']) and
+                        not gerenciador_progresso.upgrades_ja_visitado(carro_atual['prefixo_cor'])
+                    )
+                    if icon_exclamacao_oficina is not None and upgrades_disponiveis_e_nao_visitado_p2:
                         # Animação de vibração (tremer) ao invés de piscar
                         vibracao_x = 2.0 * math.sin(tempo_animacao_exclamacao_oficina * 8.0)  # Vibração mais rápida
                         vibracao_y = 2.0 * math.cos(tempo_animacao_exclamacao_oficina * 8.0)  # Vibração vertical também
@@ -3749,6 +4090,11 @@ def selecionar_carros_loop(screen):
         # Desenhar Crank (se ativo) - tem prioridade máxima
         if crank.ativo:
             crank.desenhar_dialogo(screen, dt)
+            
+            # Desenhar Barão se ativo
+            from core.barao import barao
+            if barao.ativo:
+                barao.desenhar_dialogo(screen, dt)
         
         pygame.display.flip()
 
@@ -3909,6 +4255,11 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
         # Processar Crank primeiro (se ativo) - tem prioridade máxima
         if crank.ativo:
             resultado_crank = crank.processar_eventos(eventos)
+            
+            # Processar Barão se ativo
+            from core.barao import barao
+            if barao.ativo:
+                barao.processar_eventos(eventos)
             if resultado_crank == "confirmado":
                 # Upgrade confirmado, realizar a compra
                 if crank.upgrade_pendente:
@@ -3931,8 +4282,14 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                             gerenciador_achievements.atualizar_estatistica("upgrades_maximizados", incrementar=True)
                             gerenciador_achievements.verificar_achievements(gerenciador_progresso)
                         
-                        nome_upgrade = upgrades_disponiveis[upgrade_atual][1]
-                        popup_musica.mostrar(t("mensagens.upgrade_comprado").format(nome_carro, nome_upgrade), tipo="outra")
+                        # Usar o nome do upgrade do upgrade_info, não do upgrade_atual
+                        nome_upgrade = None
+                        for tipo, nome, _ in upgrades_disponiveis:
+                            if tipo == upgrade_info['tipo']:
+                                nome_upgrade = nome
+                                break
+                        if nome_upgrade:
+                            popup_musica.mostrar(t("mensagens.upgrade_comprado").format(nome_carro, nome_upgrade), tipo="outra")
                         
                         # Verificar se o Glub deve aparecer
                         if not glub.ativo:
@@ -3941,6 +4298,8 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                         popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
                     crank.upgrade_pendente = None
                 crank.fechar()
+                # Filtrar TODOS os eventos de mouse após confirmação para evitar cliques duplos
+                eventos = [ev for ev in eventos if ev.type != pygame.MOUSEBUTTONDOWN]
             elif resultado_crank == "cancelado":
                 # Upgrade cancelado
                 crank.upgrade_pendente = None
@@ -4026,7 +4385,25 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                     iniciar_transicao(1, upgrade_atual)
                     upgrade_atual = (upgrade_atual + 1) % len(upgrades_disponiveis)
             if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                # Verificar clique no upgrade atual
+                # Não processar cliques se o Crank estiver ativo (diálogo de confirmação)
+                if crank.ativo:
+                    continue
+                
+                # Verificar clique nas setas de navegação
+                if seta_esquerda_rect and seta_esquerda_rect.collidepoint(mouse_x, mouse_y) and upgrade_atual > 0 and not transicao_ativa:
+                    iniciar_transicao(-1, upgrade_atual)
+                    upgrade_atual = upgrade_atual - 1
+                    continue
+                
+                if seta_direita_rect and seta_direita_rect.collidepoint(mouse_x, mouse_y) and upgrade_atual < len(upgrades_disponiveis) - 1 and not transicao_ativa:
+                    iniciar_transicao(1, upgrade_atual)
+                    upgrade_atual = upgrade_atual + 1
+                    continue
+                
+                # Verificar clique no upgrade atual (apenas se não estiver em transição)
+                if transicao_ativa:
+                    continue
+                
                 upgrade_atual_tipo = upgrades_disponiveis[upgrade_atual][0]
                 icon_center_x = LARGURA // 2
                 icon_center_y = ALTURA // 2  # Centralizado verticalmente
@@ -4056,9 +4433,10 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                             from config import CONFIGURACOES
                             precisa_confirmacao = CONFIGURACOES.get("jogo", {}).get("confirmar_upgrade", True)
                             
-                            if precisa_confirmacao and not crank.ativo:
+                            if precisa_confirmacao:
                                 # Mostrar diálogo de confirmação
                                 crank.mostrar_confirmacao_upgrade(upgrade_atual_tipo, preco, nivel_atual, prefixo_cor)
+                                continue  # Não processar mais nada neste clique
                             elif gerenciador_progresso.comprar_upgrade(prefixo_cor, upgrade_atual_tipo, preco):
                                 # Tocar som de compra
                                 try:
@@ -4085,27 +4463,32 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                             else:
                                 popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
                 
-                voltar_rect = pygame.Rect(LARGURA // 2 - 100, ALTURA - 80, 200, 50)
+                # Botão voltar (acima do dinheiro, no canto superior direito)
+                voltar_rect = pygame.Rect(LARGURA - 150, 20, 130, 40)
                 if voltar_rect.collidepoint(mouse_x, mouse_y):
                     return True
         
-        # Detectar hover no upgrade atual
-        upgrade_atual_tipo = upgrades_disponiveis[upgrade_atual][0]
-        icon_center_x = LARGURA // 2
-        icon_center_y = ALTURA // 2  # Centralizado verticalmente
-        # Hitbox inclui o quadrado com blur (maior que o ícone)
-        hitbox_tamanho = tamanho_icon_grande + 40  # Tamanho do quadrado com blur
-        icon_rect = pygame.Rect(
-            icon_center_x - hitbox_tamanho // 2,
-            icon_center_y - hitbox_tamanho // 2,
-            hitbox_tamanho,
-            hitbox_tamanho
-        )
-        
-        if icon_rect.collidepoint(mouse_x, mouse_y):
-            upgrade_hover = upgrade_atual_tipo
-            tooltip_timer += dt
+        # Detectar hover no upgrade atual (apenas se o Crank não estiver ativo)
+        if not crank.ativo:
+            upgrade_atual_tipo = upgrades_disponiveis[upgrade_atual][0]
+            icon_center_x = LARGURA // 2
+            icon_center_y = ALTURA // 2  # Centralizado verticalmente
+            # Hitbox inclui o quadrado com blur (maior que o ícone)
+            hitbox_tamanho = tamanho_icon_grande + 40  # Tamanho do quadrado com blur
+            icon_rect = pygame.Rect(
+                icon_center_x - hitbox_tamanho // 2,
+                icon_center_y - hitbox_tamanho // 2,
+                hitbox_tamanho,
+                hitbox_tamanho
+            )
+            
+            if icon_rect.collidepoint(mouse_x, mouse_y):
+                upgrade_hover = upgrade_atual_tipo
+                tooltip_timer += dt
+            else:
+                tooltip_timer = 0.0
         else:
+            upgrade_hover = None
             tooltip_timer = 0.0
         
         # Desenhar fundo com blur (garagem visível por trás)
@@ -4117,15 +4500,15 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
         overlay_transparente.fill((0, 0, 0, 100))  # Preto semi-transparente
         screen.blit(overlay_transparente, (0, 0))
         
-        # Título no topo
-        titulo = render_text(t("menu.upgrades.titulo").format(nome_carro), 48, (100, 220, 255), bold=True, pixel_style=True)
-        titulo_x = (LARGURA - titulo.get_width()) // 2
-        screen.blit(titulo, (titulo_x, 30))
-        
         # Dinheiro no topo
         dinheiro_texto = t("menu.oficina.dinheiro").format(gerenciador_progresso.dinheiro)
         dinheiro_render = render_text(dinheiro_texto, 32, (255, 220, 100), bold=True, pixel_style=True)
         screen.blit(dinheiro_render, (20, 20))
+        
+        # Título no topo (abaixo do dinheiro)
+        titulo = render_text(t("menu.upgrades.titulo").format(nome_carro), 48, (100, 220, 255), bold=True, pixel_style=True)
+        titulo_x = (LARGURA - titulo.get_width()) // 2
+        screen.blit(titulo, (titulo_x, 80))
         
         # Desenhar upgrade atual (com transição se necessário)
         if transicao_ativa:
@@ -4346,16 +4729,41 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                 screen.blit(melhorias_render, (tooltip_x + tooltip_padding, tooltip_y + y_offset))
                 y_offset += altura_linha_melhorias
         
-        # Botão voltar
-        voltar_rect = pygame.Rect(LARGURA // 2 - 100, ALTURA - 80, 200, 50)
-        voltar_hover = voltar_rect.collidepoint(mouse_x, mouse_y)
-        cor_voltar = (100, 150, 200) if voltar_hover else (80, 120, 180)
-        pygame.draw.rect(screen, cor_voltar, voltar_rect)
-        pygame.draw.rect(screen, (100, 220, 255), voltar_rect, 2)
-        voltar_texto = render_text(t("menu.upgrades.voltar"), 22, (255, 255, 255), bold=True, pixel_style=True)
-        voltar_texto_x = voltar_rect.x + (voltar_rect.width - voltar_texto.get_width()) // 2
-        voltar_texto_y = voltar_rect.y + (voltar_rect.height - voltar_texto.get_height()) // 2
-        screen.blit(voltar_texto, (voltar_texto_x, voltar_texto_y))
+        # Indicadores de navegação (setas) para upgrades
+        seta_esquerda_rect = None
+        seta_direita_rect = None
+        if len(upgrades_disponiveis) > 1:
+            # Seta esquerda (se não estiver no primeiro upgrade)
+            if upgrade_atual > 0:
+                seta_esquerda_temp = render_text("◄", 48, (150, 220, 255), bold=True, pixel_style=True)
+                seta_esquerda_x = 50
+                seta_esquerda_y = ALTURA // 2 - seta_esquerda_temp.get_height() // 2
+                seta_esquerda_rect = pygame.Rect(seta_esquerda_x, seta_esquerda_y, seta_esquerda_temp.get_width(), seta_esquerda_temp.get_height())
+                seta_esquerda_hover = seta_esquerda_rect.collidepoint(mouse_x, mouse_y)
+                cor_seta_esquerda = (200, 255, 255) if seta_esquerda_hover else (150, 220, 255)
+                escala_seta = 1.3 if seta_esquerda_hover else 1.0
+                tamanho_seta = int(48 * escala_seta)
+                seta_esquerda = render_text("◄", tamanho_seta, cor_seta_esquerda, bold=True, pixel_style=True)
+                # Ajustar posição para centralizar quando crescer
+                offset_x = (seta_esquerda.get_width() - seta_esquerda_temp.get_width()) // 2
+                offset_y = (seta_esquerda.get_height() - seta_esquerda_temp.get_height()) // 2
+                screen.blit(seta_esquerda, (seta_esquerda_x - offset_x, seta_esquerda_y - offset_y))
+            
+            # Seta direita (se não estiver no último upgrade)
+            if upgrade_atual < len(upgrades_disponiveis) - 1:
+                seta_direita_temp = render_text("►", 48, (150, 220, 255), bold=True, pixel_style=True)
+                seta_direita_x = LARGURA - 50 - seta_direita_temp.get_width()
+                seta_direita_y = ALTURA // 2 - seta_direita_temp.get_height() // 2
+                seta_direita_rect = pygame.Rect(seta_direita_x, seta_direita_y, seta_direita_temp.get_width(), seta_direita_temp.get_height())
+                seta_direita_hover = seta_direita_rect.collidepoint(mouse_x, mouse_y)
+                cor_seta_direita = (200, 255, 255) if seta_direita_hover else (150, 220, 255)
+                escala_seta = 1.3 if seta_direita_hover else 1.0
+                tamanho_seta = int(48 * escala_seta)
+                seta_direita = render_text("►", tamanho_seta, cor_seta_direita, bold=True, pixel_style=True)
+                # Ajustar posição para centralizar quando crescer
+                offset_x = (seta_direita.get_width() - seta_direita_temp.get_width()) // 2
+                offset_y = (seta_direita.get_height() - seta_direita_temp.get_height()) // 2
+                screen.blit(seta_direita, (seta_direita_x - offset_x, seta_direita_y - offset_y))
         
         popup_musica.atualizar(dt)
         popup_musica.desenhar(screen)
@@ -4363,6 +4771,11 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
         # Desenhar Crank (se ativo) - tem prioridade máxima
         if crank.ativo:
             crank.desenhar_dialogo(screen, dt)
+            
+            # Desenhar Barão se ativo
+            from core.barao import barao
+            if barao.ativo:
+                barao.desenhar_dialogo(screen, dt)
         # Desenhar Glub (se ativo e Crank não estiver ativo)
         elif glub.ativo:
             glub.desenhar_dialogo(screen, dt)
@@ -8044,8 +8457,9 @@ def run():
             if resultado[0] is not None and resultado[1] is not None:
                 carro_p1, carro_p2 = resultado
         elif escolha == Escolha.RECORDES:
-            # Abre tela de recordes
-            recordes_loop(screen)
+            # Abre tela de ranking (substituiu recordes)
+            from core.menu_ranking import ranking_loop
+            ranking_loop(screen)
         elif escolha == Escolha.OPCOES:
             # Abre tela de opções
             opcoes_loop(screen)

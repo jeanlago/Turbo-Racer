@@ -15,6 +15,11 @@ def _get_render_text():
 
 CAMINHO_CRANK_DATA = os.path.join(DIR_PROJETO, "data", "crank.json")
 
+# Caminho dos ícones
+CAMINHO_ICONS = os.path.join(DIR_PROJETO, "assets", "images", "icons")
+ICONE_SETA = os.path.join(CAMINHO_ICONS, "seta.png")
+ICONE_ENCARECEU = os.path.join(CAMINHO_ICONS, "encareceu.png")
+
 # Caminhos dos sprites
 CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "mecanico")
 SPRITE_NORMAL = os.path.join(CAMINHO_SPRITES, "normal.png")
@@ -59,6 +64,11 @@ class Crank:
         self.sprite_incredulo = None
         self.sprites_carregados = False
         
+        # Ícones para feedback de preço
+        self.icone_seta = None
+        self.icone_encareceu = None
+        self.icones_carregados = False
+        
         # Sprite do Glub para aparecer escurecido durante o diálogo
         self.glub_sprite_escurecido = None
         self.glub_sprite_carregado = False
@@ -81,14 +91,21 @@ class Crank:
         }
         
         # Sistema de dano do carro (0.0 a 1.0, onde 1.0 = 100% saudável)
-        self.saude_carro = 1.0
+        # Nota: saude_carro é carregado em carregar_estado()
+        self.prefixo_cor_ultimo_carro = None  # Rastreia qual carro teve dano registrado
         
         # Tutorial - primeira aparição
-        self.tutorial_mostrado = False
-        self.tutorial_upgrades_mostrado = False
-        self.tutorial_parte = 0  # Parte atual do tutorial (0 = apresentação sombra, 1 = dúvida, 2, 3, 4 = partes normais)
-        self.tutorial_fase_apresentacao = "sombra"  # "sombra" -> "duvida" -> "tutorial"
+        # Nota: tutorial_mostrado e tutorial_upgrades_mostrado são carregados em carregar_estado()
+        # Não resetar aqui, senão sobrescreve o estado salvo!
+        self.tutorial_parte = 0  # Parte atual do tutorial (0 = apresentação sombra, 1 = dúvida, 2 = perguntar nome, 3, 4, 5 = partes normais)
+        self.tutorial_fase_apresentacao = "sombra"  # "sombra" -> "duvida" -> "perguntar_nome" -> "tutorial"
+        self.input_nome_ativo = False  # Flag para controlar input de nome
+        self.nome_input = ""  # Nome sendo digitado
         self.tutorial_upgrades_parte = 0  # Parte atual do tutorial de upgrades
+        
+        # Sistema de nome revelado
+        # Nota: nome_revelado é carregado em carregar_estado()
+        # Não resetar aqui, senão sobrescreve o estado salvo!
         
         # Diálogo raro sobre compras do mercador alien
         self.dialogo_alien_parte = 0  # Parte atual do diálogo sobre compra alien
@@ -171,10 +188,35 @@ class Crank:
             
             # Carregar sprite do Glub para aparecer escurecido durante o diálogo
             self._carregar_sprite_glub()
+            
+            # Carregar ícones
+            self._carregar_icones()
         except Exception as e:
             print(f"ERRO ao carregar sprites do Crank: {e}")
             import traceback
             traceback.print_exc()
+    
+    def _carregar_icones(self):
+        """Carrega os ícones para feedback de preço"""
+        if self.icones_carregados:
+            return
+        
+        try:
+            if os.path.exists(ICONE_SETA):
+                self.icone_seta = pygame.image.load(ICONE_SETA).convert_alpha()
+                print(f"✓ Ícone seta carregado: {ICONE_SETA}")
+            else:
+                print(f"✗ AVISO: Ícone seta não encontrado: {ICONE_SETA}")
+            
+            if os.path.exists(ICONE_ENCARECEU):
+                self.icone_encareceu = pygame.image.load(ICONE_ENCARECEU).convert_alpha()
+                print(f"✓ Ícone encareceu carregado: {ICONE_ENCARECEU}")
+            else:
+                print(f"✗ AVISO: Ícone encareceu não encontrado: {ICONE_ENCARECEU}")
+            
+            self.icones_carregados = True
+        except Exception as e:
+            print(f"ERRO ao carregar ícones do Crank: {e}")
     
     def _carregar_sprite_glub(self):
         """Carrega o sprite do Glub para aparecer escurecido durante o diálogo"""
@@ -196,43 +238,44 @@ class Crank:
             print(f"AVISO: Não foi possível carregar sprite do Glub: {e}")
     
     def carregar_estado(self):
-        """Carrega o estado do Crank (humor, etc)"""
-        try:
-            if os.path.exists(CAMINHO_CRANK_DATA):
-                with open(CAMINHO_CRANK_DATA, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    self.humor_atual = data.get('humor_atual', self.HUMOR_NORMAL)
-                    self.saude_carro = data.get('saude_carro', 1.0)
-                    self.tutorial_mostrado = data.get('tutorial_mostrado', False)
-                    self.tutorial_upgrades_mostrado = data.get('tutorial_upgrades_mostrado', False)
-            else:
-                self.humor_atual = self.HUMOR_NORMAL
-                self.saude_carro = 1.0
-                self.tutorial_mostrado = False
-                self.tutorial_upgrades_mostrado = False
-        except Exception as e:
-            print(f"Erro ao carregar estado do Crank: {e}")
-            self.humor_atual = self.HUMOR_NORMAL
-            self.saude_carro = 1.0
-            self.tutorial_mostrado = False
-            self.tutorial_upgrades_mostrado = False
+        """Carrega o estado do Crank do progresso.json"""
+        self.humor_atual = gerenciador_progresso.crank_humor_atual
+        self.saude_carro = gerenciador_progresso.crank_saude_carro
+        self.tutorial_mostrado = gerenciador_progresso.crank_tutorial_mostrado
+        self.tutorial_upgrades_mostrado = gerenciador_progresso.crank_tutorial_upgrades_mostrado
+        self.prefixo_cor_ultimo_carro = gerenciador_progresso.crank_prefixo_cor_ultimo_carro
+        self.nome_revelado = gerenciador_progresso.crank_nome_revelado
     
     def salvar_estado(self):
-        """Salva o estado do Crank"""
-        try:
-            data = {
-                'humor_atual': self.humor_atual,
-                'saude_carro': self.saude_carro,
-                'tutorial_mostrado': self.tutorial_mostrado,
-                'tutorial_upgrades_mostrado': self.tutorial_upgrades_mostrado
-            }
-            with open(CAMINHO_CRANK_DATA, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2)
-        except Exception as e:
-            print(f"Erro ao salvar estado do Crank: {e}")
+        """Salva o estado do Crank no progresso.json"""
+        gerenciador_progresso.crank_humor_atual = self.humor_atual
+        gerenciador_progresso.crank_saude_carro = self.saude_carro
+        gerenciador_progresso.crank_tutorial_mostrado = getattr(self, 'tutorial_mostrado', False)
+        gerenciador_progresso.crank_tutorial_upgrades_mostrado = getattr(self, 'tutorial_upgrades_mostrado', False)
+        gerenciador_progresso.crank_prefixo_cor_ultimo_carro = getattr(self, 'prefixo_cor_ultimo_carro', None)
+        gerenciador_progresso.crank_nome_revelado = getattr(self, 'nome_revelado', False)
+        gerenciador_progresso.salvar()
     
     def registrar_corrida(self, posicao, colisoes, venceu):
         """Registra os dados da última corrida"""
+        from core.progresso import gerenciador_progresso
+        from main import CARROS_DISPONIVEIS
+        
+        # Verificar qual carro foi usado na corrida
+        carro_p1_atual = gerenciador_progresso.obter_carro_atual(1)
+        if carro_p1_atual is None:
+            carro_p1_atual = 0
+        
+        if 0 <= carro_p1_atual < len(CARROS_DISPONIVEIS):
+            prefixo_cor_atual = CARROS_DISPONIVEIS[carro_p1_atual]["prefixo_cor"]
+        else:
+            prefixo_cor_atual = "Car1"
+        
+        # Se o carro mudou, resetar saúde
+        if not hasattr(self, 'prefixo_cor_ultimo_carro') or self.prefixo_cor_ultimo_carro != prefixo_cor_atual:
+            self.saude_carro = 1.0
+            self.prefixo_cor_ultimo_carro = prefixo_cor_atual
+        
         self.ultima_corrida = {
             'posicao': posicao,
             'colisoes': colisoes,
@@ -298,7 +341,28 @@ class Crank:
         """
         Verifica se o Crank deve aparecer por dano crítico
         Retorna True se saúde < 20%
+        Verifica também se o carro mudou (se mudou, reseta a saúde)
         """
+        from core.progresso import gerenciador_progresso
+        from main import CARROS_DISPONIVEIS
+        
+        # Verificar se o carro atual mudou (se mudou, resetar saúde)
+        carro_p1_atual = gerenciador_progresso.obter_carro_atual(1)
+        if carro_p1_atual is None:
+            carro_p1_atual = 0
+        
+        if 0 <= carro_p1_atual < len(CARROS_DISPONIVEIS):
+            prefixo_cor_atual = CARROS_DISPONIVEIS[carro_p1_atual]["prefixo_cor"]
+        else:
+            prefixo_cor_atual = "Car1"
+        
+        # Se não temos um prefixo_cor salvo ou mudou, resetar saúde
+        if not hasattr(self, 'prefixo_cor_ultimo_carro') or self.prefixo_cor_ultimo_carro != prefixo_cor_atual:
+            self.saude_carro = 1.0
+            self.prefixo_cor_ultimo_carro = prefixo_cor_atual
+            self.salvar_estado()
+            return False  # Carro novo, não precisa reclamar
+        
         if self.saude_carro < 0.2:
             if not self.sprites_carregados:
                 self.carregar_sprites()
@@ -313,24 +377,18 @@ class Crank:
     def verificar_aparecer_dialogo_alien(self):
         """
         Verifica se o Crank deve aparecer para comentar sobre compras do mercador alien
-        Retorna True se deve aparecer (chance rara)
+        Retorna True se deve aparecer (apenas na primeira vez que vai na oficina após comprar)
         """
         from core.progresso import gerenciador_progresso
         
         # Verificar se há compras recentes do mercador alien
         ultima_compra = gerenciador_progresso.obter_ultima_compra_alien()
         if not ultima_compra:
-            print(f"DEBUG: Nenhuma compra alien registrada")
             return False
         
-        print(f"DEBUG: Compra alien encontrada: {ultima_compra}")
-        
-        # Chance rara de aparecer (10% - mas no teste, vamos garantir que apareça)
-        import random
-        # Para teste, sempre aparecer. Em produção, usar: if random.random() > 0.10: return False
-        # if random.random() > 0.10:
-        #     print(f"DEBUG: Chance não passou (10%)")
-        #     return False
+        # Se o diálogo já foi mostrado para esta compra, não mostrar novamente
+        if gerenciador_progresso.dialogo_alien_ja_mostrado:
+            return False
         
         # Garantir que os sprites estão carregados
         if not self.sprites_carregados:
@@ -339,10 +397,7 @@ class Crank:
         # Definir tipo de diálogo baseado na compra
         self.dialogo_alien_tipo = ultima_compra.get('tipo')
         if not self.dialogo_alien_tipo:
-            print(f"DEBUG: Tipo de compra inválido: {ultima_compra}")
             return False
-        
-        print(f"DEBUG: Ativando diálogo alien tipo: {self.dialogo_alien_tipo}")
         
         # Ativar diálogo
         self.ativo = True
@@ -356,6 +411,16 @@ class Crank:
         self.dialogo_alien_parte = 0
         self._avancar_dialogo_alien()
         print(f"DEBUG: Após _avancar_dialogo_alien, texto_completo: {self.texto_completo[:50] if self.texto_completo else 'None'}...")
+    
+    def _finalizar_dialogo_alien(self):
+        """Finaliza o diálogo alien e marca como já mostrado"""
+        from core.progresso import gerenciador_progresso
+        # Marcar que o diálogo já foi mostrado para esta compra
+        gerenciador_progresso.dialogo_alien_ja_mostrado = True
+        # Limpar a compra registrada
+        gerenciador_progresso.limpar_ultima_compra_alien()
+        # Fechar o diálogo
+        self.fechar()
     
     def _avancar_dialogo_alien(self):
         """Avança para a próxima parte do diálogo sobre compras alien"""
@@ -420,8 +485,8 @@ class Crank:
             self._iniciar_animacao_texto(texto_completo)
         
         else:
-            # Finalizar diálogo
-            self.fechar()
+            # Finalizar diálogo e marcar como já mostrado
+            self._finalizar_dialogo_alien()
     
     def _avancar_dialogo_alien_melhoria(self):
         """Avança o diálogo sobre melhoria boa do mercador alien"""
@@ -560,8 +625,8 @@ class Crank:
             self._iniciar_animacao_texto(texto_completo)
         
         else:
-            # Finalizar diálogo
-            self.fechar()
+            # Finalizar diálogo e marcar como já mostrado
+            self._finalizar_dialogo_alien()
     
     def mostrar_tutorial(self):
         """Mostra o tutorial da primeira aparição do Crank na oficina"""
@@ -658,6 +723,13 @@ class Crank:
         self.texto_exibido = ""
         self.texto_atual = ""  # Garantir que texto_atual também começa vazio
         self.tempo_animacao = 0.0
+        
+        # Verificar se o texto contém o nome do personagem e marcar como revelado
+        if not getattr(self, 'nome_revelado', False):
+            texto_lower = texto.lower()
+            if "crank" in texto_lower or "eu sou" in texto_lower or "meu nome" in texto_lower:
+                self.nome_revelado = True
+                self.salvar_estado()
     
     def _atualizar_animacao_texto(self, dt):
         """Atualiza animação de texto letra por letra"""
@@ -783,6 +855,9 @@ class Crank:
                         f"O carro tá com apenas {saude_percent}% de saúde! " \
                         "Vai explodir na primeira curva. Conserta isso AGORA ou não vou deixar você correr!"
         self._iniciar_animacao_texto(texto_completo)
+        # Marcar que precisa resposta (reparar ou desistir)
+        self.precisa_resposta = True
+        self.opcao_confirmacao_selecionada = 0  # 0 = reparar, 1 = desistir
     
     def _avancar_tutorial(self):
         """Avança para a próxima parte do tutorial"""
@@ -803,7 +878,26 @@ class Crank:
             texto_completo = "Hmm? Quem é você? Você não é o ajudante que eu contratei. " \
                             "Cadê aquele imprestável?"
             self._iniciar_animacao_texto(texto_completo)
-        elif self.tutorial_parte == 2:  # Tutorial normal - parte 1 (após dúvida, usa convencido)
+        elif self.tutorial_parte == 2:  # Perguntar nome
+            self.tutorial_fase_apresentacao = "perguntar_nome"
+            if self.sprite_duvida:
+                self.sprite_atual = self.sprite_duvida
+            elif self.sprite_normal:
+                self.sprite_atual = self.sprite_normal
+            else:
+                self.sprite_atual = self.sprite_surpreso if self.sprite_surpreso else None
+            
+            # Se o nome já foi definido, pular esta parte
+            if gerenciador_progresso.nome_jogador != "JOGADOR":
+                self.tutorial_parte = 3
+                self._avancar_tutorial()
+                return
+            
+            texto_completo = "Qual o seu nome?"
+            self._iniciar_animacao_texto(texto_completo)
+            self.input_nome_ativo = True
+            self.nome_input = ""
+        elif self.tutorial_parte == 3:  # Tutorial normal - parte 1 (após nome, usa convencido)
             self.tutorial_fase_apresentacao = "tutorial"
             if self.sprite_convencido:
                 self.sprite_atual = self.sprite_convencido
@@ -817,7 +911,7 @@ class Crank:
                             "Eu sou o dono, o gerente, o mecânico chefe e o único ser vivo nessa garagem que sabe " \
                             "a diferença entre um pistão e uma panela de pressão."
             self._iniciar_animacao_texto(texto_completo)
-        elif self.tutorial_parte == 3:  # Tutorial normal - parte 2 (usa incrédulo)
+        elif self.tutorial_parte == 4:  # Tutorial normal - parte 2 (usa incrédulo)
             if self.sprite_incredulo:
                 self.sprite_atual = self.sprite_incredulo
             elif self.sprite_surpreso:
@@ -828,7 +922,7 @@ class Crank:
             texto_completo = "Olha pra isso. Suspensão mole, pneus carecas, motor asmático... " \
                             "É um milagre isso ter terminado a primeira corrida. Mas... tem potencial. O chassi é bom."
             self._iniciar_animacao_texto(texto_completo)
-        elif self.tutorial_parte == 4:  # Tutorial normal - parte 3 (volta para convencido)
+        elif self.tutorial_parte == 5:  # Tutorial normal - parte 3 (volta para convencido)
             if self.sprite_convencido:
                 self.sprite_atual = self.sprite_convencido
             elif self.sprite_normal:
@@ -1168,30 +1262,95 @@ class Crank:
                         self.fechar()
                         return "fechado"
                 
-                elif self.fase_dialogo == "reacao" or self.fase_dialogo == "dano_critico":
+                elif self.fase_dialogo == "reacao":
                     # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
                         # Não fazer mais nada neste pressionamento
                     else:
-                        # Fechar após ver reação ou dano crítico
+                        # Fechar após ver reação
                         if ev.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_ESCAPE):
                             self.fechar()
                             return "fechado"
                 
-                elif self.fase_dialogo == "tutorial":
+                elif self.fase_dialogo == "dano_critico":
                     # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
                         # Não fazer mais nada neste pressionamento
-                    elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
-                        # Avançar tutorial
-                        self._avancar_tutorial()
-                    elif ev.key == pygame.K_ESCAPE:
-                        self.tutorial_mostrado = True
-                        self.salvar_estado()
-                        self.fechar()
-                        return "fechado"
+                    else:
+                        # Navegar entre opções ou confirmar/cancelar
+                        from core.i18n import t
+                        opcoes = [t("menu.reparar"), t("menu.desistir")]
+                        
+                        if not hasattr(self, 'opcao_confirmacao_selecionada'):
+                            self.opcao_confirmacao_selecionada = 0
+                        
+                        if ev.key in (pygame.K_UP, pygame.K_w):
+                            self.opcao_confirmacao_selecionada = (self.opcao_confirmacao_selecionada - 1) % len(opcoes)
+                        elif ev.key in (pygame.K_DOWN, pygame.K_s):
+                            self.opcao_confirmacao_selecionada = (self.opcao_confirmacao_selecionada + 1) % len(opcoes)
+                        elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
+                            # Confirmar seleção
+                            if self.opcao_confirmacao_selecionada == 0:  # Reparar
+                                # Calcular custo de reparo (baseado na saúde atual)
+                                custo_reparo = int((1.0 - self.saude_carro) * 2000)  # Custo proporcional ao dano
+                                if self.reparar_carro(custo_reparo):
+                                    self.fechar()
+                                    return "reparado"
+                                else:
+                                    # Não tem dinheiro suficiente
+                                    return "sem_dinheiro"
+                            else:  # Desistir
+                                self.fechar()
+                                return "desistido"
+                        elif ev.key == pygame.K_ESCAPE:
+                            # Cancelar (tratado como desistir)
+                            self.fechar()
+                            return "desistido"
+                
+                elif self.fase_dialogo == "tutorial":
+                    # Se está na fase de input de nome
+                    if self.input_nome_ativo:
+                        if ev.key == pygame.K_RETURN:
+                            # Confirmar nome
+                            if self.nome_input.strip():
+                                nome_final = self.nome_input.strip().upper()[:15]  # Limitar a 15 caracteres
+                                if nome_final:
+                                    gerenciador_progresso.nome_jogador = nome_final
+                                    gerenciador_progresso.salvar()
+                                    self.input_nome_ativo = False
+                                    self.tutorial_parte = 3
+                                    self._avancar_tutorial()
+                            else:
+                                # Nome vazio, usar padrão
+                                gerenciador_progresso.nome_jogador = "JOGADOR"
+                                gerenciador_progresso.salvar()
+                                self.input_nome_ativo = False
+                                self.tutorial_parte = 3
+                                self._avancar_tutorial()
+                        elif ev.key == pygame.K_BACKSPACE:
+                            # Apagar caractere
+                            if self.nome_input:
+                                self.nome_input = self.nome_input[:-1]
+                        elif ev.unicode and len(self.nome_input) < 15:
+                            # Adicionar caractere (apenas letras, números e alguns caracteres especiais)
+                            char = ev.unicode.upper()
+                            if char.isalnum() or char in ['_', '-', ' ']:
+                                self.nome_input += char
+                    else:
+                        # Se o texto ainda está sendo escrito, completar animação (não avança)
+                        if len(self.texto_exibido) < len(self.texto_completo):
+                            self._completar_animacao_texto()
+                            # Não fazer mais nada neste pressionamento
+                        elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
+                            # Avançar tutorial
+                            self._avancar_tutorial()
+                        elif ev.key == pygame.K_ESCAPE:
+                            self.tutorial_mostrado = True
+                            self.salvar_estado()
+                            self.fechar()
+                            return "fechado"
                 
                 elif self.fase_dialogo == "tutorial_upgrades":
                     # Se o texto ainda está sendo escrito, completar animação (não avança)
@@ -1218,8 +1377,8 @@ class Crank:
                         self._avancar_dialogo_alien()
                         return "processado"
                     elif ev.key == pygame.K_ESCAPE:
-                        # ESC fecha o diálogo
-                        self.fechar()
+                        # ESC fecha o diálogo e marca como já mostrado
+                        self._finalizar_dialogo_alien()
                         return "processado"
                 
                 elif self.fase_dialogo == "confirmar_upgrade":
@@ -1353,7 +1512,7 @@ class Crank:
                                 self.processar_resposta(i)
                                 break
                 
-                elif self.fase_dialogo == "reacao" or self.fase_dialogo == "dano_critico":
+                elif self.fase_dialogo == "reacao":
                     # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
@@ -1364,6 +1523,47 @@ class Crank:
                         if caixa_rect.collidepoint(mouse_x, mouse_y):
                             self.fechar()
                             return "fechado"
+                
+                elif self.fase_dialogo == "dano_critico":
+                    # Se o texto ainda está sendo escrito, completar animação (não avança)
+                    if len(self.texto_exibido) < len(self.texto_completo):
+                        self._completar_animacao_texto()
+                        # Não fazer mais nada neste clique
+                    else:
+                        # Verificar clique nos botões de reparar/desistir
+                        from core.i18n import t
+                        opcoes = [t("menu.reparar"), t("menu.desistir")]
+                        espacamento = 25
+                        botao_largura = int(LARGURA * 0.45)
+                        botao_x = (LARGURA - botao_largura) // 2
+                        altura_total = len(opcoes) * 40 + (len(opcoes) - 1) * espacamento
+                        inicio_y = (ALTURA - altura_total) // 2
+                        
+                        # Calcular hitboxes
+                        hitboxes = []
+                        y_calc = inicio_y
+                        for opcao_nome in opcoes:
+                            render_text = _get_render_text()
+                            texto_opcao_temp = render_text(opcao_nome, 24, (255, 255, 255), bold=False, pixel_style=False)
+                            texto_y_calc = y_calc
+                            linha_y_calc = texto_y_calc + texto_opcao_temp.get_height() + 5
+                            altura_opcao = linha_y_calc - texto_y_calc + 10
+                            hitboxes.append(pygame.Rect(botao_x, texto_y_calc, botao_largura, altura_opcao))
+                            y_calc = linha_y_calc + espacamento
+                        
+                        # Verificar qual botão foi clicado
+                        for i, rect in enumerate(hitboxes):
+                            if rect.collidepoint(mouse_x, mouse_y):
+                                if i == 0:  # Reparar
+                                    custo_reparo = int((1.0 - self.saude_carro) * 2000)
+                                    if self.reparar_carro(custo_reparo):
+                                        self.fechar()
+                                        return "reparado"
+                                    else:
+                                        return "sem_dinheiro"
+                                else:  # Desistir
+                                    self.fechar()
+                                    return "desistido"
                 
                 elif self.fase_dialogo == "tutorial":
                     # Se o texto ainda está sendo escrito, completar animação (não avança)
@@ -1448,6 +1648,12 @@ class Crank:
     
     def fechar(self):
         """Fecha a interação com o Crank"""
+        # Se estava em diálogo alien, marcar como já mostrado antes de fechar
+        if self.fase_dialogo == "dialogo_alien":
+            from core.progresso import gerenciador_progresso
+            gerenciador_progresso.dialogo_alien_ja_mostrado = True
+            gerenciador_progresso.limpar_ultima_compra_alien()
+        
         self.ativo = False
         self.sprite_atual = None
         self.texto_atual = ""
@@ -1527,7 +1733,11 @@ class Crank:
             sprite_redimensionado = pygame.transform.scale(self.sprite_atual, (sprite_w, sprite_h))
         
         # Posição do sprite (manter estilo visual novel)
-        sprite_y = ALTURA - sprite_h - 250  # Posição acima da caixa
+        # No tutorial, abaixar um pouco o sprite
+        if self.fase_dialogo == "tutorial":
+            sprite_y = ALTURA - sprite_h - 120  # Posição mais baixa no tutorial
+        else:
+            sprite_y = ALTURA - sprite_h - 150  # Posição acima da caixa (abaixado para não flutuar)
         
         if lado_direito:
             sprite_x = LARGURA - sprite_w - 20
@@ -1643,22 +1853,25 @@ class Crank:
         # Desenhar nome do personagem (não mostrar na fase de sombra)
         render_text = _get_render_text()
         if not (self.fase_dialogo == "tutorial" and self.tutorial_parte == 0 and self.tutorial_fase_apresentacao == "sombra"):
-            nome_texto = render_text("CRANK", 24, (0, 255, 100), bold=True, pixel_style=True)
+            # Mostrar "???" se o nome ainda não foi revelado, senão mostrar "CRANK"
+            nome_display = "???" if not getattr(self, 'nome_revelado', False) else "CRANK"
+            nome_texto = render_text(nome_display, 24, (0, 255, 100), bold=True, pixel_style=True)
             tela.blit(nome_texto, (caixa_x + 20, caixa_y + 10))
         
         # Atualizar animação de texto
         self._atualizar_animacao_texto(dt)
         
-        # Desenhar texto do diálogo (igual ao Rex)
+        # Desenhar texto do diálogo usando render_text com pixel_style
         if self.texto_exibido:
-            fonte = pygame.font.SysFont("consolas", 18)
-            # Quebrar texto em linhas
+            # Quebrar texto em linhas usando render_text para medir largura
             palavras = self.texto_exibido.split(' ')
             linhas = []
             linha_atual = ""
             for palavra in palavras:
                 teste_linha = linha_atual + (" " if linha_atual else "") + palavra
-                largura_teste = fonte.size(teste_linha)[0]
+                # Usar render_text para medir a largura corretamente
+                teste_render = render_text(teste_linha, 18, (255, 255, 255), bold=False, pixel_style=True)
+                largura_teste = teste_render.get_width()
                 if largura_teste <= caixa_largura - 40:
                     linha_atual = teste_linha
                 else:
@@ -1670,19 +1883,113 @@ class Crank:
             
             y_texto = caixa_y + 50
             for linha in linhas:
-                texto_surface = fonte.render(linha, True, (255, 255, 255))
-                tela.blit(texto_surface, (caixa_x + 20, y_texto))
+                linha_render = render_text(linha, 18, (255, 255, 255), bold=False, pixel_style=True)
+                tela.blit(linha_render, (caixa_x + 20, y_texto))
                 y_texto += 25
         
-        # Desenhar indicador de continuar (igual ao Rex) - apenas quando não estiver em fases especiais
-        if (len(self.texto_exibido) >= len(self.texto_completo) and 
-            self.fase_dialogo != "confirmar_upgrade" and 
-            self.fase_dialogo != "tutorial" and 
-            self.fase_dialogo != "tutorial_upgrades"):
+        # Desenhar campo de input de nome se estiver ativo
+        if self.input_nome_ativo:
+            # Campo de input
+            input_y = caixa_y + 120
+            input_largura = 400
+            input_altura = 40
+            input_x = caixa_x + (caixa_largura - input_largura) // 2
+            
+            # Fundo do campo
+            input_fundo = pygame.Surface((input_largura, input_altura), pygame.SRCALPHA)
+            input_fundo.fill((50, 50, 50, 255))
+            tela.blit(input_fundo, (input_x, input_y))
+            pygame.draw.rect(tela, (255, 255, 255), (input_x, input_y, input_largura, input_altura), 2)
+            
+            # Texto do input (com cursor piscante)
+            import time
+            cursor_visivel = int(time.time() * 2) % 2 == 0
+            texto_input = self.nome_input + ("_" if cursor_visivel else "")
+            if not texto_input:
+                texto_input = "_" if cursor_visivel else ""
+            
+            input_texto_render = render_text(texto_input, 20, (255, 255, 255), bold=True, pixel_style=True)
+            input_texto_x = input_x + 10
+            input_texto_y = input_y + (input_altura - input_texto_render.get_height()) // 2
+            tela.blit(input_texto_render, (input_texto_x, input_texto_y))
+            
+            # Instrução
+            instrucao = render_text("Digite seu nome e pressione ENTER", 14, (200, 200, 200), bold=False, pixel_style=True)
+            instrucao_x = caixa_x + (caixa_largura - instrucao.get_width()) // 2
+            instrucao_y = input_y + input_altura + 10
+            tela.blit(instrucao, (instrucao_x, instrucao_y))
+        # Desenhar indicador de continuar sempre que o texto estiver completo (se não estiver em input de nome)
+        elif len(self.texto_exibido) >= len(self.texto_completo):
             indicador = render_text("Pressione ENTER ou clique para continuar...", 16, (200, 200, 200), bold=False, pixel_style=True)
             indicador_x = caixa_x + caixa_largura - indicador.get_width() - 20
             indicador_y = caixa_y + caixa_altura - 30
             tela.blit(indicador, (indicador_x, indicador_y))
+        
+        # Desenhar opções de reparar/desistir (se estiver na fase de dano_critico e texto completo)
+        if self.fase_dialogo == "dano_critico" and len(self.texto_exibido) >= len(self.texto_completo):
+            from core.i18n import t
+            opcoes = [t("menu.reparar"), t("menu.desistir")]
+            espacamento = 25
+            botao_largura = int(LARGURA * 0.45)
+            botao_x = (LARGURA - botao_largura) // 2
+            
+            # Calcular posição Y para centralizar verticalmente
+            altura_total = len(opcoes) * 40 + (len(opcoes) - 1) * espacamento
+            inicio_y = (ALTURA - altura_total) // 2
+            y_atual = inicio_y
+            
+            # Obter posição do mouse para hover
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+            
+            # Calcular hitboxes
+            hitboxes = []
+            y_calc = inicio_y
+            for opcao_nome in opcoes:
+                texto_opcao_temp = render_text(opcao_nome, 24, (255, 255, 255), bold=False, pixel_style=False)
+                texto_y_calc = y_calc
+                linha_y_calc = texto_y_calc + texto_opcao_temp.get_height() + 5
+                altura_opcao = linha_y_calc - texto_y_calc + 10
+                hitboxes.append(pygame.Rect(botao_x, texto_y_calc, botao_largura, altura_opcao))
+                y_calc = linha_y_calc + espacamento
+            
+            # Determinar qual opção está sob o mouse
+            opcao_hover = None
+            for i, rect in enumerate(hitboxes):
+                if rect.collidepoint(mouse_x, mouse_y):
+                    opcao_hover = i
+                    break
+            
+            if not hasattr(self, 'opcao_confirmacao_selecionada'):
+                self.opcao_confirmacao_selecionada = 0
+            
+            # Desenhar opções
+            for i, opcao_nome in enumerate(opcoes):
+                hover = (opcao_hover == i)
+                selecionado = (self.opcao_confirmacao_selecionada == i)
+                
+                # Cor do texto: hover tem prioridade, senão mostrar seleção por teclado
+                if hover:
+                    cor_texto = (255, 255, 0)  # Amarelo quando hover
+                    cor_linha = (255, 255, 0)  # Amarelo
+                elif selecionado:
+                    cor_texto = (255, 200, 0)  # Laranja quando selecionado
+                    cor_linha = (255, 200, 0)  # Laranja
+                else:
+                    cor_texto = (180, 180, 180)  # Cinza quando não selecionado
+                    cor_linha = (100, 100, 100)  # Cinza escuro
+                
+                # Desenhar texto da opção (centralizado)
+                texto_opcao = render_text(opcao_nome, 24, cor_texto, bold=False, pixel_style=False)
+                texto_opcao_x = botao_x + (botao_largura - texto_opcao.get_width()) // 2
+                tela.blit(texto_opcao, (texto_opcao_x, y_atual))
+                
+                # Desenhar linha embaixo do texto
+                linha_largura = botao_largura - 80
+                linha_x = botao_x + (botao_largura - linha_largura) // 2
+                linha_y = y_atual + texto_opcao.get_height() + 5
+                pygame.draw.line(tela, cor_linha, (linha_x, linha_y), (linha_x + linha_largura, linha_y), 1)
+                
+                y_atual = linha_y + espacamento
         
         # Desenhar opções de confirmação de upgrade (se estiver na fase de confirmar_upgrade e texto completo)
         if self.fase_dialogo == "confirmar_upgrade" and len(self.texto_exibido) >= len(self.texto_completo):
@@ -1877,20 +2184,30 @@ class Crank:
         
         # Feedback visual de mudança de preço (se houver) - desenhar próximo ao texto
         if self.fase_dialogo == "reacao" and self.mudanca_preco != 0:
+            # Garantir que os ícones estão carregados
+            if not self.icones_carregados:
+                self._carregar_icones()
+            
             # Desenhar seta indicando mudança próximo ao texto (usando coordenadas da caixa)
             seta_x = caixa_x + caixa_largura - 60
             seta_y = caixa_y + caixa_altura - 50
             
             if self.mudanca_preco == -1:
-                # Seta verde para baixo (preço diminuiu)
-                cor_seta = (0, 255, 0)
-                pontos = [(seta_x, seta_y - 10), (seta_x - 8, seta_y - 2), (seta_x + 8, seta_y - 2)]
+                # Seta para baixo (preço diminuiu) - usar seta.png rotacionada
+                if self.icone_seta:
+                    seta_redimensionada = pygame.transform.scale(self.icone_seta, (30, 30))
+                    seta_rotacionada = pygame.transform.rotate(seta_redimensionada, 180)  # Rotacionar 180° para baixo
+                    tela.blit(seta_rotacionada, (seta_x - 15, seta_y - 15))
             else:  # mudanca_preco == 1
-                # Seta vermelha para cima (preço aumentou)
-                cor_seta = (255, 0, 0)
-                pontos = [(seta_x, seta_y + 10), (seta_x - 8, seta_y + 2), (seta_x + 8, seta_y + 2)]
-            
-            pygame.draw.polygon(tela, cor_seta, pontos)
+                # Seta para cima (preço aumentou) - usar encareceu.png ou seta.png
+                if self.icone_encareceu:
+                    # Usar ícone de encareceu se disponível
+                    icone_redimensionado = pygame.transform.scale(self.icone_encareceu, (30, 30))
+                    tela.blit(icone_redimensionado, (seta_x - 15, seta_y - 15))
+                elif self.icone_seta:
+                    # Fallback para seta.png normal (apontando para cima)
+                    seta_redimensionada = pygame.transform.scale(self.icone_seta, (30, 30))
+                    tela.blit(seta_redimensionada, (seta_x - 15, seta_y - 15))
 
 # Instância global
 crank = Crank()

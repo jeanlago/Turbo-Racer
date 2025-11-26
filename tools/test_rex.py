@@ -32,12 +32,12 @@ def main():
         rex.carregar_sprites()
     
     print(f"Sprites carregados:")
-    print(f"  competitive: {rex.sprite_competitive is not None}")
-    print(f"  mocking: {rex.sprite_mocking is not None}")
-    print(f"  angry: {rex.sprite_angry is not None}")
-    print(f"  challenging: {rex.sprite_challenging is not None}")
-    print(f"  scheming: {rex.sprite_scheming is not None}")
-    print(f"  fundo (pista_corrida): {rex.sprite_fundo is not None}")
+    print(f"  competitive (competitivo.png): {rex.sprite_competitive is not None}")
+    print(f"  mocking (zombando.png): {rex.sprite_mocking is not None}")
+    print(f"  angry (ameaça.png): {rex.sprite_angry is not None}")
+    print(f"  challenging (campeao_1.png): {rex.sprite_challenging is not None}")
+    print(f"  scheming (desdem.png): {rex.sprite_scheming is not None}")
+    print(f"  fundo (pista_corrida.png): {rex.sprite_fundo is not None}")
     
     print(f"\nEstado atual:")
     print(f"  Primeira aparição mostrada: {rex.primeira_aparicao_mostrada}")

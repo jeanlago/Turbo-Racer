@@ -7,11 +7,31 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
-## [3.2.5] - 2025-11-23
+## [3.2.5] - 2025-11-25
+
+### Removido
+- **Funções Não Utilizadas** - Removidas funções que não eram chamadas:
+  - `_centralizar_no_tile()` em `src/core/laps_grip.py` (função não utilizada)
+  - `centralizar_checkpoints_existentes()` em `src/core/checkpoint_manager.py` (função não utilizada)
+- **Prints de Debug** - Removidos prints de debug desnecessários em:
+  - `src/core/laps_grip.py` - Prints de carregamento de checkpoints
+  - `src/core/checkpoint_manager.py` - Prints de operações de checkpoint
+  - `src/main.py` - Print redundante sobre ajuste de checkpoints
 
 ### Modificado
-- **Limpeza de Código** - Removidos comentários inúteis e redundantes de todos os arquivos
-- **Documentação Atualizada** - README e CHANGELOG atualizados com data de 23 de novembro de 2025
+- **Limpeza de Código** - Removidos comentários inúteis e redundantes de todos os arquivos:
+  - `src/core/laps_grip.py` - Comentários inline redundantes removidos
+  - `src/core/checkpoint_manager.py` - Comentários explicativos óbvios removidos
+  - `src/main.py` - Comentários redundantes removidos
+- **Documentação Melhorada** - Docstrings atualizadas com Args e Returns:
+  - `ajustar_checkpoint_centro_pista()` - Documentação completa de parâmetros
+  - `carregar_checkpoints_grip()` - Documentação melhorada
+  - `carregar_spawn_points()` - Documentação adicionada
+  - `_centralizar_no_tile()` - Docstring simplificada
+- **Código Simplificado** - Simplificações de lógica:
+  - Checkpoints hardcoded da pista 1 simplificados (removidos comentários de ângulo)
+  - Lógica de ajuste de checkpoints simplificada
+  - Tratamento de exceções simplificado (removidos tracebacks desnecessários)
 - **Código Mais Limpo** - Mantidos apenas comentários essenciais (docstrings importantes e explicações de lógica complexa)
 
 ---
@@ -427,6 +447,6 @@ chore: atualizar dependências do pygame
 
 ---
 
-**Última atualização:** 18 de Novembro de 2025  
-**Versão atual:** 3.2.2  
+**Última atualização:** 25 de Novembro de 2025  
+**Versão atual:** 3.2.5  
 **Próxima versão:** 3.3.0 (planejada)

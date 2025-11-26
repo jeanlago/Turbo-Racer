@@ -26,6 +26,9 @@ from core.gamepad_manager import gerenciador_gamepad
 from core.mercador_alien import mercador_alien
 from core.crank import crank
 from core.rex import rex
+from core.glub import glub
+from core.akira import akira
+from core.ranking import gerenciador_ranking
 from config import CAMINHO_MENU
 
 # Lista de nomes para os bots
@@ -145,7 +148,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     img_pista = superficie_pista_renderizada.copy()
     mask_pista = superficie_pista_renderizada.copy()
     from core.laps_grip import carregar_checkpoints_grip, carregar_spawn_points
-    checkpoints_grip = carregar_checkpoints_grip(numero_pista)
+    checkpoints_grip = carregar_checkpoints_grip(numero_pista, superficie_pista=superficie_pista_renderizada)
     
     if checkpoints_grip:
         checkpoints = checkpoints_grip
@@ -162,12 +165,23 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     
     if checkpoint_manager.checkpoints:
         checkpoints = []
+        # Aplicar ajuste ao centro da pista também aos checkpoints do checkpoint_manager
+        from core.laps_grip import ajustar_checkpoint_centro_pista
         for cp in checkpoint_manager.checkpoints:
             if len(cp) >= 3:
-                checkpoints.append((float(cp[0]), float(cp[1]), float(cp[2])))
+                x, y, angulo = float(cp[0]), float(cp[1]), float(cp[2])
             elif len(cp) >= 2:
-                checkpoints.append((float(cp[0]), float(cp[1]), 0))
-        print(f"Usando {len(checkpoints)} checkpoints do checkpoint_manager")
+                x, y = float(cp[0]), float(cp[1])
+                angulo = None
+            
+            # Ajustar para o centro da pista
+            novo_x, novo_y = ajustar_checkpoint_centro_pista(x, y, angulo, superficie_pista_renderizada)
+            
+            if len(cp) >= 3:
+                checkpoints.append((float(novo_x), float(novo_y), float(angulo)))
+            else:
+                checkpoints.append((float(novo_x), float(novo_y), 0))
+        print(f"Usando {len(checkpoints)} checkpoints do checkpoint_manager (ajustados ao centro da pista)")
     
     largura_atual, altura_atual = resolucao
     largura_pista, altura_pista = superficie_pista_renderizada.get_size()
@@ -1222,22 +1236,30 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
         eventos = list(pygame.event.get())
         
-        # Atualizar Rex (se ativo)
-        if rex.ativo:
+        # Atualizar Rex (se ativo e modo 1 jogador)
+        if rex.ativo and modo_jogo == ModoJogo.UM_JOGADOR:
             rex.atualizar(dt)
         
-        # Processar Rex primeiro (se ativo e não estiver na tela de fim de jogo ou resultados finais) - tem prioridade sobre todos
-        if rex.ativo and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
+        # Atualizar Akira (se ativa e modo 1 jogador)
+        if akira.ativo and modo_jogo == ModoJogo.UM_JOGADOR:
+            akira.atualizar(dt)
+        
+        # Processar Akira primeiro (se ativa, modo 1 jogador, NÃO estiver em corrida e não estiver na tela de fim de jogo ou resultados finais) - tem prioridade sobre todos
+        if akira.ativo and modo_jogo == ModoJogo.UM_JOGADOR and not corrida.iniciada and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
+            akira.processar_eventos(eventos)
+        
+        # Processar Rex (se ativo, modo 1 jogador, NÃO estiver em corrida, Akira não estiver ativa e não estiver na tela de fim de jogo ou resultados finais) - tem prioridade sobre Crank
+        if rex.ativo and modo_jogo == ModoJogo.UM_JOGADOR and not corrida.iniciada and not akira.ativo and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
             rex.processar_eventos(eventos)
         
-        # Processar Crank (se ativo e Rex não estiver ativo e não estiver na tela de fim de jogo ou resultados finais) - tem prioridade sobre mercador alien
-        if crank.ativo and not rex.ativo and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
+        # Processar Crank (se ativo, modo 1 jogador, NÃO estiver em corrida, Akira/Rex não estiverem ativos e não estiver na tela de fim de jogo ou resultados finais) - tem prioridade sobre mercador alien
+        if crank.ativo and modo_jogo == ModoJogo.UM_JOGADOR and not corrida.iniciada and not akira.ativo and not rex.ativo and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
             resultado_crank = crank.processar_eventos(eventos)
             if resultado_crank == "fechado":
                 crank.fechar()
         
-        # Processar mercador alien (se ativo e Rex/Crank não estiverem ativos e não estiver na tela de fim de jogo ou resultados finais)
-        if mercador_alien.ativo and not rex.ativo and not crank.ativo and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
+        # Processar mercador alien (se ativo, modo 1 jogador, NÃO estiver em corrida, Akira/Rex/Crank não estiverem ativos e não estiver na tela de fim de jogo ou resultados finais)
+        if mercador_alien.ativo and modo_jogo == ModoJogo.UM_JOGADOR and not corrida.iniciada and not akira.ativo and not rex.ativo and not crank.ativo and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
             resultado_mercador = mercador_alien.processar_eventos(eventos, prefixo_cor=carro_p1["prefixo_cor"])
             if resultado_mercador in ["comprado", "recusado", "fechado", "erro"]:
                 if resultado_mercador == "comprado":
@@ -1307,27 +1329,27 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                         if 0 <= carro_p1_idx < len(CARROS_DISPONIVEIS) and 0 <= carro_p2_idx < len(CARROS_DISPONIVEIS):
                                             return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
                                 estado_fim_jogo_p1 = None
-                                # Após fechar tela de fim de jogo P1, verificar se Rex deve aparecer (primeira corrida, só se P2 também terminou)
-                                if estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo and not mercador_alien.ativo:
+                                # Após fechar tela de fim de jogo P1, verificar se Rex deve aparecer (primeira corrida, só se P2 também terminou e modo 1 jogador)
+                                if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo and not mercador_alien.ativo:
                                     rex.verificar_aparecer()
-                                # Verificar se o Crank deve aparecer (após o Rex)
-                                if estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo:
+                                # Verificar se o Crank deve aparecer (após o Rex, modo 1 jogador)
+                                if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo:
                                     crank.verificar_aparecer_pos_corrida()
-                                # Verificar se o mercador alien deve aparecer (após o Crank)
-                                if estado_fim_jogo_p2 is None and not rex.ativo and not mercador_alien.ativo and not crank.ativo:
+                                # Verificar se o mercador alien deve aparecer (após o Crank, modo 1 jogador)
+                                if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not mercador_alien.ativo and not crank.ativo:
                                     mercador_alien.verificar_aparecer(contexto="corrida")
                                 continue
                             elif acao == "espectador":
                                 p1_espectador = True
                                 estado_fim_jogo_p1 = None
-                                # Após fechar tela de fim de jogo P1, verificar se Rex deve aparecer (primeira corrida, só se P2 também terminou)
-                                if estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo and not mercador_alien.ativo:
+                                # Após fechar tela de fim de jogo P1, verificar se Rex deve aparecer (primeira corrida, só se P2 também terminou e modo 1 jogador)
+                                if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo and not mercador_alien.ativo:
                                     rex.verificar_aparecer()
-                                # Verificar se o Crank deve aparecer (após o Rex)
-                                if estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo:
+                                # Verificar se o Crank deve aparecer (após o Rex, modo 1 jogador)
+                                if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo:
                                     crank.verificar_aparecer_pos_corrida()
-                                # Verificar se o mercador alien deve aparecer (após o Crank)
-                                if estado_fim_jogo_p2 is None and not rex.ativo and not mercador_alien.ativo and not crank.ativo:
+                                # Verificar se o mercador alien deve aparecer (após o Crank, modo 1 jogador)
+                                if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not mercador_alien.ativo and not crank.ativo:
                                     mercador_alien.verificar_aparecer(contexto="corrida")
                                 continue
                             elif acao == "menu" or acao == "sair":
@@ -1497,14 +1519,14 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                     if 0 <= carro_p1_idx < len(CARROS_DISPONIVEIS) and 0 <= carro_p2_idx < len(CARROS_DISPONIVEIS):
                                         return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
                             estado_resultados_finais = None
-                            # Após fechar tela de resultados finais, verificar se Rex deve aparecer (primeira corrida)
-                            if not rex.ativo and not crank.ativo and not mercador_alien.ativo:
+                            # Após fechar tela de resultados finais, verificar se Rex deve aparecer (primeira corrida, modo 1 jogador)
+                            if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not crank.ativo and not mercador_alien.ativo:
                                 rex.verificar_aparecer()
-                            # Verificar se o Crank deve aparecer (após o Rex)
-                            if not rex.ativo and not crank.ativo:
+                            # Verificar se o Crank deve aparecer (após o Rex, modo 1 jogador)
+                            if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not crank.ativo:
                                 crank.verificar_aparecer_pos_corrida()
-                            # Verificar se o mercador alien deve aparecer (após o Crank)
-                            if not rex.ativo and not mercador_alien.ativo and not crank.ativo:
+                            # Verificar se o mercador alien deve aparecer (após o Crank, modo 1 jogador)
+                            if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not mercador_alien.ativo and not crank.ativo:
                                 mercador_alien.verificar_aparecer(contexto="corrida")
                             continue
                         elif acao == "menu" or acao == "sair":
@@ -1528,14 +1550,14 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                     if 0 <= carro_p1_idx < len(CARROS_DISPONIVEIS) and 0 <= carro_p2_idx < len(CARROS_DISPONIVEIS):
                                         return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
                             estado_fim_jogo = None
-                            # Após fechar tela de fim de jogo, verificar se Rex deve aparecer (primeira corrida)
-                            if not rex.ativo and not crank.ativo and not mercador_alien.ativo:
+                            # Após fechar tela de fim de jogo, verificar se Rex deve aparecer (primeira corrida, modo 1 jogador)
+                            if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not crank.ativo and not mercador_alien.ativo:
                                 rex.verificar_aparecer()
-                            # Verificar se o Crank deve aparecer (após o Rex)
-                            if not rex.ativo and not crank.ativo:
+                            # Verificar se o Crank deve aparecer (após o Rex, modo 1 jogador)
+                            if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not crank.ativo:
                                 crank.verificar_aparecer_pos_corrida()
-                            # Verificar se o mercador alien deve aparecer (após o Crank)
-                            if not rex.ativo and not mercador_alien.ativo and not crank.ativo:
+                            # Verificar se o mercador alien deve aparecer (após o Crank, modo 1 jogador)
+                            if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not mercador_alien.ativo and not crank.ativo:
                                 mercador_alien.verificar_aparecer(contexto="corrida")
                             continue
                         elif acao == "menu" or acao == "sair":
@@ -1792,7 +1814,16 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         checkpoint_manager.processar_teclas_f(teclas)
 
         if not corrida.iniciada:
-            corrida.atualizar_contagem(dt)
+            # Verificar se há NPCs ativos (cutscenes) - não iniciar corrida durante cutscenes
+            npcs_ativos = (akira.ativo or rex.ativo or crank.ativo or mercador_alien.ativo or glub.ativo)
+            
+            # Verificar se Akira deve aparecer pré-corrida (modo 1 jogador, primeira vez na pista)
+            if modo_jogo == ModoJogo.UM_JOGADOR and tipo_jogo == TipoJogo.CORRIDA and not npcs_ativos:
+                numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                akira.verificar_aparecer_pre_corrida(numero_pista)
+                npcs_ativos = akira.ativo  # Atualizar após verificar
+            
+            corrida.atualizar_contagem(dt, npcs_ativos=npcs_ativos)
         corrida.atualizar_tempo(dt, jogo_pausado)
 
         if tipo_jogo == TipoJogo.DRIFT and corrida.iniciada:
@@ -1991,11 +2022,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                         ghost_recorder_p1.parar_gravacao()
                                         frames_gravados = ghost_recorder_p1.obter_dados()
                                         if frames_gravados and len(frames_gravados) > 0:
-                                            gerenciador_ghosts.salvar_ghost(numero_pista, frames_gravados)
-                                            print(f"Ghost salvo para pista {numero_pista} ({len(frames_gravados)} frames)")
+                                            # Verificação adicional no método salvar_ghost
+                                            gerenciador_ghosts.salvar_ghost(numero_pista, frames_gravados, tempo_final_p1, "GHOST")
                                     else:
+                                        # Não é melhor volta, limpar frames para economizar memória
                                         if ghost_recorder_p1 and ghost_recorder_p1.gravando:
                                             ghost_recorder_p1.parar_gravacao()
+                                            ghost_recorder_p1.limpar()
                             
                             if posicao_jogador_p1 == 1:
                                 gerenciador_progresso.registrar_trofeu(numero_pista, "ouro")
@@ -2016,6 +2049,21 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             
                             numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                             gerenciador_estatisticas.registrar_corrida_completa(numero_pista, posicao_jogador_p1, tempo_final_p1)
+                            
+                            # Registrar no ranking
+                            if posicao_jogador_p1 == 1:
+                                gerenciador_ranking.registrar_vitoria_jogador()
+                            else:
+                                gerenciador_ranking.registrar_derrota_jogador()
+                            
+                            # Verificar se Akira deve aparecer pós-corrida (modo 1 jogador) - ANTES do Rex
+                            if modo_jogo == ModoJogo.UM_JOGADOR:
+                                colisoes_na_corrida = getattr(principal, '_colisoes_na_corrida', 0)
+                                akira.verificar_aparecer_pos_corrida(posicao_jogador_p1, colisoes_na_corrida, posicao_jogador_p1 == 1)
+                            
+                            # Verificar se Rex deve aparecer (primeira corrida, modo 1 jogador) - DEPOIS de registrar a corrida
+                            if modo_jogo == ModoJogo.UM_JOGADOR:
+                                rex.verificar_aparecer()
                             if novo_recorde:
                                 gerenciador_estatisticas.registrar_recorde(numero_pista)
                                 gerenciador_desafios.atualizar_progresso("estabelecer_recorde", 1, gerenciador_progresso)
@@ -2377,6 +2425,9 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             
                             numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                             gerenciador_estatisticas.registrar_corrida_completa(numero_pista, posicao_jogador_p1, tempo_final_p1)
+                            # Verificar se Rex deve aparecer (primeira corrida, modo 1 jogador) - DEPOIS de registrar a corrida
+                            if modo_jogo == ModoJogo.UM_JOGADOR:
+                                rex.verificar_aparecer()
                             if novo_recorde:
                                 gerenciador_estatisticas.registrar_recorde(numero_pista)
                                 gerenciador_desafios.atualizar_progresso("estabelecer_recorde", 1, gerenciador_progresso)
@@ -3269,14 +3320,17 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 # Fallback para tela individual (caso ainda exista algum código que use)
                 desenhar_tela_fim_jogo(tela, estado_fim_jogo, dt)
 
-        # Desenhar Rex (se ativo e não estiver na tela de fim de jogo ou resultados finais) - tem prioridade sobre todos
-        if rex.ativo and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
+        # Desenhar Akira (se ativa, modo 1 jogador e não estiver na tela de fim de jogo ou resultados finais) - tem prioridade sobre todos
+        if akira.ativo and modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
+            akira.desenhar_dialogo(tela, dt)
+        # Desenhar Rex (se ativo, modo 1 jogador, Akira não estiver ativa e não estiver na tela de fim de jogo ou resultados finais) - tem prioridade sobre Crank
+        elif rex.ativo and modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
             rex.desenhar_dialogo(tela, dt)
-        # Desenhar Crank (se ativo e Rex não estiver ativo e não estiver na tela de fim de jogo ou resultados finais) - tem prioridade sobre mercador alien
-        elif crank.ativo and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
+        # Desenhar Crank (se ativo, modo 1 jogador, Akira/Rex não estiverem ativos e não estiver na tela de fim de jogo ou resultados finais) - tem prioridade sobre mercador alien
+        elif crank.ativo and modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
             crank.desenhar_dialogo(tela, dt)
-        # Desenhar mercador alien (se ativo e Rex/Crank não estiverem ativos e não estiver na tela de fim de jogo ou resultados finais) - deve aparecer sobre tudo
-        elif mercador_alien.ativo and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
+        # Desenhar mercador alien (se ativo, modo 1 jogador, Akira/Rex/Crank não estiverem ativos e não estiver na tela de fim de jogo ou resultados finais) - deve aparecer sobre tudo
+        elif mercador_alien.ativo and modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
             mercador_alien.desenhar_dialogo(tela, dt)
 
         if modo_jogo != ModoJogo.DOIS_JOGADORES and tipo_jogo != TipoJogo.DRIFT and not tela_fim_mostrada:
@@ -3373,11 +3427,18 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                     ghost_recorder_p1.parar_gravacao()
                                     frames_gravados = ghost_recorder_p1.obter_dados()
                                     if frames_gravados and len(frames_gravados) > 0:
-                                        gerenciador_ghosts.salvar_ghost(numero_pista, frames_gravados)
-                                        print(f"Ghost salvo para pista {numero_pista} ({len(frames_gravados)} frames)")
+                                        # Verificação adicional no método salvar_ghost
+                                        if tipo_jogo == TipoJogo.GHOST:
+                                            gerenciador_ghosts.salvar_ghost(numero_pista, frames_gravados, tempo_final, "GHOST")
+                                        elif tipo_jogo == TipoJogo.DRIFT:
+                                            # Para drift, o score já foi verificado em novo_recorde
+                                            # Mas não temos o score aqui, então vamos confiar na verificação anterior
+                                            gerenciador_ghosts.salvar_ghost(numero_pista, frames_gravados)
                                 else:
+                                    # Não é melhor volta, limpar frames para economizar memória
                                     if ghost_recorder_p1 and ghost_recorder_p1.gravando:
                                         ghost_recorder_p1.parar_gravacao()
+                                        ghost_recorder_p1.limpar()
 
                         if tipo_jogo == TipoJogo.GHOST:
                             if trofeu == trofeu_ouro:
@@ -3405,6 +3466,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
                         gerenciador_achievements.atualizar_estatistica("corridas_completas", incrementar=True)
                         achievements_desbloqueados = gerenciador_achievements.verificar_achievements(gerenciador_progresso)
+                        
+                        numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                        # No modo GHOST/DRIFT, usar posicao_jogador e tempo_final que já foram definidos acima
+                        gerenciador_estatisticas.registrar_corrida_completa(numero_pista, posicao_jogador, tempo_final)
+                        # Verificar se Rex deve aparecer (primeira corrida, modo 1 jogador) - DEPOIS de registrar a corrida
+                        if modo_jogo == ModoJogo.UM_JOGADOR:
+                            rex.verificar_aparecer()
                         from core.i18n import t
                         for ach in achievements_desbloqueados:
                             nome_traduzido = t(f"achievements.{ach['id']}")

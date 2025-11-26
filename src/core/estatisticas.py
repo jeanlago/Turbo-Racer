@@ -12,58 +12,28 @@ class GerenciadorEstatisticas:
     """Gerencia estatísticas detalhadas do jogador"""
     
     def __init__(self):
-        self.estatisticas_gerais = {
-            "tempo_total_jogado": 0.0,  # em segundos
-            "distancia_total": 0.0,  # em pixels (convertido para km depois)
-            "corridas_completas": 0,
-            "corridas_vencidas": 0,
-            "voltas_completas": 0,
-            "colisoes_totais": 0,
-            "drifts_totais": 0,
-            "turbo_usado": 0,
-            "recordes_estabelecidos": 0,
-            "trofeus_ganhos": 0
-        }
-        
-        self.estatisticas_por_pista = {}  # {numero_pista: {estatisticas}}
+        from core.progresso import gerenciador_progresso
+        self.gerenciador_progresso = gerenciador_progresso
         self.carregar()
     
+    @property
+    def estatisticas_gerais(self):
+        """Retorna as estatísticas gerais do progresso.json (referência direta para permitir modificações)"""
+        return self.gerenciador_progresso.estatisticas_gerais
+    
+    @property
+    def estatisticas_por_pista(self):
+        """Retorna as estatísticas por pista do progresso.json (referência direta para permitir modificações)"""
+        return self.gerenciador_progresso.estatisticas_por_pista
+    
     def carregar(self):
-        """Carrega as estatísticas do arquivo"""
-        if os.path.exists(CAMINHO_ESTATISTICAS):
-            try:
-                with open(CAMINHO_ESTATISTICAS, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    self.estatisticas_gerais = data.get('estatisticas_gerais', self.estatisticas_gerais)
-                    self.estatisticas_por_pista = data.get('estatisticas_por_pista', {})
-            except Exception as e:
-                print(f"Erro ao carregar estatísticas: {e}")
-                self.estatisticas_gerais = {
-                    "tempo_total_jogado": 0.0,
-                    "distancia_total": 0.0,
-                    "corridas_completas": 0,
-                    "corridas_vencidas": 0,
-                    "voltas_completas": 0,
-                    "colisoes_totais": 0,
-                    "drifts_totais": 0,
-                    "turbo_usado": 0,
-                    "recordes_estabelecidos": 0,
-                    "trofeus_ganhos": 0
-                }
-                self.estatisticas_por_pista = {}
+        """Carrega as estatísticas do progresso.json"""
+        # Os dados já estão no gerenciador_progresso, não precisa fazer nada
+        pass
     
     def salvar(self):
-        """Salva as estatísticas no arquivo"""
-        try:
-            os.makedirs(os.path.dirname(CAMINHO_ESTATISTICAS), exist_ok=True)
-            data = {
-                'estatisticas_gerais': self.estatisticas_gerais,
-                'estatisticas_por_pista': self.estatisticas_por_pista
-            }
-            with open(CAMINHO_ESTATISTICAS, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-        except Exception as e:
-            print(f"Erro ao salvar estatísticas: {e}")
+        """Salva as estatísticas no progresso.json"""
+        self.gerenciador_progresso.salvar()
     
     def _obter_estatisticas_pista(self, numero_pista):
         """Obtém ou cria as estatísticas de uma pista"""

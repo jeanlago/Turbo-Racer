@@ -70,7 +70,11 @@ class MercadorAlien:
         self.texto_completo = ""  # Texto completo a ser exibido
         self.texto_exibido = ""  # Texto já exibido (animação)
         self.tempo_animacao = 0.0  # Tempo acumulado para animação
-        self.velocidade_texto = 50.0  # Caracteres por segundo (aumentado de 30 para 50)
+        self.velocidade_texto = 80.0  # Caracteres por segundo (igual ao Barão e Crank)
+        
+        # Sistema de nome revelado
+        # Nota: nome_revelado é carregado em carregar_estado()
+        # Não resetar aqui, senão sobrescreve o estado salvo!
         
         # Sons
         self.som_compra = None
@@ -188,33 +192,19 @@ class MercadorAlien:
             print(f"ERRO ao carregar fundo pós-corrida: {e}")
     
     def carregar_estado(self):
-        """Carrega o estado do mercador (cooldown, etc)"""
-        try:
-            if os.path.exists(CAMINHO_MERCADOR_DATA):
-                with open(CAMINHO_MERCADOR_DATA, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    self.ultima_aparicao = data.get('ultima_aparicao', 0)
-                    self.contador_eventos = data.get('contador_eventos', 0)
-            else:
-                self.ultima_aparicao = 0
-                self.contador_eventos = 0
-        except Exception as e:
-            print(f"Erro ao carregar estado do mercador: {e}")
-            self.ultima_aparicao = 0
-            self.contador_eventos = 0
+        """Carrega o estado do mercador do progresso.json"""
+        from core.progresso import gerenciador_progresso
+        self.ultima_aparicao = gerenciador_progresso.mercador_ultima_aparicao
+        self.contador_eventos = gerenciador_progresso.mercador_contador_eventos
+        self.nome_revelado = gerenciador_progresso.mercador_nome_revelado
     
     def salvar_estado(self):
-        """Salva o estado do mercador"""
-        try:
-            os.makedirs(os.path.dirname(CAMINHO_MERCADOR_DATA), exist_ok=True)
-            data = {
-                'ultima_aparicao': self.ultima_aparicao,
-                'contador_eventos': self.contador_eventos
-            }
-            with open(CAMINHO_MERCADOR_DATA, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2)
-        except Exception as e:
-            print(f"Erro ao salvar estado do mercador: {e}")
+        """Salva o estado do mercador no progresso.json"""
+        from core.progresso import gerenciador_progresso
+        gerenciador_progresso.mercador_ultima_aparicao = self.ultima_aparicao
+        gerenciador_progresso.mercador_contador_eventos = self.contador_eventos
+        gerenciador_progresso.mercador_nome_revelado = getattr(self, 'nome_revelado', False)
+        gerenciador_progresso.salvar()
     
     def verificar_aparecer(self, contexto="corrida"):
         """Verifica se o mercador deve aparecer"""
@@ -632,6 +622,13 @@ class MercadorAlien:
         self.texto_exibido = ""
         self.texto_atual = ""  # Garantir que texto_atual também começa vazio
         self.tempo_animacao = 0.0
+        
+        # Verificar se o texto contém o nome do personagem e marcar como revelado
+        if not getattr(self, 'nome_revelado', False):
+            texto_lower = texto.lower()
+            if "slick" in texto_lower or "eu sou" in texto_lower or "meu nome" in texto_lower:
+                self.nome_revelado = True
+                self.salvar_estado()
     
     def _atualizar_animacao_texto(self, dt):
         """Atualiza animação de texto letra por letra"""
@@ -802,22 +799,24 @@ class MercadorAlien:
         
         # Desenhar nome do personagem
         render_text = _get_render_text()
-        nome_texto = render_text("SLICK", 24, (0, 255, 100), bold=True, pixel_style=True)
+        nome_display = "???" if not getattr(self, 'nome_revelado', False) else "SLICK"
+        nome_texto = render_text(nome_display, 24, (0, 255, 100), bold=True, pixel_style=True)
         tela.blit(nome_texto, (caixa_x + 20, caixa_y + 10))
         
         # Atualizar animação de texto
         self._atualizar_animacao_texto(dt)
         
-        # Desenhar texto do diálogo (igual ao Rex)
+        # Desenhar texto do diálogo usando render_text com pixel_style
         if self.texto_exibido:
-            fonte = pygame.font.SysFont("consolas", 18)
-            # Quebrar texto em linhas
+            # Quebrar texto em linhas usando render_text para medir largura
             palavras = self.texto_exibido.split(' ')
             linhas = []
             linha_atual = ""
             for palavra in palavras:
                 teste_linha = linha_atual + (" " if linha_atual else "") + palavra
-                largura_teste = fonte.size(teste_linha)[0]
+                # Usar render_text para medir a largura corretamente
+                teste_render = render_text(teste_linha, 18, (255, 255, 255), bold=False, pixel_style=True)
+                largura_teste = teste_render.get_width()
                 if largura_teste <= caixa_largura - 40:
                     linha_atual = teste_linha
                 else:
@@ -829,12 +828,12 @@ class MercadorAlien:
             
             y_texto = caixa_y + 50
             for linha in linhas:
-                texto_surface = fonte.render(linha, True, (255, 255, 255))
-                tela.blit(texto_surface, (caixa_x + 20, y_texto))
+                linha_render = render_text(linha, 18, (255, 255, 255), bold=False, pixel_style=True)
+                tela.blit(linha_render, (caixa_x + 20, y_texto))
                 y_texto += 25
         
-        # Desenhar indicador de continuar (igual ao Rex) - apenas quando não estiver na fase de oferta
-        if len(self.texto_exibido) >= len(self.texto_completo) and self.fase_dialogo != "oferta":
+        # Desenhar indicador de continuar sempre que o texto estiver completo
+        if len(self.texto_exibido) >= len(self.texto_completo):
             indicador = render_text("Pressione ENTER ou clique para continuar...", 16, (200, 200, 200), bold=False, pixel_style=True)
             indicador_x = caixa_x + caixa_largura - indicador.get_width() - 20
             indicador_y = caixa_y + caixa_altura - 30

@@ -51,8 +51,15 @@ class GerenciadorCorrida:
         carro.checkpoint_atual = 0
 
     # --- Semáforo e tempo global ---
-    def atualizar_contagem(self, dt):
+    def atualizar_contagem(self, dt, npcs_ativos=False):
+        """
+        Atualiza a contagem regressiva
+        npcs_ativos: Se True, pausa a contagem (cutscenes ativas)
+        """
         if self.iniciada:
+            return
+        # Não iniciar contagem se houver NPCs ativos (cutscenes)
+        if npcs_ativos:
             return
         self.contagem_regressiva -= dt
         if self.contagem_regressiva <= 0:

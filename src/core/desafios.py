@@ -14,34 +14,92 @@ class GerenciadorDesafios:
     """Gerencia desafios diários, semanais e missões por pista"""
     
     def __init__(self):
-        self.desafios_diarios = []
-        self.desafios_semanais = []
-        self.missoes_pista = {}  # {numero_pista: [missoes]}
-        self.progresso = {}  # {desafio_id: progresso_atual}
-        self.completados = set()  # IDs de desafios completados
-        self.ultima_atualizacao_diaria = None
-        self.ultima_atualizacao_semanal = None
+        from core.progresso import gerenciador_progresso
+        self.gerenciador_progresso = gerenciador_progresso
         self.carregar()
         self.gerar_desafios_se_necessario()
     
+    @property
+    def desafios_diarios(self):
+        """Retorna os desafios diários do progresso.json"""
+        return self.gerenciador_progresso.desafios_diarios
+    
+    @desafios_diarios.setter
+    def desafios_diarios(self, value):
+        """Define os desafios diários no progresso.json"""
+        self.gerenciador_progresso.desafios_diarios = value
+        self.gerenciador_progresso.salvar()
+    
+    @property
+    def desafios_semanais(self):
+        """Retorna os desafios semanais do progresso.json"""
+        return self.gerenciador_progresso.desafios_semanais
+    
+    @desafios_semanais.setter
+    def desafios_semanais(self, value):
+        """Define os desafios semanais no progresso.json"""
+        self.gerenciador_progresso.desafios_semanais = value
+        self.gerenciador_progresso.salvar()
+    
+    @property
+    def missoes_pista(self):
+        """Retorna as missões por pista do progresso.json"""
+        return self.gerenciador_progresso.missoes_pista
+    
+    @missoes_pista.setter
+    def missoes_pista(self, value):
+        """Define as missões por pista no progresso.json"""
+        self.gerenciador_progresso.missoes_pista = value
+        self.gerenciador_progresso.salvar()
+    
+    @property
+    def progresso(self):
+        """Retorna o progresso dos desafios do progresso.json"""
+        return self.gerenciador_progresso.desafios_progresso
+    
+    @progresso.setter
+    def progresso(self, value):
+        """Define o progresso dos desafios no progresso.json"""
+        self.gerenciador_progresso.desafios_progresso = value
+        self.gerenciador_progresso.salvar()
+    
+    @property
+    def completados(self):
+        """Retorna os desafios completados do progresso.json"""
+        return self.gerenciador_progresso.desafios_completados
+    
+    @completados.setter
+    def completados(self, value):
+        """Define os desafios completados no progresso.json"""
+        self.gerenciador_progresso.desafios_completados = value if isinstance(value, set) else set(value)
+        self.gerenciador_progresso.salvar()
+    
+    @property
+    def ultima_atualizacao_diaria(self):
+        """Retorna a última atualização diária do progresso.json"""
+        return self.gerenciador_progresso.ultima_atualizacao_diaria
+    
+    @ultima_atualizacao_diaria.setter
+    def ultima_atualizacao_diaria(self, value):
+        """Define a última atualização diária no progresso.json"""
+        self.gerenciador_progresso.ultima_atualizacao_diaria = value
+        self.gerenciador_progresso.salvar()
+    
+    @property
+    def ultima_atualizacao_semanal(self):
+        """Retorna a última atualização semanal do progresso.json"""
+        return self.gerenciador_progresso.ultima_atualizacao_semanal
+    
+    @ultima_atualizacao_semanal.setter
+    def ultima_atualizacao_semanal(self, value):
+        """Define a última atualização semanal no progresso.json"""
+        self.gerenciador_progresso.ultima_atualizacao_semanal = value
+        self.gerenciador_progresso.salvar()
+    
     def carregar(self):
-        """Carrega desafios do arquivo"""
-        if os.path.exists(CAMINHO_DESAFIOS):
-            try:
-                with open(CAMINHO_DESAFIOS, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    self.desafios_diarios = data.get('desafios_diarios', [])
-                    self.desafios_semanais = data.get('desafios_semanais', [])
-                    self.missoes_pista = data.get('missoes_pista', {})
-                    self.progresso = data.get('progresso', {})
-                    self.completados = set(data.get('completados', []))
-                    self.ultima_atualizacao_diaria = data.get('ultima_atualizacao_diaria')
-                    self.ultima_atualizacao_semanal = data.get('ultima_atualizacao_semanal')
-            except Exception as e:
-                print(f"Erro ao carregar desafios: {e}")
-                self._inicializar_padrao()
-        else:
-            self._inicializar_padrao()
+        """Carrega desafios do progresso.json"""
+        # Os dados já estão no gerenciador_progresso, não precisa fazer nada
+        pass
     
     def _inicializar_padrao(self):
         """Inicializa com valores padrão"""
@@ -54,22 +112,8 @@ class GerenciadorDesafios:
         self.ultima_atualizacao_semanal = None
     
     def salvar(self):
-        """Salva desafios no arquivo"""
-        try:
-            os.makedirs(os.path.dirname(CAMINHO_DESAFIOS), exist_ok=True)
-            data = {
-                'desafios_diarios': self.desafios_diarios,
-                'desafios_semanais': self.desafios_semanais,
-                'missoes_pista': self.missoes_pista,
-                'progresso': self.progresso,
-                'completados': list(self.completados),
-                'ultima_atualizacao_diaria': self.ultima_atualizacao_diaria,
-                'ultima_atualizacao_semanal': self.ultima_atualizacao_semanal
-            }
-            with open(CAMINHO_DESAFIOS, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-        except Exception as e:
-            print(f"Erro ao salvar desafios: {e}")
+        """Salva desafios no progresso.json"""
+        self.gerenciador_progresso.salvar()
     
     def _gerar_desafio_diario(self):
         """Gera um desafio diário aleatório"""
@@ -78,19 +122,19 @@ class GerenciadorDesafios:
                 "tipo": "completar_corridas",
                 "objetivo": random.randint(2, 5),
                 "recompensa": random.randint(300, 600),
-                "descricao": f"Complete {random.randint(2, 5)} corridas"
+                "descricao": None  # Será preenchida depois com o objetivo real
             },
             {
                 "tipo": "vencer_corridas",
                 "objetivo": random.randint(1, 3),
                 "recompensa": random.randint(400, 800),
-                "descricao": f"Vença {random.randint(1, 3)} corridas em 1º lugar"
+                "descricao": None  # Será preenchida depois com o objetivo real
             },
             {
                 "tipo": "completar_voltas",
                 "objetivo": random.randint(10, 20),
                 "recompensa": random.randint(250, 500),
-                "descricao": f"Complete {random.randint(10, 20)} voltas"
+                "descricao": None  # Será preenchida depois com o objetivo real
             },
             {
                 "tipo": "estabelecer_recorde",
@@ -102,10 +146,22 @@ class GerenciadorDesafios:
                 "tipo": "usar_turbo",
                 "objetivo": random.randint(50, 100),
                 "recompensa": random.randint(200, 400),
-                "descricao": f"Use o turbo {random.randint(50, 100)} vezes"
+                "descricao": None  # Será preenchida depois com o objetivo real
             }
         ]
-        desafio = random.choice(tipos)
+        desafio = random.choice(tipos).copy()  # Usar copy() para não modificar o original
+        
+        # Preencher descrição com o objetivo real
+        if desafio["descricao"] is None:
+            if desafio["tipo"] == "completar_corridas":
+                desafio["descricao"] = f"Complete {desafio['objetivo']} corridas"
+            elif desafio["tipo"] == "vencer_corridas":
+                desafio["descricao"] = f"Vença {desafio['objetivo']} corridas em 1º lugar"
+            elif desafio["tipo"] == "completar_voltas":
+                desafio["descricao"] = f"Complete {desafio['objetivo']} voltas"
+            elif desafio["tipo"] == "usar_turbo":
+                desafio["descricao"] = f"Use o turbo {desafio['objetivo']} vezes"
+        
         desafio["id"] = f"diario_{datetime.now().strftime('%Y%m%d')}_{len(self.desafios_diarios)}"
         desafio["progresso"] = 0
         return desafio
@@ -147,22 +203,29 @@ class GerenciadorDesafios:
         """Gera novos desafios se necessário"""
         hoje = datetime.now().date()
         semana_atual = hoje.isocalendar()[1]
+        data_hoje_str = hoje.strftime('%Y%m%d')
         
         # Verificar desafios diários
         if self.ultima_atualizacao_diaria is None:
             self.ultima_atualizacao_diaria = hoje.isoformat()
             self.desafios_diarios = [self._gerar_desafio_diario() for _ in range(3)]
+            # Limpar desafios diários antigos do set de completados
+            self.completados = {c for c in self.completados if not c.startswith("diario_")}
         else:
             ultima_data = datetime.fromisoformat(self.ultima_atualizacao_diaria).date()
             if hoje > ultima_data:
                 self.ultima_atualizacao_diaria = hoje.isoformat()
                 self.desafios_diarios = [self._gerar_desafio_diario() for _ in range(3)]
+                # Limpar progresso e completados dos desafios diários antigos
                 self.progresso = {k: v for k, v in self.progresso.items() if not k.startswith("diario_")}
+                self.completados = {c for c in self.completados if not c.startswith("diario_")}
         
         # Verificar desafios semanais
         if self.ultima_atualizacao_semanal is None:
             self.ultima_atualizacao_semanal = f"{hoje.year}-W{semana_atual}"
             self.desafios_semanais = [self._gerar_desafio_semanal() for _ in range(2)]
+            # Limpar desafios semanais antigos do set de completados
+            self.completados = {c for c in self.completados if not c.startswith("semanal_")}
         else:
             ano_semana = self.ultima_atualizacao_semanal.split('-W')
             if len(ano_semana) == 2:
@@ -170,7 +233,9 @@ class GerenciadorDesafios:
                 if hoje.year > ano_antigo or (hoje.year == ano_antigo and semana_atual > semana_antiga):
                     self.ultima_atualizacao_semanal = f"{hoje.year}-W{semana_atual}"
                     self.desafios_semanais = [self._gerar_desafio_semanal() for _ in range(2)]
+                    # Limpar progresso e completados dos desafios semanais antigos
                     self.progresso = {k: v for k, v in self.progresso.items() if not k.startswith("semanal_")}
+                    self.completados = {c for c in self.completados if not c.startswith("semanal_")}
         
         self.salvar()
     
@@ -287,11 +352,16 @@ class GerenciadorDesafios:
         return desafio_id in self.completados
     
     def contar_missoes_diarias_concluidas(self):
-        """Conta quantas missões diárias foram concluídas (máximo 3)"""
+        """Conta quantas missões diárias do dia atual foram concluídas (máximo 3)"""
+        hoje = datetime.now().date()
+        data_hoje_str = hoje.strftime('%Y%m%d')
         contador = 0
-        for desafio_id in self.completados:
-            if desafio_id.startswith("diario_"):
+        
+        # Contar apenas desafios diários do dia atual
+        for desafio in self.desafios_diarios:
+            if desafio["id"] in self.completados:
                 contador += 1
+        
         return min(contador, 3)  # Máximo de 3 missões diárias
 
 gerenciador_desafios = GerenciadorDesafios()

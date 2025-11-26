@@ -531,12 +531,16 @@ Este projeto é de código aberto e está disponível sob a **licença MIT**.
 
 **Desenvolvido por Jean Marins e Jayson Sales**  
 **Versão atual:** 3.2.5  
-**Última atualização:** 23 de Novembro de 2025
+**Última atualização:** 25 de Novembro de 2025
 
-### **Novidades da Versão 3.2.5 (23 de Novembro de 2025)**
+### **Novidades da Versão 3.2.5 (25 de Novembro de 2025)**
 - **Limpeza de Código** - Removidos comentários inúteis e redundantes de todos os arquivos
+- **Funções Não Utilizadas Removidas** - Removidas funções que não eram chamadas (`_centralizar_no_tile`, `centralizar_checkpoints_existentes`)
+- **Prints de Debug Removidos** - Removidos prints de debug desnecessários em múltiplos arquivos
+- **Documentação Melhorada** - Docstrings atualizadas com Args e Returns para melhor clareza
+- **Código Simplificado** - Lógica simplificada e tratamento de exceções otimizado
 - **Código Mais Limpo** - Mantidos apenas comentários essenciais (docstrings importantes e explicações de lógica complexa)
-- **Documentação Atualizada** - README e CHANGELOG atualizados
+- **Documentação Atualizada** - README e CHANGELOG atualizados com todas as mudanças
 
 ### **Novidades da Versão 3.2.4 (22 de Novembro de 2025)**
 - **Sistema de Personalidades da IA** - Cada IA agora tem uma personalidade única que afeta seu comportamento:

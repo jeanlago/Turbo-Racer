@@ -6,7 +6,7 @@
     "principal": {
       "selecionar_carros": "OFICINA",
       "jogar": "JOGAR",
-      "recordes": "RECORDES",
+      "recordes": "HIERARQUIA",
       "opcoes": "OPÇÕES",
       "sair": "SAIR"
     },
@@ -21,6 +21,8 @@
     },
     "confirmar": "CONFIRMAR",
     "cancelar": "CANCELAR",
+    "reparar": "REPARAR",
+    "desistir": "DESISTIR",
     "idioma": {
       "titulo": "SELECIONAR IDIOMA",
       "portugues": "PORTUGUÊS",
@@ -48,6 +50,7 @@
       "velocidade": "VELOCIDADE: {} km/h",
       "dirigibilidade": "DIRIGIBILIDADE: {}%",
       "frenagem": "FRENAGEM: {}%",
+      "dano": "DANO: {}%",
       "aceleracao": "ACELERAÇÃO: {}%",
       "estabilidade": "ESTABILIDADE: {}%",
       "desbloqueado": "DESBLOQUEADO",
@@ -216,7 +219,8 @@
     "upgrade_comprado": "{} - {} melhorado!",
     "comprar_carro_primeiro": "Você precisa comprar o carro primeiro!",
     "erro_vender_carro": "Erro ao vender o carro!",
-    "nao_pode_vender_unico_carro": "Você não pode vender seu único carro!"
+    "nao_pode_vender_unico_carro": "Você não pode vender seu único carro!",
+    "carro_reparado": "Carro reparado por ${}!"
   },
   "titulo_jogo": {
     "menu": "Turbo Racer — Menu",

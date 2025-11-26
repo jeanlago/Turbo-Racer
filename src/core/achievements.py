@@ -149,59 +149,51 @@ class GerenciadorAchievements:
     """Gerencia achievements/conquistas do jogador"""
     
     def __init__(self):
-        self.achievements_desbloqueados = set()  # Set de IDs de achievements desbloqueados
-        self.achievements_visualizados = set()  # Set de IDs de achievements já visualizados pelo usuário
-        self.estatisticas = {
-            "corridas_completas": 0,
-            "voltas_drift": 0,
-            "recordes_estabelecidos": 0,
-            "carros_desbloqueados": 0,
-            "corridas_sem_colisao": 0,
-            "corridas_sem_erros": 0,
-            "velocidade_maxima": 0.0,
-            "upgrades_maximizados": 0
-        }
+        from core.progresso import gerenciador_progresso
+        self.gerenciador_progresso = gerenciador_progresso
         self.carregar()
     
+    @property
+    def achievements_desbloqueados(self):
+        """Retorna os achievements desbloqueados do progresso.json"""
+        return self.gerenciador_progresso.achievements_desbloqueados
+    
+    @achievements_desbloqueados.setter
+    def achievements_desbloqueados(self, value):
+        """Define os achievements desbloqueados no progresso.json"""
+        self.gerenciador_progresso.achievements_desbloqueados = value if isinstance(value, set) else set(value)
+        self.gerenciador_progresso.salvar()
+    
+    @property
+    def achievements_visualizados(self):
+        """Retorna os achievements visualizados do progresso.json"""
+        return self.gerenciador_progresso.achievements_visualizados
+    
+    @achievements_visualizados.setter
+    def achievements_visualizados(self, value):
+        """Define os achievements visualizados no progresso.json"""
+        self.gerenciador_progresso.achievements_visualizados = value if isinstance(value, set) else set(value)
+        self.gerenciador_progresso.salvar()
+    
+    @property
+    def estatisticas(self):
+        """Retorna as estatísticas de achievements do progresso.json"""
+        return self.gerenciador_progresso.achievements_estatisticas
+    
+    @estatisticas.setter
+    def estatisticas(self, value):
+        """Define as estatísticas de achievements no progresso.json"""
+        self.gerenciador_progresso.achievements_estatisticas = value
+        self.gerenciador_progresso.salvar()
+    
     def carregar(self):
-        """Carrega achievements e estatísticas do arquivo"""
-        if os.path.exists(CAMINHO_ACHIEVEMENTS):
-            try:
-                with open(CAMINHO_ACHIEVEMENTS, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    self.achievements_desbloqueados = set(data.get('achievements_desbloqueados', []))
-                    self.achievements_visualizados = set(data.get('achievements_visualizados', []))
-                    self.estatisticas = data.get('estatisticas', self.estatisticas)
-            except Exception as e:
-                print(f"Erro ao carregar achievements: {e}")
-                self.achievements_desbloqueados = set()
-                self.achievements_visualizados = set()
-                self.estatisticas = {
-                    "corridas_completas": 0,
-                    "voltas_drift": 0,
-                    "recordes_estabelecidos": 0,
-                    "carros_desbloqueados": 0,
-                    "corridas_sem_colisao": 0,
-                    "corridas_sem_erros": 0,
-                    "velocidade_maxima": 0.0,
-                    "upgrades_maximizados": 0
-                }
-        else:
-            self.salvar()
+        """Carrega achievements do progresso.json"""
+        # Os dados já estão no gerenciador_progresso, não precisa fazer nada
+        pass
     
     def salvar(self):
-        """Salva achievements e estatísticas no arquivo"""
-        try:
-            os.makedirs(os.path.dirname(CAMINHO_ACHIEVEMENTS), exist_ok=True)
-            data = {
-                'achievements_desbloqueados': list(self.achievements_desbloqueados),
-                'achievements_visualizados': list(self.achievements_visualizados),
-                'estatisticas': self.estatisticas
-            }
-            with open(CAMINHO_ACHIEVEMENTS, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-        except Exception as e:
-            print(f"Erro ao salvar achievements: {e}")
+        """Salva achievements no progresso.json"""
+        self.gerenciador_progresso.salvar()
     
     def esta_desbloqueado(self, achievement_id):
         """Verifica se um achievement está desbloqueado"""

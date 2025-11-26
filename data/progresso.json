@@ -1,48 +1,214 @@
 {
-  "dinheiro": 2923381,
+  "dinheiro": 100,
+  "nome_jogador": "JOGADOR",
   "carros_desbloqueados": [
-    "Car2",
-    "Car3",
+    "Car1",
     "Car4",
-    "Car1"
+    "Car2",
+    "Car3"
   ],
   "recordes_corrida": {
-    "1": 31.715000000000785,
-    "3": 3.7709999999999746
+    "3": 9.765999999999877
   },
   "recordes_drift": {},
-  "trofeus": {
-    "1": "ouro",
-    "3": "ouro"
-  },
+  "trofeus": {},
   "upgrades": {
     "Car1": {
       "motor": 5,
-      "filtro_ar": 3,
-      "ecu": 4,
-      "transmissao": 3,
-      "rodas": 4,
-      "suspensao": 3,
-      "nitro": 5
+      "filtro_ar": 2,
+      "nitro": 2
     },
     "Car2": {
-      "nitro": 5,
-      "motor": 5,
-      "transmissao": 5,
-      "suspensao": 5,
-      "rodas": 5,
-      "ecu": 5,
-      "filtro_ar": 5
+      "ecu": 1
     },
-    "Car3": {
-      "motor": 3
+    "Car4": {
+      "filtro_ar": 0,
+      "nitro": 0
     }
   },
-  "carro_p1_atual": 0,
-  "carro_p2_atual": 1,
-  "ultima_compra_alien": {
-    "tipo": "upgrade_especial",
-    "quantidade": 1,
-    "tipo_upgrade": "motor"
+  "carro_p1_atual": 3,
+  "carro_p2_atual": null,
+  "ultima_compra_alien": null,
+  "dialogo_alien_ja_mostrado": true,
+  "upgrades_visitados": [
+    "Car4"
+  ],
+  "akira_nome_revelado": true,
+  "akira_dialogos_pre_corrida_mostrados": {
+    "9": true
+  },
+  "ranking_pilotos": [
+    {
+      "nome": "T-Rex_King",
+      "posicao": 1,
+      "vitorias": 0,
+      "derrotas": 0,
+      "e_jogador": false
+    },
+    {
+      "nome": "Akira_Drift",
+      "posicao": 2,
+      "vitorias": 0,
+      "derrotas": 0,
+      "e_jogador": false
+    },
+    {
+      "nome": "NightStalker",
+      "posicao": 3,
+      "vitorias": 0,
+      "derrotas": 0,
+      "e_jogador": false
+    },
+    {
+      "nome": "ApexPredator",
+      "posicao": 4,
+      "vitorias": 0,
+      "derrotas": 0,
+      "e_jogador": false
+    },
+    {
+      "nome": "The_Baron$$",
+      "posicao": 5,
+      "vitorias": 0,
+      "derrotas": 0,
+      "e_jogador": false
+    },
+    {
+      "nome": "Camber_Queen",
+      "posicao": 6,
+      "vitorias": 0,
+      "derrotas": 0,
+      "e_jogador": false
+    },
+    {
+      "nome": "Sly_Fox_GT",
+      "posicao": 7,
+      "vitorias": 0,
+      "derrotas": 0,
+      "e_jogador": false
+    },
+    {
+      "nome": "Boost_Leak",
+      "posicao": 8,
+      "vitorias": 0,
+      "derrotas": 0,
+      "e_jogador": false
+    },
+    {
+      "nome": "RoadRat",
+      "posicao": 9,
+      "vitorias": 0,
+      "derrotas": 0,
+      "e_jogador": false
+    },
+    {
+      "nome": "JOGADOR",
+      "posicao": 10,
+      "vitorias": 0,
+      "derrotas": 0,
+      "e_jogador": true
+    }
+  ],
+  "ranking_posicao_jogador": 10,
+  "crank_humor_atual": 0,
+  "crank_saude_carro": 0.1,
+  "crank_tutorial_mostrado": true,
+  "crank_tutorial_upgrades_mostrado": true,
+  "crank_prefixo_cor_ultimo_carro": null,
+  "crank_nome_revelado": true,
+  "rex_primeira_aparicao_mostrada": true,
+  "rex_nome_revelado": false,
+  "glub_primeira_aparicao_feita": true,
+  "glub_nome_revelado": true,
+  "mercador_ultima_aparicao": 29,
+  "mercador_contador_eventos": 29,
+  "mercador_nome_revelado": true,
+  "barao_nome_revelado": false,
+  "barao_emprestimo_ativo": false,
+  "barao_valor_devido": 0,
+  "barao_corridas_restantes": 0,
+  "achievements_desbloqueados": [],
+  "achievements_visualizados": [],
+  "achievements_estatisticas": {
+    "corridas_completas": 0,
+    "voltas_drift": 0,
+    "recordes_estabelecidos": 0,
+    "carros_desbloqueados": 0,
+    "corridas_sem_colisao": 0,
+    "corridas_sem_erros": 0,
+    "velocidade_maxima": 165.33180261688182,
+    "upgrades_maximizados": 0
+  },
+  "desafios_diarios": [
+    {
+      "tipo": "completar_voltas",
+      "objetivo": 16,
+      "recompensa": 472,
+      "descricao": "Complete 16 voltas",
+      "id": "diario_20251125_0",
+      "progresso": 0
+    },
+    {
+      "tipo": "completar_corridas",
+      "objetivo": 4,
+      "recompensa": 304,
+      "descricao": "Complete 4 corridas",
+      "id": "diario_20251125_0",
+      "progresso": 0
+    },
+    {
+      "tipo": "completar_voltas",
+      "objetivo": 12,
+      "recompensa": 270,
+      "descricao": "Complete 12 voltas",
+      "id": "diario_20251125_0",
+      "progresso": 0
+    }
+  ],
+  "desafios_semanais": [
+    {
+      "tipo": "completar_voltas",
+      "objetivo": 83,
+      "recompensa": 1993,
+      "descricao": "Complete 100 voltas",
+      "id": "semanal_202547_0",
+      "progresso": 0
+    },
+    {
+      "tipo": "completar_corridas",
+      "objetivo": 20,
+      "recompensa": 1542,
+      "descricao": "Complete 10 corridas",
+      "id": "semanal_202547_0",
+      "progresso": 0
+    }
+  ],
+  "missoes_pista": {},
+  "desafios_progresso": {},
+  "desafios_completados": [],
+  "ultima_atualizacao_diaria": "2025-11-25",
+  "ultima_atualizacao_semanal": "2025-W48",
+  "estatisticas_gerais": {
+    "tempo_total_jogado": 112.05400000000182,
+    "distancia_total": 24739.26267252347,
+    "corridas_completas": 0,
+    "corridas_vencidas": 0,
+    "voltas_completas": 0,
+    "colisoes_totais": 149,
+    "drifts_totais": 199,
+    "turbo_usado": 2528,
+    "recordes_estabelecidos": 0,
+    "trofeus_ganhos": 0
+  },
+  "estatisticas_por_pista": {
+    "3": {
+      "corridas_completas": 0,
+      "corridas_vencidas": 0,
+      "melhor_tempo": null,
+      "melhor_posicao": null,
+      "voltas_completas": 0,
+      "colisoes": 149,
+      "recordes_estabelecidos": 0
+    }
   }
 }
