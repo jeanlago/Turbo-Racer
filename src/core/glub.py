@@ -16,7 +16,7 @@ def _get_render_text():
 CAMINHO_GLUB_DATA = os.path.join(DIR_PROJETO, "data", "glub.json")
 
 # Caminhos dos sprites
-CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "comprador")
+CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "glub")
 SPRITE_ENCONTRO = os.path.join(CAMINHO_SPRITES, "encontro.png")
 SPRITE_CURIOSO = os.path.join(CAMINHO_SPRITES, "curioso.png")
 SPRITE_OFERTA = os.path.join(CAMINHO_SPRITES, "oferta.png")
@@ -64,8 +64,7 @@ class Glub:
         self.velocidade_texto = 80.0  # Caracteres por segundo (igual ao Barão e Crank)
         
         # Sistema de nome revelado
-        # Nota: nome_revelado é carregado em carregar_estado()
-        # Não resetar aqui, senão sobrescreve o estado salvo!
+        self.nome_revelado = False  # Inicializar antes de carregar_estado()
         
         # Sons
         self.som_compra = None

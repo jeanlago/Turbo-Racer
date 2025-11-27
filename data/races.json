@@ -1,0 +1,41 @@
+{
+  "races": [
+    {
+      "id": "garage_test",
+      "nome": "Pista de Teste da Garagem",
+      "track": 1,
+      "laps": 1,
+      "difficulty": "facil",
+      "tipo": "corrida",
+      "description": "Uma volta simples na pista de teste atrás da oficina do Crank."
+    },
+    {
+      "id": "training_01",
+      "nome": "Circuito de Treino",
+      "track": 1,
+      "laps": 1,
+      "difficulty": "facil",
+      "tipo": "corrida",
+      "description": "Corrida de iniciantes para testar suas habilidades."
+    },
+    {
+      "id": "mountain_test",
+      "nome": "Teste de Fluxo",
+      "track": 3,
+      "laps": 1,
+      "difficulty": "medio",
+      "tipo": "corrida",
+      "description": "Teste de dirigibilidade na montanha sob supervisão de Akira."
+    },
+    {
+      "id": "crown_final",
+      "nome": "Corrida Final do Circuito da Coroa",
+      "track": 9,
+      "laps": 3,
+      "difficulty": "dificil",
+      "tipo": "corrida",
+      "description": "A corrida final do Circuito da Coroa sob o olhar de Rex."
+    }
+  ]
+}
+

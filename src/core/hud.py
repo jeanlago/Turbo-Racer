@@ -787,6 +787,65 @@ class HUD:
         texto_surf = self.fonte_tempos.render(texto_voltas, True, cor_voltas)
         superficie.blit(texto_surf, (posicao[0], y_offset))
     
+    def desenhar_missao_ativa(self, superficie, posicao=(20, 20)):
+        """
+        Desenha a missão ativa no HUD (nome e objetivo)
+        posicao: (x, y) onde desenhar (canto superior esquerdo por padrão)
+        """
+        try:
+            from core.missoes import gerenciador_missoes
+            missao = gerenciador_missoes.obter_missao_ativa()
+            if not missao:
+                return
+            
+            # Criar fonte se não existir
+            if not hasattr(self, 'fonte_missao_nome'):
+                self.fonte_missao_nome = pygame.font.SysFont("consolas", 24, bold=True)
+                self.fonte_missao_objetivo = pygame.font.SysFont("consolas", 18)
+            
+            nome = missao.get("nome", "")
+            objetivo = missao.get("objetivo", "")
+            
+            if not nome and not objetivo:
+                return
+            
+            # Desenhar fundo semi-transparente
+            padding = 10
+            y_offset = posicao[1]
+            
+            if nome:
+                texto_nome = self.fonte_missao_nome.render(nome, True, (255, 255, 0))  # Amarelo
+                superficie.blit(texto_nome, (posicao[0] + padding, y_offset + padding))
+                y_offset += texto_nome.get_height() + 5
+            
+            if objetivo:
+                # Quebrar texto longo em múltiplas linhas
+                palavras = objetivo.split()
+                linhas = []
+                linha_atual = ""
+                largura_max = 400
+                
+                for palavra in palavras:
+                    teste = linha_atual + (" " if linha_atual else "") + palavra
+                    largura_teste = self.fonte_missao_objetivo.size(teste)[0]
+                    if largura_teste <= largura_max:
+                        linha_atual = teste
+                    else:
+                        if linha_atual:
+                            linhas.append(linha_atual)
+                        linha_atual = palavra
+                
+                if linha_atual:
+                    linhas.append(linha_atual)
+                
+                for linha in linhas:
+                    texto_objetivo = self.fonte_missao_objetivo.render(linha, True, (255, 255, 255))  # Branco
+                    superficie.blit(texto_objetivo, (posicao[0] + padding, y_offset + padding))
+                    y_offset += texto_objetivo.get_height() + 3
+        except Exception as e:
+            # Silenciosamente falhar se o sistema de missões não estiver disponível
+            pass
+    
     def desenhar_aviso_contra_mao(self, superficie, carro, dt=0.016):
         """
         Desenha aviso de contra mão quando o jogador passa por checkpoint na direção errada

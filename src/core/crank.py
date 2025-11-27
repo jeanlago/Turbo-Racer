@@ -21,7 +21,7 @@ ICONE_SETA = os.path.join(CAMINHO_ICONS, "seta.png")
 ICONE_ENCARECEU = os.path.join(CAMINHO_ICONS, "encareceu.png")
 
 # Caminhos dos sprites
-CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "mecanico")
+CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "crank")
 SPRITE_NORMAL = os.path.join(CAMINHO_SPRITES, "normal.png")
 SPRITE_ALEGRE = os.path.join(CAMINHO_SPRITES, "alegre.png")
 SPRITE_BRAVO = os.path.join(CAMINHO_SPRITES, "bravo.png")
@@ -52,6 +52,8 @@ class Crank:
     }
     
     def __init__(self):
+        # Inicializar nome_revelado antes de carregar_estado para garantir que existe
+        self.nome_revelado = False
         self.carregar_estado()
         self.sprite_normal = None
         self.sprite_alegre = None
@@ -103,9 +105,6 @@ class Crank:
         self.nome_input = ""  # Nome sendo digitado
         self.tutorial_upgrades_parte = 0  # Parte atual do tutorial de upgrades
         
-        # Sistema de nome revelado
-        # Nota: nome_revelado é carregado em carregar_estado()
-        # Não resetar aqui, senão sobrescreve o estado salvo!
         
         # Diálogo raro sobre compras do mercador alien
         self.dialogo_alien_parte = 0  # Parte atual do diálogo sobre compra alien
@@ -225,7 +224,7 @@ class Crank:
         
         try:
             from config import DIR_PROJETO
-            caminho_glub_sprites = os.path.join(DIR_PROJETO, "assets", "images", "characters", "comprador")
+            caminho_glub_sprites = os.path.join(DIR_PROJETO, "assets", "images", "characters", "glub")
             sprite_glub_encontro = os.path.join(caminho_glub_sprites, "encontro.png")
             
             if os.path.exists(sprite_glub_encontro):
@@ -244,6 +243,7 @@ class Crank:
         self.tutorial_mostrado = gerenciador_progresso.crank_tutorial_mostrado
         self.tutorial_upgrades_mostrado = gerenciador_progresso.crank_tutorial_upgrades_mostrado
         self.prefixo_cor_ultimo_carro = gerenciador_progresso.crank_prefixo_cor_ultimo_carro
+        # Carregar nome_revelado (já inicializado em __init__)
         self.nome_revelado = gerenciador_progresso.crank_nome_revelado
     
     def salvar_estado(self):
@@ -421,6 +421,133 @@ class Crank:
         gerenciador_progresso.limpar_ultima_compra_alien()
         # Fechar o diálogo
         self.fechar()
+    
+    def verificar_reacao_instalacao_upgrade(self, tipo_upgrade, nivel_novo, prefixo_cor):
+        """
+        Verifica se deve mostrar reação do Crank ao instalar um upgrade
+        Retorna True se deve mostrar reação
+        """
+        # Não mostrar se já estiver ativo
+        if self.ativo:
+            return False
+        
+        # Garantir que os sprites estão carregados
+        if not self.sprites_carregados:
+            self.carregar_sprites()
+        
+        # Determinar qualidade da peça baseado no nível
+        # Nível 1 = Lixo/Sucata
+        # Nível 2-3 = Padrão/Honesta
+        # Nível 4-5 = Alta Performance
+        if nivel_novo == 1:
+            qualidade = "lixo"
+        elif nivel_novo in (2, 3):
+            qualidade = "padrao"
+        else:  # 4 ou 5
+            qualidade = "alta_performance"
+        
+        # Verificar se é peça de drift (Akira) ou força bruta (Boris)
+        # Por enquanto, vamos assumir que suspensão e pneus são de drift
+        # e motor, turbo, nitro são de força bruta
+        pecas_drift = ['suspensao', 'pneus']
+        pecas_forca_bruta = ['motor', 'turbo', 'nitro']
+        
+        origem = None
+        if tipo_upgrade in pecas_drift:
+            origem = "akira"  # Drift
+        elif tipo_upgrade in pecas_forca_bruta:
+            origem = "boris"  # Força bruta
+        
+        # Ativar diálogo
+        self.ativo = True
+        self.fase_dialogo = "reacao_instalacao"
+        self.reacao_instalacao_qualidade = qualidade
+        self.reacao_instalacao_origem = origem
+        self.reacao_instalacao_tipo = tipo_upgrade
+        self.reacao_instalacao_nivel = nivel_novo
+        self._iniciar_reacao_instalacao()
+        return True
+    
+    def _iniciar_reacao_instalacao(self):
+        """Inicia a reação do Crank à instalação de upgrade"""
+        qualidade = self.reacao_instalacao_qualidade
+        origem = self.reacao_instalacao_origem
+        tipo_upgrade = self.reacao_instalacao_tipo
+        nivel = self.reacao_instalacao_nivel
+        
+        nome_upgrade = self._nome_upgrade_instalacao(tipo_upgrade)
+        
+        # Selecionar sprite e texto baseado na qualidade
+        if qualidade == "lixo":
+            # Peça lixo - ofensa pessoal
+            if self.sprite_bravo:
+                self.sprite_atual = self.sprite_bravo
+            elif self.sprite_estressado:
+                self.sprite_atual = self.sprite_estressado
+            else:
+                self.sprite_atual = self.sprite_normal
+            
+            textos = [
+                f"* [Cospe no chão] * Você chama isso de {nome_upgrade}? Eu chamo de peneira. Vou instalar, mas não venha chorar no meu ouvido quando o motor ferver na segunda volta.",
+                f"Eu deveria cobrar taxa de insalubridade só por tocar nessa sucata. Você está insultando a máquina com essa peça, garoto.",
+                f"Sério? Essa {nome_upgrade} parece que foi feita de elástico de dinheiro. Hmpf. É o seu funeral, não o meu.",
+                f"Isso aqui não é peça, é um remendo temporário que vai durar cinco minutos. Você está jogando dinheiro fora."
+            ]
+        
+        elif qualidade == "padrao":
+            # Peça padrão - aceita sem entusiasmo
+            if self.sprite_normal:
+                self.sprite_atual = self.sprite_normal
+            else:
+                self.sprite_atual = self.sprite_bravo
+            
+            textos = [
+                f"Hmpf. Serve. Não é nenhuma maravilha da engenharia, mas pelo menos não parece que vai explodir na ignição.",
+                f"Uma escolha... razoável. É o feijão com arroz. Vai fazer o trabalho, se você não forçar demais.",
+                f"Instalado. Agora tente não quebrar isso na primeira curva, ok? Eu tenho mais o que fazer."
+            ]
+        
+        else:  # alta_performance
+            # Peça alta performance - impressionado
+            if self.sprite_alegre:
+                self.sprite_atual = self.sprite_alegre
+            elif self.sprite_convencido:
+                self.sprite_atual = self.sprite_convencido
+            else:
+                self.sprite_atual = self.sprite_normal
+            
+            textos = [
+                f"Olha só... {nome_upgrade.capitalize()} de qualidade. Onde você roubou isso? Não importa. * [Limpa a mão na roupa antes de tocar] * Instalar isso vai ser a melhor parte do meu dia. Tente não estragar meu trabalho.",
+                f"Hmpf. Finalmente gastou dinheiro com algo que preste. Esse {nome_upgrade} é uma obra de arte. Não ouse fundir isso.",
+                f"* [Assobio baixo] * {nome_upgrade.capitalize()} de ponta. Isso sim é música para os meus ouvidos. O motor vai roncar agradecido.",
+                f"Agora estamos conversando. Isso não é só uma peça, é um investimento. Trate-a com respeito na pista."
+            ]
+        
+        # Adicionar comentário sobre origem se aplicável
+        texto_base = random.choice(textos)
+        
+        if origem == "akira" and qualidade in ("padrao", "alta_performance"):
+            # Comentário sobre peças de drift
+            comentario_origem = " Suspensão rebaixada e pneus slicks duros? Você andou tomando chá demais com aquela panda nas colinas, né? Hmpf. Ficar andando de lado só gasta borracha à toa. Mas se é isso que você quer..."
+            texto_base = texto_base + comentario_origem
+        elif origem == "boris" and qualidade in ("padrao", "alta_performance"):
+            # Comentário sobre peças de força bruta
+            comentario_origem = f" Esse {nome_upgrade} pesa uma tonelada e cheira a óleo queimado do ferro-velho do Javali. É estúpido, barulhento e bruto. * [Pausa dramática] * Eu adorei. Vamos fazer esse monstro gritar."
+            texto_base = texto_base + comentario_origem
+        
+        self._iniciar_animacao_texto(texto_base)
+    
+    def _nome_upgrade_instalacao(self, tipo):
+        """Retorna o nome amigável do upgrade para reações"""
+        nomes = {
+            'motor': 'motor',
+            'freios': 'freios',
+            'suspensao': 'suspensão',
+            'pneus': 'pneus',
+            'turbo': 'turbo',
+            'nitro': 'nitro'
+        }
+        return nomes.get(tipo, 'peça')
     
     def _avancar_dialogo_alien(self):
         """Avança para a próxima parte do diálogo sobre compras alien"""
@@ -727,9 +854,15 @@ class Crank:
         # Verificar se o texto contém o nome do personagem e marcar como revelado
         if not getattr(self, 'nome_revelado', False):
             texto_lower = texto.lower()
-            if "crank" in texto_lower or "eu sou" in texto_lower or "meu nome" in texto_lower:
+            # Verificar várias formas de mencionar o nome
+            if ("crank" in texto_lower or 
+                "eu sou" in texto_lower or 
+                "meu nome" in texto_lower or
+                "pode me chamar de crank" in texto_lower or
+                "me chamo crank" in texto_lower):
                 self.nome_revelado = True
                 self.salvar_estado()
+                print(f"✓ Nome do Crank revelado: {texto[:50]}...")
     
     def _atualizar_animacao_texto(self, dt):
         """Atualiza animação de texto letra por letra"""
@@ -1273,6 +1406,17 @@ class Crank:
                             self.fechar()
                             return "fechado"
                 
+                elif self.fase_dialogo == "reacao_instalacao":
+                    # Se o texto ainda está sendo escrito, completar animação (não avança)
+                    if len(self.texto_exibido) < len(self.texto_completo):
+                        self._completar_animacao_texto()
+                        # Não fazer mais nada neste pressionamento
+                    else:
+                        # Fechar após ver reação
+                        if ev.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_ESCAPE):
+                            self.fechar()
+                            return "fechado"
+                
                 elif self.fase_dialogo == "dano_critico":
                     # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
@@ -1524,6 +1668,18 @@ class Crank:
                             self.fechar()
                             return "fechado"
                 
+                elif self.fase_dialogo == "reacao_instalacao":
+                    # Se o texto ainda está sendo escrito, completar animação (não avança)
+                    if len(self.texto_exibido) < len(self.texto_completo):
+                        self._completar_animacao_texto()
+                        # Não fazer mais nada neste clique
+                    else:
+                        # Clicar em qualquer lugar fecha
+                        caixa_rect = pygame.Rect(0, caixa_y, LARGURA, caixa_altura)
+                        if caixa_rect.collidepoint(mouse_x, mouse_y):
+                            self.fechar()
+                            return "fechado"
+                
                 elif self.fase_dialogo == "dano_critico":
                     # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
@@ -1566,6 +1722,11 @@ class Crank:
                                     return "desistido"
                 
                 elif self.fase_dialogo == "tutorial":
+                    # Se está na fase de input de nome, NÃO permitir avançar com clique
+                    if self.input_nome_ativo:
+                        # Bloquear qualquer clique durante input de nome
+                        return "processado"  # Marcar que o evento foi processado (bloqueado)
+                    
                     # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
@@ -1683,8 +1844,10 @@ class Crank:
                 return
         
         # Overlay escuro no fundo (estilo visual novel)
+        # Se estiver em input de nome, usar overlay mais escuro para travar o fundo
+        overlay_opacidade = 200 if self.input_nome_ativo else 140
         overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 140))  # Preto com 140/255 de opacidade (menos escuro)
+        overlay.fill((0, 0, 0, overlay_opacidade))  # Preto com opacidade variável
         tela.blit(overlay, (0, 0))
         
         # Personagem no canto esquerdo (Crank fica à esquerda, diferente do alien)
@@ -1732,12 +1895,8 @@ class Crank:
             
             sprite_redimensionado = pygame.transform.scale(self.sprite_atual, (sprite_w, sprite_h))
         
-        # Posição do sprite (manter estilo visual novel)
-        # No tutorial, abaixar um pouco o sprite
-        if self.fase_dialogo == "tutorial":
-            sprite_y = ALTURA - sprite_h - 120  # Posição mais baixa no tutorial
-        else:
-            sprite_y = ALTURA - sprite_h - 150  # Posição acima da caixa (abaixado para não flutuar)
+        # Posição do sprite (mesma altura do Rex)
+        sprite_y = ALTURA // 2 - sprite_h // 2 - 50
         
         if lado_direito:
             sprite_x = LARGURA - sprite_w - 20

@@ -20,7 +20,7 @@ def _get_render_text():
 CAMINHO_MERCADOR_DATA = os.path.join(DIR_PROJETO, "data", "mercador_alien.json")
 
 # Caminhos dos sprites
-CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "vendedor")
+CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "slick")
 SPRITE_CUMPRIMENTO = os.path.join(CAMINHO_SPRITES, "cumprimento.png")
 SPRITE_OFERTA = os.path.join(CAMINHO_SPRITES, "oferta.png")
 SPRITE_GOLPE = os.path.join(CAMINHO_SPRITES, "golpe.png")  # Quando jogador cai em golpe (aceita oferta ruim)
@@ -73,8 +73,7 @@ class MercadorAlien:
         self.velocidade_texto = 80.0  # Caracteres por segundo (igual ao Barão e Crank)
         
         # Sistema de nome revelado
-        # Nota: nome_revelado é carregado em carregar_estado()
-        # Não resetar aqui, senão sobrescreve o estado salvo!
+        self.nome_revelado = False  # Inicializar antes de carregar_estado()
         
         # Sons
         self.som_compra = None
@@ -92,17 +91,17 @@ class MercadorAlien:
             print(f"Arquivo existe? {os.path.exists(CAMINHO_SOM_COMPRA)}")
             if os.path.exists(CAMINHO_SOM_COMPRA):
                 self.som_compra = pygame.mixer.Sound(CAMINHO_SOM_COMPRA)
-                print(f"✓ Som de compra carregado: {CAMINHO_SOM_COMPRA}")
+                print(f"[OK] Som de compra carregado: {CAMINHO_SOM_COMPRA}")
             else:
-                print(f"✗ AVISO: Som de compra não encontrado: {CAMINHO_SOM_COMPRA}")
+                print(f"[AVISO] Som de compra nao encontrado: {CAMINHO_SOM_COMPRA}")
             
             print(f"Tentando carregar som de fail de: {CAMINHO_SOM_FAIL}")
             print(f"Arquivo existe? {os.path.exists(CAMINHO_SOM_FAIL)}")
             if os.path.exists(CAMINHO_SOM_FAIL):
                 self.som_fail = pygame.mixer.Sound(CAMINHO_SOM_FAIL)
-                print(f"✓ Som de fail carregado: {CAMINHO_SOM_FAIL}")
+                print(f"[OK] Som de fail carregado: {CAMINHO_SOM_FAIL}")
             else:
-                print(f"✗ AVISO: Som de fail não encontrado: {CAMINHO_SOM_FAIL}")
+                print(f"[AVISO] Som de fail nao encontrado: {CAMINHO_SOM_FAIL}")
         except Exception as e:
             print(f"ERRO ao carregar sons do mercador: {e}")
             import traceback
@@ -134,39 +133,39 @@ class MercadorAlien:
             
             if os.path.exists(SPRITE_CUMPRIMENTO):
                 self.sprite_cumprimento = pygame.image.load(SPRITE_CUMPRIMENTO).convert_alpha()
-                print(f"✓ Sprite cumprimento carregado: {SPRITE_CUMPRIMENTO} ({self.sprite_cumprimento.get_size()})")
+                print(f"[OK] Sprite cumprimento carregado: {SPRITE_CUMPRIMENTO} ({self.sprite_cumprimento.get_size()})")
             else:
-                print(f"✗ AVISO: Sprite cumprimento não encontrado: {SPRITE_CUMPRIMENTO}")
+                print(f"[AVISO] Sprite cumprimento nao encontrado: {SPRITE_CUMPRIMENTO}")
             
             if os.path.exists(SPRITE_OFERTA):
                 self.sprite_oferta = pygame.image.load(SPRITE_OFERTA).convert_alpha()
-                print(f"✓ Sprite oferta carregado: {SPRITE_OFERTA} ({self.sprite_oferta.get_size()})")
+                print(f"[OK] Sprite oferta carregado: {SPRITE_OFERTA} ({self.sprite_oferta.get_size()})")
             else:
-                print(f"✗ AVISO: Sprite oferta não encontrado: {SPRITE_OFERTA}")
+                print(f"[AVISO] Sprite oferta nao encontrado: {SPRITE_OFERTA}")
             
             if os.path.exists(SPRITE_GOLPE):
                 self.sprite_golpe = pygame.image.load(SPRITE_GOLPE).convert_alpha()
-                print(f"✓ Sprite golpe carregado: {SPRITE_GOLPE} ({self.sprite_golpe.get_size()})")
+                print(f"[OK] Sprite golpe carregado: {SPRITE_GOLPE} ({self.sprite_golpe.get_size()})")
             else:
-                print(f"✗ AVISO: Sprite golpe não encontrado: {SPRITE_GOLPE}")
+                print(f"[AVISO] Sprite golpe nao encontrado: {SPRITE_GOLPE}")
             
             if os.path.exists(SPRITE_VENDEU):
                 self.sprite_vendeu = pygame.image.load(SPRITE_VENDEU).convert_alpha()
-                print(f"✓ Sprite vendeu carregado: {SPRITE_VENDEU} ({self.sprite_vendeu.get_size()})")
+                print(f"[OK] Sprite vendeu carregado: {SPRITE_VENDEU} ({self.sprite_vendeu.get_size()})")
             else:
-                print(f"✗ AVISO: Sprite vendeu não encontrado: {SPRITE_VENDEU}")
+                print(f"[AVISO] Sprite vendeu nao encontrado: {SPRITE_VENDEU}")
             
             if os.path.exists(SPRITE_BRAVO):
                 self.sprite_bravo = pygame.image.load(SPRITE_BRAVO).convert_alpha()
-                print(f"✓ Sprite bravo carregado: {SPRITE_BRAVO} ({self.sprite_bravo.get_size()})")
+                print(f"[OK] Sprite bravo carregado: {SPRITE_BRAVO} ({self.sprite_bravo.get_size()})")
             else:
-                print(f"✗ AVISO: Sprite bravo não encontrado: {SPRITE_BRAVO}")
+                print(f"[AVISO] Sprite bravo nao encontrado: {SPRITE_BRAVO}")
             
             if os.path.exists(SPRITE_ENFURECIDO):
                 self.sprite_enfurecido = pygame.image.load(SPRITE_ENFURECIDO).convert_alpha()
-                print(f"✓ Sprite enfurecido carregado: {SPRITE_ENFURECIDO} ({self.sprite_enfurecido.get_size()})")
+                print(f"[OK] Sprite enfurecido carregado: {SPRITE_ENFURECIDO} ({self.sprite_enfurecido.get_size()})")
             else:
-                print(f"✗ AVISO: Sprite enfurecido não encontrado: {SPRITE_ENFURECIDO}")
+                print(f"[AVISO] Sprite enfurecido nao encontrado: {SPRITE_ENFURECIDO}")
             
             self.sprites_carregados = True
             
@@ -185,9 +184,9 @@ class MercadorAlien:
                 # Redimensionar para a resolução atual se necessário
                 if self.fundo_pos_corrida.get_size() != (LARGURA, ALTURA):
                     self.fundo_pos_corrida = pygame.transform.scale(self.fundo_pos_corrida, (LARGURA, ALTURA))
-                print(f"✓ Fundo pós-corrida carregado: {CAMINHO_FUNDO_POS_CORRIDA}")
+                print(f"[OK] Fundo pos-corrida carregado: {CAMINHO_FUNDO_POS_CORRIDA}")
             else:
-                print(f"✗ AVISO: Fundo pós-corrida não encontrado: {CAMINHO_FUNDO_POS_CORRIDA}")
+                print(f"[AVISO] Fundo pos-corrida nao encontrado: {CAMINHO_FUNDO_POS_CORRIDA}")
         except Exception as e:
             print(f"ERRO ao carregar fundo pós-corrida: {e}")
     
@@ -227,6 +226,10 @@ class MercadorAlien:
         if valor_aleatorio > probabilidade:
             print(f"Mercador: Não apareceu (random > probabilidade)")
             return False
+        
+        # Garantir que os sprites estão carregados antes de ativar
+        if not self.sprites_carregados:
+            self.carregar_sprites()
         
         # Gerar oferta e ativar
         print(f"Mercador: VAI APARECER! Gerando oferta...")
@@ -293,13 +296,27 @@ class MercadorAlien:
                     'carro_especifico': None
                 }
         
+        # Garantir que os sprites estão carregados
+        if not self.sprites_carregados:
+            self.carregar_sprites()
+        
         # Definir sprite e texto inicial (FASE 1: Apresentação)
+        # Tentar usar sprite_cumprimento, se não disponível, usar qualquer sprite disponível
         if self.sprite_cumprimento:
             self.sprite_atual = self.sprite_cumprimento
             print(f"Mercador: Sprite cumprimento definido como atual")
+        elif self.sprite_oferta:
+            self.sprite_atual = self.sprite_oferta
+            print(f"Mercador: Usando sprite_oferta como fallback")
+        elif self.sprite_golpe:
+            self.sprite_atual = self.sprite_golpe
+            print(f"Mercador: Usando sprite_golpe como fallback")
+        elif self.sprite_vendeu:
+            self.sprite_atual = self.sprite_vendeu
+            print(f"Mercador: Usando sprite_vendeu como fallback")
         else:
             self.sprite_atual = None
-            print(f"AVISO: Sprite cumprimento não disponível!")
+            print(f"AVISO: Nenhum sprite disponivel para o mercador!")
         texto_completo = self.obter_texto_cumprimento()
         self._iniciar_animacao_texto(texto_completo)
         self.opcao_selecionada = 0
@@ -724,53 +741,47 @@ class MercadorAlien:
             self.carregar_sprites()
         
         if not self.sprite_atual:
-            print(f"AVISO: Mercador ativo mas sprite_atual é None! Tentando usar sprite_cumprimento...")
+            print(f"AVISO: Mercador ativo mas sprite_atual é None! Tentando usar fallback...")
+            # Tentar usar qualquer sprite disponível como fallback
             if self.sprite_cumprimento:
                 self.sprite_atual = self.sprite_cumprimento
+            elif self.sprite_oferta:
+                self.sprite_atual = self.sprite_oferta
+            elif self.sprite_golpe:
+                self.sprite_atual = self.sprite_golpe
+            elif self.sprite_vendeu:
+                self.sprite_atual = self.sprite_vendeu
+            elif self.sprite_bravo:
+                self.sprite_atual = self.sprite_bravo
             else:
-                print(f"ERRO: Nenhum sprite disponível para o mercador!")
+                print(f"ERRO: Nenhum sprite disponivel para o mercador!")
                 return
         
         # Desenhar fundo pós-corrida se o contexto for "corrida" e o fundo existir
         if self.contexto_atual == "corrida" and self.fundo_pos_corrida is not None:
-            tela.blit(self.fundo_pos_corrida, (0, 0))
+            # Redimensionar fundo para caber na tela (igual ao Boris)
+            fundo_redimensionado = pygame.transform.scale(self.fundo_pos_corrida, (LARGURA, ALTURA))
+            tela.blit(fundo_redimensionado, (0, 0))
         
         # Overlay escuro no fundo (estilo visual novel)
         overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 140))  # Preto com 140/255 de opacidade (menos escuro)
         tela.blit(overlay, (0, 0))
         
-        # Personagem no canto direito (apenas metade do corpo - do peito para cima)
-        lado_direito = True
-        
-        # Tamanho do sprite (personagem grande, mas só metade do corpo)
-        sprite_altura_max = 400  # Altura para mostrar só do peito para cima
-        sprite_largura_max = 350
-        
+        # Personagem centralizado (igual ao Boris)
+        # Tamanho do sprite (70% do original, igual ao Boris)
         if self.sprite_atual:
             sprite_original_w = self.sprite_atual.get_width()
             sprite_original_h = self.sprite_atual.get_height()
+            sprite_novo_w = int(sprite_original_w * 0.7)
+            sprite_novo_h = int(sprite_original_h * 0.7)
+            sprite_redimensionado = pygame.transform.scale(self.sprite_atual, (sprite_novo_w, sprite_novo_h))
             
-            # Calcular escala mantendo proporção
-            escala_w = sprite_largura_max / sprite_original_w if sprite_original_w > 0 else 1.0
-            escala_h = sprite_altura_max / sprite_original_h if sprite_original_h > 0 else 1.0
-            escala = min(escala_w, escala_h, 1.0)  # Não aumentar além do original
+            # Centralizar horizontalmente e posicionar mais baixo (60% da altura, igual ao Boris)
+            sprite_x = LARGURA // 2 - sprite_novo_w // 2
+            sprite_y = int(ALTURA * 0.6) - sprite_novo_h // 2
             
-            sprite_w = int(sprite_original_w * escala)
-            sprite_h = int(sprite_original_h * escala)
-            
-            sprite_redimensionado = pygame.transform.scale(self.sprite_atual, (sprite_w, sprite_h))
-        
-        # Posição do sprite no canto direito (manter estilo visual novel)
-        sprite_y = ALTURA - sprite_h - 250  # Posicionar acima da caixa
-        
-        if lado_direito:
-            sprite_x = LARGURA - sprite_w - 20
-        else:
-            sprite_x = 20
-        
-        # Desenhar sprite do personagem (antes da caixa para ficar por cima)
-        if self.sprite_atual:
+            # Desenhar sprite do personagem
             tela.blit(sprite_redimensionado, (sprite_x, sprite_y))
         
         # Determinar cor do contorno baseado no sprite atual

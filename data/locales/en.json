@@ -241,6 +241,856 @@
     "veterano_desc": "Complete 50 races",
     "desbloqueado": "Unlocked!",
     "recompensa": "Reward: ${}"
+  },
+  "narrative": {
+    "narrator": "NARRATOR",
+    "system": "SYSTEM",
+    "press_to_continue": "Press SPACE or click to continue",
+    "characters": {
+      "crank": "CRANK",
+      "boris": "BORIS",
+      "pixel": "PIXEL",
+      "akira": "AKIRA",
+      "barao": "BARON",
+      "rex": "REX",
+      "glub": "GLUB",
+      "slick": "SLICK"
+    },
+    "chapters": {
+      "ch1": {
+        "name": "Rust and First Race",
+        "scenes": {
+          "0_prologue": {
+            "lines": {
+              "narrator": [
+                {
+                  "text": "The city smells of old gasoline, street food, and burned dreams. Your car is part of it."
+                },
+                {
+                  "text": "You lost your job, lost your money. All that's left is a half-dead car and a name scribbled on a crumpled paper: CRANK."
+                },
+                {
+                  "text": "They say if anyone can make a dead engine roar again, it's him. They also say he's hell to deal with."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "1_crank_garage_intro": {
+            "lines": {
+              "crank": [
+                {
+                  "text": "...What the hell is this under the hood?"
+                },
+                {
+                  "text": "I went to change the oil filter and found this stuck in the fuel line. Who built this engine, a bad internet tutorial?"
+                },
+                {
+                  "text": "Okay. Let's pretend this is a car and not a mechanical homicide attempt. Why did you come here?"
+                }
+              ]
+            },
+            "choices": [
+              {
+                "text": "I want to race."
+              },
+              {
+                "text": "I want money."
+              },
+              {
+                "text": "I just want to get out of this life."
+              }
+            ]
+          },
+          "1_crank_garage_after_choice": {
+            "lines": {
+              "crank": [
+                {
+                  "text": "Ambition I respect. Common sense... not so much."
+                },
+                {
+                  "text": "Down here you race in the mud. Higher up there are the mountains. Up top, Rex turns racing into a controlled show."
+                },
+                {
+                  "text": "But you're still at the 'remold tire and empty tank' level. Let's start right."
+                },
+                {
+                  "text": "You're going after an ogre named Boris, in the Rust Pit. We worked together at Iron Howl. Don't ask."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "2_mission_boris": {
+            "lines": {
+              "crank": [
+                {
+                  "text": "Tell him Crank sent you. He'll pretend he doesn't remember. He always does that."
+                }
+              ],
+              "narrator": [
+                {
+                  "text": "New objective: find Boris in the Rust Pit."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "3_meet_boris": {
+            "lines": {
+              "boris": [
+                {
+                  "text": "Look what the toxic wind brought to my junkyard."
+                },
+                {
+                  "text": "You look like someone who thinks engines are magic. I like that. Stupid drivers are loyal customers."
+                }
+              ]
+            },
+            "choices": [
+              {
+                "text": "Crank sent me."
+              },
+              {
+                "text": "I need parts."
+              }
+            ]
+          },
+          "3_boris_crank_branch": {
+            "lines": {
+              "boris": [
+                {
+                  "text": "Crank, huh? Hahaha... so the old man is still breathing grease."
+                },
+                {
+                  "text": "At Iron Howl he built engines I still miss today. Until he decided that almost dying was 'irresponsible'."
+                },
+                {
+                  "text": "Here's the deal: I have ugly, cheap, and strong parts. Perfect for you."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "3_boris_no_crank_branch": {
+            "lines": {
+              "boris": [
+                {
+                  "text": "You didn't come here by accident. Nobody does."
+                },
+                {
+                  "text": "In the end, whoever pays calls the shots. I have ugly, cheap, and strong parts. Perfect for you."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "4_return_garage_upgrade": {
+            "lines": {
+              "crank": [
+                {
+                  "text": "I recognize that cheap junkyard smell. You really went to Boris."
+                },
+                {
+                  "text": "We raced together at Iron Howl. I built, he tried to kill the car on the track. A wall won the race."
+                },
+                {
+                  "text": "Show me the part. I'll install it. If this breaks in the middle of the straight, it's his fault, not mine."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "5_first_race_unlocked": {
+            "lines": {
+              "crank": [
+                {
+                  "text": "Done. The car is minimally acceptable so it won't fall apart at the start."
+                },
+                {
+                  "text": "That doesn't mean you'll win. It just means that if you lose, I can't blame the mechanics."
+                },
+                {
+                  "text": "Go to the training track. Beginner race. If you come back alive, we'll talk."
+                }
+              ],
+              "narrator": [
+                {
+                  "text": "New race unlocked: Training Circuit."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "6_post_first_race_and_pixel": {
+            "lines": {
+              "crank": [
+                {
+                  "text": "You... won? Looks like you know the difference between accelerator and brake. Better than half the idiots."
+                },
+                {
+                  "text": "No trophy, but also no car broken in half. I've seen worse. Defeat is part of it."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "7_pixel_intro": {
+            "lines": {
+              "pixel": [
+                {
+                  "text": "Whoa! Calm down, it's not a virus. It's just me hacking into your panel a bit."
+                },
+                {
+                  "text": "Call me Pixel. I live in the wires and cameras of this city. And I'm watching you make a mess on the track."
+                },
+                {
+                  "text": "Up there, in the towers, they've already noticed you. Rex loves new people to test... or discard."
+                }
+              ]
+            },
+            "choices": []
+          }
+        }
+      },
+      "ch2": {
+        "name": "Contract with the Baron",
+        "scenes": {
+          "1_crank_talks_barrier": {
+            "lines": {
+              "crank": [
+                {
+                  "text": "You've already proven you're not a complete disaster. Congratulations, you're a partial disaster."
+                },
+                {
+                  "text": "There's a circuit higher up, the Industrial Belt. Bigger prize, paid entry."
+                },
+                {
+                  "text": "Your car can handle it. Your wallet, not so much. Unless you do what the last generation did... and regret it later."
+                },
+                {
+                  "text": "I'm talking about the Baron."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "2_barao_appears": {
+            "lines": {
+              "barao": [
+                {
+                  "text": "Mrrr... did someone say my name? How rude not to invite me."
+                },
+                {
+                  "text": "I just offer opportunities, dear. With small interest rates."
+                }
+              ],
+              "crank": [
+                {
+                  "text": "I knew it. Like a cockroach when it sees the light going out."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "3_barao_offer": {
+            "lines": {
+              "barao": [
+                {
+                  "text": "I put credit in your hand now. Upgrade, entry to big race..."
+                },
+                {
+                  "text": "In return, you pay me later. With interest. Every race you do, the debt breathes."
+                }
+              ],
+              "crank": [
+                {
+                  "text": "Interest that becomes a chain. I've seen promising drivers become just another entry in his notebook."
+                }
+              ]
+            },
+            "choices": [
+              {
+                "text": "Accept loan"
+              },
+              {
+                "text": "Refuse"
+              }
+            ]
+          },
+          "4_loan_accepted": {
+            "lines": {
+              "barao": [
+                {
+                  "text": "I knew you had good instinct. Courage and recklessness go hand in hand."
+                },
+                {
+                  "text": "It's all recorded. I'm a man of my word. You're the ones who usually fail with yours."
+                }
+              ],
+              "crank": [
+                {
+                  "text": "You just put a collar around your neck. He'll tighten it every time you slip up."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "5_loan_refused": {
+            "lines": {
+              "barao": [
+                {
+                  "text": "Refusing? Interesting. Self-control is rare around here."
+                },
+                {
+                  "text": "That's fine. The city breaks you slowly. I'll come back later, with higher interest."
+                }
+              ],
+              "crank": [
+                {
+                  "text": "This time you made the right choice. If you're going to rise, let it be on your own wheels."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "6_pixel_reacts": {
+            "lines": {
+              "pixel": [
+                {
+                  "text": "I detected a weird movement in your account. Big deposit, invisible withdrawal. The Baron's signature."
+                },
+                {
+                  "text": "Alright, you got yourself into this. Now use that money right, or it becomes an avalanche."
+                },
+                {
+                  "text": "You said NO to the Baron. That's big. It'll be harder, but at least your soul is yours."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "7_boris_reacts": {
+            "lines": {
+              "boris": [
+                {
+                  "text": "You've been buying good stuff and not crying about price... the Baron passed by here, didn't he?"
+                },
+                {
+                  "text": "I already raced for him. Each part was a new knot in the rope. If you're going to sink in debt, at least make noise."
+                },
+                {
+                  "text": "You still pay everything out of your own pocket? Brave... or stubborn. Crank must be proud."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "8_unlock_industrial": {
+            "lines": {
+              "crank": [
+                {
+                  "text": "With these parts and what you've saved, you can face the Industrial Belt."
+                },
+                {
+                  "text": "There the audience is less drunk and more cruel. And the drivers have already learned to hate losing."
+                }
+              ]
+            },
+            "choices": []
+          }
+        }
+      },
+      "ch3": {
+        "name": "Mountain Flow",
+        "scenes": {
+          "1_crank_to_mountain": {
+            "lines": {
+              "crank": [
+                {
+                  "text": "You've already shown you know how to step on it. Now you need to show you know how to let off."
+                },
+                {
+                  "text": "Up there is the mountain. Narrow curves, ungrateful track. Akira runs things there."
+                },
+                {
+                  "text": "She almost died in a circus manipulated by Rex. After that, she disappeared from down here."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "2_pixel_route": {
+            "lines": {
+              "pixel": [
+                {
+                  "text": "New route unlocked on your improvised GPS: Akira's Mountain."
+                },
+                {
+                  "text": "Just be careful: she doesn't like people who smell like a contract with the Baron."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "3_meet_akira": {
+            "lines": {
+              "akira": [
+                {
+                  "text": "..."
+                },
+                {
+                  "text": "You brought another noisy car to my mountain."
+                },
+                {
+                  "text": "At least it arrived in one piece. That already says something about you."
+                },
+                {
+                  "text": "Your car is asking for help. You drive it with anger... or with fear."
+                },
+                {
+                  "text": "Crank sent you, didn't he?"
+                }
+              ]
+            },
+            "choices": []
+          },
+          "4_akira_past": {
+            "lines": {
+              "akira": [
+                {
+                  "text": "Crank built my first car. I raced on the streets, like you."
+                },
+                {
+                  "text": "A special race, sponsored, flexible rules... and manipulated. The corp wanted spectacle, not competition."
+                },
+                {
+                  "text": "The Baron financed desperate drivers. The bigger the debt, the prettier the fall."
+                },
+                {
+                  "text": "I survived. Many didn't. Crank got a ghost. I got a mountain."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "5_test_briefing": {
+            "lines": {
+              "akira": [
+                {
+                  "text": "I don't train just anyone. So let's test."
+                },
+                {
+                  "text": "One lap. No audience, no prize, no corporate tricks. Just you, the car, and the curves."
+                },
+                {
+                  "text": "If you treat the track as an enemy, it returns the favor. If you listen to its rhythm... maybe you have a future."
+                }
+              ],
+              "narrator": [
+                {
+                  "text": "New objective: Mountain Flow Test."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "6_test_result": {
+            "lines": {
+              "akira": [
+                {
+                  "text": "You're still rough, but I saw moments of harmony. Some curves were dance, not fight."
+                },
+                {
+                  "text": "You survived, but didn't learn. You still fight against the car, all the time."
+                },
+                {
+                  "text": "Come back whenever you want. The mountain is patient. More than the city."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "7_crank_reacts": {
+            "lines": {
+              "crank": [
+                {
+                  "text": "So, you survived Akira?"
+                },
+                {
+                  "text": "If she didn't kick you out of there, she saw something good."
+                },
+                {
+                  "text": "By the way you look, I think she sent you back early. No problem. We fix things down here."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "8_pixel_wrap": {
+            "lines": {
+              "pixel": [
+                {
+                  "text": "Now you have three worlds: rust with Boris, industry in the Belt, tense silence with Akira."
+                },
+                {
+                  "text": "When you start winning in all three, Rex won't be able to pretend you don't exist."
+                }
+              ]
+            },
+            "choices": []
+          }
+        }
+      },
+      "ch4": {
+        "name": "Eyes in the Towers",
+        "scenes": {
+          "1_pixel_rex_watch": {
+            "lines": {
+              "pixel": [
+                {
+                  "text": "Your data exploded on the servers. Until now, you were noise. Now you're an interesting pattern."
+                },
+                {
+                  "text": "This only happens when Rex thinks: 'Maybe I can use this... or destroy it.'"
+                }
+              ]
+            },
+            "choices": []
+          },
+          "2_rex_observes": {
+            "lines": {
+              "rex": [
+                {
+                  "text": "From down there, this driver shouldn't have made it past the first junkyard. But they got here."
+                },
+                {
+                  "text": "High adaptability. Improbable paths. This amuses me."
+                },
+                {
+                  "text": "Predictable. Still gives good ratings, but doesn't promise much."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "3_crank_suspicious": {
+            "lines": {
+              "crank": [
+                {
+                  "text": "The races are weird. Too much audience, too many cameras, too many bets."
+                },
+                {
+                  "text": "When Rex decides to play producer, nothing is by chance."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "4_meet_slick": {
+            "lines": {
+              "slick": [
+                {
+                  "text": "Greetings, high-risk bipedal unit."
+                },
+                {
+                  "text": "I sell things that don't exist in your junkyard store. Upgrades that border on impossible."
+                },
+                {
+                  "text": "You call it an upgrade. I call it a field experiment."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "5_meet_glub": {
+            "lines": {
+              "glub": [
+                {
+                  "text": "Oooooh! Smell of tired metal!"
+                },
+                {
+                  "text": "I'm Glub. I eat scrap. Mainly scrap with stories."
+                },
+                {
+                  "text": "If you have old parts, I pay. I eat. You get space and money."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "6_barao_reacts": {
+            "lines": {
+              "barao": [
+                {
+                  "text": "You've been making peculiar friends. Aliens, slimes... but your debt is still with me."
+                },
+                {
+                  "text": "You rose without owing me anything. Impressive. But time is long. Almost every driver falls into some contract."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "7_rex_direct_call": {
+            "lines": {
+              "rex": [
+                {
+                  "text": "Good evening."
+                },
+                {
+                  "text": "You already know who I am. When races grow too much, there's always someone watching from above."
+                },
+                {
+                  "text": "Keep racing on all fronts. When I think you deserve it, I'll send an invitation you can't refuse."
+                }
+              ]
+            },
+            "choices": []
+          }
+        }
+      },
+      "ch5": {
+        "name": "King's Game",
+        "scenes": {
+          "1_rex_invite_circuit": {
+            "lines": {
+              "sistema": [
+                {
+                  "text": "Invitation: Crown Circuit – Official Rex Series."
+                }
+              ],
+              "rex": [
+                {
+                  "text": "The time has come. You raced through alleys, rust, industry, and mountain. Now I want to see you under the spotlight."
+                },
+                {
+                  "text": "Accept and enter the Crown Circuit: multiple stages, broadcast to the entire city."
+                }
+              ]
+            },
+            "choices": [
+              {
+                "text": "Accept Crown Circuit"
+              }
+            ]
+          },
+          "2_crank_iron_howl": {
+            "lines": {
+              "crank": [
+                {
+                  "text": "Crown Circuit... last time I heard that name was with Iron Howl."
+                },
+                {
+                  "text": "I built the cars. Boris was the brute. Baron financed. Rex produced the spectacle."
+                },
+                {
+                  "text": "In the end, half broke, went bankrupt, or disappeared. Those who rose too high, fell harder."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "3_akira_reacts": {
+            "lines": {
+              "akira": [
+                {
+                  "text": "I felt the noise, even up here. Rex opened the Circuit."
+                },
+                {
+                  "text": "Down there, they'll mess with everything for ratings. Layout, weather, rules."
+                },
+                {
+                  "text": "The only thing that's still yours is how you take the curves."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "4_preps": {
+            "lines": {
+              "boris": [
+                {
+                  "text": "Going to Rex's stage, huh? Now there'll be noise."
+                },
+                {
+                  "text": "If you're going into this circus, go in with a car that can take hits. I have parts from the Iron Howl era."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "4b_slick_prep": {
+            "lines": {
+              "slick": [
+                {
+                  "text": "The big event has arrived. Want a turbo that gets stronger the closer it gets to catastrophe?"
+                }
+              ]
+            },
+            "choices": []
+          },
+          "4c_glub_prep": {
+            "lines": {
+              "glub": [
+                {
+                  "text": "Big circuit means LOTS of scrap. If you have old parts, bring them to me first!"
+                }
+              ]
+            },
+            "choices": []
+          },
+          "4d_barao_prep": {
+            "lines": {
+              "barao": [
+                {
+                  "text": "My investment reached the main stage. During the Circuit, I expect to see that debt go down."
+                },
+                {
+                  "text": "Each prize, I take a bite. Don't try to be creative."
+                },
+                {
+                  "text": "You got here without owing me anything. Rare. I'll watch with interest."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "5_stage1_intro": {
+            "lines": {
+              "pixel": [
+                {
+                  "text": "Packed stands, camera drones, announcer screaming. Welcome to the Crown Circus."
+                }
+              ],
+              "narrator": [
+                {
+                  "text": "Stage 1: Urban Circuit – High speed."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "5_stage1_post": {
+            "lines": {
+              "crank": [
+                {
+                  "text": "You didn't freeze in front of the cameras. Half of the rookies freeze."
+                },
+                {
+                  "text": "First stage and you stumbled. You can turn it around, but the pressure only increases."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "5_stage2_intro": {
+            "lines": {
+              "pixel": [
+                {
+                  "text": "I'm seeing weird stuff: container moved, oil where it shouldn't be. Rex is editing the track live."
+                }
+              ],
+              "narrator": [
+                {
+                  "text": "Stage 2: Manipulated Industrial Zone."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "5_stage2_post": {
+            "lines": {
+              "rex": [
+                {
+                  "text": "Good adaptability. You gave me great scenes."
+                },
+                {
+                  "text": "Predictable. Useful for the show, not for the final result."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "5_stage3_intro": {
+            "lines": {
+              "pixel": [
+                {
+                  "text": "Part of this track passes through Akira's region. That was intentional."
+                }
+              ],
+              "akira": [
+                {
+                  "text": "Do you feel it? The city screams, the mountain watches."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "5_stage3_post": {
+            "lines": {
+              "crank": [
+                {
+                  "text": "Even with the manipulated track, it was still you who chose the path."
+                },
+                {
+                  "text": "You stepped exactly where Rex wanted. He'll repeat that in the edit."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "6_pre_final_rex": {
+            "lines": {
+              "rex": [
+                {
+                  "text": "You made it to the final. Many bet you'd break before."
+                },
+                {
+                  "text": "The Baron talks a lot about you. If you win, you pay him and rise. If you lose, he still profits from your fall."
+                },
+                {
+                  "text": "Last race. It's not just about being fast. It's about bearing the weight of knowing the entire city is watching you."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "7_post_final_epilogue": {
+            "lines": {
+              "pixel": [
+                {
+                  "text": "It's over. You're no longer the same driver who entered Crank's garage with a dying car."
+                }
+              ],
+              "crank": [
+                {
+                  "text": "I saw you grow, make mistakes, almost give up. You still gave me a reason to keep working on engines."
+                }
+              ],
+              "akira": [
+                {
+                  "text": "You danced with the track on a stage that wanted to see you stumble."
+                }
+              ]
+            },
+            "choices": []
+          },
+          "8_rex_close": {
+            "lines": {
+              "rex": [
+                {
+                  "text": "Regardless of victory or defeat, you proved one thing: it's impossible to ignore you."
+                },
+                {
+                  "text": "Now you choose: accept the role I gave you on this board... or try to flip the board."
+                }
+              ]
+            },
+            "choices": []
+          }
+        }
+      }
+    }
   }
 }
-

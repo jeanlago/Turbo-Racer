@@ -275,6 +275,21 @@
     "piloto_estrella_desc": "Complete 200 corridas",
     "desbloqueado": "Desbloqueado!",
     "recompensa": "Recompensa: ${}"
+  },
+  "narrative": {
+    "narrator": "NARRADOR",
+    "system": "SISTEMA",
+    "press_to_continue": "Pressione ESPAÇO ou clique para continuar",
+    "characters": {
+      "crank": "CRANK",
+      "boris": "BORIS",
+      "pixel": "PIXEL",
+      "akira": "AKIRA",
+      "barao": "BARÃO",
+      "rex": "REX",
+      "glub": "GLUB",
+      "slick": "SLICK"
+    }
   }
 }
 

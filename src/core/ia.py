@@ -41,9 +41,9 @@ class IA:
         self.ponto_navegacao_atual = 0
         self.atualizar_pontos_navegacao()
         
-        self.velocidade_alvo = 5.0
-        self.velocidade_maxima = 7.5
-        self.velocidade_curva = 4.0
+        self.velocidade_alvo = 280.0  # Aumentado de 5.0 para 280.0 (será ajustado pela dificuldade)
+        self.velocidade_maxima = 280.0  # Aumentado de 7.5 para 280.0 (será ajustado pela dificuldade)
+        self.velocidade_curva = 180.0  # Aumentado de 4.0 para 180.0 (será ajustado pela dificuldade)
         
         self._configurar_dificuldade()
         self._configurar_personalidade()
@@ -83,33 +83,35 @@ class IA:
     
     def _configurar_dificuldade(self):
         """Configura os parâmetros baseados na dificuldade"""
+        # Velocidades aumentadas para serem mais competitivas com o jogador
+        # O jogador pode chegar a ~400 px/s, então os bots devem estar em uma faixa competitiva
         if self.dificuldade == "facil":
-            self.velocidade_maxima = 5.0
-            self.velocidade_curva = 2.5
+            self.velocidade_maxima = 200.0  # Aumentado de 5.0 para 200.0
+            self.velocidade_curva = 120.0  # Aumentado de 2.5 para 120.0
             self.distancia_freio_curva = 80
             self.distancia_freio_checkpoint = 60
             self.angulo_max_curva = 25
-            self.velocidade_max_curva = 3.0
+            self.velocidade_max_curva = 150.0  # Aumentado de 3.0 para 150.0
             self.agressividade = 0.3
             self.precisao_curva = 0.8
             self.tempo_reacao = 0.15
         elif self.dificuldade == "dificil":
-            self.velocidade_maxima = 12.0
-            self.velocidade_curva = 7.0
+            self.velocidade_maxima = 380.0  # Aumentado de 12.0 para 380.0 (próximo do máximo do jogador)
+            self.velocidade_curva = 250.0  # Aumentado de 7.0 para 250.0
             self.distancia_freio_curva = 15
             self.distancia_freio_checkpoint = 10
             self.angulo_max_curva = 80
-            self.velocidade_max_curva = 9.0
+            self.velocidade_max_curva = 300.0  # Aumentado de 9.0 para 300.0
             self.agressividade = 1.0
             self.precisao_curva = 0.99
             self.tempo_reacao = 0.01
         else:
-            self.velocidade_maxima = 7.5
-            self.velocidade_curva = 4.0
+            self.velocidade_maxima = 280.0  # Aumentado de 7.5 para 280.0
+            self.velocidade_curva = 180.0  # Aumentado de 4.0 para 180.0
             self.distancia_freio_curva = 45
             self.distancia_freio_checkpoint = 35
             self.angulo_max_curva = 45
-            self.velocidade_max_curva = 5.5
+            self.velocidade_max_curva = 220.0  # Aumentado de 5.5 para 220.0
             self.agressividade = 0.75
             self.precisao_curva = 0.9
             self.tempo_reacao = 0.08

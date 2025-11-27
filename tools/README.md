@@ -135,6 +135,44 @@ python tools/checkpoint_editor.py
 
 ---
 
+## Teste de Narrativa por Capítulo
+
+### Descrição
+Ferramenta para testar cada capítulo da narrativa sem precisar reiniciar o save. Permite selecionar qualquer capítulo e automaticamente configura o progresso do jogo para o estado apropriado.
+
+### Como Usar
+
+#### Execução
+```bash
+# Na pasta raiz do projeto
+python tools/test_narrative.py
+```
+
+#### Controles
+- **↑↓** ou **W/S**: Navegar entre capítulos
+- **ENTER** ou **SPACE**: Selecionar capítulo
+- **ESC**: Cancelar e sair
+
+#### Capítulos Disponíveis
+1. **Capítulo 1** - Ferrugem e Primeira Corrida
+   - Prologue → Crank → Teste → Boris → Primeira Corrida
+2. **Capítulo 2** - Contrato com o Barão
+   - Barão → Empréstimo → Cinturão Industrial
+3. **Capítulo 3** - Fluxo da Montanha
+   - Akira → Montanha → Teste de Fluxo
+4. **Capítulo 4** - Olhos nas Torres
+   - Rex observa → Slick → Glub
+5. **Capítulo 5** - Jogo do Rei
+   - Circuito da Coroa → Preparações → Corrida Final
+
+### Funcionalidades
+- **Configuração automática**: O teste prepara o progresso (dinheiro, carros, flags de NPCs) automaticamente
+- **Sem reiniciar save**: Não precisa deletar o progresso.json para testar diferentes capítulos
+- **Menu visual**: Interface simples para seleção de capítulo
+- **Integração completa**: Usa o sistema de narrativa real do jogo
+
+---
+
 **Autor**: Turbo Racer Team  
 **Versão**: 1.0  
 **Data**: Janeiro 2025

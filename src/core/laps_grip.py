@@ -140,26 +140,46 @@ def carregar_checkpoints_grip(numero_pista, superficie_pista=None):
         print(f"Erro ao carregar checkpoints do JSON: {e}")
     
     if numero_pista == 1:
+        checkpoint_1 = (centro_x + -244, centro_y + 42, 90)  # Ângulo: 90°
+        checkpoint_2 = (centro_x + -1257, centro_y + 2, 105)  # Ângulo: 105°
+        checkpoint_3 = (centro_x + -1577, centro_y + -544, 0)  # Ângulo: 0°
+        checkpoint_4 = (centro_x + -1257, centro_y + -1014, 60)  # Ângulo: 60°
+        checkpoint_5 = (centro_x + -564, centro_y + -1018, 120)  # Ângulo: 120°
+        checkpoint_6 = (centro_x + -297, centro_y + -471, 120)  # Ângulo: 120°
+        checkpoint_7 = (centro_x + 282, centro_y + -484, 60)  # Ângulo: 60°
+        checkpoint_8 = (centro_x + 551, centro_y + -853, 45)  # Ângulo: 45°
+        checkpoint_9 = (centro_x + 1109, centro_y + -784, 135)  # Ângulo: 135°
+        checkpoint_10 = (centro_x + 1323, centro_y + -224, 150)  # Ângulo: 150°
+        checkpoint_11 = (centro_x + 1730, centro_y + -38, 150)  # Ângulo: 150°
+        checkpoint_12 = (centro_x + 1583, centro_y + 1073, 30)  # Ângulo: 30°
+        checkpoint_13 = (centro_x + 1069, centro_y + 1246, 75)  # Ângulo: 75°
+        checkpoint_14 = (centro_x + -754, centro_y + 1208, 120)  # Ângulo: 120°
+        checkpoint_15 = (centro_x + -952, centro_y + 912, 0)  # Ângulo: 0°
+        checkpoint_16 = (centro_x + -698, centro_y + 582, 45)  # Ângulo: 45°
+        checkpoint_17 = (centro_x + 756, centro_y + 532, 45)  # Ângulo: 45°
+        checkpoint_18 = (centro_x + 744, centro_y + 100, 315)  # Ângulo: 315°
+        checkpoint_19 = (centro_x + -243, centro_y + 37, 90)  # Ângulo: 90°
+        # Checkpoints com ângulo: (x, y, angulo) ou (x, y) para cálculo automático
         checkpoints = [
-            (centro_x + -244, centro_y + 42, 90),
-            (centro_x + -1257, centro_y + 2, 105),
-            (centro_x + -1577, centro_y + -544, 0),
-            (centro_x + -1257, centro_y + -1014, 60),
-            (centro_x + -564, centro_y + -1018, 120),
-            (centro_x + -297, centro_y + -471, 120),
-            (centro_x + 282, centro_y + -484, 60),
-            (centro_x + 551, centro_y + -853, 45),
-            (centro_x + 1109, centro_y + -784, 135),
-            (centro_x + 1323, centro_y + -224, 150),
-            (centro_x + 1730, centro_y + -38, 150),
-            (centro_x + 1583, centro_y + 1073, 30),
-            (centro_x + 1069, centro_y + 1246, 75),
-            (centro_x + -754, centro_y + 1208, 120),
-            (centro_x + -952, centro_y + 912, 0),
-            (centro_x + -698, centro_y + 582, 45),
-            (centro_x + 756, centro_y + 532, 45),
-            (centro_x + 744, centro_y + 100, 315),
-            (centro_x + -18, centro_y + 52, 90),
+            tuple(checkpoint_1),
+            tuple(checkpoint_2),
+            tuple(checkpoint_3),
+            tuple(checkpoint_4),
+            tuple(checkpoint_5),
+            tuple(checkpoint_6),
+            tuple(checkpoint_7),
+            tuple(checkpoint_8),
+            tuple(checkpoint_9),
+            tuple(checkpoint_10),
+            tuple(checkpoint_11),
+            tuple(checkpoint_12),
+            tuple(checkpoint_13),
+            tuple(checkpoint_14),
+            tuple(checkpoint_15),
+            tuple(checkpoint_16),
+            tuple(checkpoint_17),
+            tuple(checkpoint_18),
+            tuple(checkpoint_19),
         ]
     elif numero_pista == 4:
         finish_line = (centro_x + 50, centro_y + 50)

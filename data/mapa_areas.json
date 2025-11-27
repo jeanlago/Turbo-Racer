@@ -1,0 +1,69 @@
+{
+  "areas": [
+    {
+      "id": "oficina",
+      "nome": "Oficina",
+      "x": 604,
+      "y": 428,
+      "largura": 120,
+      "altura": 80,
+      "desbloqueada": true
+    },
+    {
+      "id": "autódromo",
+      "nome": "Autódromo",
+      "x": 552,
+      "y": 143,
+      "largura": 120,
+      "altura": 80,
+      "desbloqueada": true
+    },
+    {
+      "id": "montanha_akira",
+      "nome": "Montanha Akira",
+      "x": 134,
+      "y": 153,
+      "largura": 120,
+      "altura": 80,
+      "desbloqueada": true
+    },
+    {
+      "id": "prédio_do_rex",
+      "nome": "Prédio do Rex",
+      "x": 939,
+      "y": 120,
+      "largura": 120,
+      "altura": 80,
+      "desbloqueada": true
+    },
+    {
+      "id": "iate_do_barão",
+      "nome": "Iate do Barão",
+      "x": 1081,
+      "y": 555,
+      "largura": 120,
+      "altura": 80,
+      "desbloqueada": true
+    },
+    {
+      "id": "fábrica_do_boris",
+      "nome": "Fábrica do Boris",
+      "x": 101,
+      "y": 455,
+      "largura": 120,
+      "altura": 80,
+      "desbloqueada": true,
+      "territorio_id": "fosso_ferrugem"
+    },
+    {
+      "id": "bueiro_pixel",
+      "nome": "Bueiro do Pixel",
+      "x": 664,
+      "y": 632,
+      "largura": 80,
+      "altura": 60,
+      "desbloqueada": true,
+      "territorio_id": "pixel"
+    }
+  ]
+}

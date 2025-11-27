@@ -13,7 +13,7 @@ def _get_render_text():
     return render_text
 
 # Caminhos dos sprites
-CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "agiota")
+CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "barao")
 SPRITE_NEUTRO = os.path.join(CAMINHO_SPRITES, "neutro.png")
 SPRITE_AGUARDANDO = os.path.join(CAMINHO_SPRITES, "aguardando.png")
 SPRITE_CONVENCENDO = os.path.join(CAMINHO_SPRITES, "convencendo.png")
@@ -586,7 +586,7 @@ class Barao:
         pygame.draw.rect(tela, cor_contorno, (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
         
         # Nome do personagem
-        nome = "O Barão" if self.nome_revelado else "???"
+        nome = "O Barão" if getattr(self, 'nome_revelado', False) else "???"
         nome_texto = render_text(nome, 24, (255, 220, 100), bold=True, pixel_style=True)
         tela.blit(nome_texto, (caixa_x + 20, caixa_y + 10))
         

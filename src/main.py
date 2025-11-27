@@ -18,7 +18,7 @@ from core.game_modes import ModoJogo, TipoJogo
 from core.drift_scoring import DriftScoring
 from core.progresso import gerenciador_progresso
 from core.ghost import GhostRecorder, GhostPlayer, gerenciador_ghosts
-from core.achievements import gerenciador_achievements
+from core.achievements import gerenciador_achievements, ACHIEVEMENTS
 from core.popup_achievement import popup_achievement
 from core.estatisticas import gerenciador_estatisticas
 from core.desafios import gerenciador_desafios
@@ -148,7 +148,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     img_pista = superficie_pista_renderizada.copy()
     mask_pista = superficie_pista_renderizada.copy()
     from core.laps_grip import carregar_checkpoints_grip, carregar_spawn_points
-    checkpoints_grip = carregar_checkpoints_grip(numero_pista, superficie_pista=superficie_pista_renderizada)
+    checkpoints_grip = carregar_checkpoints_grip(numero_pista)
     
     if checkpoints_grip:
         checkpoints = checkpoints_grip
@@ -165,23 +165,12 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     
     if checkpoint_manager.checkpoints:
         checkpoints = []
-        # Aplicar ajuste ao centro da pista também aos checkpoints do checkpoint_manager
-        from core.laps_grip import ajustar_checkpoint_centro_pista
         for cp in checkpoint_manager.checkpoints:
             if len(cp) >= 3:
-                x, y, angulo = float(cp[0]), float(cp[1]), float(cp[2])
+                checkpoints.append((float(cp[0]), float(cp[1]), float(cp[2])))
             elif len(cp) >= 2:
-                x, y = float(cp[0]), float(cp[1])
-                angulo = None
-            
-            # Ajustar para o centro da pista
-            novo_x, novo_y = ajustar_checkpoint_centro_pista(x, y, angulo, superficie_pista_renderizada)
-            
-            if len(cp) >= 3:
-                checkpoints.append((float(novo_x), float(novo_y), float(angulo)))
-            else:
-                checkpoints.append((float(novo_x), float(novo_y), 0))
-        print(f"Usando {len(checkpoints)} checkpoints do checkpoint_manager (ajustados ao centro da pista)")
+                checkpoints.append((float(cp[0]), float(cp[1]), 0))
+        print(f"Usando {len(checkpoints)} checkpoints do checkpoint_manager")
     
     largura_atual, altura_atual = resolucao
     largura_pista, altura_pista = superficie_pista_renderizada.get_size()
@@ -1410,14 +1399,14 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 opcao_pausa_selecionada = 0
                                 evento_processado = True
                 
-                # Verificar se ambos terminaram para mostrar tela de resultados finais
-                # Verificar se ambos os carros finalizaram (não apenas se os estados existem)
-                # Isso garante que mesmo se um jogador virou espectador, quando ambos terminarem, vai para resultados finais
-                carro1_finalizou = corrida.finalizou.get(carro1, False) if carro1 is not None else False
-                carro2_finalizou = corrida.finalizou.get(carro2, False) if carro2 is not None else False
-                ambos_finalizaram = carro1_finalizou and carro2_finalizou
+                # Verificar se todos os carros terminaram para mostrar tela de resultados finais
+                # Verificar se todos os carros finalizaram (incluindo bots) antes de coletar resultados
+                # Isso garante que os bots tenham seus tempos e posições registrados corretamente
+                todos_carros_finalizaram = corrida.todos_finalizados()
                 
-                if ambos_finalizaram and estado_resultados_finais is None:
+                # Se todos finalizaram e ainda não temos resultados, criar
+                # Se já temos resultados mas novos carros terminaram, atualizar
+                if todos_carros_finalizaram:
                     # Coletar informações de todos os carros
                     todos_carros = [c for c in carros if c is not None]
                     resultados = []
@@ -1487,15 +1476,21 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     # Ordenar por posição
                     resultados.sort(key=lambda x: x["posicao"] if x["posicao"] else 999)
                     
-                    estado_resultados_finais = {
-                        "resultados": resultados,
-                        "opcoes": [
-                            ("TROCAR CARRO", "trocar_carro"),
-                            ("REINICIAR JOGO", "reiniciar"),
-                            ("MENU PRINCIPAL", "menu")
-                        ],
-                        "opcao_atual": 0
-                    }
+                    # Se já existem resultados finais, atualizar; senão, criar
+                    if estado_resultados_finais is not None:
+                        # Atualizar resultados existentes
+                        estado_resultados_finais["resultados"] = resultados
+                    else:
+                        # Criar novos resultados finais
+                        estado_resultados_finais = {
+                            "resultados": resultados,
+                            "opcoes": [
+                                ("TROCAR CARRO", "trocar_carro"),
+                                ("REINICIAR JOGO", "reiniciar"),
+                                ("MENU PRINCIPAL", "menu")
+                            ],
+                            "opcao_atual": 0
+                        }
                     # Limpar estados das telas individuais para evitar sobreposição
                     estado_fim_jogo_p1 = None
                     estado_fim_jogo_p2 = None
@@ -2022,19 +2017,16 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                         ghost_recorder_p1.parar_gravacao()
                                         frames_gravados = ghost_recorder_p1.obter_dados()
                                         if frames_gravados and len(frames_gravados) > 0:
-                                            # Verificação adicional no método salvar_ghost
-                                            gerenciador_ghosts.salvar_ghost(numero_pista, frames_gravados, tempo_final_p1, "GHOST")
+                                            gerenciador_ghosts.salvar_ghost(numero_pista, frames_gravados)
+                                            print(f"Ghost salvo para pista {numero_pista} ({len(frames_gravados)} frames)")
                                     else:
-                                        # Não é melhor volta, limpar frames para economizar memória
                                         if ghost_recorder_p1 and ghost_recorder_p1.gravando:
                                             ghost_recorder_p1.parar_gravacao()
-                                            ghost_recorder_p1.limpar()
                             
                             if posicao_jogador_p1 == 1:
                                 gerenciador_progresso.registrar_trofeu(numero_pista, "ouro")
                                 if not gerenciador_achievements.esta_desbloqueado("trofeu_ouro"):
                                     if gerenciador_achievements.desbloquear("trofeu_ouro", gerenciador_progresso):
-                                        from core.achievements import ACHIEVEMENTS
                                         from core.i18n import t
                                         ach_trofeu = ACHIEVEMENTS["trofeu_ouro"]
                                         nome_traduzido = t("achievements.trofeu_ouro")
@@ -2064,6 +2056,17 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             # Verificar se Rex deve aparecer (primeira corrida, modo 1 jogador) - DEPOIS de registrar a corrida
                             if modo_jogo == ModoJogo.UM_JOGADOR:
                                 rex.verificar_aparecer()
+                            
+                            # Desbloqueio direto como fallback caso os flags não estejam desbloqueados
+                            # IMPORTANTE: Executar SEMPRE após completar corrida, independente de NPCs aparecerem
+                            if modo_jogo == ModoJogo.UM_JOGADOR:
+                                stats_gerais = gerenciador_estatisticas.obter_estatisticas_gerais()
+                                corridas_completas = stats_gerais.get("corridas_completas", 0)
+                                if corridas_completas >= 1 and not gerenciador_progresso.oficina_desbloqueada:
+                                    gerenciador_progresso.hierarquia_desbloqueada = True
+                                    gerenciador_progresso.oficina_desbloqueada = True
+                                    gerenciador_progresso.salvar()
+                                    print(f"✓ Oficina e Hierarquia desbloqueadas automaticamente após completar corrida (corridas_completas={corridas_completas})")
                             if novo_recorde:
                                 gerenciador_estatisticas.registrar_recorde(numero_pista)
                                 gerenciador_desafios.atualizar_progresso("estabelecer_recorde", 1, gerenciador_progresso)
@@ -2174,12 +2177,10 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         ]
                         # Criar tela de resultados finais imediatamente (não esperar próximo ciclo do loop de eventos)
                         # Duplicar a lógica de criação da tela de resultados finais aqui
-                        # Verificar se ambos os carros finalizaram (não apenas se os estados existem)
-                        carro1_finalizou = corrida.finalizou.get(carro1, False) if carro1 is not None else False
-                        carro2_finalizou = corrida.finalizou.get(carro2, False) if carro2 is not None else False
-                        ambos_finalizaram = carro1_finalizou and carro2_finalizou
+                        # Verificar se todos os carros finalizaram (incluindo bots) antes de coletar resultados
+                        todos_carros_finalizaram = corrida.todos_finalizados()
                         
-                        if ambos_finalizaram and estado_resultados_finais is None:
+                        if todos_carros_finalizaram and estado_resultados_finais is None:
                             todos_carros = [c for c in carros if c is not None]
                             resultados = []
                             
@@ -2410,7 +2411,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 gerenciador_progresso.registrar_trofeu(numero_pista, "ouro")
                                 if not gerenciador_achievements.esta_desbloqueado("trofeu_ouro"):
                                     if gerenciador_achievements.desbloquear("trofeu_ouro", gerenciador_progresso):
-                                        from core.achievements import ACHIEVEMENTS
                                         from core.i18n import t
                                         ach_trofeu = ACHIEVEMENTS["trofeu_ouro"]
                                         nome_traduzido = t("achievements.trofeu_ouro")
@@ -2539,12 +2539,10 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         ]
                         # Criar tela de resultados finais imediatamente (não esperar próximo ciclo do loop de eventos)
                         # Duplicar a lógica de criação da tela de resultados finais aqui
-                        # Verificar se ambos os carros finalizaram (não apenas se os estados existem)
-                        carro1_finalizou = corrida.finalizou.get(carro1, False) if carro1 is not None else False
-                        carro2_finalizou = corrida.finalizou.get(carro2, False) if carro2 is not None else False
-                        ambos_finalizaram = carro1_finalizou and carro2_finalizou
+                        # Verificar se todos os carros finalizaram (incluindo bots) antes de coletar resultados
+                        todos_carros_finalizaram = corrida.todos_finalizados()
                         
-                        if ambos_finalizaram and estado_resultados_finais is None:
+                        if todos_carros_finalizaram and estado_resultados_finais is None:
                             todos_carros = [c for c in carros if c is not None]
                             resultados = []
                             
@@ -2713,7 +2711,10 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             pode_controlar_p2 = (modo_jogo != ModoJogo.DOIS_JOGADORES or estado_fim_jogo_p2 is None) and not p2_espectador and estado_resultados_finais is None
             pode_controlar_geral_p1 = (estado_fim_jogo is None and pode_controlar_p1)
             
-            if corrida.pode_controlar() and not jogo_pausado and pode_controlar_geral_p1:
+            # Verificar se o carro1 já finalizou - se sim, não permitir controle
+            carro1_finalizou = corrida.finalizou.get(carro1, False) if carro1 is not None else False
+            
+            if corrida.pode_controlar() and not jogo_pausado and pode_controlar_geral_p1 and not carro1_finalizou:
                 pos_antes = (carro1.x, carro1.y)
                 # Obter inputs de controle ou usar teclado
                 inputs_p1 = gerenciador_gamepad.obter_inputs_carro("p1", teclas)
@@ -2722,29 +2723,14 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     inputs_p1["freio_mao"] = inputs_p1.get("freio_mao", False) or teclas[pygame.K_SPACE]
                 # Se não há controle, passar None para usar teclado normalmente (freio de mão será processado no carro_fisica)
                 carro1.atualizar(teclas, None, dt_fixo, camera, superficie_pista_renderizada, inputs_controle=inputs_p1, player_id="p1")
-                pos_depois = (carro1.x, carro1.y)
-                
-                distancia_frame = math.sqrt((pos_depois[0] - pos_antes[0])**2 + (pos_depois[1] - pos_antes[1])**2)
-                gerenciador_estatisticas.registrar_distancia(distancia_frame)
-                
-                if getattr(carro1, 'drift_ativado', False):
-                    gerenciador_estatisticas.registrar_drift()
-                
-                turbo_pressionado = (inputs_p1.get("turbo", False) if inputs_p1 else False) or (teclas[carro1.turbo_key] if carro1.turbo_key else False)
-                if turbo_pressionado:
-                    gerenciador_estatisticas.registrar_turbo()
-                    if not hasattr(principal, '_ultimo_turbo_frame'):
-                        principal._ultimo_turbo_frame = -1
-                    frame_atual = pygame.time.get_ticks() // 100
-                    if frame_atual != principal._ultimo_turbo_frame:
-                        principal._ultimo_turbo_frame = frame_atual
-                        gerenciador_desafios.atualizar_progresso("usar_turbo", 1, gerenciador_progresso)
-                dist_movimento = ((pos_depois[0] - pos_antes[0])**2 + (pos_depois[1] - pos_antes[1])**2)**0.5
-                if dist_movimento > 100:
-                    print(f"AVISO: Possível teleporte detectado! De {pos_antes} para {pos_depois} (distância: {dist_movimento})")
-                    if pista_tiles is not None:
-                        carro1.x, carro1.y = pos_antes
-                        print(f"Posição restaurada para: {pos_antes}")
+            elif carro1_finalizou and carro1 is not None:
+                # Se o carro finalizou, congelar completamente (não atualizar física)
+                # Apenas garantir que a velocidade seja zero
+                if not hasattr(carro1, '_congelado_apos_finalizar'):
+                    carro1.vx = 0.0
+                    carro1.vy = 0.0
+                    carro1._congelado_apos_finalizar = True
+                # Não atualizar o carro fisicamente - ele está congelado
                 
                 # Gravar ghost (para modo relógio ou drift, 1 jogador)
                 if (tipo_jogo == TipoJogo.GHOST or tipo_jogo == TipoJogo.DRIFT) and modo_jogo == ModoJogo.UM_JOGADOR:
@@ -2755,8 +2741,9 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             ghost_recorder_p1.atualizar(dt_fixo, carro1)
 
             if carro2 is not None and not jogo_pausado:
+                carro2_finalizou = corrida.finalizou.get(carro2, False)
                 if modo_jogo == ModoJogo.DOIS_JOGADORES:
-                    if pode_controlar_p2 and corrida.pode_controlar():
+                    if pode_controlar_p2 and corrida.pode_controlar() and not carro2_finalizou:
                         # Obter inputs de controle ou usar teclado
                         inputs_p2 = gerenciador_gamepad.obter_inputs_carro("p2", teclas)
                         # Se há inputs de controle mas não tem freio_mao configurado, usar teclado como fallback
@@ -2764,6 +2751,14 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             inputs_p2["freio_mao"] = inputs_p2.get("freio_mao", False) or teclas[pygame.K_KP0]
                         # Se não há controle, passar None para usar teclado normalmente (freio de mão será processado no carro_fisica)
                         carro2.atualizar(teclas, None, dt_fixo, camera, superficie_pista_renderizada, inputs_controle=inputs_p2, player_id="p2")
+                    elif carro2_finalizou:
+                        # Se o carro finalizou, congelar completamente (não atualizar física)
+                        # Apenas garantir que a velocidade seja zero
+                        if not hasattr(carro2, '_congelado_apos_finalizar'):
+                            carro2.vx = 0.0
+                            carro2.vy = 0.0
+                            carro2._congelado_apos_finalizar = True
+                        # Não atualizar o carro fisicamente - ele está congelado
                 elif USAR_IA_NO_CARRO_2 and corrida.iniciada:
                     if not corrida.finalizou.get(carro2, False):
                         outros_carros_p2 = [c for c in carros if c != carro2]
@@ -3244,6 +3239,9 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     hud.desenhar_posicao_voltas(tela, corrida, carro1, carros, posicao=(10, 10), tipo_jogo=tipo_jogo, drift_scoring=drift_scoring, pontuacoes_alvo=pontuacoes_alvo, trofeu_ouro=trofeu_ouro, trofeu_prata=trofeu_prata, trofeu_bronze=trofeu_bronze, trofeu_vazio=trofeu_vazio)
                 else:
                     hud.desenhar_posicao_voltas(tela, corrida, carro1, carros, posicao=(10, 10), tipo_jogo=tipo_jogo)
+                
+                # Desenhar missão ativa (se houver)
+                hud.desenhar_missao_ativa(tela, posicao=(LARGURA // 2 - 200, 10))
 
                 if pista_tiles is not None:
                     limites_pista = pista_tiles.calcular_limites_reais_pista(numero_pista)
@@ -3334,7 +3332,10 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             mercador_alien.desenhar_dialogo(tela, dt)
 
         if modo_jogo != ModoJogo.DOIS_JOGADORES and tipo_jogo != TipoJogo.DRIFT and not tela_fim_mostrada:
-            if corrida.finalizou.get(carro1, False):
+            # Verificar se todos os carros terminaram (incluindo bots) antes de coletar resultados
+            todos_carros_finalizaram = corrida.todos_finalizados()
+            # Se todos finalizaram, coletar/atualizar resultados (mesmo se já existirem)
+            if corrida.finalizou.get(carro1, False) and todos_carros_finalizaram:
                 vencedor = None
                 recompensa_dinheiro = 0
                 posicao_jogador = None
@@ -3427,24 +3428,16 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                     ghost_recorder_p1.parar_gravacao()
                                     frames_gravados = ghost_recorder_p1.obter_dados()
                                     if frames_gravados and len(frames_gravados) > 0:
-                                        # Verificação adicional no método salvar_ghost
-                                        if tipo_jogo == TipoJogo.GHOST:
-                                            gerenciador_ghosts.salvar_ghost(numero_pista, frames_gravados, tempo_final, "GHOST")
-                                        elif tipo_jogo == TipoJogo.DRIFT:
-                                            # Para drift, o score já foi verificado em novo_recorde
-                                            # Mas não temos o score aqui, então vamos confiar na verificação anterior
-                                            gerenciador_ghosts.salvar_ghost(numero_pista, frames_gravados)
+                                        gerenciador_ghosts.salvar_ghost(numero_pista, frames_gravados)
+                                        print(f"Ghost salvo para pista {numero_pista} ({len(frames_gravados)} frames)")
                                 else:
-                                    # Não é melhor volta, limpar frames para economizar memória
                                     if ghost_recorder_p1 and ghost_recorder_p1.gravando:
                                         ghost_recorder_p1.parar_gravacao()
-                                        ghost_recorder_p1.limpar()
 
                         if tipo_jogo == TipoJogo.GHOST:
                             if trofeu == trofeu_ouro:
                                 if not gerenciador_achievements.esta_desbloqueado("trofeu_ouro"):
                                     if gerenciador_achievements.desbloquear("trofeu_ouro", gerenciador_progresso):
-                                        from core.achievements import ACHIEVEMENTS
                                         from core.i18n import t
                                         ach_trofeu = ACHIEVEMENTS["trofeu_ouro"]
                                         nome_traduzido = t("achievements.trofeu_ouro")
@@ -3454,7 +3447,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 gerenciador_progresso.registrar_trofeu(numero_pista, "ouro")
                                 if not gerenciador_achievements.esta_desbloqueado("trofeu_ouro"):
                                     if gerenciador_achievements.desbloquear("trofeu_ouro", gerenciador_progresso):
-                                        from core.achievements import ACHIEVEMENTS
                                         from core.i18n import t
                                         ach_trofeu = ACHIEVEMENTS["trofeu_ouro"]
                                         nome_traduzido = t("achievements.trofeu_ouro")
@@ -3470,9 +3462,23 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                         # No modo GHOST/DRIFT, usar posicao_jogador e tempo_final que já foram definidos acima
                         gerenciador_estatisticas.registrar_corrida_completa(numero_pista, posicao_jogador, tempo_final)
+                        # Verificar se Akira deve aparecer pós-corrida (modo 1 jogador) - ANTES do Rex
+                        if modo_jogo == ModoJogo.UM_JOGADOR:
+                            colisoes_na_corrida = getattr(principal, '_colisoes_na_corrida', 0)
+                            akira.verificar_aparecer_pos_corrida(posicao_jogador, colisoes_na_corrida, posicao_jogador == 1)
                         # Verificar se Rex deve aparecer (primeira corrida, modo 1 jogador) - DEPOIS de registrar a corrida
                         if modo_jogo == ModoJogo.UM_JOGADOR:
                             rex.verificar_aparecer()
+                        # Desbloqueio direto como fallback caso os flags não estejam desbloqueados
+                        # IMPORTANTE: Executar SEMPRE após completar corrida, independente de NPCs aparecerem
+                        if modo_jogo == ModoJogo.UM_JOGADOR:
+                            stats_gerais = gerenciador_estatisticas.obter_estatisticas_gerais()
+                            corridas_completas = stats_gerais.get("corridas_completas", 0)
+                            if corridas_completas >= 1 and not gerenciador_progresso.oficina_desbloqueada:
+                                gerenciador_progresso.hierarquia_desbloqueada = True
+                                gerenciador_progresso.oficina_desbloqueada = True
+                                gerenciador_progresso.salvar()
+                                print(f"✓ Oficina e Hierarquia desbloqueadas automaticamente após completar corrida (corridas_completas={corridas_completas})")
                         from core.i18n import t
                         for ach in achievements_desbloqueados:
                             nome_traduzido = t(f"achievements.{ach['id']}")
@@ -3512,15 +3518,22 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
                 # Ordenar por posição
                 resultados.sort(key=lambda x: x["posicao"] if x["posicao"] else 999)
-                estado_resultados_finais = {
-                    "resultados": resultados,
-                    "opcoes": [
-                        ("TROCAR CARRO", "trocar_carro"),
-                        ("REINICIAR JOGO", "reiniciar"),
-                        ("MENU PRINCIPAL", "menu")
-                    ],
-                    "opcao_atual": 0
-                }
+                
+                # Se já existem resultados finais, atualizar; senão, criar
+                if estado_resultados_finais is not None:
+                    # Atualizar resultados existentes
+                    estado_resultados_finais["resultados"] = resultados
+                else:
+                    # Criar novos resultados finais
+                    estado_resultados_finais = {
+                        "resultados": resultados,
+                        "opcoes": [
+                            ("TROCAR CARRO", "trocar_carro"),
+                            ("REINICIAR JOGO", "reiniciar"),
+                            ("MENU PRINCIPAL", "menu")
+                        ],
+                        "opcao_atual": 0
+                    }
                 # Limpar estado de fim de jogo individual para evitar sobreposição
                 estado_fim_jogo = None
 

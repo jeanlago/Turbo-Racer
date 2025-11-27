@@ -105,16 +105,51 @@ def processar_eventos_controle_menu(ev, opcao_atual, num_opcoes, joystick_id=0, 
             chave_axis = f"{joystick_id}_{ev.axis}"
             valor_anterior = _ultimo_valor_axis.get(chave_axis, 0.0)
             
-            if ev.axis == 1:  # Stick esquerdo vertical
-                # IGNORAR movimento vertical do analógico no menu principal
-                # Só processar para resetar o estado
+            if ev.axis == 1:  # Stick esquerdo vertical (cima/baixo)
                 valor_atual = ev.value
-                if abs(valor_atual) <= deadzone:
-                    # Resetar quando voltar para dentro da deadzone
-                    _ultimo_valor_axis[chave_axis] = 0.0
+                # Deadzone maior e verificação mais rigorosa
+                # Só processar quando o analógico ENTRA na deadzone (mudou de direção)
+                if abs(valor_atual) > deadzone:
+                    # Verificar se mudou de direção
+                    mudou_direcao = False
+                    if valor_anterior <= deadzone and valor_atual > deadzone:
+                        # Saiu da deadzone para baixo
+                        mudou_direcao = True
+                    elif valor_anterior >= -deadzone and valor_atual < -deadzone:
+                        # Saiu da deadzone para cima
+                        mudou_direcao = True
+                    elif (valor_anterior < 0 and valor_atual > 0) or (valor_anterior > 0 and valor_atual < 0):
+                        # Mudou de lado (cima para baixo ou vice-versa)
+                        mudou_direcao = True
+                    
+                    if mudou_direcao:
+                        # Verificar debounce antes de processar
+                        if chave_debounce not in _ultimo_tempo_navegacao or \
+                           tempo_atual - _ultimo_tempo_navegacao.get(chave_debounce, 0) >= debounce_tempo:
+                            _ultimo_valor_axis[chave_axis] = valor_atual
+                            _ultimo_tempo_navegacao[chave_debounce] = tempo_atual
+                            if valor_atual < -deadzone:
+                                # Cima: navegar entre opções
+                                if num_opcoes > 0:
+                                    return {"acao": "cima", "opcao": (opcao_atual - 1) % num_opcoes, "fonte": "analogico"}
+                                else:
+                                    return {"acao": "cima", "fonte": "analogico"}
+                            elif valor_atual > deadzone:
+                                # Baixo: navegar entre opções
+                                if num_opcoes > 0:
+                                    return {"acao": "baixo", "opcao": (opcao_atual + 1) % num_opcoes, "fonte": "analogico"}
+                                else:
+                                    return {"acao": "baixo", "fonte": "analogico"}
+                    else:
+                        # Atualizar valor mas não processar (ainda na mesma direção)
+                        _ultimo_valor_axis[chave_axis] = valor_atual
                 else:
-                    _ultimo_valor_axis[chave_axis] = valor_atual
-                # Não retornar nada para cima/baixo do analógico
+                    # Voltou para dentro da deadzone - resetar para permitir novo movimento
+                    if abs(valor_anterior) > deadzone:
+                        # Acabou de sair da deadzone, resetar
+                        _ultimo_valor_axis[chave_axis] = 0.0
+                    else:
+                        _ultimo_valor_axis[chave_axis] = valor_atual
             
             elif ev.axis == 0:  # Stick esquerdo horizontal
                 valor_atual = ev.value
@@ -162,7 +197,6 @@ def processar_eventos_controle_menu(ev, opcao_atual, num_opcoes, joystick_id=0, 
             # D-pad
             # ev.value é uma tupla (x, y) para o hat
             hat_x, hat_y = ev.value
-            print(f"DEBUG D-pad: hat_x={hat_x}, hat_y={hat_y}, hat={ev.value}")
             # D-pad só retorna evento quando muda, então não precisa de debounce adicional
             if hat_y == 1:  # Cima
                 # Verificar debounce antes de processar
@@ -225,9 +259,10 @@ def processar_eventos_controle_menu(ev, opcao_atual, num_opcoes, joystick_id=0, 
             elif ev.button == 2:  # Quadrado/X - Alternativa
                 return {"acao": "alternativa"}
             # L1/R1 para troca de carros na oficina
-            # L1 = botão 9 (carro anterior - esquerda)
-            # R1 = botão 10 (carro próximo - direita)
-            elif ev.button == 9:  # L1 - Carro anterior (na oficina)
+            # PS5/PS4: L1 = botão 4, R1 = botão 5
+            # Xbox: L1 = botão 4, R1 = botão 5
+            # Alguns controles: L1 = botão 9, R1 = botão 10
+            elif ev.button == 4:  # L1 (PS5/PS4/Xbox) - Carro anterior (na oficina)
                 # Usar chave de debounce específica para L1/R1 para não interferir com outras ações
                 chave_debounce_l1r1 = f"{joystick_id}_l1r1"
                 # Verificar debounce antes de processar
@@ -235,10 +270,38 @@ def processar_eventos_controle_menu(ev, opcao_atual, num_opcoes, joystick_id=0, 
                    tempo_atual - _ultimo_tempo_navegacao.get(chave_debounce_l1r1, 0) >= debounce_tempo:
                     _ultimo_tempo_navegacao[chave_debounce_l1r1] = tempo_atual
                     return {"acao": "carro_anterior", "fonte": "botao"}
-            elif ev.button == 10:  # R1 - Próximo carro (na oficina)
+            elif ev.button == 5:  # R1 (PS5/PS4/Xbox) - Próximo carro (na oficina)
                 # Usar chave de debounce específica para L1/R1 para não interferir com outras ações
                 chave_debounce_l1r1 = f"{joystick_id}_l1r1"
                 # Verificar debounce antes de processar
+                if chave_debounce_l1r1 not in _ultimo_tempo_navegacao or \
+                   tempo_atual - _ultimo_tempo_navegacao.get(chave_debounce_l1r1, 0) >= debounce_tempo:
+                    _ultimo_tempo_navegacao[chave_debounce_l1r1] = tempo_atual
+                    return {"acao": "carro_proximo", "fonte": "botao"}
+            elif ev.button == 9:  # L1 (fallback) ou Options (PS5/PS4) - Verificar qual é
+                # Verificar se é Options ou L1 baseado no número de botões e tipo de controle
+                from core.gamepad_manager import gerenciador_gamepad
+                if joystick_id < len(gerenciador_gamepad.joysticks):
+                    joystick = gerenciador_gamepad.joysticks[joystick_id]
+                    nome_controle = joystick.get_name().lower()
+                    # PS5/PS4: botão 9 é Options (pausar), não L1
+                    if "ps5" in nome_controle or "ps4" in nome_controle or "playstation" in nome_controle or "dualsense" in nome_controle or "dualshock" in nome_controle:
+                        return {"acao": "pausar"}
+                    # Para outros controles, pode ser L1
+                    chave_debounce_l1r1 = f"{joystick_id}_l1r1"
+                    if chave_debounce_l1r1 not in _ultimo_tempo_navegacao or \
+                       tempo_atual - _ultimo_tempo_navegacao.get(chave_debounce_l1r1, 0) >= debounce_tempo:
+                        _ultimo_tempo_navegacao[chave_debounce_l1r1] = tempo_atual
+                        return {"acao": "carro_anterior", "fonte": "botao"}
+                else:
+                    # Fallback: tratar como L1
+                    chave_debounce_l1r1 = f"{joystick_id}_l1r1"
+                    if chave_debounce_l1r1 not in _ultimo_tempo_navegacao or \
+                       tempo_atual - _ultimo_tempo_navegacao.get(chave_debounce_l1r1, 0) >= debounce_tempo:
+                        _ultimo_tempo_navegacao[chave_debounce_l1r1] = tempo_atual
+                        return {"acao": "carro_anterior", "fonte": "botao"}
+            elif ev.button == 10:  # R1 (fallback para alguns controles) - Próximo carro
+                chave_debounce_l1r1 = f"{joystick_id}_l1r1"
                 if chave_debounce_l1r1 not in _ultimo_tempo_navegacao or \
                    tempo_atual - _ultimo_tempo_navegacao.get(chave_debounce_l1r1, 0) >= debounce_tempo:
                     _ultimo_tempo_navegacao[chave_debounce_l1r1] = tempo_atual
@@ -275,8 +338,11 @@ def processar_eventos_controle_menu(ev, opcao_atual, num_opcoes, joystick_id=0, 
                         return {"acao": "direita", "opcao": (opcao_atual + 1) % num_opcoes, "fonte": "dpad"}
                     else:
                         return {"acao": "direita", "fonte": "dpad"}
-            elif ev.button == 6:  # PS5 Options button - Pausar
+            elif ev.button == 6:  # PS5 Share button / Alguns controles - Pausar (fallback)
                 return {"acao": "pausar"}
+            elif ev.button == 8:  # PS5 Options button (alguns drivers) - Pausar
+                return {"acao": "pausar"}
+            # Botão 9 já foi tratado acima (pode ser Options para PS5/PS4 ou L1 para outros)
     
     return None
 
@@ -416,16 +482,12 @@ def obter_estado_controle_menu(joystick_id=0):
                 # Isso cria comportamento "por clique" - uma ação por pressionamento
                 if dpad_up and not estado_anterior[0]:
                     estado["cima"] = True
-                    print(f"DEBUG D-pad botões: UP pressionado")
                 if dpad_down and not estado_anterior[1]:
                     estado["baixo"] = True
-                    print(f"DEBUG D-pad botões: DOWN pressionado")
                 if dpad_left and not estado_anterior[2]:
                     estado["esquerda"] = True
-                    print(f"DEBUG D-pad botões: LEFT pressionado")
                 if dpad_right and not estado_anterior[3]:
                     estado["direita"] = True
-                    print(f"DEBUG D-pad botões: RIGHT pressionado")
                 
                 _ultimo_estado_dpad[chave_dpad] = (dpad_up, dpad_down, dpad_left, dpad_right)
         

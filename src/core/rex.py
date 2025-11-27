@@ -16,7 +16,7 @@ def _get_render_text():
 CAMINHO_REX_DATA = os.path.join(DIR_PROJETO, "data", "rex.json")
 
 # Caminhos dos sprites
-CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "rival")
+CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "rex")
 SPRITE_COMPETITIVE = os.path.join(CAMINHO_SPRITES, "competitivo.png")
 SPRITE_MOCKING = os.path.join(CAMINHO_SPRITES, "zombando.png")
 SPRITE_ANGRY = os.path.join(CAMINHO_SPRITES, "ameaça.png")
@@ -54,8 +54,7 @@ class Rex:
         self.velocidade_texto = 80.0  # Caracteres por segundo (igual ao Barão e Crank)
         
         # Sistema de nome revelado
-        # Nota: nome_revelado é carregado em carregar_estado()
-        # Não resetar aqui, senão sobrescreve o estado salvo!
+        self.nome_revelado = False  # Inicializar antes de carregar_estado()
         
     def carregar_estado(self):
         """Carrega o estado do Rex do progresso.json"""

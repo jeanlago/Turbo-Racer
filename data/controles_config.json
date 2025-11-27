@@ -18,7 +18,7 @@
     "esquerda": {
       "tipo": "axis",
       "index": 0,
-      "invertido": true
+      "invertido": false
     },
     "turbo": {
       "tipo": "button",
@@ -30,7 +30,7 @@
     },
     "drift": {
       "tipo": "button",
-      "index": 2
+      "index": 1
     },
     "joystick_id": 0
   },
@@ -67,6 +67,6 @@
       "tipo": "button",
       "index": 2
     },
-    "joystick_id": 1
+    "joystick_id": -1
   }
 }

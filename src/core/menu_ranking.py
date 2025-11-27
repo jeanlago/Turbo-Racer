@@ -176,9 +176,22 @@ def ranking_loop(screen):
         voltar_y = caixa_y + caixa_altura - 50
         voltar_rect = pygame.Rect(voltar_x, voltar_y, voltar_largura, voltar_altura)
         
-        cor_voltar = (200, 50, 50) if voltar_selecionado else (150, 50, 50)
+        # Verificar hover
+        voltar_hover = voltar_rect.collidepoint(mouse_x, mouse_y)
+        
+        # Cores do botão baseadas no hover
+        if voltar_hover:
+            cor_voltar = (255, 80, 80)
+            cor_borda = (255, 150, 150)
+        elif voltar_selecionado:
+            cor_voltar = (200, 50, 50)
+            cor_borda = (255, 100, 100)
+        else:
+            cor_voltar = (150, 50, 50)
+            cor_borda = (200, 80, 80)
+        
         pygame.draw.rect(screen, cor_voltar, voltar_rect)
-        pygame.draw.rect(screen, (255, 100, 100), voltar_rect, 2)
+        pygame.draw.rect(screen, cor_borda, voltar_rect, 2)
         
         voltar_texto = render_text("VOLTAR", 18, (255, 255, 255), bold=True, pixel_style=True)
         voltar_texto_x = voltar_x + (voltar_largura - voltar_texto.get_width()) // 2

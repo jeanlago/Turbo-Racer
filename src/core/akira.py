@@ -60,39 +60,51 @@ class Akira:
         self.texto_completo = ""  # Texto completo a ser exibido
         self.texto_exibido = ""  # Texto já exibido (animação)
         self.tempo_animacao = 0.0  # Tempo acumulado para animação
-        self.velocidade_texto = 80.0  # Caracteres por segundo (igual ao Barão e Crank)
+        self.velocidade_texto = 50.0  # Caracteres por segundo
         
         # Sistema de nome revelado
-        # Nota: nome_revelado é carregado em carregar_estado()
+        self.nome_revelado = False  # Inicializar antes de carregar_estado()
         
     def carregar_estado(self):
-        """Carrega o estado da Akira"""
-        if os.path.exists(CAMINHO_AKIRA_DATA):
-            try:
-                with open(CAMINHO_AKIRA_DATA, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    self.nome_revelado = data.get('nome_revelado', False)
-                    self.dialogos_pre_corrida_mostrados = data.get('dialogos_pre_corrida_mostrados', {})  # {pista: True/False}
-            except Exception as e:
-                print(f"Erro ao carregar estado da Akira: {e}")
-                self.nome_revelado = False
-                self.dialogos_pre_corrida_mostrados = {}
+        """Carrega o estado da Akira APENAS de progresso.json"""
+        # Usar APENAS progresso.json (sistema consolidado)
+        # Não usar mais akira.json para evitar problemas de sincronização
+        if hasattr(gerenciador_progresso, 'akira_dialogos_pre_corrida_mostrados'):
+            self.dialogos_pre_corrida_mostrados = gerenciador_progresso.akira_dialogos_pre_corrida_mostrados.copy() if gerenciador_progresso.akira_dialogos_pre_corrida_mostrados else {}
+            self.nome_revelado = gerenciador_progresso.akira_nome_revelado if hasattr(gerenciador_progresso, 'akira_nome_revelado') else False
         else:
             self.nome_revelado = False
             self.dialogos_pre_corrida_mostrados = {}
+        
+        # Se akira.json existe, tentar migrar dados uma vez (apenas se progresso.json estiver vazio)
+        if os.path.exists(CAMINHO_AKIRA_DATA) and not self.dialogos_pre_corrida_mostrados:
+            try:
+                with open(CAMINHO_AKIRA_DATA, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    # Migrar apenas se progresso.json não tiver dados
+                    if not self.dialogos_pre_corrida_mostrados:
+                        self.dialogos_pre_corrida_mostrados = data.get('dialogos_pre_corrida_mostrados', {})
+                    if not self.nome_revelado:
+                        self.nome_revelado = data.get('nome_revelado', False)
+                    # Salvar no progresso.json e deletar akira.json
+                    self.salvar_estado()
+                    try:
+                        os.remove(CAMINHO_AKIRA_DATA)
+                        print("✓ Migrado akira.json para progresso.json e arquivo antigo removido")
+                    except:
+                        pass
+            except Exception as e:
+                print(f"Erro ao migrar akira.json: {e}")
     
     def salvar_estado(self):
-        """Salva o estado da Akira"""
-        try:
-            os.makedirs(os.path.dirname(CAMINHO_AKIRA_DATA), exist_ok=True)
-            data = {
-                'nome_revelado': getattr(self, 'nome_revelado', False),
-                'dialogos_pre_corrida_mostrados': getattr(self, 'dialogos_pre_corrida_mostrados', {})
-            }
-            with open(CAMINHO_AKIRA_DATA, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2)
-        except Exception as e:
-            print(f"Erro ao salvar estado da Akira: {e}")
+        """Salva o estado da Akira APENAS em progresso.json"""
+        # Salvar APENAS em progresso.json (sistema consolidado)
+        if hasattr(gerenciador_progresso, 'akira_dialogos_pre_corrida_mostrados'):
+            gerenciador_progresso.akira_nome_revelado = getattr(self, 'nome_revelado', False)
+            gerenciador_progresso.akira_dialogos_pre_corrida_mostrados = getattr(self, 'dialogos_pre_corrida_mostrados', {}).copy()
+            gerenciador_progresso.salvar()
+        else:
+            print("AVISO: gerenciador_progresso não tem atributos da Akira")
     
     def carregar_sprites(self):
         """Carrega os sprites da Akira"""
@@ -183,6 +195,16 @@ class Akira:
         
         # Verificar se já mostrou o diálogo pré-corrida para esta pista
         pista_key = str(numero_pista)
+        
+        # Garantir que dialogos_pre_corrida_mostrados está inicializado
+        if not hasattr(self, 'dialogos_pre_corrida_mostrados'):
+            self.dialogos_pre_corrida_mostrados = {}
+        
+        # Sincronizar com progresso.json se necessário
+        if hasattr(gerenciador_progresso, 'akira_dialogos_pre_corrida_mostrados'):
+            if gerenciador_progresso.akira_dialogos_pre_corrida_mostrados:
+                self.dialogos_pre_corrida_mostrados = gerenciador_progresso.akira_dialogos_pre_corrida_mostrados.copy()
+        
         if self.dialogos_pre_corrida_mostrados.get(pista_key, False):
             return False  # Já mostrou para esta pista
         
@@ -193,6 +215,7 @@ class Akira:
         self.parte_dialogo = 0
         self._iniciar_dialogo_pre_corrida()
         
+        print(f"✓ Akira apareceu pré-corrida para pista {numero_pista}")
         return True
     
     def verificar_aparecer_pos_corrida(self, posicao, colisoes, venceu):
@@ -309,47 +332,103 @@ class Akira:
     
     def _avancar_dialogo_fim_corrida(self):
         """Avança o diálogo fim de corrida baseado no desempenho"""
+        from core.progresso import gerenciador_progresso
+        from core.estatisticas import gerenciador_estatisticas
+        
         posicao = self.ultima_corrida['posicao']
         colisoes = self.ultima_corrida['colisoes']
         venceu = self.ultima_corrida['venceu']
+        
+        # Verificar se é a primeira corrida ou se os flags ainda não foram desbloqueados
+        # IMPORTANTE: Esta verificação acontece DEPOIS de registrar_corrida_completa ser chamado,
+        # então se corridas_completas == 1, significa que esta é a primeira corrida que acabou de ser registrada
+        # Também verificamos se os flags ainda não estão desbloqueados como fallback
+        stats_gerais = gerenciador_estatisticas.obter_estatisticas_gerais()
+        corridas_completas = stats_gerais.get("corridas_completas", 0)
+        primeira_corrida = (corridas_completas == 1) or (corridas_completas >= 1 and not gerenciador_progresso.oficina_desbloqueada)
         
         # Determinar cenário
         boa_colocacao = venceu or (posicao is not None and posicao <= 3)
         carro_limpo = colisoes == 0 or colisoes <= 2
         
-        if self.parte_dialogo == 0:
-            if boa_colocacao and carro_limpo:
-                # Cenário A: Boa Colocação + Carro Limpo
-                self.sprite_atual = self.sprite_respeito
-                self._iniciar_animacao_texto("Impressionante. Você encontrou o Fluxo hoje. Rápido e suave, como a água contornando uma pedra. Uma vitória merecida e elegante.")
-            elif boa_colocacao and not carro_limpo:
-                # Cenário B: Boa Colocação + Carro Destruído
-                self.sprite_atual = self.sprite_neutro
-                self._iniciar_animacao_texto("Você venceu... mas a que custo? Sua condução foi bárbara. Você tratou a pista como um campo de batalha, não um parceiro de dança.")
-            elif not boa_colocacao and carro_limpo:
-                # Cenário C: Má Colocação + Carro Limpo
+        # Se for a primeira corrida, adicionar explicações sobre hierarquia e oficina
+        if primeira_corrida:
+            if self.parte_dialogo == 0:
+                if boa_colocacao and carro_limpo:
+                    self.sprite_atual = self.sprite_respeito
+                    self._iniciar_animacao_texto("Impressionante. Você encontrou o Fluxo hoje. Rápido e suave, como a água contornando uma pedra. Uma vitória merecida e elegante.")
+                elif boa_colocacao and not carro_limpo:
+                    self.sprite_atual = self.sprite_neutro
+                    self._iniciar_animacao_texto("Você venceu... mas a que custo? Sua condução foi bárbara. Você tratou a pista como um campo de batalha, não um parceiro de dança.")
+                elif not boa_colocacao and carro_limpo:
+                    self.sprite_atual = self.sprite_ensinando
+                    self._iniciar_animacao_texto("Sua técnica foi limpa, houve respeito pela máquina. Isso é louvável. Mas faltou o espírito de luta.")
+                else:
+                    self.sprite_atual = self.sprite_decepcionada
+                    self._iniciar_animacao_texto("Um desastre completo. Você foi lento e destrutivo. Correu como um elefante numa loja de porcelana.")
+            elif self.parte_dialogo == 1:
+                # Segunda parte: comentário sobre o mecânico
+                if boa_colocacao and carro_limpo:
+                    self.sprite_atual = self.sprite_respeito
+                    self._iniciar_animacao_texto("E o Velho ficará de bom humor hoje. É raro ver um carro voltar tão inteiro depois de uma vitória dessas.")
+                elif boa_colocacao and not carro_limpo:
+                    self.sprite_atual = self.sprite_decepcionada
+                    self._iniciar_animacao_texto("Prepare os ouvidos. O mecânico vai ter uma longa noite desamassando essa lataria, e ele vai garantir que você ouça cada reclamação dele.")
+                elif not boa_colocacao and carro_limpo:
+                    self.sprite_atual = self.sprite_ensinando
+                    self._iniciar_animacao_texto("O carro está inteiro, pelo menos. O Velho não vai gritar com você, mas a elegância sozinha não ganha troféus. Você precisa encontrar o equilíbrio entre a calma e o fogo.")
+                else:
+                    self.sprite_atual = self.sprite_decepcionada
+                    self._iniciar_animacao_texto("Se eu fosse você, nem aparecia na oficina hoje. O Velho é capaz de te jogar uma chave inglesa na cabeça quando vir o estado desse carro. Lamentável.")
+            elif self.parte_dialogo == 2:
+                # Terceira parte: explicar sobre a oficina
                 self.sprite_atual = self.sprite_ensinando
-                self._iniciar_animacao_texto("Sua técnica foi limpa, houve respeito pela máquina. Isso é louvável. Mas faltou o espírito de luta.")
-            else:
-                # Cenário D: Má Colocação + Carro Destruído
-                self.sprite_atual = self.sprite_decepcionada
-                self._iniciar_animacao_texto("Um desastre completo. Você foi lento e destrutivo. Correu como um elefante numa loja de porcelana.")
-        elif self.parte_dialogo == 1:
-            # Segunda parte: comentário sobre o mecânico
-            if boa_colocacao and carro_limpo:
-                self.sprite_atual = self.sprite_respeito
-                self._iniciar_animacao_texto("E o Velho ficará de bom humor hoje. É raro ver um carro voltar tão inteiro depois de uma vitória dessas.")
-            elif boa_colocacao and not carro_limpo:
-                self.sprite_atual = self.sprite_decepcionada
-                self._iniciar_animacao_texto("Prepare os ouvidos. O mecânico vai ter uma longa noite desamassando essa lataria, e ele vai garantir que você ouça cada reclamação dele.")
-            elif not boa_colocacao and carro_limpo:
+                self._iniciar_animacao_texto("Falando em oficina... Agora que você completou sua primeira corrida, pode visitar a oficina no menu principal. Lá você encontrará o Crank, o mecânico. Ele pode melhorar seu carro com upgrades, mas cuidado: ele é rabugento e reage ao estado do seu veículo.")
+            elif self.parte_dialogo == 3:
+                # Quarta parte: explicar sobre a hierarquia
                 self.sprite_atual = self.sprite_ensinando
-                self._iniciar_animacao_texto("O carro está inteiro, pelo menos. O Velho não vai gritar com você, mas a elegância sozinha não ganha troféus. Você precisa encontrar o equilíbrio entre a calma e o fogo.")
+                self._iniciar_animacao_texto("E no menu, você também encontrará a 'Hierarquia'. É o ranking dos pilotos. Cada vitória te coloca mais alto, cada derrota te empurra para baixo. É lá que você verá sua posição entre os melhores pilotos das ruas.")
             else:
-                self.sprite_atual = self.sprite_decepcionada
-                self._iniciar_animacao_texto("Se eu fosse você, nem aparecia na oficina hoje. O Velho é capaz de te jogar uma chave inglesa na cabeça quando vir o estado desse carro. Lamentável.")
+                # Desbloquear hierarquia e oficina
+                gerenciador_progresso.hierarquia_desbloqueada = True
+                gerenciador_progresso.oficina_desbloqueada = True
+                gerenciador_progresso.salvar()
+                self.fechar()
         else:
-            self.fechar()
+            # Diálogo normal (não é primeira corrida) - código original
+            if self.parte_dialogo == 0:
+                if boa_colocacao and carro_limpo:
+                    # Cenário A: Boa Colocação + Carro Limpo
+                    self.sprite_atual = self.sprite_respeito
+                    self._iniciar_animacao_texto("Impressionante. Você encontrou o Fluxo hoje. Rápido e suave, como a água contornando uma pedra. Uma vitória merecida e elegante.")
+                elif boa_colocacao and not carro_limpo:
+                    # Cenário B: Boa Colocação + Carro Destruído
+                    self.sprite_atual = self.sprite_neutro
+                    self._iniciar_animacao_texto("Você venceu... mas a que custo? Sua condução foi bárbara. Você tratou a pista como um campo de batalha, não um parceiro de dança.")
+                elif not boa_colocacao and carro_limpo:
+                    # Cenário C: Má Colocação + Carro Limpo
+                    self.sprite_atual = self.sprite_ensinando
+                    self._iniciar_animacao_texto("Sua técnica foi limpa, houve respeito pela máquina. Isso é louvável. Mas faltou o espírito de luta.")
+                else:
+                    # Cenário D: Má Colocação + Carro Destruído
+                    self.sprite_atual = self.sprite_decepcionada
+                    self._iniciar_animacao_texto("Um desastre completo. Você foi lento e destrutivo. Correu como um elefante numa loja de porcelana.")
+            elif self.parte_dialogo == 1:
+                # Segunda parte: comentário sobre o mecânico
+                if boa_colocacao and carro_limpo:
+                    self.sprite_atual = self.sprite_respeito
+                    self._iniciar_animacao_texto("E o Velho ficará de bom humor hoje. É raro ver um carro voltar tão inteiro depois de uma vitória dessas.")
+                elif boa_colocacao and not carro_limpo:
+                    self.sprite_atual = self.sprite_decepcionada
+                    self._iniciar_animacao_texto("Prepare os ouvidos. O mecânico vai ter uma longa noite desamassando essa lataria, e ele vai garantir que você ouça cada reclamação dele.")
+                elif not boa_colocacao and carro_limpo:
+                    self.sprite_atual = self.sprite_ensinando
+                    self._iniciar_animacao_texto("O carro está inteiro, pelo menos. O Velho não vai gritar com você, mas a elegância sozinha não ganha troféus. Você precisa encontrar o equilíbrio entre a calma e o fogo.")
+                else:
+                    self.sprite_atual = self.sprite_decepcionada
+                    self._iniciar_animacao_texto("Se eu fosse você, nem aparecia na oficina hoje. O Velho é capaz de te jogar uma chave inglesa na cabeça quando vir o estado desse carro. Lamentável.")
+            else:
+                self.fechar()
     
     def _iniciar_animacao_texto(self, texto):
         """Inicia animação de texto letra por letra"""

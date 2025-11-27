@@ -1,0 +1,165 @@
+{
+  "missions": [
+    {
+      "id": "m1_primeira_faisca",
+      "nome": "Primeira Faísca",
+      "objetivo": "Encontre a garagem do Crank no bairro baixo.",
+      "activateOnSceneId": "ch1_0_prologue",
+      "completeOnSceneId": "ch1_1_crank_garage_intro",
+      "chapter": "ch1"
+    },
+    {
+      "id": "m2_teste_de_sobrevivencia",
+      "nome": "Teste de Sobrevivência",
+      "objetivo": "Complete a corrida de teste da garagem do Crank.",
+      "activateOnSceneId": "ch1_1b_crank_test_briefing",
+      "completeOnSceneId": "ch1_1c_crank_test_result",
+      "chapter": "ch1"
+    },
+    {
+      "id": "m3_rota_da_ferrugem",
+      "nome": "Rota da Ferrugem",
+      "objetivo": "Vá até o Fosso de Ferrugem e fale com Boris.",
+      "activateOnSceneId": "ch1_1c_crank_test_result",
+      "completeOnSceneId": "ch1_3_meet_boris",
+      "chapter": "ch1"
+    },
+    {
+      "id": "m4_coracao_de_sucata",
+      "nome": "Coração de Sucata",
+      "objetivo": "Compre uma peça principal com Boris para melhorar seu carro.",
+      "activateOnSceneId": "ch1_3_meet_boris",
+      "completeOnSceneId": null,
+      "chapter": "ch1"
+    },
+    {
+      "id": "m5_cirurgia_na_garagem",
+      "nome": "Cirurgia na Garagem",
+      "objetivo": "Volte à garagem do Crank e instale a nova peça.",
+      "activateOnSceneId": "ch1_4_return_garage_upgrade",
+      "completeOnSceneId": null,
+      "chapter": "ch1"
+    },
+    {
+      "id": "m6_batismo_de_pista",
+      "nome": "Batismo de Pista",
+      "objetivo": "Corra no Circuito de Treino e termine a corrida.",
+      "activateOnSceneId": "ch1_5_first_race_unlocked",
+      "completeOnSceneId": "ch1_6_post_first_race_and_pixel",
+      "chapter": "ch1"
+    },
+    {
+      "id": "m7_olhos_no_painel",
+      "nome": "Olhos no Painel",
+      "objetivo": "Ouça o que Pixel tem a dizer sobre seu desempenho.",
+      "activateOnSceneId": "ch1_6_post_first_race_and_pixel",
+      "completeOnSceneId": "ch1_7_pixel_intro",
+      "chapter": "ch1"
+    },
+    {
+      "id": "m8_oferta_envenenada",
+      "nome": "Oferta Envenenada",
+      "objetivo": "Decida se aceita ou não o empréstimo do Barão.",
+      "activateOnSceneId": "ch2_2_barao_appears",
+      "completeOnSceneId": null,
+      "chapter": "ch2"
+    },
+    {
+      "id": "m9_peso_da_divida",
+      "nome": "Peso da Dívida",
+      "objetivo": "Use o crédito do Barão para melhorar seu carro sem deixar a dívida te engolir.",
+      "activateOnSceneId": "ch2_4_loan_accepted",
+      "completeOnSceneId": null,
+      "chapter": "ch2"
+    },
+    {
+      "id": "m10_portoes_do_cinturao",
+      "nome": "Portões do Cinturão",
+      "objetivo": "Desbloqueie e participe das corridas no Cinturão Industrial.",
+      "activateOnSceneId": "ch2_8_unlock_industrial",
+      "completeOnSceneId": null,
+      "chapter": "ch2"
+    },
+    {
+      "id": "m11_chamado_da_montanha",
+      "nome": "Chamado da Montanha",
+      "objetivo": "Suba até a montanha e encontre Akira.",
+      "activateOnSceneId": "ch3_1_crank_to_mountain",
+      "completeOnSceneId": "ch3_3_meet_akira",
+      "chapter": "ch3"
+    },
+    {
+      "id": "m12_fantasma_do_circuito",
+      "nome": "Fantasma do Circuito",
+      "objetivo": "Descubra o passado de Akira com Rex, o Barão e a Iron Howl.",
+      "activateOnSceneId": "ch3_3_meet_akira",
+      "completeOnSceneId": "ch3_4_akira_past",
+      "chapter": "ch3"
+    },
+    {
+      "id": "m13_teste_de_fluxo",
+      "nome": "Teste de Fluxo",
+      "objetivo": "Complete o Teste de Fluxo na montanha sob supervisão de Akira.",
+      "activateOnSceneId": "ch3_5_test_briefing",
+      "completeOnSceneId": "ch3_6_test_result",
+      "chapter": "ch3"
+    },
+    {
+      "id": "m14_tres_mundos",
+      "nome": "Três Mundos",
+      "objetivo": "Corra na Ferrugem, no Cinturão e na Montanha para aumentar sua reputação.",
+      "activateOnSceneId": "ch3_8_pixel_wrap",
+      "completeOnSceneId": null,
+      "chapter": "ch3"
+    },
+    {
+      "id": "m15_ruido_nos_servidores",
+      "nome": "Ruído nos Servidores",
+      "objetivo": "Descubra por que o Rex começou a prestar atenção em você.",
+      "activateOnSceneId": "ch4_1_pixel_rex_watch",
+      "completeOnSceneId": "ch4_2_rex_observes",
+      "chapter": "ch4"
+    },
+    {
+      "id": "m16_contatos_estranhos",
+      "nome": "Contatos Estranhos",
+      "objetivo": "Conheça Slick e Glub e desbloqueie novos tipos de upgrades.",
+      "activateOnSceneId": "ch4_4_meet_slick",
+      "completeOnSceneId": "ch4_5_meet_glub",
+      "chapter": "ch4"
+    },
+    {
+      "id": "m17_convite_da_coroa",
+      "nome": "Convite da Coroa",
+      "objetivo": "Aceite o Convite para o Circuito da Coroa enviado por Rex.",
+      "activateOnSceneId": "ch5_1_rex_invite_circuit",
+      "completeOnSceneId": "ch5_3_akira_reacts",
+      "chapter": "ch5"
+    },
+    {
+      "id": "m18_circo_da_coroa",
+      "nome": "Circo da Coroa",
+      "objetivo": "Complete as etapas 1, 2 e 3 do Circuito da Coroa.",
+      "activateOnSceneId": "ch5_5_stage1_intro",
+      "completeOnSceneId": "ch5_5_stage3_post",
+      "chapter": "ch5"
+    },
+    {
+      "id": "m19_jogo_do_rei",
+      "nome": "Jogo do Rei",
+      "objetivo": "Encare a corrida final do Circuito da Coroa sob o olhar de Rex.",
+      "activateOnSceneId": "ch5_6_pre_final_rex",
+      "completeOnSceneId": "ch5_7_post_final_epilogue",
+      "chapter": "ch5"
+    },
+    {
+      "id": "m20_tabuleiro_virado",
+      "nome": "Tabuleiro Virado",
+      "objetivo": "Decida que tipo de piloto você se tornou após o Circuito da Coroa.",
+      "activateOnSceneId": "ch5_7_post_final_epilogue",
+      "completeOnSceneId": "ch5_8_rex_close",
+      "chapter": "ch5"
+    }
+  ]
+}
+
