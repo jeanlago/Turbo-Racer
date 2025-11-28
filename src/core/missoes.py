@@ -96,6 +96,15 @@ class GerenciadorMissoes:
         if missao:
             return missao["objetivo"]
         return ""
+    
+    def obter_todas_missoes(self):
+        """Retorna todas as missões como uma lista ordenada por capítulo"""
+        missoes_lista = []
+        for missao_id, missao in self.missoes.items():
+            missoes_lista.append(missao)
+        # Ordenar por capítulo e depois por ID
+        missoes_lista.sort(key=lambda m: (m.get("chapter", "ch1"), m.get("id", "")))
+        return missoes_lista
 
 # Instância global
 gerenciador_missoes = GerenciadorMissoes()

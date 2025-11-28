@@ -173,6 +173,115 @@ python tools/test_narrative.py
 
 ---
 
+## Editor de Cenários (scenario_editor.py)
+
+### Descrição
+Ferramenta visual para definir hitboxes clicáveis com hover em cenários do jogo. Permite criar áreas interativas que exibem sprites de hover quando o mouse passa sobre elas.
+
+### Como Usar
+
+#### Execução
+```bash
+# Na pasta raiz do projeto
+python tools/scenario_editor.py
+```
+
+#### Controles
+
+**Teclado:**
+- `C` - Carregar cenário (seleciona de uma lista de cenários disponíveis)
+- `N` - Criar nova hitbox
+- `T` - Editar nome da hitbox selecionada
+- `H` - Editar sprite de hover (lista sprites de `assets/images/hover/`)
+- `A` - Editar ação (opcional, para definir ação ao clicar)
+- `DELETE` - Remover hitbox selecionada
+- `CTRL+S` - Salvar hitboxes
+- `ESC` - Desselecionar hitbox
+
+**Mouse:**
+- **Clique esquerdo**: Criar nova hitbox (modo criar) ou selecionar/arrastar hitbox
+- **Arrastar**: Mover hitbox selecionada
+- **Cantos**: Clicar e arrastar nos cantos para redimensionar hitbox
+- **Hover**: Visualização em tempo real de qual hitbox está sob o mouse
+
+### Funcionalidades
+
+#### Gerenciamento de Cenários
+- **Carregar cenários**: Lista todos os arquivos PNG/JPG da pasta `assets/images/ui/`
+- **Visualização**: Cenário é exibido centralizado e escalado para caber na tela
+- **Múltiplos cenários**: Cada cenário tem suas próprias hitboxes salvas separadamente
+
+#### Criação de Hitboxes
+- **Criar**: Pressione `N` e clique onde deseja criar a hitbox
+- **Mover**: Arraste a hitbox para reposicionar
+- **Redimensionar**: Clique e arraste nos cantos (indicados por círculos brancos)
+- **Visual**: Hitboxes são exibidas com overlay semi-transparente
+
+#### Sprites de Hover
+- **Associar**: Pressione `H` na hitbox selecionada para escolher um sprite
+- **Origem**: Sprites são carregados de `assets/images/hover/` (incluindo subpastas como `casa/`, `mapa/`, `rex/`)
+- **Caminho relativo**: Sprites são salvos com caminho relativo (`assets/images/hover/...`)
+
+#### Ações
+- **Definir ação**: Pressione `A` para definir uma ação opcional
+- **Uso**: Pode ser usado para definir comportamentos ao clicar na hitbox (ex: "abrir_menu", "mostrar_dialogo")
+
+### Arquivos
+
+#### Hitboxes Salvos
+- **Localização**: `data/scenario_hitboxes.json`
+- **Formato**: JSON organizado por cenário
+- **Estrutura**:
+```json
+{
+  "casa.png": [
+    {
+      "id": "cafe",
+      "nome": "Café",
+      "x": 100,
+      "y": 200,
+      "largura": 150,
+      "altura": 100,
+      "hover_sprite": "assets/images/hover/casa/casa_cafe.png",
+      "acao": "tomar_cafe"
+    }
+  ]
+}
+```
+
+### Exemplo de Uso
+
+1. **Execute a ferramenta**:
+   ```bash
+   python tools/scenario_editor.py
+   ```
+
+2. **Carregue um cenário**:
+   - Pressione `C`
+   - Escolha o número do cenário (ex: `casa.png`)
+
+3. **Crie hitboxes**:
+   - Pressione `N`
+   - Clique onde deseja criar a hitbox
+   - Arraste para mover, arraste cantos para redimensionar
+
+4. **Associe sprites de hover**:
+   - Selecione uma hitbox
+   - Pressione `H`
+   - Escolha o sprite de hover (ex: `casa/casa_cafe.png`)
+
+5. **Salve**:
+   - Pressione `CTRL+S` ou feche o editor (salva automaticamente)
+
+### Integração com o Jogo
+
+As hitboxes salvas podem ser carregadas no sistema de narrativa ou em outros sistemas do jogo para:
+- Exibir sprites de hover quando o mouse passa sobre áreas clicáveis
+- Detectar cliques em áreas específicas do cenário
+- Executar ações personalizadas baseadas na hitbox clicada
+
+---
+
 **Autor**: Turbo Racer Team  
 **Versão**: 1.0  
 **Data**: Janeiro 2025

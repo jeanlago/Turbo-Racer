@@ -308,8 +308,24 @@ class Rex:
                     self._avancar_dialogo()
                 return "processado"
             elif ev.type == pygame.JOYBUTTONDOWN:
-                # Botão do controle (X/A ou Options/Start para fechar)
-                if ev.button == 0 or ev.button == 6:  # X/A ou Options/Start
+                # Detectar tipo de controle
+                from core.gamepad_manager import gerenciador_gamepad
+                tipo_controle = "generic"
+                if ev.joy < len(gerenciador_gamepad.joysticks):
+                    tipo_controle = gerenciador_gamepad._detectar_tipo_controle(ev.joy)
+                
+                # PS5/PS4: botão 0 = X (confirmar), botão 6 = Share, botão 8/9 = Options
+                # Xbox: botão 0 = A (confirmar), botão 6 = Back, botão 7 = Start
+                botao_confirmar = (ev.button == 0)  # X/A
+                botao_pausa = False
+                if tipo_controle == "xbox":
+                    botao_pausa = (ev.button == 6 or ev.button == 7)  # Back ou Start
+                elif tipo_controle in ["ps5", "ps4"]:
+                    botao_pausa = (ev.button == 6 or ev.button == 8 or ev.button == 9)  # Share ou Options
+                else:
+                    botao_pausa = (ev.button == 6)  # Fallback genérico
+                
+                if botao_confirmar or botao_pausa:  # X/A ou Options/Start/Back
                     if len(self.texto_exibido) < len(self.texto_completo):
                         # Completar animação de texto
                         self._completar_animacao_texto()

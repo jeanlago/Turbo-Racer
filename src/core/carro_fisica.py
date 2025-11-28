@@ -362,6 +362,15 @@ class CarroFisica:
         # direção desejada
         steer_input = -1.0 if direita else (1.0 if esquerda else 0.0)
         
+        # Aplicar multiplicador de controle baseado no sono
+        try:
+            from core.status_jogador import status_jogador
+            multiplicador_controle = status_jogador.obter_multiplicador_controle()
+            steer_input *= multiplicador_controle
+        except Exception as e:
+            # Se houver erro, usar controle normal (multiplicador 1.0)
+            pass
+        
         # Inverter direção em ré para comportamento intuitivo
         # Quando está de ré, virar para direita deve fazer o carro ir para direita
         # IMPORTANTE: Só inverter quando REALMENTE estiver em ré (v_long < 0.0)

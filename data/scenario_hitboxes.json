@@ -1,0 +1,108 @@
+{
+  "casa.png": [
+    {
+      "id": "geladeira",
+      "nome": "geladeira",
+      "x": 573,
+      "y": 321,
+      "largura": 102,
+      "altura": 211,
+      "hover_sprite": "assets\\images\\hover\\casa/casa_geladeira.png"
+    },
+    {
+      "id": "sofa",
+      "nome": "sofa",
+      "x": 45,
+      "y": 440,
+      "largura": 320,
+      "altura": 230,
+      "hover_sprite": "assets\\images\\hover\\casa/casa_sofa.png"
+    },
+    {
+      "id": "tv",
+      "nome": "tv",
+      "x": 374,
+      "y": 495,
+      "largura": 200,
+      "altura": 220,
+      "hover_sprite": "assets\\images\\hover\\casa/casa_tv.png"
+    },
+    {
+      "id": "pc",
+      "nome": "pc",
+      "x": 829,
+      "y": 368,
+      "largura": 224,
+      "altura": 203,
+      "hover_sprite": "assets\\images\\hover\\casa/casa_pc.png"
+    },
+    {
+      "id": "cama",
+      "nome": "cama",
+      "x": 784,
+      "y": 157,
+      "largura": 333,
+      "altura": 113,
+      "hover_sprite": "assets\\images\\hover\\casa/casa_cama.png"
+    },
+    {
+      "id": "cafeteira",
+      "nome": "cafeteira",
+      "x": 677,
+      "y": 312,
+      "largura": 71,
+      "altura": 101,
+      "hover_sprite": "assets\\images\\hover\\casa/casa_cafe.png"
+    }
+  ],
+  "cidade_dia.png": [
+    {
+      "id": "casa",
+      "nome": "casa",
+      "x": 614,
+      "y": 384,
+      "largura": 120,
+      "altura": 125
+    },
+    {
+      "id": "fabrica",
+      "nome": "fabrica",
+      "x": 69,
+      "y": 451,
+      "largura": 185,
+      "altura": 106
+    },
+    {
+      "id": "montanha",
+      "nome": "montanha",
+      "x": 133,
+      "y": 157,
+      "largura": 120,
+      "altura": 80
+    },
+    {
+      "id": "autodromo",
+      "nome": "autodromo",
+      "x": 535,
+      "y": 137,
+      "largura": 120,
+      "altura": 80
+    },
+    {
+      "id": "torre",
+      "nome": "torre",
+      "x": 965,
+      "y": 43,
+      "largura": 87,
+      "altura": 137
+    },
+    {
+      "id": "iate",
+      "nome": "iate",
+      "x": 1080,
+      "y": 539,
+      "largura": 120,
+      "altura": 80
+    }
+  ]
+}

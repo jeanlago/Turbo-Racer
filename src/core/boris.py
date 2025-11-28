@@ -15,16 +15,18 @@ def _get_render_text():
 
 CAMINHO_BORIS_DATA = os.path.join(DIR_PROJETO, "data", "boris.json")
 
-# Caminhos dos sprites
+# Caminhos dos sprites (usando os nomes reais dos arquivos)
 CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "boris")
-SPRITE_TRABALHANDO = os.path.join(CAMINHO_SPRITES, "trabalhando.png")
-SPRITE_RABUGENTO = os.path.join(CAMINHO_SPRITES, "rabugento.png")
-SPRITE_NEUTRO = os.path.join(CAMINHO_SPRITES, "neutro.png")
-SPRITE_AMEAÇADOR = os.path.join(CAMINHO_SPRITES, "ameaçador.png")
-SPRITE_CONVENCIDO = os.path.join(CAMINHO_SPRITES, "convencido.png")
+SPRITE_TRABALHANDO = os.path.join(CAMINHO_SPRITES, "boris_.png")  # Fallback: usar sprite base
+SPRITE_RABUGENTO = os.path.join(CAMINHO_SPRITES, "boris_irritado_leve.png")  # Usar irritado como rabugento
+SPRITE_NEUTRO = os.path.join(CAMINHO_SPRITES, "boris_neutro.png")
+SPRITE_AMEAÇADOR = os.path.join(CAMINHO_SPRITES, "boris_ameacador.png")  # Sem acento no arquivo
+SPRITE_CONVENCIDO = os.path.join(CAMINHO_SPRITES, "boris_persuasivo.png")  # Usar persuasivo como convencido
 
-# Caminho do fundo
-CAMINHO_FABRICA = os.path.join(DIR_PROJETO, "assets", "images", "ui", "fabrica.png")
+# Caminho do fundo (será obtido dinamicamente com dia/noite)
+def obter_caminho_fabrica():
+    from config import obter_caminho_sprite_dia_noite
+    return obter_caminho_sprite_dia_noite("fabrica")
 
 class Boris:
     """Boris - O Sucateiro Ciborgue que vende peças com preços variáveis"""
@@ -87,22 +89,51 @@ class Boris:
             return
         
         try:
+            print(f"[BORIS] Carregando sprites...")
             if os.path.exists(SPRITE_TRABALHANDO):
                 self.sprite_trabalhando = pygame.image.load(SPRITE_TRABALHANDO).convert_alpha()
+                print(f"[BORIS] ✓ Sprite trabalhando carregado")
+            else:
+                print(f"[BORIS] ✗ Sprite trabalhando não encontrado: {SPRITE_TRABALHANDO}")
+            
             if os.path.exists(SPRITE_RABUGENTO):
                 self.sprite_rabugento = pygame.image.load(SPRITE_RABUGENTO).convert_alpha()
+                print(f"[BORIS] ✓ Sprite rabugento carregado")
+            else:
+                print(f"[BORIS] ✗ Sprite rabugento não encontrado: {SPRITE_RABUGENTO}")
+            
             if os.path.exists(SPRITE_NEUTRO):
                 self.sprite_neutro = pygame.image.load(SPRITE_NEUTRO).convert_alpha()
+                print(f"[BORIS] ✓ Sprite neutro carregado")
+            else:
+                print(f"[BORIS] ✗ Sprite neutro não encontrado: {SPRITE_NEUTRO}")
+            
             if os.path.exists(SPRITE_AMEAÇADOR):
                 self.sprite_ameaçador = pygame.image.load(SPRITE_AMEAÇADOR).convert_alpha()
+                print(f"[BORIS] ✓ Sprite ameaçador carregado")
+            else:
+                print(f"[BORIS] ✗ Sprite ameaçador não encontrado: {SPRITE_AMEAÇADOR}")
+            
             if os.path.exists(SPRITE_CONVENCIDO):
                 self.sprite_convencido = pygame.image.load(SPRITE_CONVENCIDO).convert_alpha()
+                print(f"[BORIS] ✓ Sprite convencido carregado")
+            else:
+                print(f"[BORIS] ✗ Sprite convencido não encontrado: {SPRITE_CONVENCIDO}")
+            
+            CAMINHO_FABRICA = obter_caminho_fabrica()
+            print(f"[BORIS] Tentando carregar fundo da fábrica: {CAMINHO_FABRICA}")
             if os.path.exists(CAMINHO_FABRICA):
                 self.sprite_fundo = pygame.image.load(CAMINHO_FABRICA).convert_alpha()
+                print(f"[BORIS] ✓ Fundo da fábrica carregado: {self.sprite_fundo.get_size()}")
+            else:
+                print(f"[BORIS] ✗ Fundo da fábrica não encontrado: {CAMINHO_FABRICA}")
             
             self.sprites_carregados = True
+            print(f"[BORIS] Sprites carregados: trabalhando={self.sprite_trabalhando is not None}, rabugento={self.sprite_rabugento is not None}, fundo={self.sprite_fundo is not None}")
         except Exception as e:
-            print(f"Erro ao carregar sprites do Boris: {e}")
+            print(f"[BORIS] Erro ao carregar sprites: {e}")
+            import traceback
+            traceback.print_exc()
     
     def verificar_aparecer_primeira_vez(self):
         """Verifica se deve mostrar a primeira aparição do Boris"""
@@ -165,17 +196,40 @@ class Boris:
             
             # Definir sprite
             sprite_nome = parte.get("sprite", "rabugento")
+            print(f"[BORIS] Definindo sprite: {sprite_nome} (parte {self.parte_cutscene})")
+            
             if sprite_nome == "trabalhando" and self.sprite_trabalhando:
                 self.sprite_atual = self.sprite_trabalhando
+                print(f"[BORIS] ✓ Sprite atual definido como trabalhando")
             elif sprite_nome == "rabugento" and self.sprite_rabugento:
                 self.sprite_atual = self.sprite_rabugento
+                print(f"[BORIS] ✓ Sprite atual definido como rabugento")
             elif sprite_nome == "ameaçador" and self.sprite_ameaçador:
                 self.sprite_atual = self.sprite_ameaçador
+                print(f"[BORIS] ✓ Sprite atual definido como ameaçador")
             elif sprite_nome == "convencido" and self.sprite_convencido:
                 self.sprite_atual = self.sprite_convencido
+                print(f"[BORIS] ✓ Sprite atual definido como convencido")
             else:
-                # Fallback
-                self.sprite_atual = self.sprite_rabugento if self.sprite_rabugento else self.sprite_neutro
+                # Fallback: tentar qualquer sprite disponível
+                if self.sprite_rabugento:
+                    self.sprite_atual = self.sprite_rabugento
+                    print(f"[BORIS] ⚠ Usando fallback rabugento para sprite: {sprite_nome}")
+                elif self.sprite_neutro:
+                    self.sprite_atual = self.sprite_neutro
+                    print(f"[BORIS] ⚠ Usando fallback neutro para sprite: {sprite_nome}")
+                elif self.sprite_trabalhando:
+                    self.sprite_atual = self.sprite_trabalhando
+                    print(f"[BORIS] ⚠ Usando fallback trabalhando para sprite: {sprite_nome}")
+                elif self.sprite_ameaçador:
+                    self.sprite_atual = self.sprite_ameaçador
+                    print(f"[BORIS] ⚠ Usando fallback ameaçador para sprite: {sprite_nome}")
+                elif self.sprite_convencido:
+                    self.sprite_atual = self.sprite_convencido
+                    print(f"[BORIS] ⚠ Usando fallback convencido para sprite: {sprite_nome}")
+                else:
+                    self.sprite_atual = None
+                    print(f"[BORIS] ✗ ERRO: Nenhum sprite disponível para {sprite_nome}!")
             
             # Definir texto
             texto = parte.get("texto", "")
@@ -360,7 +414,14 @@ class Boris:
         
         render_text = _get_render_text()
         
-        # Desenhar fundo
+        # Desenhar fundo (sempre recarregar para suportar mudanças dia/noite)
+        CAMINHO_FABRICA = obter_caminho_fabrica()
+        if os.path.exists(CAMINHO_FABRICA):
+            try:
+                self.sprite_fundo = pygame.image.load(CAMINHO_FABRICA).convert_alpha()
+            except Exception as e:
+                print(f"[BORIS] Erro ao recarregar fundo: {e}")
+        
         if self.sprite_fundo:
             # Redimensionar fundo para caber na tela
             fundo_w, fundo_h = self.sprite_fundo.get_size()
@@ -368,6 +429,7 @@ class Boris:
             tela.blit(fundo_redimensionado, (0, 0))
         else:
             # Fallback: overlay escuro
+            print(f"[BORIS] AVISO: sprite_fundo é None, usando fallback. Caminho tentado: {CAMINHO_FABRICA}")
             overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 200))
             tela.blit(overlay, (0, 0))
@@ -384,6 +446,8 @@ class Boris:
             # Mesma altura do Rex
             sprite_y = ALTURA // 2 - sprite_novo_h // 2 - 50
             tela.blit(sprite_redimensionado, (sprite_x, sprite_y))
+        else:
+            print(f"[BORIS] AVISO: sprite_atual é None! fase_dialogo={self.fase_dialogo}, parte_cutscene={self.parte_cutscene}")
         
         # Desenhar caixa de diálogo
         caixa_largura = 1000

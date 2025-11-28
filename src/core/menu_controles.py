@@ -241,28 +241,36 @@ def processar_eventos_controle_menu(ev, opcao_atual, num_opcoes, joystick_id=0, 
     
     elif ev.type == pygame.JOYBUTTONDOWN:
         if ev.joy == joystick_id:
-            # PS4/PS5: Botão 0 = X, Botão 1 = Círculo, Botão 2 = Quadrado, Botão 3 = Triângulo
+            # Detectar tipo de controle para mapeamento correto
+            from core.gamepad_manager import gerenciador_gamepad
+            tipo_controle = "generic"
+            if joystick_id < len(gerenciador_gamepad.joysticks):
+                tipo_controle = gerenciador_gamepad._detectar_tipo_controle(joystick_id)
+            
+            # Mapeamento de botões baseado no tipo de controle
+            # PS5/PS4: Botão 0 = X (Cross), Botão 1 = Círculo, Botão 2 = Quadrado, Botão 3 = Triângulo
             # Xbox: Botão 0 = A, Botão 1 = B, Botão 2 = X, Botão 3 = Y
             # Botão 0 (X/A) = Confirmar
             # Botão 1 (Círculo/B) = Cancelar/Voltar
             
-            # PS4/PS5 D-pad como botões (quando não há hats):
+            # PS5/PS4 D-pad como botões (quando não há hats):
             # Botão 11 = D-pad Up
             # Botão 12 = D-pad Down
             # Botão 13 = D-pad Left
             # Botão 14 = D-pad Right
             
-            if ev.button == 0:  # X/A - Confirmar
+            # Xbox D-pad geralmente usa hats, mas alguns drivers podem usar botões
+            
+            if ev.button == 0:  # X (PS5/PS4) / A (Xbox) - Confirmar
                 return {"acao": "confirmar"}
-            elif ev.button == 1:  # Círculo/B - Cancelar/Voltar
+            elif ev.button == 1:  # Círculo (PS5/PS4) / B (Xbox) - Cancelar/Voltar
                 return {"acao": "cancelar"}
-            elif ev.button == 2:  # Quadrado/X - Alternativa
+            elif ev.button == 2:  # Quadrado (PS5/PS4) / X (Xbox) - Alternativa
                 return {"acao": "alternativa"}
-            # L1/R1 para troca de carros na oficina
-            # PS5/PS4: L1 = botão 4, R1 = botão 5
-            # Xbox: L1 = botão 4, R1 = botão 5
-            # Alguns controles: L1 = botão 9, R1 = botão 10
-            elif ev.button == 4:  # L1 (PS5/PS4/Xbox) - Carro anterior (na oficina)
+            # L1/LB para troca de carros na oficina
+            # PS5/PS4: L1 = botão 4
+            # Xbox: LB = botão 4
+            elif ev.button == 4:  # L1/LB (PS5/PS4/Xbox) - Carro anterior (na oficina)
                 # Usar chave de debounce específica para L1/R1 para não interferir com outras ações
                 chave_debounce_l1r1 = f"{joystick_id}_l1r1"
                 # Verificar debounce antes de processar
@@ -338,10 +346,27 @@ def processar_eventos_controle_menu(ev, opcao_atual, num_opcoes, joystick_id=0, 
                         return {"acao": "direita", "opcao": (opcao_atual + 1) % num_opcoes, "fonte": "dpad"}
                     else:
                         return {"acao": "direita", "fonte": "dpad"}
-            elif ev.button == 6:  # PS5 Share button / Alguns controles - Pausar (fallback)
-                return {"acao": "pausar"}
+            # Botões de menu/pausa
+            elif ev.button == 6:  # Share (PS5) / Back (Xbox) - Pausar
+                # Xbox: botão 6 = Back (View button)
+                if tipo_controle == "xbox":
+                    return {"acao": "pausar"}
+                # PS5: botão 6 = Share (pausar)
+                elif tipo_controle in ["ps5", "ps4"]:
+                    return {"acao": "pausar"}
+                # Fallback genérico
+                else:
+                    return {"acao": "pausar"}
+            elif ev.button == 7:  # Options (PS5) / Start (Xbox) - Pausar
+                # Xbox: botão 7 = Start
+                if tipo_controle == "xbox":
+                    return {"acao": "pausar"}
+                # PS5: pode ser Options em alguns drivers
+                elif tipo_controle in ["ps5", "ps4"]:
+                    return {"acao": "pausar"}
             elif ev.button == 8:  # PS5 Options button (alguns drivers) - Pausar
-                return {"acao": "pausar"}
+                if tipo_controle in ["ps5", "ps4"]:
+                    return {"acao": "pausar"}
             # Botão 9 já foi tratado acima (pode ser Options para PS5/PS4 ou L1 para outros)
     
     return None

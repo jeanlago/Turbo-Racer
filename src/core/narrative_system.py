@@ -60,10 +60,27 @@ class NarrativeSystem:
         self.time_skip_fade_alpha = 0.0
         self.time_skip_fade_direction = 1  # 1 = fade in (escurecendo), -1 = fade out (clareando)
         self.time_skip_duration = 0.0
-        self.time_skip_total_duration = 2.5  # Duração total do fade (segundos)
+        self.time_skip_total_duration = 7.5  # Duração total do fade (7.5 segundos: 3s escurecendo, 1.5s escuro, 3s clareando)
+        
+        # Estado de transição de cena
+        self.scene_transition_active = False
+        self.scene_transition_fade_alpha = 0.0
+        self.scene_transition_fade_direction = 1  # 1 = fade in (escurecendo), -1 = fade out (clareando)
+        self.scene_transition_duration = 0.0
+        self.scene_transition_next_scene_id = None  # ID da próxima cena a carregar
+        self.scene_transition_tempo_fade = 0.3  # 0.3s para escurecer
+        self.scene_transition_tempo_escuro = 0.1  # 0.1s escuro
+        self.scene_transition_tempo_clarear = 0.3  # 0.3s para clarear
+        
+        # Sistema de hover
+        self.scenario_hitboxes = {}  # Hitboxes por cenário
+        self.hover_hitbox_atual = None  # Hitbox em hover no momento
+        self.hover_sprite_atual = None  # Sprite de hover carregado
         
         # Carregar narrativa
         self.carregar_narrativa()
+        # Carregar hitboxes de cenários
+        self.carregar_hitboxes_cenarios()
     
     def carregar_narrativa(self):
         """Carrega o arquivo JSON de narrativa"""
@@ -97,7 +114,21 @@ class NarrativeSystem:
         return False
     
     def iniciar_cena(self, scene_id: str):
-        """Inicia uma cena específica"""
+        """Inicia uma cena específica (com transição de fade se já houver uma cena ativa)"""
+        # Se já houver uma cena ativa, usar transição
+        if self.current_scene_id and self.current_scene_id != scene_id:
+            self.scene_transition_active = True
+            self.scene_transition_fade_alpha = 0.0
+            self.scene_transition_fade_direction = 1  # Começar escurecendo
+            self.scene_transition_duration = 0.0
+            self.scene_transition_next_scene_id = scene_id
+            return True
+        
+        # Se não houver cena ativa, carregar diretamente
+        return self._iniciar_cena_sem_transicao(scene_id)
+    
+    def _iniciar_cena_sem_transicao(self, scene_id: str):
+        """Inicia uma cena específica sem transição (usado internamente durante fade)"""
         if not self.narrative_data or not self.current_chapter_id:
             return False
         
@@ -149,16 +180,36 @@ class NarrativeSystem:
         
         return True
     
-    def _carregar_background(self, bg_name: str):
-        """Carrega um background"""
-        if bg_name in self.backgrounds:
-            return
-        
+    def carregar_hitboxes_cenarios(self):
+        """Carrega hitboxes de cenários do arquivo JSON"""
+        caminho_hitboxes = os.path.join(DIR_PROJETO, "data", "scenario_hitboxes.json")
+        if os.path.exists(caminho_hitboxes):
+            try:
+                with open(caminho_hitboxes, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    # Normalizar caminhos (Windows usa \ mas JSON pode ter /)
+                    for cenario, hitboxes in data.items():
+                        self.scenario_hitboxes[cenario] = []
+                        for hb in hitboxes:
+                            # Normalizar caminho do hover_sprite
+                            if hb.get("hover_sprite"):
+                                hover_path = hb["hover_sprite"].replace("\\", "/")
+                                hb["hover_sprite"] = hover_path
+                            self.scenario_hitboxes[cenario].append(hb)
+                print(f"✓ Carregadas hitboxes de {len(self.scenario_hitboxes)} cenários")
+            except Exception as e:
+                print(f"Erro ao carregar hitboxes de cenários: {e}")
+                self.scenario_hitboxes = {}
+        else:
+            self.scenario_hitboxes = {}
+    
+    def _obter_arquivo_cenario(self, bg_name: str) -> Optional[str]:
+        """Obtém o nome do arquivo do cenário baseado no bg_name"""
         # Mapeamento de nomes de background para arquivos
         bg_mapping = {
             "bg_rua_chuva": "cidade.png",
             "bg_garagem": "oficina.png",
-            "bg_garagem_noite": "oficina.png",  # TODO: criar versão noturna
+            "bg_garagem_noite": "oficina.png",
             "bg_fosso_ferrugem": "fabrica.png",
             "bg_mapa_cidade": "cidade.png",
             "bg_santuario_montanha": "monte_akira.png",
@@ -172,11 +223,86 @@ class NarrativeSystem:
             "bg_circuito_hibrido": "cidade.png",
             "bg_camarim_circuito": "predio_rex.png",
             "bg_podio": "autodromo_fora.png",
-            "bg_torre_alta": "predio_rex.png"
+            "bg_torre_alta": "predio_rex.png",
+            "nissan_350z_inicial_noite": "nissan_350z_inicial_noite.png"
         }
+        return bg_mapping.get(bg_name)
+    
+    def _verificar_hover_hitbox(self, mouse_x: int, mouse_y: int):
+        """Verifica se o mouse está sobre uma hitbox e atualiza o hover"""
+        scene = self._obter_cena_atual()
+        if not scene:
+            self.hover_hitbox_atual = None
+            self.hover_sprite_atual = None
+            return
         
-        filename = bg_mapping.get(bg_name, "cidade.png")
-        bg_path = os.path.join(CAMINHO_BACKGROUNDS, filename)
+        bg_name = scene.get("bg")
+        if not bg_name:
+            self.hover_hitbox_atual = None
+            self.hover_sprite_atual = None
+            return
+        
+        # Obter arquivo do cenário
+        arquivo_cenario = self._obter_arquivo_cenario(bg_name)
+        if not arquivo_cenario or arquivo_cenario not in self.scenario_hitboxes:
+            self.hover_hitbox_atual = None
+            self.hover_sprite_atual = None
+            return
+        
+        # Verificar hitboxes do cenário
+        hitboxes = self.scenario_hitboxes[arquivo_cenario]
+        hitbox_encontrada = None
+        
+        for hb in hitboxes:
+            rect = pygame.Rect(hb["x"], hb["y"], hb["largura"], hb["altura"])
+            if rect.collidepoint(mouse_x, mouse_y):
+                hitbox_encontrada = hb
+                break
+        
+        # Se mudou a hitbox em hover, carregar novo sprite
+        if hitbox_encontrada != self.hover_hitbox_atual:
+            self.hover_hitbox_atual = hitbox_encontrada
+            self.hover_sprite_atual = None
+            
+            if hitbox_encontrada and hitbox_encontrada.get("hover_sprite"):
+                from config import obter_caminho_hover_dia_noite
+                hover_path_original = os.path.join(DIR_PROJETO, hitbox_encontrada["hover_sprite"])
+                # Tentar carregar versão dia/noite
+                hover_path = obter_caminho_hover_dia_noite(hover_path_original)
+                if os.path.exists(hover_path):
+                    try:
+                        self.hover_sprite_atual = pygame.image.load(hover_path).convert_alpha()
+                        # Redimensionar para caber na tela (mesmo tamanho do background)
+                        if self.hover_sprite_atual:
+                            self.hover_sprite_atual = pygame.transform.scale(
+                                self.hover_sprite_atual, (LARGURA, ALTURA)
+                            )
+                    except Exception as e:
+                        print(f"Erro ao carregar sprite de hover: {e}")
+                        self.hover_sprite_atual = None
+                else:
+                    print(f"AVISO: Sprite de hover não encontrado: {hover_path}")
+    
+    def _carregar_background(self, bg_name: str):
+        """Carrega um background"""
+        if bg_name in self.backgrounds:
+            return
+        
+        arquivo_cenario = self._obter_arquivo_cenario(bg_name)
+        if not arquivo_cenario:
+            arquivo_cenario = "cidade.png"
+        
+        # Usar sistema de dia/noite para sprites que suportam
+        from config import obter_caminho_sprite_dia_noite
+        nome_base = os.path.splitext(arquivo_cenario)[0]  # Remove extensão
+        
+        # Lista de sprites que suportam dia/noite
+        sprites_dia_noite = ["cidade", "oficina", "casa", "monte_akira", "autodromo_fora", "fabrica", "predio_rex"]
+        
+        if nome_base in sprites_dia_noite:
+            bg_path = obter_caminho_sprite_dia_noite(nome_base, CAMINHO_BACKGROUNDS)
+        else:
+            bg_path = os.path.join(CAMINHO_BACKGROUNDS, arquivo_cenario)
         
         if os.path.exists(bg_path):
             try:
@@ -474,7 +600,12 @@ class NarrativeSystem:
             return None
         
         for evento in eventos:
-            if evento.type == pygame.MOUSEBUTTONDOWN:
+            if evento.type == pygame.MOUSEMOTION:
+                # Verificar hover sobre hitboxes
+                mouse_x, mouse_y = evento.pos
+                self._verificar_hover_hitbox(mouse_x, mouse_y)
+            
+            elif evento.type == pygame.MOUSEBUTTONDOWN:
                 if evento.button == 1:  # Botão esquerdo
                     if self.choices_visible:
                         # Processar clique em escolha
@@ -491,8 +622,8 @@ class NarrativeSystem:
                                     self._processar_escolha(choice)
                                     return None
                     else:
-                        # Durante time-skip, não processar cliques (aguardar fade completar)
-                        if self.time_skip_active:
+                        # Durante time-skip ou transição de cena, não processar cliques (aguardar fade completar)
+                        if self.time_skip_active or self.scene_transition_active:
                             return None
                         # Pular animação de texto ou avançar linha
                         if len(self.texto_exibido) < len(self.texto_completo):
@@ -511,8 +642,8 @@ class NarrativeSystem:
                             if 0 <= self.selected_choice < len(choices):
                                 self._processar_escolha(choices[self.selected_choice])
                     else:
-                        # Durante time-skip, não processar teclas (aguardar fade completar)
-                        if self.time_skip_active:
+                        # Durante time-skip ou transição de cena, não processar teclas (aguardar fade completar)
+                        if self.time_skip_active or self.scene_transition_active:
                             return None
                         # Pular animação de texto ou avançar linha
                         if len(self.texto_exibido) < len(self.texto_completo):
@@ -548,10 +679,15 @@ class NarrativeSystem:
         for effect in effects:
             self._processar_efeito(effect)
         
-        # Avançar para próxima cena
+        # Avançar para próxima cena (com transição)
         next_scene_id = choice.get("nextSceneId")
         if next_scene_id:
-            self.iniciar_cena(next_scene_id)
+            # Iniciar transição de cena (fade escuro)
+            self.scene_transition_active = True
+            self.scene_transition_fade_alpha = 0.0
+            self.scene_transition_fade_direction = 1  # Começar escurecendo
+            self.scene_transition_duration = 0.0
+            self.scene_transition_next_scene_id = next_scene_id
         else:
             self.choices_visible = False
             self.current_line_index += 1
@@ -608,20 +744,59 @@ class NarrativeSystem:
         if not self.active:
             return
         
+        # Atualizar transição de cena se ativa (prioridade sobre time-skip)
+        if self.scene_transition_active:
+            self.scene_transition_duration += dt
+            
+            tempo_fade_in = self.scene_transition_tempo_fade
+            tempo_escuro = self.scene_transition_tempo_escuro
+            tempo_fade_out = self.scene_transition_tempo_clarear
+            
+            fade_speed_in = 1.0 / tempo_fade_in if tempo_fade_in > 0 else 1.0
+            fade_speed_out = 1.0 / tempo_fade_out if tempo_fade_out > 0 else 1.0
+            
+            if self.scene_transition_fade_direction == 1:  # Fade in (escurecendo)
+                self.scene_transition_fade_alpha += fade_speed_in * dt
+                if self.scene_transition_fade_alpha >= 1.0:
+                    self.scene_transition_fade_alpha = 1.0
+                    # Aguardar tempo escuro antes de carregar nova cena e clarear
+                    if self.scene_transition_duration >= tempo_fade_in + tempo_escuro:
+                        # Carregar nova cena quando estiver completamente escuro
+                        if self.scene_transition_next_scene_id:
+                            # Carregar cena sem fade (já estamos no fade)
+                            self._iniciar_cena_sem_transicao(self.scene_transition_next_scene_id)
+                            self.scene_transition_next_scene_id = None
+                        # Começar a clarear
+                        self.scene_transition_fade_direction = -1
+            else:  # Fade out (clareando)
+                self.scene_transition_fade_alpha -= fade_speed_out * dt
+                if self.scene_transition_fade_alpha <= 0.0:
+                    self.scene_transition_fade_alpha = 0.0
+                    # Transição completa
+                    self.scene_transition_active = False
+            return  # Não atualizar outras coisas durante transição
+        
         # Atualizar time-skip se ativo
         if self.time_skip_active:
             self.time_skip_duration += dt
-            fade_speed = 1.0 / (self.time_skip_total_duration / 2.0)  # Metade do tempo para fade in, metade para fade out
+            
+            # Distribuição do tempo: 3s escurecendo, 1.5s escuro, 3s clareando (total 7.5s)
+            tempo_fade_in = 3.0  # Tempo para escurecer completamente
+            tempo_escuro = 1.5   # Tempo mantendo escuro
+            tempo_fade_out = 3.0 # Tempo para clarear completamente
+            
+            fade_speed_in = 1.0 / tempo_fade_in   # Velocidade de fade in
+            fade_speed_out = 1.0 / tempo_fade_out # Velocidade de fade out
             
             if self.time_skip_fade_direction == 1:  # Fade in (escurecendo)
-                self.time_skip_fade_alpha += fade_speed * dt
+                self.time_skip_fade_alpha += fade_speed_in * dt
                 if self.time_skip_fade_alpha >= 1.0:
                     self.time_skip_fade_alpha = 1.0
-                    # Aguardar um pouco antes de começar a clarear
-                    if self.time_skip_duration >= self.time_skip_total_duration / 2.0:
+                    # Aguardar tempo escuro antes de começar a clarear
+                    if self.time_skip_duration >= tempo_fade_in + tempo_escuro:
                         self.time_skip_fade_direction = -1  # Começar a clarear
             else:  # Fade out (clareando)
-                self.time_skip_fade_alpha -= fade_speed * dt
+                self.time_skip_fade_alpha -= fade_speed_out * dt
                 if self.time_skip_fade_alpha <= 0.0:
                     self.time_skip_fade_alpha = 0.0
                     # Time-skip completo, avançar para próxima linha
@@ -648,6 +823,10 @@ class NarrativeSystem:
                 overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
                 overlay.fill((0, 0, 0, 200))
                 tela.blit(overlay, (0, 0))
+        
+        # Desenhar sprite de hover se houver (sobre o background, antes dos personagens)
+        if self.hover_sprite_atual:
+            tela.blit(self.hover_sprite_atual, (0, 0))
         
         # Desenhar sprites dos personagens
         for sprite_id, sprite_data in self.scene_sprites.items():
@@ -704,8 +883,16 @@ class NarrativeSystem:
             # Desenhar sprite
             tela.blit(sprite_scaled, (sprite_x, sprite_y))
         
-        # Desenhar time-skip se ativo (sobrepõe tudo)
-        if self.time_skip_active:
+        # Desenhar transição de cena se ativa (prioridade sobre time-skip)
+        if self.scene_transition_active:
+            # Overlay escuro com fade
+            overlay_escuro = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+            alpha = int(self.scene_transition_fade_alpha * 255)
+            overlay_escuro.fill((0, 0, 0, alpha))
+            tela.blit(overlay_escuro, (0, 0))
+        
+        # Desenhar time-skip se ativo (sobrepõe tudo, mas não durante transição de cena)
+        elif self.time_skip_active:
             # Overlay escuro com fade
             overlay_escuro = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
             alpha = int(self.time_skip_fade_alpha * 255)
@@ -731,8 +918,8 @@ class NarrativeSystem:
                     tela.blit(fundo_texto, (texto_x - 20, texto_y - 10))
                     tela.blit(texto_render, (texto_x, texto_y))
         
-        # Desenhar caixa de diálogo (não desenhar durante time-skip)
-        if not self.time_skip_active:
+        # Desenhar caixa de diálogo (não desenhar durante time-skip ou transição de cena)
+        if not self.time_skip_active and not self.scene_transition_active:
             if not self.choices_visible:
                 self._desenhar_dialogo(tela, render_text)
             else:

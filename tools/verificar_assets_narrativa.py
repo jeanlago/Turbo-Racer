@@ -13,7 +13,7 @@ from collections import defaultdict
 # Adicionar o diretório src ao path
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 
-from config import DIR_PROJETO
+from config import DIR_PROJETO, obter_caminho_sprite_dia_noite, definir_estado_dia_noite
 
 CAMINHO_NARRATIVA = os.path.join(DIR_PROJETO, "data", "narrative.json")
 CAMINHO_BACKGROUNDS = os.path.join(DIR_PROJETO, "assets", "images", "ui")
@@ -77,6 +77,9 @@ def main():
                     character_id = speaker.lower()
                     sprites_usados[character_id].add(sprite_name)
     
+    # Lista de sprites que suportam dia/noite (baseado no código)
+    sprites_dia_noite = ["cidade", "oficina", "casa", "monte_akira", "autodromo_fora", "fabrica", "predio_rex", "iate_barao", "bunker"]
+    
     # Verificar backgrounds
     print("=" * 60)
     print("BACKGROUNDS")
@@ -86,13 +89,109 @@ def main():
     
     for bg_name in sorted(backgrounds_usados):
         filename = BG_MAPPING.get(bg_name, "cidade.png")
-        bg_path = os.path.join(CAMINHO_BACKGROUNDS, filename)
-        if os.path.exists(bg_path):
-            backgrounds_existentes.append((bg_name, filename))
-            print(f"[OK] {bg_name} -> {filename}")
+        nome_base = os.path.splitext(filename)[0]  # Remove extensão
+        
+        # Verificar se o sprite suporta dia/noite
+        if nome_base in sprites_dia_noite:
+            # Usar sistema dia/noite
+            definir_estado_dia_noite('dia')
+            caminho_dia = obter_caminho_sprite_dia_noite(nome_base, CAMINHO_BACKGROUNDS)
+            definir_estado_dia_noite('noite')
+            caminho_noite = obter_caminho_sprite_dia_noite(nome_base, CAMINHO_BACKGROUNDS)
+            
+            # Considerar existente se pelo menos uma versão existir
+            dia_existe = os.path.exists(caminho_dia)
+            noite_existe = os.path.exists(caminho_noite)
+            
+            if dia_existe or noite_existe:
+                status_versao = ""
+                if dia_existe and noite_existe:
+                    status_versao = " (dia+noite)"
+                elif dia_existe:
+                    status_versao = " (apenas dia)"
+                else:
+                    status_versao = " (apenas noite)"
+                backgrounds_existentes.append((bg_name, filename))
+                print(f"[OK] {bg_name} -> {filename}{status_versao}")
+            else:
+                backgrounds_faltantes.append((bg_name, filename))
+                print(f"[FALTANDO] {bg_name} -> {filename} (dia+noite)")
         else:
-            backgrounds_faltantes.append((bg_name, filename))
-            print(f"[FALTANDO] {bg_name} -> {filename}")
+            # Verificação normal (sem dia/noite)
+            bg_path = os.path.join(CAMINHO_BACKGROUNDS, filename)
+            if os.path.exists(bg_path):
+                backgrounds_existentes.append((bg_name, filename))
+                print(f"[OK] {bg_name} -> {filename}")
+            else:
+                backgrounds_faltantes.append((bg_name, filename))
+                print(f"[FALTANDO] {bg_name} -> {filename}")
+    
+    # Verificar sprites dia/noite
+    print("\n" + "=" * 60)
+    print("SPRITES DIA/NOITE")
+    print("=" * 60)
+    
+    # Extrair nomes base dos backgrounds usados
+    backgrounds_base = set()
+    for bg_name in backgrounds_usados:
+        filename = BG_MAPPING.get(bg_name, "cidade.png")
+        nome_base = os.path.splitext(filename)[0]  # Remove extensão
+        backgrounds_base.add(nome_base)
+    
+    # Verificar quais têm versões dia/noite
+    sprites_completos = []
+    sprites_parciais = []
+    sprites_faltantes_dn = []
+    
+    for sprite_base in sorted(sprites_dia_noite):
+        # Verificar versão dia
+        definir_estado_dia_noite('dia')
+        caminho_dia = obter_caminho_sprite_dia_noite(sprite_base, CAMINHO_BACKGROUNDS)
+        dia_existe = os.path.exists(caminho_dia)
+        
+        # Verificar versão noite
+        definir_estado_dia_noite('noite')
+        caminho_noite = obter_caminho_sprite_dia_noite(sprite_base, CAMINHO_BACKGROUNDS)
+        noite_existe = os.path.exists(caminho_noite)
+        
+        # Determinar status
+        if dia_existe and noite_existe:
+            status = "✅ COMPLETO"
+            sprites_completos.append(sprite_base)
+        elif dia_existe or noite_existe:
+            status = "⚠️ PARCIAL"
+            falta = "noite" if dia_existe else "dia"
+            sprites_parciais.append((sprite_base, falta))
+        else:
+            status = "❌ FALTANDO"
+            sprites_faltantes_dn.append(sprite_base)
+        
+        # Só mostrar se for usado na narrativa ou se estiver faltando
+        if sprite_base in backgrounds_base or not (dia_existe and noite_existe):
+            print(f"{status} {sprite_base.upper()}")
+            print(f"  Dia:   {os.path.basename(caminho_dia):<30} {'✅' if dia_existe else '❌ FALTANDO'}")
+            print(f"  Noite: {os.path.basename(caminho_noite):<30} {'✅' if noite_existe else '❌ FALTANDO'}")
+    
+    # Verificar arquivos alternativos que existem mas não são usados
+    arquivos_ui = os.listdir(CAMINHO_BACKGROUNDS) if os.path.exists(CAMINHO_BACKGROUNDS) else []
+    arquivos_relevantes = [
+        'casa_tarde.png',
+        'fabrica_tarde.png',
+        'iate_barao_tarde.png',
+        'escritorio_rex_noite.png',
+        'sala_rex_noite.png',
+        'esconderijo_pixel.png'
+    ]
+    
+    arquivos_alternativos = []
+    for arquivo in arquivos_relevantes:
+        if arquivo in arquivos_ui:
+            arquivos_alternativos.append(arquivo)
+    
+    if arquivos_alternativos:
+        print(f"\n⚠️  Arquivos alternativos encontrados (não usados pelo sistema):")
+        for arquivo in arquivos_alternativos:
+            print(f"   - {arquivo}")
     
     # Verificar sprites
     print("\n" + "=" * 60)
@@ -138,11 +237,23 @@ def main():
     print(f"  Existentes: {len(backgrounds_existentes)}/{len(backgrounds_usados)}")
     print(f"  Faltantes: {len(backgrounds_faltantes)}")
     
+    print(f"\nSprites Dia/Noite:")
+    print(f"  ✅ Completos: {len(sprites_completos)}/{len(sprites_dia_noite)}")
+    if sprites_completos:
+        print(f"     - {', '.join(sprites_completos)}")
+    print(f"  ⚠️  Parciais: {len(sprites_parciais)}/{len(sprites_dia_noite)}")
+    if sprites_parciais:
+        for sprite, falta in sprites_parciais:
+            print(f"     - {sprite} (falta {falta})")
+    print(f"  ❌ Faltantes: {len(sprites_faltantes_dn)}/{len(sprites_dia_noite)}")
+    if sprites_faltantes_dn:
+        print(f"     - {', '.join(sprites_faltantes_dn)}")
+    
     total_sprites = sum(len(s) for s in sprites_usados.values())
     total_existentes = sum(len(s) for s in sprites_existentes.values())
     total_faltantes = sum(len(s) for s in sprites_faltantes.values())
     
-    print(f"\nSprites:")
+    print(f"\nSprites de Personagens:")
     print(f"  Existentes: {total_existentes}/{total_sprites}")
     print(f"  Faltantes: {total_faltantes}")
     
@@ -154,9 +265,31 @@ def main():
         for bg_name, filename in backgrounds_faltantes:
             print(f"  - {bg_name} -> {filename}")
     
+    if sprites_faltantes_dn:
+        print(f"\n{'=' * 60}")
+        print("SPRITES DIA/NOITE FALTANTES:")
+        print("=" * 60)
+        for sprite_base in sprites_faltantes_dn:
+            definir_estado_dia_noite('dia')
+            caminho_dia = obter_caminho_sprite_dia_noite(sprite_base, CAMINHO_BACKGROUNDS)
+            definir_estado_dia_noite('noite')
+            caminho_noite = obter_caminho_sprite_dia_noite(sprite_base, CAMINHO_BACKGROUNDS)
+            print(f"\n{sprite_base.upper()}:")
+            print(f"  - {os.path.basename(caminho_dia)}")
+            print(f"  - {os.path.basename(caminho_noite)}")
+        
+        # Sugestões
+        print(f"\n💡 Sugestões:")
+        if os.path.exists(os.path.join(CAMINHO_BACKGROUNDS, 'casa_tarde.png')):
+            print("   - Renomear casa_tarde.png → casa_dia.png (e criar casa_noite.png)")
+        if os.path.exists(os.path.join(CAMINHO_BACKGROUNDS, 'fabrica_tarde.png')):
+            print("   - Renomear fabrica_tarde.png → fabrica_dia.png (e criar fabrica_noite.png)")
+        if os.path.exists(os.path.join(CAMINHO_BACKGROUNDS, 'iate_barao_tarde.png')):
+            print("   - Renomear iate_barao_tarde.png → iate_barao_dia.png (e criar iate_barao_noite.png)")
+    
     if sprites_faltantes:
         print(f"\n{'=' * 60}")
-        print("SPRITES FALTANTES:")
+        print("SPRITES DE PERSONAGENS FALTANTES:")
         print("=" * 60)
         for character_id, sprite_names in sorted(sprites_faltantes.items()):
             print(f"\n{character_id.upper()}:")

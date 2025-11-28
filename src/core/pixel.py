@@ -29,8 +29,11 @@ SPRITE_PARANOICO_FALLBACK = os.path.join(CAMINHO_SPRITES, "silêncio.png")  # Fa
 SPRITE_VENDENDO = os.path.join(CAMINHO_SPRITES, "vendendo.png")
 SPRITE_VENDENDO_FALLBACK = os.path.join(CAMINHO_SPRITES, "oferta.png")  # Fallback
 
-# Caminho do fundo (bunker) - tentar bunker.png primeiro, depois esconderijo_pixel.png
-CAMINHO_BUNKER = os.path.join(DIR_PROJETO, "assets", "images", "ui", "bunker.png")
+# Caminho do fundo (bunker) - usar sistema dia/noite
+def obter_caminho_bunker():
+    from config import obter_caminho_sprite_dia_noite
+    return obter_caminho_sprite_dia_noite("bunker")
+
 CAMINHO_BUNKER_FALLBACK = os.path.join(DIR_PROJETO, "assets", "images", "ui", "esconderijo_pixel.png")
 
 class Pixel:
@@ -155,7 +158,8 @@ class Pixel:
             elif os.path.exists(SPRITE_VENDENDO_FALLBACK):
                 self.sprite_vendendo = pygame.image.load(SPRITE_VENDENDO_FALLBACK).convert_alpha()
             
-            # Carregar fundo (bunker) com fallback
+            # Carregar fundo (bunker) com sistema dia/noite e fallback
+            CAMINHO_BUNKER = obter_caminho_bunker()
             if os.path.exists(CAMINHO_BUNKER):
                 self.sprite_fundo = pygame.image.load(CAMINHO_BUNKER).convert_alpha()
             elif os.path.exists(CAMINHO_BUNKER_FALLBACK):

@@ -42,56 +42,89 @@ class GamepadManager:
             self._configuracao_padrao()
     
     def _atualizar_configuracao_ps5(self):
-        """Atualiza configuração se detectar PS5 e ainda não estiver configurado corretamente"""
+        """Atualiza configuração se detectar PS5/PS4/Xbox e ainda não estiver configurado corretamente"""
         atualizado = False
+        
+        # Configurações por tipo de controle
+        configs = {
+            "ps5": {
+                "acelerar": {"tipo": "axis", "index": 5, "invertido": False},
+                "frear": {"tipo": "axis", "index": 4, "invertido": False},
+                "direita": {"tipo": "axis", "index": 0, "invertido": False},
+                "esquerda": {"tipo": "axis", "index": 0, "invertido": False},
+                "turbo": {"tipo": "button", "index": 0},
+                "freio_mao": {"tipo": "button", "index": 2},
+                "drift": {"tipo": "button", "index": 1},
+            },
+            "ps4": {
+                "acelerar": {"tipo": "axis", "index": 5, "invertido": False},
+                "frear": {"tipo": "axis", "index": 4, "invertido": False},
+                "direita": {"tipo": "axis", "index": 0, "invertido": False},
+                "esquerda": {"tipo": "axis", "index": 0, "invertido": False},
+                "turbo": {"tipo": "button", "index": 0},
+                "freio_mao": {"tipo": "button", "index": 2},
+                "drift": {"tipo": "button", "index": 1},
+            },
+            "xbox": {
+                "acelerar": {"tipo": "axis", "index": 5, "invertido": False},
+                "frear": {"tipo": "axis", "index": 4, "invertido": False},
+                "direita": {"tipo": "axis", "index": 0, "invertido": False},
+                "esquerda": {"tipo": "axis", "index": 0, "invertido": False},
+                "turbo": {"tipo": "button", "index": 0},
+                "freio_mao": {"tipo": "button", "index": 2},
+                "drift": {"tipo": "button", "index": 1},
+            }
+        }
         
         # Verificar P1
         if len(self.joysticks) > 0:
             tipo_p1 = self._detectar_tipo_controle(0)
-            if tipo_p1 in ["ps5", "ps4"]:
+            if tipo_p1 in configs:
                 # Verificar se a configuração atual está correta
                 p1_config = self.controles_config.get("p1", {})
-                freio_mao_index = p1_config.get("freio_mao", {}).get("index")
-                drift_index = p1_config.get("drift", {}).get("index")
+                config_esperado = configs[tipo_p1]
+                precisa_atualizar = False
                 
-                # Atualizar se necessário (PS5/PS4 usa botão 2 para freio_mao e botão 1 para drift)
-                if freio_mao_index != 2 or drift_index != 1:
-                    config = {
-                        "acelerar": {"tipo": "axis", "index": 5, "invertido": False},
-                        "frear": {"tipo": "axis", "index": 4, "invertido": False},
-                        "direita": {"tipo": "axis", "index": 0, "invertido": False},
-                        "esquerda": {"tipo": "axis", "index": 0, "invertido": False},
-                        "turbo": {"tipo": "button", "index": 0},
-                        "freio_mao": {"tipo": "button", "index": 2},
-                        "drift": {"tipo": "button", "index": 1},
-                    }
+                # Verificar cada ação
+                for acao, config_acao in config_esperado.items():
+                    if acao not in p1_config:
+                        precisa_atualizar = True
+                        break
+                    config_atual = p1_config[acao]
+                    if (config_atual.get("tipo") != config_acao["tipo"] or 
+                        config_atual.get("index") != config_acao["index"]):
+                        precisa_atualizar = True
+                        break
+                
+                if precisa_atualizar:
                     if "p1" not in self.controles_config:
                         self.controles_config["p1"] = {}
-                    self.controles_config["p1"].update(config)
+                    self.controles_config["p1"].update(config_esperado)
                     atualizado = True
                     print(f"{tipo_p1.upper()} detectado para Player 1 - Configuração atualizada")
         
         # Verificar P2
         if len(self.joysticks) > 1:
             tipo_p2 = self._detectar_tipo_controle(1)
-            if tipo_p2 in ["ps5", "ps4"]:
+            if tipo_p2 in configs:
                 p2_config = self.controles_config.get("p2", {})
-                freio_mao_index = p2_config.get("freio_mao", {}).get("index")
-                drift_index = p2_config.get("drift", {}).get("index")
+                config_esperado = configs[tipo_p2]
+                precisa_atualizar = False
                 
-                if freio_mao_index != 2 or drift_index != 1:
-                    config = {
-                        "acelerar": {"tipo": "axis", "index": 5, "invertido": False},
-                        "frear": {"tipo": "axis", "index": 4, "invertido": False},
-                        "direita": {"tipo": "axis", "index": 0, "invertido": False},
-                        "esquerda": {"tipo": "axis", "index": 0, "invertido": False},
-                        "turbo": {"tipo": "button", "index": 0},
-                        "freio_mao": {"tipo": "button", "index": 2},
-                        "drift": {"tipo": "button", "index": 1},
-                    }
+                for acao, config_acao in config_esperado.items():
+                    if acao not in p2_config:
+                        precisa_atualizar = True
+                        break
+                    config_atual = p2_config[acao]
+                    if (config_atual.get("tipo") != config_acao["tipo"] or 
+                        config_atual.get("index") != config_acao["index"]):
+                        precisa_atualizar = True
+                        break
+                
+                if precisa_atualizar:
                     if "p2" not in self.controles_config:
                         self.controles_config["p2"] = {}
-                    self.controles_config["p2"].update(config)
+                    self.controles_config["p2"].update(config_esperado)
                     atualizado = True
                     print(f"{tipo_p2.upper()} detectado para Player 2 - Configuração atualizada")
         
@@ -159,7 +192,18 @@ class GamepadManager:
             "drift": {"tipo": "button", "index": 1},                         # Círculo
         }
         
-        # Configuração genérica (Xbox ou outros)
+        # Configuração para Xbox
+        config_xbox = {
+            "acelerar": {"tipo": "axis", "index": 5, "invertido": False},  # RT (trigger direito)
+            "frear": {"tipo": "axis", "index": 4, "invertido": False},     # LT (trigger esquerdo)
+            "direita": {"tipo": "axis", "index": 0, "invertido": False},    # Stick esquerdo horizontal
+            "esquerda": {"tipo": "axis", "index": 0, "invertido": False},   # Stick esquerdo horizontal
+            "turbo": {"tipo": "button", "index": 0},                         # A
+            "freio_mao": {"tipo": "button", "index": 2},                     # X
+            "drift": {"tipo": "button", "index": 1},                         # B
+        }
+        
+        # Configuração genérica (outros controles)
         config_generic = {
             "acelerar": {"tipo": "axis", "index": 5, "invertido": False},
             "frear": {"tipo": "axis", "index": 4, "invertido": False},
@@ -177,6 +221,9 @@ class GamepadManager:
         elif tipo_p1 == "ps4":
             config_p1 = config_ps4.copy()
             print("PS4 detectado para Player 1 - Configuração aplicada")
+        elif tipo_p1 == "xbox":
+            config_p1 = config_xbox.copy()
+            print("Xbox detectado para Player 1 - Configuração aplicada")
         else:
             config_p1 = config_generic.copy()
         
@@ -186,6 +233,9 @@ class GamepadManager:
         elif tipo_p2 == "ps4":
             config_p2 = config_ps4.copy()
             print("PS4 detectado para Player 2 - Configuração aplicada")
+        elif tipo_p2 == "xbox":
+            config_p2 = config_xbox.copy()
+            print("Xbox detectado para Player 2 - Configuração aplicada")
         else:
             config_p2 = config_generic.copy()
         

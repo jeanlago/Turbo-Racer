@@ -6,7 +6,7 @@ from enum import Enum
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config import LARGURA, ALTURA, FPS, CAMINHO_MENU, CONFIGURACOES, MAPAS_DISPONIVEIS, DIR_PROJETO
+from config import LARGURA, ALTURA, FPS, CAMINHO_MENU, CONFIGURACOES, MAPAS_DISPONIVEIS, DIR_PROJETO, obter_caminho_sprite_dia_noite
 import main
 from core.musica import gerenciador_musica
 from core.popup_musica import popup_musica
@@ -2103,24 +2103,42 @@ def verificar_upgrades_disponiveis(prefixo_cor):
     
     return False  # Não há upgrades disponíveis ou não tem dinheiro suficiente
 
-def selecionar_carros_loop(screen):
+def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
     global _tinha_dinheiro_anterior
     # Importar gerenciador_progresso no início da função
     from core.progresso import gerenciador_progresso
     from core.crank import crank
     from core.barao import barao
     
-    # Verificar se deve mostrar tutorial do Crank (primeira vez na oficina)
-    if not crank.tutorial_mostrado and not crank.ativo:
-        crank.mostrar_tutorial()
+    # Função auxiliar para converter obter_carro_atual para índice numérico
+    def obter_carro_idx_seguro(jogador):
+        """Converte o valor de obter_carro_atual para um índice numérico, tratando strings e prefixos"""
+        from main import CARROS_DISPONIVEIS
+        valor = gerenciador_progresso.obter_carro_atual(jogador)
+        if valor is None:
+            return None
+        try:
+            # Se for string que não é numérica (ex: 'Car1'), tentar encontrar o índice
+            if isinstance(valor, str) and not valor.isdigit():
+                # É um prefixo_cor, encontrar o índice correspondente
+                return next((i for i, carro in enumerate(CARROS_DISPONIVEIS) if carro['prefixo_cor'] == valor), None)
+            else:
+                return int(valor)
+        except (ValueError, TypeError):
+            return None
     
-    # Verificar se deve mostrar diálogo raro sobre compras do mercador alien (chance rara)
-    if crank.tutorial_mostrado and not crank.ativo:
-        crank.verificar_aparecer_dialogo_alien()
-    
-    # Verificar se Barão deve aparecer para oferecer empréstimo (sem dinheiro, carro quebrado)
-    if not barao.ativo and not crank.ativo:
-        barao.verificar_aparecer_oferta()
+    # Verificar se deve mostrar tutorial do Crank (primeira vez na oficina) - não no modo arcade
+    if not modo_arcade:
+        if not crank.tutorial_mostrado and not crank.ativo:
+            crank.mostrar_tutorial()
+        
+        # Verificar se deve mostrar diálogo raro sobre compras do mercador alien (chance rara)
+        if crank.tutorial_mostrado and not crank.ativo:
+            crank.verificar_aparecer_dialogo_alien()
+        
+        # Verificar se Barão deve aparecer para oferecer empréstimo (sem dinheiro, carro quebrado)
+        if not barao.ativo and not crank.ativo:
+            barao.verificar_aparecer_oferta()
     
     # Ao entrar na oficina, se havia uma notificação ativa (transição detectada),
     # "consumir" a notificação atualizando o estado anterior para True
@@ -2135,8 +2153,16 @@ def selecionar_carros_loop(screen):
         elif not tem_dinheiro_atual:
             _tinha_dinheiro_anterior = False
     
-    from config import CAMINHO_OFICINA, DIR_SPRITES, DIR_CAR_SELECTION
-    bg_raw = pygame.image.load(CAMINHO_OFICINA).convert_alpha()
+    from config import DIR_SPRITES, DIR_CAR_SELECTION, obter_caminho_sprite_dia_noite, LARGURA, ALTURA
+    # Usar sistema de ciclo dia/noite para carregar sprite correto
+    CAMINHO_OFICINA = obter_caminho_sprite_dia_noite("oficina")
+    
+    if os.path.exists(CAMINHO_OFICINA):
+        bg_raw = pygame.image.load(CAMINHO_OFICINA).convert_alpha()
+    else:
+        # Se nenhum arquivo existir, criar uma superfície preta como fallback
+        bg_raw = pygame.Surface((LARGURA, ALTURA))
+        bg_raw.fill((20, 20, 30))
     # Usar scale simples (como no editor) para mostrar a imagem completa sem cortar
     bg = pygame.transform.scale(bg_raw, (LARGURA, ALTURA))
     
@@ -2144,6 +2170,12 @@ def selecionar_carros_loop(screen):
     from main import CARROS_DISPONIVEIS
     
     carro_p1_atual_salvo = gerenciador_progresso.obter_carro_atual(1)
+    # Converter para int se necessário (pode vir como string do JSON)
+    try:
+        carro_p1_atual_salvo = int(carro_p1_atual_salvo) if carro_p1_atual_salvo is not None else None
+    except (ValueError, TypeError):
+        carro_p1_atual_salvo = None
+    
     if carro_p1_atual_salvo is not None and 0 <= carro_p1_atual_salvo < len(CARROS_DISPONIVEIS):
         # Sempre usar o carro salvo, mesmo que não esteja desbloqueado (pode ter sido vendido)
         carro_p1 = carro_p1_atual_salvo
@@ -2155,17 +2187,29 @@ def selecionar_carros_loop(screen):
             carro_p1 = 0
     
     carro_p2_atual_salvo = gerenciador_progresso.obter_carro_atual(2)
+    # Converter para int se necessário (pode vir como string do JSON)
+    try:
+        carro_p2_atual_salvo = int(carro_p2_atual_salvo) if carro_p2_atual_salvo is not None else None
+    except (ValueError, TypeError):
+        carro_p2_atual_salvo = None
+    
     if carro_p2_atual_salvo is not None and 0 <= carro_p2_atual_salvo < len(CARROS_DISPONIVEIS):
         carro_p2 = carro_p2_atual_salvo
     else:
         carro_p2 = 1 if len(CARROS_DISPONIVEIS) > 1 else 0
     
     fase_selecao = 1
-    modo_dois_jogadores = False
+    # Determinar modo dois jogadores baseado no modo_jogo passado (se não for passado, usar False)
+    from core.game_modes import ModoJogo
+    if modo_jogo is None:
+        modo_dois_jogadores = False
+    else:
+        modo_dois_jogadores = (modo_jogo == ModoJogo.DOIS_JOGADORES)
     carro_atual_p1_prefixo = CARROS_DISPONIVEIS[carro_p1]['prefixo_cor']
     carro_atual_p2_prefixo = CARROS_DISPONIVEIS[carro_p2]['prefixo_cor']
-    carro_selecionado_p1 = (gerenciador_progresso.obter_carro_atual(1) == carro_p1)
-    carro_selecionado_p2 = (gerenciador_progresso.obter_carro_atual(2) == carro_p2)
+    # Verificar se os carros estão selecionados (com conversão segura)
+    carro_selecionado_p1 = (obter_carro_idx_seguro(1) == carro_p1)
+    carro_selecionado_p2 = (obter_carro_idx_seguro(2) == carro_p2)
     
     # Variáveis para transição
     transicao_ativa = False
@@ -2482,9 +2526,9 @@ def selecionar_carros_loop(screen):
                     esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
                 
                 # Opções disponíveis: 
-                # Linha superior: voltar, dois_jogadores (2 opções)
+                # Linha superior: voltar (1 opção)
                 # Linha inferior: usar/comprar, upgrade, vender, concluído (4 opções)
-                num_opcoes_botoes_superior = 2  # voltar, dois_jogadores
+                num_opcoes_botoes_superior = 1  # voltar (botão dois_jogadores removido)
                 num_opcoes_botoes_inferior = 4  # usar/comprar, upgrade, vender, concluído
                 
                 # Determinar em qual linha estamos
@@ -2494,9 +2538,7 @@ def selecionar_carros_loop(screen):
                     if botao_selecionado_controle == "voltar":
                         linha_atual = "superior"
                         opcao_botao_atual = 0
-                    elif botao_selecionado_controle == "dois_jogadores":
-                        linha_atual = "superior"
-                        opcao_botao_atual = 1
+                    # Botão "dois_jogadores" removido
                     elif botao_selecionado_controle == "usar" or botao_selecionado_controle == "comprar":
                         linha_atual = "inferior"
                         opcao_botao_atual = 0
@@ -2534,24 +2576,24 @@ def selecionar_carros_loop(screen):
                             if fase_selecao == 1:
                                 iniciar_transicao(-1, carro_p1)
                                 carro_p1 = (carro_p1 - 1) % num_carros
-                                carro_selecionado_p1 = (gerenciador_progresso.obter_carro_atual(1) == carro_p1)
+                                carro_selecionado_p1 = (obter_carro_idx_seguro(1) == carro_p1)
                                 botao_selecionado_controle = None
                             else:
                                 iniciar_transicao(-1, carro_p2)
                                 carro_p2 = (carro_p2 - 1) % num_carros
-                                carro_selecionado_p2 = (gerenciador_progresso.obter_carro_atual(2) == carro_p2)
+                                carro_selecionado_p2 = (obter_carro_idx_seguro(2) == carro_p2)
                                 botao_selecionado_controle = None
                         elif acao == "carro_proximo":
                             # Navegar para próximo carro (R1) - ir para direita (próximo carro)
                             if fase_selecao == 1:
                                 iniciar_transicao(1, carro_p1)
                                 carro_p1 = (carro_p1 + 1) % num_carros
-                                carro_selecionado_p1 = (gerenciador_progresso.obter_carro_atual(1) == carro_p1)
+                                carro_selecionado_p1 = (obter_carro_idx_seguro(1) == carro_p1)
                                 botao_selecionado_controle = None
                             else:
                                 iniciar_transicao(1, carro_p2)
                                 carro_p2 = (carro_p2 + 1) % num_carros
-                                carro_selecionado_p2 = (gerenciador_progresso.obter_carro_atual(2) == carro_p2)
+                                carro_selecionado_p2 = (obter_carro_idx_seguro(2) == carro_p2)
                                 botao_selecionado_controle = None
                         continue
                     
@@ -2576,8 +2618,7 @@ def selecionar_carros_loop(screen):
                                             botao_selecionado_controle = "voltar" if acao == "baixo" else "usar"
                                         elif botao_selecionado_controle == "voltar":
                                             botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
-                                        elif botao_selecionado_controle == "dois_jogadores":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
+                                        # Botão "dois_jogadores" removido
                                     else:
                                         # Navegação vertical: qualquer botão (baixo) → concluído, concluído (baixo) → voltar
                                         if botao_selecionado_controle is None:
@@ -2592,8 +2633,7 @@ def selecionar_carros_loop(screen):
                                             botao_selecionado_controle = "voltar" if acao == "baixo" else "comprar"
                                         elif botao_selecionado_controle == "voltar":
                                             botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
-                                        elif botao_selecionado_controle == "dois_jogadores":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
+                                        # Botão "dois_jogadores" removido
                                 else:
                                     # Fase 2 (P2) - mesma lógica
                                     carro_atual = CARROS_DISPONIVEIS[carro_p2]
@@ -2612,8 +2652,7 @@ def selecionar_carros_loop(screen):
                                             botao_selecionado_controle = "voltar" if acao == "baixo" else "usar"
                                         elif botao_selecionado_controle == "voltar":
                                             botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
-                                        elif botao_selecionado_controle == "dois_jogadores":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
+                                        # Botão "dois_jogadores" removido
                                     else:
                                         # Navegação vertical: qualquer botão (baixo) → concluído, concluído (baixo) → voltar
                                         if botao_selecionado_controle is None:
@@ -2628,35 +2667,20 @@ def selecionar_carros_loop(screen):
                                             botao_selecionado_controle = "voltar" if acao == "baixo" else "comprar"
                                         elif botao_selecionado_controle == "voltar":
                                             botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
-                                        elif botao_selecionado_controle == "dois_jogadores":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
+                                        # Botão "dois_jogadores" removido
                         elif acao == "esquerda" or acao == "direita":
                             # Navegação horizontal entre opções
                             if resultado_controle.get("fonte") == "dpad":
                                 # Determinar linha atual
                                 linha_atual = "inferior"
-                                if botao_selecionado_controle in ("voltar", "dois_jogadores"):
+                                if botao_selecionado_controle == "voltar":
                                     linha_atual = "superior"
                                 
                                 if linha_atual == "superior":
-                                    # Navegação horizontal na linha superior: voltar ↔ dois_jogadores
-                                    if "opcao" in resultado_controle:
-                                        opcao_idx = resultado_controle["opcao"]
-                                    else:
-                                        if botao_selecionado_controle == "voltar":
-                                            opcao_idx = 0
-                                        elif botao_selecionado_controle == "dois_jogadores":
-                                            opcao_idx = 1
-                                        else:
-                                            opcao_idx = 0
-                                        
-                                        if acao == "esquerda":
-                                            opcao_idx = (opcao_idx - 1) % 2
-                                        else:  # direita
-                                            opcao_idx = (opcao_idx + 1) % 2
-                                    
-                                    opcoes_superior = ["voltar", "dois_jogadores"]
-                                    botao_selecionado_controle = opcoes_superior[opcao_idx]
+                                    # Navegação horizontal na linha superior: apenas voltar (botão dois_jogadores removido)
+                                    opcao_idx = 0
+                                    opcoes_superior = ["voltar"]  # Botão dois_jogadores removido
+                                    botao_selecionado_controle = opcoes_superior[0]  # Apenas voltar
                                 else:
                                     # Navegação horizontal na linha inferior: usar/comprar ↔ upgrade ↔ vender ↔ concluído
                                     if fase_selecao == 1:
@@ -2762,16 +2786,7 @@ def selecionar_carros_loop(screen):
                                                 return carro_p1, carro_p2
                                             else:
                                                 return None, None
-                                    elif botao_selecionado_controle == "dois_jogadores":
-                                        # Alternar modo 2 jogadores
-                                        if modo_dois_jogadores:
-                                            # Voltar para modo single player
-                                            modo_dois_jogadores = False
-                                            carro_selecionado_p1 = False  # Resetar seleção
-                                            carro_selecionado_p2 = False  # Resetar seleção
-                                        else:
-                                            # Ativar modo 2 jogadores (não seleciona carro automaticamente)
-                                            modo_dois_jogadores = True
+                                    # Botão "dois_jogadores" removido - o modo é definido antes de entrar na oficina
                                 else:
                                     # Carro não desbloqueado
                                     if botao_selecionado_controle == "comprar":
@@ -2874,6 +2889,10 @@ def selecionar_carros_loop(screen):
                         elif acao == "cancelar":
                             # Voltar
                             if botao_voltar_rect:
+                                # No modo arcade, sempre cancelar e voltar à seleção de pistas
+                                if modo_arcade:
+                                    return None, None
+                                
                                 if modo_dois_jogadores:
                                     if fase_selecao == 1 and carro_selecionado_p1:
                                         fase_selecao = 2
@@ -2938,6 +2957,10 @@ def selecionar_carros_loop(screen):
                 
                 # Verificar clique no botão "Voltar"
                 if botao_voltar_rect.collidepoint(ev.pos[0], ev.pos[1]):
+                    # No modo arcade, sempre cancelar e voltar à seleção de pistas
+                    if modo_arcade:
+                        return None, None
+                    
                     # Se estiver no modo 2 jogadores, verificar se ambos selecionaram
                     if modo_dois_jogadores:
                         if fase_selecao == 1 and carro_selecionado_p1:
@@ -2957,17 +2980,7 @@ def selecionar_carros_loop(screen):
                         else:
                             return None, None
                 
-                # Verificar clique no botão "2 jogadores" / "1 jogador" (menu superior)
-                if fase_selecao == 1 and botao_dois_jogadores_menu_rect.collidepoint(ev.pos[0], ev.pos[1]):
-                    if modo_dois_jogadores:
-                        # Voltar para modo single player
-                        modo_dois_jogadores = False
-                        carro_selecionado_p1 = False  # Resetar seleção
-                        carro_selecionado_p2 = False  # Resetar seleção
-                    else:
-                        # Ativar modo 2 jogadores (não seleciona carro automaticamente)
-                        modo_dois_jogadores = True
-                    continue
+                # Botão "2 jogadores" removido - o modo é definido antes de entrar na oficina
                 # Verificar clique nos botões
                 if not transicao_ativa:
                     mouse_x, mouse_y = ev.pos
@@ -2980,20 +2993,20 @@ def selecionar_carros_loop(screen):
                         if seta_esquerda_rect_p1 and seta_esquerda_rect_p1.collidepoint(mouse_x, mouse_y) and carro_p1 > 0 and not transicao_ativa:
                             iniciar_transicao(-1, carro_p1)
                             carro_p1 = (carro_p1 - 1) % len(CARROS_DISPONIVEIS)
-                            carro_selecionado_p1 = (gerenciador_progresso.obter_carro_atual(1) == carro_p1)
+                            carro_selecionado_p1 = (obter_carro_idx_seguro(1) == carro_p1)
                             continue
                         
-                        if seta_direita_rect_p1 and seta_direita_rect_p1.collidepoint(mouse_x, mouse_y) and carro_p1 < len(CARROS_DISPONIVEIS) - 1 and not transicao_ativa:
+                        if seta_direita_rect_p1 and seta_direita_rect_p1.collidepoint(mouse_x, mouse_y) and not transicao_ativa:
                             iniciar_transicao(1, carro_p1)
                             carro_p1 = (carro_p1 + 1) % len(CARROS_DISPONIVEIS)
-                            carro_selecionado_p1 = (gerenciador_progresso.obter_carro_atual(1) == carro_p1)
+                            carro_selecionado_p1 = (obter_carro_idx_seguro(1) == carro_p1)
                             continue
                         
                         if esta_desbloqueado:
                             # Verificar clique no botão USAR/REPARAR
                             if botao_usar_rect_p1 and botao_usar_rect_p1.collidepoint(mouse_x, mouse_y):
                                 # Verificar se o carro atual está selecionado
-                                carro_atual_p1 = gerenciador_progresso.obter_carro_atual(1)
+                                carro_atual_p1 = obter_carro_idx_seguro(1)
                                 carro_atual_idx = carro_p1 if carro_atual_p1 is None else carro_atual_p1
                                 if carro_atual_idx == carro_p1:
                                     # Carro já está selecionado - reparar
@@ -3066,13 +3079,13 @@ def selecionar_carros_loop(screen):
                         if seta_esquerda_rect_p2 and seta_esquerda_rect_p2.collidepoint(mouse_x, mouse_y) and carro_p2 > 0 and not transicao_ativa:
                             iniciar_transicao(-1, carro_p2)
                             carro_p2 = (carro_p2 - 1) % len(CARROS_DISPONIVEIS)
-                            carro_selecionado_p2 = (gerenciador_progresso.obter_carro_atual(2) == carro_p2)
+                            carro_selecionado_p2 = (obter_carro_idx_seguro(2) == carro_p2)
                             continue
                         
-                        if seta_direita_rect_p2 and seta_direita_rect_p2.collidepoint(mouse_x, mouse_y) and carro_p2 < len(CARROS_DISPONIVEIS) - 1 and not transicao_ativa:
+                        if seta_direita_rect_p2 and seta_direita_rect_p2.collidepoint(mouse_x, mouse_y) and not transicao_ativa:
                             iniciar_transicao(1, carro_p2)
                             carro_p2 = (carro_p2 + 1) % len(CARROS_DISPONIVEIS)
-                            carro_selecionado_p2 = (gerenciador_progresso.obter_carro_atual(2) == carro_p2)
+                            carro_selecionado_p2 = (obter_carro_idx_seguro(2) == carro_p2)
                             continue
                         
                         if esta_desbloqueado:
@@ -3158,21 +3171,21 @@ def selecionar_carros_loop(screen):
                         if fase_selecao == 1:
                             iniciar_transicao(-1, carro_p1)
                             carro_p1 = (carro_p1 - 1) % len(CARROS_DISPONIVEIS)
-                            carro_selecionado_p1 = (gerenciador_progresso.obter_carro_atual(1) == carro_p1)
+                            carro_selecionado_p1 = (obter_carro_idx_seguro(1) == carro_p1)
                         elif fase_selecao == 2:
                             iniciar_transicao(-1, carro_p2)
                             carro_p2 = (carro_p2 - 1) % len(CARROS_DISPONIVEIS)
-                            carro_selecionado_p2 = (gerenciador_progresso.obter_carro_atual(2) == carro_p2)
+                            carro_selecionado_p2 = (obter_carro_idx_seguro(2) == carro_p2)
                 elif ev.key in (pygame.K_RIGHT, pygame.K_d):
                     if not transicao_ativa:  # Só permite navegação se não estiver em transição
                         if fase_selecao == 1:
                             iniciar_transicao(1, carro_p1)
                             carro_p1 = (carro_p1 + 1) % len(CARROS_DISPONIVEIS)
-                            carro_selecionado_p1 = (gerenciador_progresso.obter_carro_atual(1) == carro_p1)
+                            carro_selecionado_p1 = (obter_carro_idx_seguro(1) == carro_p1)
                         elif fase_selecao == 2:
                             iniciar_transicao(1, carro_p2)
                             carro_p2 = (carro_p2 + 1) % len(CARROS_DISPONIVEIS)
-                            carro_selecionado_p2 = (gerenciador_progresso.obter_carro_atual(2) == carro_p2)
+                            carro_selecionado_p2 = (obter_carro_idx_seguro(2) == carro_p2)
                 elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
                     if not transicao_ativa:  # Só permite confirmação se não estiver em transição
                         if fase_selecao == 1:
@@ -3268,24 +3281,7 @@ def selecionar_carros_loop(screen):
                 # Mostrar botão "2 jogadores" quando estiver no modo single player
                 texto_botao = t("menu.oficina.dois_jogadores")
             
-            selecionado_controle_dois_jogadores = (botao_selecionado_controle == "dois_jogadores")
-            cor_dois_jogadores_menu = (150, 100, 200) if botao_dois_jogadores_menu_hover else (120, 80, 180)
-            pygame.draw.rect(screen, cor_dois_jogadores_menu, botao_dois_jogadores_menu_rect)
-            pygame.draw.rect(screen, (200, 150, 255), botao_dois_jogadores_menu_rect, 2)
-            # Desenhar cursor do controle (caixa animada)
-            if selecionado_controle_dois_jogadores and gerenciador_gamepad.obter_numero_controles() > 0:
-                tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
-                cursor_rect = pygame.Rect(
-                    botao_dois_jogadores_menu_rect.x - tamanho_cursor,
-                    botao_dois_jogadores_menu_rect.y - tamanho_cursor,
-                    botao_dois_jogadores_menu_rect.width + tamanho_cursor * 2,
-                    botao_dois_jogadores_menu_rect.height + tamanho_cursor * 2
-                )
-                pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
-            texto_dois_jogadores_menu = render_text(texto_botao, 16, (255, 255, 255), bold=True, pixel_style=True)
-            texto_dois_jogadores_menu_x = botao_dois_jogadores_menu_rect.x + (botao_dois_jogadores_menu_rect.width - texto_dois_jogadores_menu.get_width()) // 2
-            texto_dois_jogadores_menu_y = botao_dois_jogadores_menu_rect.y + (botao_dois_jogadores_menu_rect.height - texto_dois_jogadores_menu.get_height()) // 2
-            screen.blit(texto_dois_jogadores_menu, (texto_dois_jogadores_menu_x, texto_dois_jogadores_menu_y))
+            # Botão "2 jogadores" removido - o modo é definido antes de entrar na oficina
         
         if fase_selecao == 1:
             # FASE 1: Player 1 selecionando - sem subtítulo de "JOGADOR 1" e sem instruções
@@ -3439,9 +3435,10 @@ def selecionar_carros_loop(screen):
             # Porcentagem de danos (P1) - sempre exibir se o carro visualizado é o equipado
             from core.crank import crank
             # Verificar se o carro atual está selecionado para mostrar o dano correto
-            carro_atual_p1_idx = gerenciador_progresso.obter_carro_atual(1)
+            carro_atual_p1_idx = obter_carro_idx_seguro(1)
+            
             # Verificar se este é o carro atual do jogador (o carro visualizado é o equipado)
-            if carro_atual_p1_idx is not None and int(carro_atual_p1_idx) == int(carro_p1):
+            if carro_atual_p1_idx is not None and carro_atual_p1_idx == carro_p1:
                 saude_carro = crank.saude_carro if hasattr(crank, 'saude_carro') else 1.0
                 dano_percent = int((1.0 - saude_carro) * 100)
                 # Sempre exibir a saúde do carro, mesmo se não houver dano
@@ -3473,10 +3470,10 @@ def selecionar_carros_loop(screen):
                     usar_hover_p1 = botao_usar_rect_p1.collidepoint(pygame.mouse.get_pos())
                     usar_selecionado = carro_selecionado_p1
                     # Verificar se o carro atual está selecionado
-                    carro_atual_p1 = gerenciador_progresso.obter_carro_atual(1)
+                    carro_atual_p1 = obter_carro_idx_seguro(1)
                     carro_atual_idx = carro_p1 if carro_atual_p1 is None else carro_atual_p1
                     # Garantir comparação de inteiros
-                    carro_esta_selecionado = (int(carro_atual_idx) == int(carro_p1))
+                    carro_esta_selecionado = (carro_atual_idx == carro_p1)
                     
                     # Verificar se está selecionado pelo controle
                     selecionado_controle = (botao_selecionado_controle == "usar")
@@ -4115,8 +4112,8 @@ def selecionar_carros_loop(screen):
         popup_musica.atualizar(dt)
         popup_musica.desenhar(screen)
         
-        # Desenhar Crank (se ativo) - tem prioridade máxima
-        if crank.ativo:
+        # Desenhar Crank (se ativo) - tem prioridade máxima - não no modo arcade
+        if not modo_arcade and crank.ativo:
             crank.desenhar_dialogo(screen, dt)
             
             # Desenhar Barão se ativo
@@ -4385,6 +4382,18 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                 if crank.upgrade_pendente:
                     upgrade_info = crank.upgrade_pendente
                     nivel_antigo = upgrade_info.get('nivel', 0)
+                    
+                    # Verificar fome antes de fazer upgrade
+                    try:
+                        from core.status_jogador import status_jogador
+                        pode_fazer, mensagem = status_jogador.pode_fazer_upgrade()
+                        if not pode_fazer:
+                            popup_musica.mostrar(mensagem, tipo="outra")
+                            # Não fazer o upgrade, apenas retornar
+                            continue
+                    except Exception as e:
+                        print(f"Erro ao verificar status do jogador: {e}")
+                    
                     if gerenciador_progresso.comprar_upgrade(upgrade_info['prefixo_cor'], upgrade_info['tipo'], upgrade_info['preco']):
                         # Tocar som de compra
                         try:
@@ -4478,6 +4487,16 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                         upgrade_atual_tipo = upgrades_disponiveis[upgrade_atual][0]
                         nivel_atual = gerenciador_progresso.obter_upgrade(prefixo_cor, upgrade_atual_tipo)
                         if nivel_atual < 5:
+                            # Verificar fome antes de fazer upgrade
+                            try:
+                                from core.status_jogador import status_jogador
+                                pode_fazer, mensagem = status_jogador.pode_fazer_upgrade()
+                                if not pode_fazer:
+                                    popup_musica.mostrar(mensagem, tipo="outra")
+                                    continue
+                            except Exception as e:
+                                print(f"Erro ao verificar status do jogador: {e}")
+                            
                             # Verificar se pode comprar (bloqueio por dano crítico)
                             pode_comprar, motivo = crank.pode_comprar_upgrade(upgrade_atual_tipo)
                             if not pode_comprar and motivo == "dano_critico":
@@ -4562,6 +4581,16 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                 if icon_rect.collidepoint(mouse_x, mouse_y):
                     nivel_atual = gerenciador_progresso.obter_upgrade(prefixo_cor, upgrade_atual_tipo)
                     if nivel_atual < 5:
+                        # Verificar fome antes de fazer upgrade
+                        try:
+                            from core.status_jogador import status_jogador
+                            pode_fazer, mensagem = status_jogador.pode_fazer_upgrade()
+                            if not pode_fazer:
+                                popup_musica.mostrar(mensagem, tipo="outra")
+                                continue
+                        except Exception as e:
+                            print(f"Erro ao verificar status do jogador: {e}")
+                        
                         # Verificar se pode comprar (bloqueio por dano crítico)
                         pode_comprar, motivo = crank.pode_comprar_upgrade(upgrade_atual_tipo)
                         if not pode_comprar and motivo == "dano_critico":
@@ -8732,6 +8761,12 @@ def run():
                     while narrative_system.active:
                         dt = clock_narrativa.tick(FPS) / 1000.0
                         
+                        # Atualizar tempo do jogo (1 minuto real = 1 hora do jogo)
+                        # MAS pausar durante time-skip ou transição de cena (fade escuro) para não avançar o tempo durante transições
+                        from core.tempo_jogo import gerenciador_tempo
+                        if not narrative_system.time_skip_active and not narrative_system.scene_transition_active:
+                            gerenciador_tempo.atualizar(dt)
+                        
                         # Processar eventos
                         eventos = pygame.event.get()
                         for ev in eventos:
@@ -8812,6 +8847,18 @@ def run():
                                     print(f"Erro ao carregar corrida {race_id}: {e}")
                             
                             if race_config:
+                                # Verificar tédio antes de iniciar corrida
+                                try:
+                                    from core.status_jogador import status_jogador
+                                    pode_correr, mensagem = status_jogador.pode_correr()
+                                    if not pode_correr:
+                                        from core.popup_musica import popup_musica
+                                        popup_musica.mostrar(mensagem, tipo="outra")
+                                        # Não iniciar corrida, voltar para o mapa
+                                        return "mapa"
+                                except Exception as e:
+                                    print(f"Erro ao verificar status do jogador: {e}")
+                                
                                 # Obter parâmetros da corrida
                                 track = race_config.get("track", 1)
                                 laps = race_config.get("laps", 1)
@@ -8842,7 +8889,7 @@ def run():
                                     modo_jogo=ModoJogo.UM_JOGADOR,
                                     tipo_jogo=tipo_jogo,
                                     voltas=laps,
-                                    dificuldade_ia=dificuldade
+                                    dificuldade_ia=difficulty
                                 )
                                 
                                 # Após a corrida, continuar narrativa se houver próxima cena
@@ -8873,7 +8920,6 @@ def run():
                         mode = params.get("mode")
                         on_confirm_scene_id = params.get("onConfirmSceneId")
                         # Abrir tela de upgrades
-                        from core.menu import selecionar_carros_loop
                         selecionar_carros_loop(screen)
                         # Após fechar garagem, continuar narrativa se houver próxima cena
                         if on_confirm_scene_id:
@@ -8934,7 +8980,6 @@ def run():
                         break
                     elif territorio_id == "oficina":
                         # Ir diretamente para a oficina
-                        from core.menu import selecionar_carros_loop
                         selecionar_carros_loop(screen)
                         continue  # Voltar para o loop do mapa após sair da oficina
                     elif territorio_id == "casa":
@@ -8951,7 +8996,7 @@ def run():
                             screen, 
                             "casa", 
                             area_nome="Casa",
-                            sprite_fundo=os.path.join(DIR_PROJETO, "assets", "images", "ui", "casa.png") if os.path.exists(os.path.join(DIR_PROJETO, "assets", "images", "ui", "casa.png")) else None
+                            sprite_fundo=obter_caminho_sprite_dia_noite("casa") if os.path.exists(obter_caminho_sprite_dia_noite("casa")) else None
                         )
                         
                         # Se retornou "voltar_mapa", voltar para o mapa ao invés do menu
@@ -9043,21 +9088,20 @@ def run():
                         dificuldade_ia = "medio"  # Padrão
                         fase_selecionada = 1  # Padrão
                     
-                    # Verificar se modo 2 jogadores e se os carros foram escolhidos
-                    if modo_jogo == ModoJogo.DOIS_JOGADORES:
-                        # Redirecionar para a oficina para escolher carros
-                        resultado_carros = selecionar_carros_loop(screen)
-                        if resultado_carros[0] is None or resultado_carros[1] is None:
-                            # Cancelou a seleção, continuar no menu
-                            continue
-                        # Atualizar carros selecionados
-                        carro_p1, carro_p2 = resultado_carros
+                    # Sempre permitir seleção de carro no modo arcade (após selecionar a pista)
+                    # A função está definida no mesmo módulo, então podemos chamá-la diretamente
+                    resultado_carros = selecionar_carros_loop(screen, modo_arcade=True, modo_jogo=modo_jogo)
+                    if resultado_carros[0] is None or resultado_carros[1] is None:
+                        # Cancelou a seleção, continuar no menu
+                        continue
+                    # Atualizar carros selecionados
+                    carro_p1, carro_p2 = resultado_carros
                     
                     # Parar música do menu se não deve tocar no jogo
                     if not CONFIGURACOES["audio"]["musica_no_jogo"]:
                         gerenciador_musica.parar_musica()
-                    # inicia seu jogo original com carros selecionados e modos
-                    main.principal(carro_p1, carro_p2, mapa_selecionado=fase_selecionada, modo_jogo=modo_jogo, tipo_jogo=tipo_jogo, voltas=voltas, dificuldade_ia=dificuldade_ia)
+                    # inicia seu jogo original com carros selecionados e modos (modo arcade = sem cutscenes)
+                    main.principal(carro_p1, carro_p2, mapa_selecionado=fase_selecionada, modo_jogo=modo_jogo, tipo_jogo=tipo_jogo, voltas=voltas, dificuldade_ia=dificuldade_ia, modo_arcade=True)
                     # Após o jogo, volta para o menu (não fecha a janela)
                     # Reiniciar música do menu se habilitada
                     if CONFIGURACOES["audio"]["musica_habilitada"] and CONFIGURACOES["audio"]["musica_no_menu"]:

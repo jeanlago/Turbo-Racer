@@ -1,10 +1,11 @@
 {
-  "dinheiro": 25000,
+  "dinheiro": 50000,
   "nome_jogador": "JOGADOR",
   "carros_desbloqueados": [
-    "Car3",
+    "Car2",
+    "Car4",
     "Car1",
-    "Car2"
+    "Car3"
   ],
   "recordes_corrida": {},
   "recordes_drift": {},
@@ -107,17 +108,17 @@
   "barao_emprestimo_ativo": false,
   "barao_valor_devido": 0,
   "barao_corridas_restantes": 0,
-  "boris_nome_revelado": true,
+  "boris_nome_revelado": false,
   "boris_primeira_aparicao_mostrada": true,
   "pixel_nome_revelado": true,
   "pixel_primeira_aparicao_mostrada": false,
-  "capitulo_atual": "ch4",
+  "capitulo_atual": "ch5",
   "capitulos_completos": [
-    "ch4",
-    "ch1",
-    "ch3",
     "ch5",
-    "ch2"
+    "ch2",
+    "ch3",
+    "ch1",
+    "ch4"
   ],
   "hierarquia_desbloqueada": false,
   "oficina_desbloqueada": false,
@@ -135,27 +136,27 @@
   },
   "desafios_diarios": [
     {
-      "tipo": "vencer_corridas",
-      "objetivo": 3,
-      "recompensa": 517,
-      "descricao": "Vença 3 corridas em 1º lugar",
-      "id": "diario_20251127_0",
+      "tipo": "usar_turbo",
+      "objetivo": 74,
+      "recompensa": 372,
+      "descricao": "Use o turbo 74 vezes",
+      "id": "diario_20251128_3",
+      "progresso": 0
+    },
+    {
+      "tipo": "usar_turbo",
+      "objetivo": 73,
+      "recompensa": 289,
+      "descricao": "Use o turbo 73 vezes",
+      "id": "diario_20251128_3",
       "progresso": 0
     },
     {
       "tipo": "vencer_corridas",
-      "objetivo": 3,
-      "recompensa": 573,
-      "descricao": "Vença 3 corridas em 1º lugar",
-      "id": "diario_20251127_0",
-      "progresso": 0
-    },
-    {
-      "tipo": "vencer_corridas",
-      "objetivo": 3,
-      "recompensa": 453,
-      "descricao": "Vença 3 corridas em 1º lugar",
-      "id": "diario_20251127_0",
+      "objetivo": 1,
+      "recompensa": 474,
+      "descricao": "Vença 1 corridas em 1º lugar",
+      "id": "diario_20251128_3",
       "progresso": 0
     }
   ],
@@ -180,7 +181,7 @@
   "missoes_pista": {},
   "desafios_progresso": {},
   "desafios_completados": [],
-  "ultima_atualizacao_diaria": "2025-11-27",
+  "ultima_atualizacao_diaria": "2025-11-28",
   "ultima_atualizacao_semanal": "2025-W48",
   "estatisticas_gerais": {
     "tempo_total_jogado": 0.0,

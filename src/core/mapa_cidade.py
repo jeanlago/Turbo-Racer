@@ -11,8 +11,12 @@ from config import LARGURA, ALTURA, FPS, DIR_PROJETO
 from core.territorios import TERRITORIOS, Territorio, obter_territorios_desbloqueados, obter_territorio
 from core.mapa_locations import gerenciador_localizacoes, EstadoLocalizacao
 
-# Caminhos
-CAMINHO_MAPA_CIDADE = os.path.join(DIR_PROJETO, "assets", "images", "ui", "cidade.png")
+# Caminhos (será obtido dinamicamente baseado em dia/noite)
+from config import obter_caminho_sprite_dia_noite
+def obter_caminho_mapa_cidade():
+    """Retorna o caminho do mapa da cidade baseado no ciclo dia/noite"""
+    return obter_caminho_sprite_dia_noite("cidade")
+CAMINHO_MAPA_CIDADE = obter_caminho_mapa_cidade()
 CAMINHO_AREAS_MAPA = os.path.join(DIR_PROJETO, "data", "mapa_areas.json")
 DIR_HOVER = os.path.join(DIR_PROJETO, "assets", "images", "hover", "mapa")
 
@@ -92,8 +96,13 @@ def carregar_areas_mapa():
             with open(CAMINHO_AREAS_MAPA, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 areas = data.get("areas", [])
+                print(f"✓ Carregadas {len(areas)} áreas do mapa da cidade")
         except Exception as e:
             print(f"Erro ao carregar áreas do mapa: {e}")
+            import traceback
+            traceback.print_exc()
+    else:
+        print(f"AVISO: Arquivo de áreas do mapa não encontrado: {CAMINHO_AREAS_MAPA}")
     return areas
 
 def mostrar_pensamento_jogador(screen, mensagem: str, duracao: float = 3.0) -> bool:
@@ -185,16 +194,28 @@ def mostrar_menu_casa_oficina(screen) -> Optional[str]:
     escolhido = False
     resultado = None
     
-    # Carregar imagens
-    CAMINHO_CASA = os.path.join(DIR_PROJETO, "assets", "images", "ui", "casa.png")
-    CAMINHO_OFICINA = os.path.join(DIR_PROJETO, "assets", "images", "ui", "oficina.png")
+    # Carregar imagens usando sistema dia/noite
+    from config import obter_caminho_sprite_dia_noite
+    CAMINHO_CASA = obter_caminho_sprite_dia_noite("casa")
+    CAMINHO_OFICINA = obter_caminho_sprite_dia_noite("oficina")
     
     sprite_casa = None
     sprite_oficina = None
     if os.path.exists(CAMINHO_CASA):
-        sprite_casa = pygame.image.load(CAMINHO_CASA).convert_alpha()
+        try:
+            sprite_casa = pygame.image.load(CAMINHO_CASA).convert_alpha()
+        except Exception as e:
+            print(f"Erro ao carregar sprite da casa: {e}")
+    else:
+        print(f"AVISO: Sprite da casa não encontrado: {CAMINHO_CASA}")
+    
     if os.path.exists(CAMINHO_OFICINA):
-        sprite_oficina = pygame.image.load(CAMINHO_OFICINA).convert_alpha()
+        try:
+            sprite_oficina = pygame.image.load(CAMINHO_OFICINA).convert_alpha()
+        except Exception as e:
+            print(f"Erro ao carregar sprite da oficina: {e}")
+    else:
+        print(f"AVISO: Sprite da oficina não encontrado: {CAMINHO_OFICINA}")
     
     while not escolhido:
         dt = clock.tick(FPS) / 1000.0
@@ -363,9 +384,11 @@ def mapa_cidade_loop(screen) -> Optional[str]:
     offset_inicio_x = offset_x_zoom
     offset_inicio_y = offset_y_zoom
     
-    if os.path.exists(CAMINHO_MAPA_CIDADE):
+    # Obter caminho dinamicamente baseado em dia/noite
+    caminho_cidade = obter_caminho_mapa_cidade()
+    if os.path.exists(caminho_cidade):
         try:
-            bg_raw = pygame.image.load(CAMINHO_MAPA_CIDADE).convert_alpha()
+            bg_raw = pygame.image.load(caminho_cidade).convert_alpha()
             # Aplicar zoom: escalar para um tamanho maior
             bg_largura_zoom = int(LARGURA * ZOOM_MAPA)
             bg_altura_zoom = int(ALTURA * ZOOM_MAPA)
@@ -384,13 +407,20 @@ def mapa_cidade_loop(screen) -> Optional[str]:
     
     # Carregar áreas do mapa
     areas_mapa = carregar_areas_mapa()
+    if not areas_mapa:
+        print(f"AVISO: Nenhuma área carregada do mapa! Verifique {CAMINHO_AREAS_MAPA}")
+    else:
+        print(f"✓ {len(areas_mapa)} áreas do mapa carregadas")
     
-    # Carregar sprites de hover
+    # Carregar sprites de hover (com suporte dia/noite)
+    from config import obter_caminho_hover_dia_noite
     hover_sprites = {}
     for key, caminho in MAPEAMENTO_HOVER_SPRITES.items():
-        if os.path.exists(caminho):
+        # Tentar carregar versão dia/noite
+        caminho_hover = obter_caminho_hover_dia_noite(caminho)
+        if os.path.exists(caminho_hover):
             try:
-                sprite = pygame.image.load(caminho).convert_alpha()
+                sprite = pygame.image.load(caminho_hover).convert_alpha()
                 hover_sprites[key] = sprite
             except Exception as e:
                 print(f"Erro ao carregar sprite de hover {key}: {e}")
@@ -411,9 +441,32 @@ def mapa_cidade_loop(screen) -> Optional[str]:
     mostrar_mensagem_salvo = False
     tempo_mensagem_salvo = 0.0
     
+    # Estado anterior do dia/noite para detectar mudanças
+    from config import obter_estado_dia_noite
+    estado_dia_noite_anterior = obter_estado_dia_noite()
+    
     while True:
         dt = clock.tick(FPS) / 1000.0
         tempo_animacao += dt
+        
+        # Atualizar tempo do jogo (1 minuto real = 1 hora do jogo)
+        from core.tempo_jogo import gerenciador_tempo
+        gerenciador_tempo.atualizar(dt)
+        
+        # Verificar se mudou dia/noite e recarregar hovers se necessário
+        estado_dia_noite_atual = obter_estado_dia_noite()
+        if estado_dia_noite_atual != estado_dia_noite_anterior:
+            estado_dia_noite_anterior = estado_dia_noite_atual
+            # Recarregar todos os hovers
+            hover_sprites = {}
+            for key, caminho in MAPEAMENTO_HOVER_SPRITES.items():
+                caminho_hover = obter_caminho_hover_dia_noite(caminho)
+                if os.path.exists(caminho_hover):
+                    try:
+                        sprite = pygame.image.load(caminho_hover).convert_alpha()
+                        hover_sprites[key] = sprite
+                    except Exception as e:
+                        print(f"Erro ao recarregar sprite de hover {key}: {e}")
         
         # Atualizar mensagem de salvamento
         if mostrar_mensagem_salvo:
@@ -549,15 +602,26 @@ def mapa_cidade_loop(screen) -> Optional[str]:
                     # Verificar se clicou em uma área primeiro
                     clicou_em_area = False
                     for area in areas_mapa:
-                        if area.get("desbloqueada", True):
-                            # Ajustar coordenadas para o zoom e offset do mapa (acompanhar o mapa)
-                            x = int(area.get("x", 0) * ZOOM_MAPA) - offset_x_zoom
-                            y = int(area.get("y", 0) * ZOOM_MAPA) - offset_y_zoom
-                            largura = int(area.get("largura", 0) * ZOOM_MAPA)
-                            altura = int(area.get("altura", 0) * ZOOM_MAPA)
-                            # Validar valores antes de verificar clique
-                            if largura > 0 and altura > 0:
-                                if x <= mouse_x <= x + largura and y <= mouse_y <= y + altura:
+                        # Verificar estado de desbloqueio usando gerenciador de localizações
+                        territorio_id = area.get("territorio_id") or area.get("id")
+                        estado = gerenciador_localizacoes.obter_estado(territorio_id)
+                        
+                        # Filtrar áreas invisíveis
+                        if estado == EstadoLocalizacao.INVISIVEL:
+                            continue
+                        
+                        # Verificar se está desbloqueada (compatibilidade)
+                        if not area.get("desbloqueada", True) and estado != EstadoLocalizacao.DESBLOQUEADO:
+                            continue
+                        
+                        # Ajustar coordenadas para o zoom e offset do mapa (acompanhar o mapa)
+                        x = int(area.get("x", 0) * ZOOM_MAPA) - offset_x_zoom
+                        y = int(area.get("y", 0) * ZOOM_MAPA) - offset_y_zoom
+                        largura = int(area.get("largura", 0) * ZOOM_MAPA)
+                        altura = int(area.get("altura", 0) * ZOOM_MAPA)
+                        # Validar valores antes de verificar clique
+                        if largura > 0 and altura > 0:
+                            if x <= mouse_x <= x + largura and y <= mouse_y <= y + altura:
                                     # Verificar se é oficina - mostrar opção de escolha
                                     area_id_lower = area.get("id", "").lower()
                                     area_nome_lower = (area.get("nome", "") or "").lower()
@@ -891,7 +955,21 @@ def mapa_cidade_loop(screen) -> Optional[str]:
                 key_lower = key.lower()
                 # Verificar se a palavra-chave está em qualquer parte do ID ou nome
                 if key_lower in texto_completo:
-                    hover_sprite = hover_sprites[key]
+                    # Verificar se precisa recarregar (mudança dia/noite)
+                    caminho_original = MAPEAMENTO_HOVER_SPRITES.get(key)
+                    if caminho_original:
+                        caminho_hover = obter_caminho_hover_dia_noite(caminho_original)
+                        if os.path.exists(caminho_hover):
+                            try:
+                                hover_sprite = pygame.image.load(caminho_hover).convert_alpha()
+                                hover_sprites[key] = hover_sprite  # Atualizar cache
+                            except Exception as e:
+                                print(f"Erro ao recarregar sprite de hover {key}: {e}")
+                                hover_sprite = hover_sprites.get(key)  # Usar cache se falhar
+                        else:
+                            hover_sprite = hover_sprites.get(key)  # Usar cache se não existir
+                    else:
+                        hover_sprite = hover_sprites.get(key)  # Usar cache
                     hover_key = key
                     break
             

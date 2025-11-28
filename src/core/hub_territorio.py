@@ -7,59 +7,77 @@ Mostra o NPC local e lista de atividades disponíveis
 import pygame
 import os
 from typing import Optional, Dict, List
-from config import LARGURA, ALTURA, FPS, DIR_PROJETO, CAMINHO_OFICINA
+from config import LARGURA, ALTURA, FPS, DIR_PROJETO, obter_caminho_sprite_dia_noite
 from core.territorios import obter_territorio, Territorio
 
-# Mapeamento de territórios para sprites de fundo
-CAMINHO_FABRICA = os.path.join(DIR_PROJETO, "assets", "images", "ui", "fabrica.png")
-CAMINHO_IATE_BARAO = os.path.join(DIR_PROJETO, "assets", "images", "ui", "iate_barao.png")
-CAMINHO_MONTE_AKIRA = os.path.join(DIR_PROJETO, "assets", "images", "ui", "monte_akira.png")
-CAMINHO_TORRE_KING = os.path.join(DIR_PROJETO, "assets", "images", "ui", "predio_rex.png")
-CAMINHO_BUNKER = os.path.join(DIR_PROJETO, "assets", "images", "ui", "bunker.png")
-CAMINHO_BUNKER = os.path.join(DIR_PROJETO, "assets", "images", "ui", "bunker.png")
+# Mapeamento de territórios para sprites de fundo (usando sistema dia/noite)
+def obter_caminho_fabrica():
+    return obter_caminho_sprite_dia_noite("fabrica")
+def obter_caminho_iate_barao():
+    return obter_caminho_sprite_dia_noite("iate_barao")
+def obter_caminho_monte_akira():
+    return obter_caminho_sprite_dia_noite("monte_akira")
+def obter_caminho_torre_king():
+    return obter_caminho_sprite_dia_noite("predio_rex")
+def obter_caminho_bunker():
+    return obter_caminho_sprite_dia_noite("bunker")
+def obter_caminho_oficina():
+    return obter_caminho_sprite_dia_noite("oficina")
 
-MAPEAMENTO_FUNDOS = {
-    # Barão - Iate
-    "docas_barao": CAMINHO_IATE_BARAO,
-    "iate_barao": CAMINHO_IATE_BARAO,
-    "iate_do_barao": CAMINHO_IATE_BARAO,
-    "iate_do_barão": CAMINHO_IATE_BARAO,
-    "barao": CAMINHO_IATE_BARAO,
-    "barão": CAMINHO_IATE_BARAO,
-    
-    # Boris - Fábrica
-    "fabrica_boris": CAMINHO_FABRICA,
-    "fabrica_do_boris": CAMINHO_FABRICA,
-    "fábrica_do_boris": CAMINHO_FABRICA,
-    "fabrica": CAMINHO_FABRICA,
-    "fábrica": CAMINHO_FABRICA,
-    "boris": CAMINHO_FABRICA,
-    
-    # Akira - Monte
-    "templo_akira": CAMINHO_MONTE_AKIRA,
-    "monte_akira": CAMINHO_MONTE_AKIRA,
-    "montanha_akira": CAMINHO_MONTE_AKIRA,
-    "akira": CAMINHO_MONTE_AKIRA,
-    
-    # Rex - Torre
-    "torre_rex": CAMINHO_TORRE_KING,
-    "torre_king": CAMINHO_TORRE_KING,
-    "predio_do_rex": CAMINHO_TORRE_KING,
-    "prédio_do_rex": CAMINHO_TORRE_KING,
-    "predio_rex": CAMINHO_TORRE_KING,
-    "prédio_rex": CAMINHO_TORRE_KING,
-    "rex": CAMINHO_TORRE_KING,
-    
-    # Pixel - Bunker
-    "bueiro_pixel": CAMINHO_BUNKER,
-    "pixel": CAMINHO_BUNKER,
-    "bunker": CAMINHO_BUNKER,
-    
-    # Oficina/Garagem
-    "oficina": CAMINHO_OFICINA,
-    "garagem": CAMINHO_OFICINA,
-    "crank": CAMINHO_OFICINA,
-}
+# Mantém compatibilidade com código existente
+CAMINHO_FABRICA = obter_caminho_fabrica()
+CAMINHO_IATE_BARAO = obter_caminho_iate_barao()
+CAMINHO_MONTE_AKIRA = obter_caminho_monte_akira()
+CAMINHO_TORRE_KING = obter_caminho_torre_king()
+CAMINHO_BUNKER = obter_caminho_bunker()
+CAMINHO_OFICINA = obter_caminho_oficina()
+
+def obter_mapeamento_fundos():
+    """Retorna o mapeamento de fundos com caminhos dinâmicos baseados em dia/noite"""
+    return {
+        # Barão - Iate
+        "docas_barao": obter_caminho_iate_barao(),
+        "iate_barao": obter_caminho_iate_barao(),
+        "iate_do_barao": obter_caminho_iate_barao(),
+        "iate_do_barão": obter_caminho_iate_barao(),
+        "barao": obter_caminho_iate_barao(),
+        "barão": obter_caminho_iate_barao(),
+        
+        # Boris - Fábrica
+        "fabrica_boris": obter_caminho_fabrica(),
+        "fabrica_do_boris": obter_caminho_fabrica(),
+        "fábrica_do_boris": obter_caminho_fabrica(),
+        "fabrica": obter_caminho_fabrica(),
+        "fábrica": obter_caminho_fabrica(),
+        "boris": obter_caminho_fabrica(),
+        
+        # Akira - Monte
+        "templo_akira": obter_caminho_monte_akira(),
+        "monte_akira": obter_caminho_monte_akira(),
+        "montanha_akira": obter_caminho_monte_akira(),
+        "akira": obter_caminho_monte_akira(),
+        
+        # Rex - Torre
+        "torre_rex": obter_caminho_torre_king(),
+        "torre_king": obter_caminho_torre_king(),
+        "predio_do_rex": obter_caminho_torre_king(),
+        "prédio_do_rex": obter_caminho_torre_king(),
+        "predio_rex": obter_caminho_torre_king(),
+        "prédio_rex": obter_caminho_torre_king(),
+        "rex": obter_caminho_torre_king(),
+        
+        # Pixel - Bunker
+        "bueiro_pixel": obter_caminho_bunker(),
+        "pixel": obter_caminho_bunker(),
+        "bunker": obter_caminho_bunker(),
+        
+        # Oficina/Garagem
+        "oficina": obter_caminho_oficina(),
+        "garagem": obter_caminho_oficina(),
+        "crank": obter_caminho_oficina(),
+    }
+
+MAPEAMENTO_FUNDOS = obter_mapeamento_fundos()
 
 def _get_render_text():
     """Importa e retorna a função render_text"""
@@ -79,38 +97,47 @@ def obter_fundo_territorio(territorio_id: str, npc_id: str = None, sprite_fundo_
         if os.path.exists(caminho_absoluto):
             return caminho_absoluto
     
+    # Atualizar mapeamento dinamicamente (para refletir mudanças dia/noite)
+    mapeamento = obter_mapeamento_fundos()
+    
     # Tentar pelo ID do território
-    if territorio_id in MAPEAMENTO_FUNDOS:
-        caminho = MAPEAMENTO_FUNDOS[territorio_id]
+    if territorio_id in mapeamento:
+        caminho = mapeamento[territorio_id]
         if caminho and os.path.exists(caminho):
             return caminho
     
     # Tentar pelo NPC ID
-    if npc_id and npc_id in MAPEAMENTO_FUNDOS:
-        caminho = MAPEAMENTO_FUNDOS[npc_id]
+    if npc_id and npc_id in mapeamento:
+        caminho = mapeamento[npc_id]
         if caminho and os.path.exists(caminho):
             return caminho
     
-    # Verificar se o ID contém palavras-chave
+    # Verificar se o ID contém palavras-chave (usando funções dinâmicas)
     territorio_id_lower = territorio_id.lower()
     if "oficina" in territorio_id_lower or "garagem" in territorio_id_lower or "crank" in territorio_id_lower:
-        if os.path.exists(CAMINHO_OFICINA):
-            return CAMINHO_OFICINA
+        caminho = obter_caminho_oficina()
+        if os.path.exists(caminho):
+            return caminho
     elif "barao" in territorio_id_lower or "iate" in territorio_id_lower:
-        if os.path.exists(CAMINHO_IATE_BARAO):
-            return CAMINHO_IATE_BARAO
+        caminho = obter_caminho_iate_barao()
+        if os.path.exists(caminho):
+            return caminho
     elif "boris" in territorio_id_lower or "fabrica" in territorio_id_lower:
-        if os.path.exists(CAMINHO_FABRICA):
-            return CAMINHO_FABRICA
+        caminho = obter_caminho_fabrica()
+        if os.path.exists(caminho):
+            return caminho
     elif "akira" in territorio_id_lower or "monte" in territorio_id_lower or "templo" in territorio_id_lower:
-        if os.path.exists(CAMINHO_MONTE_AKIRA):
-            return CAMINHO_MONTE_AKIRA
+        caminho = obter_caminho_monte_akira()
+        if os.path.exists(caminho):
+            return caminho
     elif "rex" in territorio_id_lower or "torre" in territorio_id_lower or "king" in territorio_id_lower:
-        if os.path.exists(CAMINHO_TORRE_KING):
-            return CAMINHO_TORRE_KING
+        caminho = obter_caminho_torre_king()
+        if os.path.exists(caminho):
+            return caminho
     elif "pixel" in territorio_id_lower or "bueiro" in territorio_id_lower or "bunker" in territorio_id_lower:
-        if os.path.exists(CAMINHO_BUNKER):
-            return CAMINHO_BUNKER
+        caminho = obter_caminho_bunker()
+        if os.path.exists(caminho):
+            return caminho
     
     return None
 
@@ -126,6 +153,11 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
         "parametros": {...}
     }
     """
+    # Se for a casa, usar sistema de point and click
+    if territorio_id.lower() == "casa" or (area_nome and "casa" in area_nome.lower()):
+        from core.casa import casa_loop
+        return casa_loop(screen, sprite_fundo)
+    
     territorio = obter_territorio(territorio_id)
     
     # Se não encontrar território, tentar criar um básico baseado no ID
@@ -234,6 +266,10 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
         dt = clock.tick(FPS) / 1000.0
         tempo_animacao += dt
         
+        # Atualizar tempo do jogo (1 minuto real = 1 hora do jogo)
+        from core.tempo_jogo import gerenciador_tempo
+        gerenciador_tempo.atualizar(dt)
+        
         # Atualizar mensagem de salvamento
         if mostrar_mensagem_salvo:
             tempo_mensagem_salvo += dt
@@ -241,10 +277,13 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
                 mostrar_mensagem_salvo = False
                 tempo_mensagem_salvo = 0.0
         
+        # Coletar eventos uma vez para todos os processamentos
+        eventos = pygame.event.get()
+        
         # Processar Boris se ativo
         if mostrar_boris and boris.ativo:
             boris.atualizar(dt)
-            resultado_boris = boris.processar_eventos(pygame.event.get())
+            resultado_boris = boris.processar_eventos(eventos)
             if resultado_boris == "fechado":
                 mostrar_boris = False
             elif resultado_boris == "abrir_loja":
@@ -254,130 +293,130 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
         # Processar Pixel se ativo
         if mostrar_pixel and pixel.ativo:
             pixel.atualizar(dt)
-            resultado_pixel = pixel.processar_eventos(pygame.event.get())
+            resultado_pixel = pixel.processar_eventos(eventos)
             if resultado_pixel == "fechado":
                 mostrar_pixel = False
             elif resultado_pixel == "abrir_loja":
                 # Abrir loja do Pixel (implementar depois)
                 mostrar_pixel = False
         
-        # Processar eventos
-        eventos = pygame.event.get()
-        for ev in eventos:
-            if ev.type == pygame.QUIT:
-                return "menu_principal"  # Fechar jogo vai para menu principal
-            
-            if ev.type == pygame.KEYDOWN:
-                if ev.key == pygame.K_ESCAPE:
-                    # Alternar pause
-                    hub_pausado = not hub_pausado
-                    if hub_pausado:
-                        opcao_pausa_selecionada = 0
-                elif hub_pausado:
-                    # Processar navegação no menu de pause
-                    if ev.key in (pygame.K_UP, pygame.K_w):
-                        opcao_pausa_selecionada = (opcao_pausa_selecionada - 1) % 4
+        # Processar eventos (apenas se Boris/Pixel não estiverem ativos, para evitar processamento duplo)
+        if not (mostrar_boris and boris.ativo) and not (mostrar_pixel and pixel.ativo):
+            for ev in eventos:
+                if ev.type == pygame.QUIT:
+                    return "menu_principal"  # Fechar jogo vai para menu principal
+                
+                if ev.type == pygame.KEYDOWN:
+                    if ev.key == pygame.K_ESCAPE:
+                        # Alternar pause
+                        hub_pausado = not hub_pausado
+                        if hub_pausado:
+                            opcao_pausa_selecionada = 0
+                    elif hub_pausado:
+                        # Processar navegação no menu de pause
+                        if ev.key in (pygame.K_UP, pygame.K_w):
+                            opcao_pausa_selecionada = (opcao_pausa_selecionada - 1) % 4
+                        elif ev.key in (pygame.K_DOWN, pygame.K_s):
+                            opcao_pausa_selecionada = (opcao_pausa_selecionada + 1) % 4
+                        elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
+                            # Selecionar opção
+                            if opcao_pausa_selecionada == 0:
+                                # Continuar
+                                hub_pausado = False
+                            elif opcao_pausa_selecionada == 1:
+                                # Salvar
+                                from core.progresso import gerenciador_progresso
+                                gerenciador_progresso.salvar()
+                                hub_pausado = False
+                            elif opcao_pausa_selecionada == 2:
+                                # Opções (por enquanto, apenas continuar)
+                                hub_pausado = False
+                            elif opcao_pausa_selecionada == 3:
+                                # Menu principal
+                                return "menu_principal"
+                    elif ev.key in (pygame.K_UP, pygame.K_w):
+                        atividade_selecionada = (atividade_selecionada - 1) % len(atividades) if atividades else 0
                     elif ev.key in (pygame.K_DOWN, pygame.K_s):
-                        opcao_pausa_selecionada = (opcao_pausa_selecionada + 1) % 4
+                        atividade_selecionada = (atividade_selecionada + 1) % len(atividades) if atividades else 0
                     elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
-                        # Selecionar opção
-                        if opcao_pausa_selecionada == 0:
-                            # Continuar
-                            hub_pausado = False
-                        elif opcao_pausa_selecionada == 1:
-                            # Salvar
-                            from core.progresso import gerenciador_progresso
-                            gerenciador_progresso.salvar()
-                            hub_pausado = False
-                        elif opcao_pausa_selecionada == 2:
-                            # Opções (por enquanto, apenas continuar)
-                            hub_pausado = False
-                        elif opcao_pausa_selecionada == 3:
-                            # Menu principal
-                            return "menu_principal"
-                elif ev.key in (pygame.K_UP, pygame.K_w):
-                    atividade_selecionada = (atividade_selecionada - 1) % len(atividades) if atividades else 0
-                elif ev.key in (pygame.K_DOWN, pygame.K_s):
-                    atividade_selecionada = (atividade_selecionada + 1) % len(atividades) if atividades else 0
-                elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
-                    if atividades and 0 <= atividade_selecionada < len(atividades):
-                        atividade = atividades[atividade_selecionada]
-                        return {
-                            "atividade": atividade.get("tipo"),
-                            "nome": atividade.get("nome"),
-                            "territorio_id": territorio_id,
-                            "npc_id": territorio.npc_id,
-                            **atividade  # Incluir todos os parâmetros da atividade
-                        }
-            
-            if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                mouse_x, mouse_y = ev.pos
-                if hub_pausado:
-                    # Processar clique no menu de pause
-                    caixa_largura = 500
-                    caixa_altura = 400
-                    caixa_x = (LARGURA - caixa_largura) // 2
-                    caixa_y = (ALTURA - caixa_altura) // 2
-                    
-                    opcoes_pausa = [
-                        ("CONTINUAR", "continuar"),
-                        ("SALVAR", "salvar"),
-                        ("OPÇÕES", "opcoes"),
-                        ("MENU PRINCIPAL", "menu")
-                    ]
-                    
-                    altura_total_opcoes = len(opcoes_pausa) * 60
-                    offset_opcoes = caixa_y + caixa_altura - altura_total_opcoes - 20
-                    
-                    if caixa_x <= mouse_x <= caixa_x + caixa_largura and caixa_y <= mouse_y <= caixa_y + caixa_altura:
-                        for i, (nome, chave) in enumerate(opcoes_pausa):
-                            y_opcao = offset_opcoes + i * 60
-                            opcao_rect = pygame.Rect(caixa_x + 20, y_opcao - 5, caixa_largura - 40, 60)
-                            if opcao_rect.collidepoint(mouse_x, mouse_y):
-                                if i == 0:
-                                    # Continuar
-                                    hub_pausado = False
-                                elif i == 1:
-                                    # Salvar
-                                    from core.progresso import gerenciador_progresso
-                                    gerenciador_progresso.salvar()
-                                    mostrar_mensagem_salvo = True
-                                    tempo_mensagem_salvo = 0.0
-                                    hub_pausado = False
-                                elif i == 2:
-                                    # Opções (por enquanto, apenas continuar)
-                                    hub_pausado = False
-                                elif i == 3:
-                                    # Menu principal
-                                    return "menu_principal"
-                                break
-                    continue  # Não processar outros cliques quando pausado
+                        if atividades and 0 <= atividade_selecionada < len(atividades):
+                            atividade = atividades[atividade_selecionada]
+                            return {
+                                "atividade": atividade.get("tipo"),
+                                "nome": atividade.get("nome"),
+                                "territorio_id": territorio_id,
+                                "npc_id": territorio.npc_id,
+                                **atividade  # Incluir todos os parâmetros da atividade
+                            }
                 
-                # Verificar clique no botão voltar (antes de verificar atividades)
-                voltar_largura = 120
-                voltar_altura = 40
-                voltar_x = LARGURA - voltar_largura - 20
-                voltar_y = 20
-                voltar_rect = pygame.Rect(voltar_x, voltar_y, voltar_largura, voltar_altura)
-                if voltar_rect.collidepoint(mouse_x, mouse_y):
-                    return "voltar_mapa"  # Voltar para o mapa
-                
-                # Verificar clique nas atividades
-                caixa_x = LARGURA // 2 - 300
-                caixa_y = ALTURA // 2 - 200
-                atividade_altura = 60
-                
-                for i, atividade in enumerate(atividades):
-                    atividade_y = caixa_y + 100 + i * (atividade_altura + 10)
-                    atividade_rect = pygame.Rect(caixa_x + 20, atividade_y, 560, atividade_altura)
-                    if atividade_rect.collidepoint(mouse_x, mouse_y):
-                        return {
-                            "atividade": atividade.get("tipo"),
-                            "nome": atividade.get("nome"),
-                            "territorio_id": territorio_id,
-                            "npc_id": territorio.npc_id,
-                            **atividade
-                        }
+                if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                    mouse_x, mouse_y = ev.pos
+                    if hub_pausado:
+                        # Processar clique no menu de pause
+                        caixa_largura = 500
+                        caixa_altura = 400
+                        caixa_x = (LARGURA - caixa_largura) // 2
+                        caixa_y = (ALTURA - caixa_altura) // 2
+                        
+                        opcoes_pausa = [
+                            ("CONTINUAR", "continuar"),
+                            ("SALVAR", "salvar"),
+                            ("OPÇÕES", "opcoes"),
+                            ("MENU PRINCIPAL", "menu")
+                        ]
+                        
+                        altura_total_opcoes = len(opcoes_pausa) * 60
+                        offset_opcoes = caixa_y + caixa_altura - altura_total_opcoes - 20
+                        
+                        if caixa_x <= mouse_x <= caixa_x + caixa_largura and caixa_y <= mouse_y <= caixa_y + caixa_altura:
+                            for i, (nome, chave) in enumerate(opcoes_pausa):
+                                y_opcao = offset_opcoes + i * 60
+                                opcao_rect = pygame.Rect(caixa_x + 20, y_opcao - 5, caixa_largura - 40, 60)
+                                if opcao_rect.collidepoint(mouse_x, mouse_y):
+                                    if i == 0:
+                                        # Continuar
+                                        hub_pausado = False
+                                    elif i == 1:
+                                        # Salvar
+                                        from core.progresso import gerenciador_progresso
+                                        gerenciador_progresso.salvar()
+                                        mostrar_mensagem_salvo = True
+                                        tempo_mensagem_salvo = 0.0
+                                        hub_pausado = False
+                                    elif i == 2:
+                                        # Opções (por enquanto, apenas continuar)
+                                        hub_pausado = False
+                                    elif i == 3:
+                                        # Menu principal
+                                        return "menu_principal"
+                                    break
+                        continue  # Não processar outros cliques quando pausado
+                    
+                    # Verificar clique no botão voltar (antes de verificar atividades)
+                    voltar_largura = 120
+                    voltar_altura = 40
+                    voltar_x = LARGURA - voltar_largura - 20
+                    voltar_y = 20
+                    voltar_rect = pygame.Rect(voltar_x, voltar_y, voltar_largura, voltar_altura)
+                    if voltar_rect.collidepoint(mouse_x, mouse_y):
+                        return "voltar_mapa"  # Voltar para o mapa
+                    
+                    # Verificar clique nas atividades
+                    caixa_x = LARGURA // 2 - 300
+                    caixa_y = ALTURA // 2 - 200
+                    atividade_altura = 60
+                    
+                    for i, atividade in enumerate(atividades):
+                        atividade_y = caixa_y + 100 + i * (atividade_altura + 10)
+                        atividade_rect = pygame.Rect(caixa_x + 20, atividade_y, 560, atividade_altura)
+                        if atividade_rect.collidepoint(mouse_x, mouse_y):
+                            return {
+                                "atividade": atividade.get("tipo"),
+                                "nome": atividade.get("nome"),
+                                "territorio_id": territorio_id,
+                                "npc_id": territorio.npc_id,
+                                **atividade
+                            }
         
         # Desenhar
         screen.blit(bg, (0, 0))
@@ -588,11 +627,7 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
                 if info_parts:
                     info_texto = render_text(" | ".join(info_parts), 14, (150, 150, 150), bold=False, pixel_style=True)
                     screen.blit(info_texto, (atividade_rect.x + 10, atividade_rect.y + 35))
-        else:
-            # Sem atividades disponíveis
-            sem_atividades = render_text("Nenhuma atividade disponível", 18, (150, 150, 150), bold=False, pixel_style=True)
-            sem_x = caixa_x + (caixa_largura - sem_atividades.get_width()) // 2
-            screen.blit(sem_atividades, (sem_x, caixa_y + 200))
+        # Removido: mensagem "Nenhuma atividade disponível"
         
         # Instruções
         instrucoes = render_text("Selecione uma atividade | ESC para voltar ao mapa", 14, (150, 150, 150), bold=False, pixel_style=True)

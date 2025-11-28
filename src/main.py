@@ -1,6 +1,31 @@
 import os
 import math
 import random
+import sys
+# Suprimir avisos do libpng sobre iCCP
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+
+# Wrapper para filtrar avisos do libpng sobre iCCP
+class FilteredStderr:
+    """Filtra avisos do libpng sobre iCCP do stderr"""
+    def __init__(self, original_stderr):
+        self.original_stderr = original_stderr
+    
+    def write(self, message):
+        # Filtrar avisos do libpng sobre iCCP
+        if 'iCCP' in message and 'known incorrect sRGB profile' in message:
+            return  # Ignorar este aviso
+        self.original_stderr.write(message)
+    
+    def flush(self):
+        self.original_stderr.flush()
+    
+    def __getattr__(self, name):
+        return getattr(self.original_stderr, name)
+
+# Aplicar filtro ao stderr
+sys.stderr = FilteredStderr(sys.stderr)
+
 import pygame
 from config import (
     LARGURA, ALTURA, TURBO_P1, TURBO_P2,
@@ -82,7 +107,7 @@ CARROS_DISPONIVEIS = [
 
 carregar_configuracoes_garagem()
 
-def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=None, modo_jogo=ModoJogo.UM_JOGADOR, tipo_jogo=TipoJogo.CORRIDA, voltas=1, dificuldade_ia="medio"):
+def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=None, modo_jogo=ModoJogo.UM_JOGADOR, tipo_jogo=TipoJogo.CORRIDA, voltas=1, dificuldade_ia="medio", modo_arcade=False):
     if hasattr(principal, '_recompensa_drift_calculada'):
         delattr(principal, '_recompensa_drift_calculada')
     
@@ -1276,7 +1301,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     if acao_resultados:
                         evento_processado = True
                         if acao_resultados == "reiniciar":
-                            return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                            return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                         elif acao_resultados == "trocar_carro":
                             from core.menu import selecionar_carros_loop
                             resultado = selecionar_carros_loop(tela)
@@ -1284,7 +1309,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 carro_p1_idx, carro_p2_idx = resultado
                                 if carro_p1_idx is not None and carro_p2_idx is not None:
                                     if 0 <= carro_p1_idx < len(CARROS_DISPONIVEIS) and 0 <= carro_p2_idx < len(CARROS_DISPONIVEIS):
-                                        return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                                        return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                             estado_resultados_finais = None
                             estado_fim_jogo_p1 = None
                             estado_fim_jogo_p2 = None
@@ -1308,7 +1333,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         if acao:
                             evento_processado = True
                             if acao == "reiniciar":
-                                return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                                return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                             elif acao == "trocar_carro":
                                 from core.menu import selecionar_carros_loop
                                 resultado = selecionar_carros_loop(tela)
@@ -1316,13 +1341,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                     carro_p1_idx, carro_p2_idx = resultado
                                     if carro_p1_idx is not None and carro_p2_idx is not None:
                                         if 0 <= carro_p1_idx < len(CARROS_DISPONIVEIS) and 0 <= carro_p2_idx < len(CARROS_DISPONIVEIS):
-                                            return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                                            return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                                 estado_fim_jogo_p1 = None
-                                # Após fechar tela de fim de jogo P1, verificar se Rex deve aparecer (primeira corrida, só se P2 também terminou e modo 1 jogador)
-                                if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo and not mercador_alien.ativo:
+                                # Após fechar tela de fim de jogo P1, verificar se Rex deve aparecer (primeira corrida, só se P2 também terminou e modo 1 jogador, não no modo arcade)
+                                if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo and not mercador_alien.ativo and not modo_arcade:
                                     rex.verificar_aparecer()
-                                # Verificar se o Crank deve aparecer (após o Rex, modo 1 jogador)
-                                if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo:
+                                # Verificar se o Crank deve aparecer (após o Rex, modo 1 jogador, não no modo arcade)
+                                if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo and not modo_arcade:
                                     crank.verificar_aparecer_pos_corrida()
                                 # Verificar se o mercador alien deve aparecer (após o Crank, modo 1 jogador)
                                 if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not mercador_alien.ativo and not crank.ativo:
@@ -1331,11 +1356,11 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             elif acao == "espectador":
                                 p1_espectador = True
                                 estado_fim_jogo_p1 = None
-                                # Após fechar tela de fim de jogo P1, verificar se Rex deve aparecer (primeira corrida, só se P2 também terminou e modo 1 jogador)
-                                if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo and not mercador_alien.ativo:
+                                # Após fechar tela de fim de jogo P1, verificar se Rex deve aparecer (primeira corrida, só se P2 também terminou e modo 1 jogador, não no modo arcade)
+                                if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo and not mercador_alien.ativo and not modo_arcade:
                                     rex.verificar_aparecer()
-                                # Verificar se o Crank deve aparecer (após o Rex, modo 1 jogador)
-                                if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo:
+                                # Verificar se o Crank deve aparecer (após o Rex, modo 1 jogador, não no modo arcade)
+                                if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo and not modo_arcade:
                                     crank.verificar_aparecer_pos_corrida()
                                 # Verificar se o mercador alien deve aparecer (após o Crank, modo 1 jogador)
                                 if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not mercador_alien.ativo and not crank.ativo:
@@ -1349,8 +1374,24 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 jogo_pausado = not jogo_pausado
                                 opcao_pausa_selecionada = 0
                                 evento_processado = True
-                        elif ev.type == pygame.JOYBUTTONDOWN and ev.button == 6:
-                            if estado_fim_jogo_p1 is None:
+                        elif ev.type == pygame.JOYBUTTONDOWN:
+                            # Detectar tipo de controle para mapear botão de pausa corretamente
+                            from core.gamepad_manager import gerenciador_gamepad
+                            tipo_controle = "generic"
+                            if ev.joy < len(gerenciador_gamepad.joysticks):
+                                tipo_controle = gerenciador_gamepad._detectar_tipo_controle(ev.joy)
+                            
+                            # PS5/PS4: botão 6 = Share, botão 8/9 = Options
+                            # Xbox: botão 6 = Back (View), botão 7 = Start
+                            botao_pausa = False
+                            if tipo_controle == "xbox":
+                                botao_pausa = (ev.button == 6 or ev.button == 7)  # Back ou Start
+                            elif tipo_controle in ["ps5", "ps4"]:
+                                botao_pausa = (ev.button == 6 or ev.button == 8 or ev.button == 9)  # Share ou Options
+                            else:
+                                botao_pausa = (ev.button == 6)  # Fallback genérico
+                            
+                            if botao_pausa and estado_fim_jogo_p1 is None:
                                 jogo_pausado = not jogo_pausado
                                 opcao_pausa_selecionada = 0
                                 evento_processado = True
@@ -1363,7 +1404,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         if acao:
                             evento_processado = True
                             if acao == "reiniciar":
-                                return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                                return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                             elif acao == "trocar_carro":
                                 from core.menu import selecionar_carros_loop
                                 resultado = selecionar_carros_loop(tela)
@@ -1373,7 +1414,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                     if carro_p1_idx is not None and carro_p2_idx is not None:
                                         # Usar CARROS_DISPONIVEIS do escopo global
                                         if 0 <= carro_p1_idx < len(CARROS_DISPONIVEIS) and 0 <= carro_p2_idx < len(CARROS_DISPONIVEIS):
-                                            return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                                            return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                                 estado_fim_jogo_p2 = None
                                 continue
                             elif acao == "espectador":
@@ -1391,10 +1432,24 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 jogo_pausado = not jogo_pausado
                                 opcao_pausa_selecionada = 0
                                 evento_processado = True
-                        elif ev.type == pygame.JOYBUTTONDOWN and ev.button == 6:
-                            # Botão Options/Start do PS5 - pausar o jogo (mesma lógica do ESC)
-                            # PS5: botão 6 = Options/Start
-                            if estado_fim_jogo_p2 is None:
+                        elif ev.type == pygame.JOYBUTTONDOWN:
+                            # Detectar tipo de controle para mapear botão de pausa corretamente
+                            from core.gamepad_manager import gerenciador_gamepad
+                            tipo_controle = "generic"
+                            if ev.joy < len(gerenciador_gamepad.joysticks):
+                                tipo_controle = gerenciador_gamepad._detectar_tipo_controle(ev.joy)
+                            
+                            # PS5/PS4: botão 6 = Share, botão 8/9 = Options
+                            # Xbox: botão 6 = Back (View), botão 7 = Start
+                            botao_pausa = False
+                            if tipo_controle == "xbox":
+                                botao_pausa = (ev.button == 6 or ev.button == 7)  # Back ou Start
+                            elif tipo_controle in ["ps5", "ps4"]:
+                                botao_pausa = (ev.button == 6 or ev.button == 8 or ev.button == 9)  # Share ou Options
+                            else:
+                                botao_pausa = (ev.button == 6)  # Fallback genérico
+                            
+                            if botao_pausa and estado_fim_jogo_p2 is None:
                                 jogo_pausado = not jogo_pausado
                                 opcao_pausa_selecionada = 0
                                 evento_processado = True
@@ -1503,7 +1558,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     acao = processar_tela_resultados_finais(ev, estado_resultados_finais)
                     if acao:
                         if acao == "reiniciar":
-                            return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                            return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                         elif acao == "trocar_carro":
                             from core.menu import selecionar_carros_loop
                             resultado = selecionar_carros_loop(tela)
@@ -1512,13 +1567,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 # Validar índices antes de retornar
                                 if carro_p1_idx is not None and carro_p2_idx is not None:
                                     if 0 <= carro_p1_idx < len(CARROS_DISPONIVEIS) and 0 <= carro_p2_idx < len(CARROS_DISPONIVEIS):
-                                        return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                                        return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                             estado_resultados_finais = None
-                            # Após fechar tela de resultados finais, verificar se Rex deve aparecer (primeira corrida, modo 1 jogador)
-                            if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not crank.ativo and not mercador_alien.ativo:
+                            # Após fechar tela de resultados finais, verificar se Rex deve aparecer (primeira corrida, modo 1 jogador, não no modo arcade)
+                            if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not crank.ativo and not mercador_alien.ativo and not modo_arcade:
                                 rex.verificar_aparecer()
-                            # Verificar se o Crank deve aparecer (após o Rex, modo 1 jogador)
-                            if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not crank.ativo:
+                            # Verificar se o Crank deve aparecer (após o Rex, modo 1 jogador, não no modo arcade)
+                            if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not crank.ativo and not modo_arcade:
                                 crank.verificar_aparecer_pos_corrida()
                             # Verificar se o mercador alien deve aparecer (após o Crank, modo 1 jogador)
                             if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not mercador_alien.ativo and not crank.ativo:
@@ -1534,7 +1589,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     acao = processar_tela_fim_jogo(ev, estado_fim_jogo)
                     if acao:
                         if acao == "reiniciar":
-                            return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                            return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                         elif acao == "trocar_carro":
                             from core.menu import selecionar_carros_loop
                             resultado = selecionar_carros_loop(tela)
@@ -1543,13 +1598,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 # Validar índices antes de retornar
                                 if carro_p1_idx is not None and carro_p2_idx is not None:
                                     if 0 <= carro_p1_idx < len(CARROS_DISPONIVEIS) and 0 <= carro_p2_idx < len(CARROS_DISPONIVEIS):
-                                        return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                                        return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                             estado_fim_jogo = None
-                            # Após fechar tela de fim de jogo, verificar se Rex deve aparecer (primeira corrida, modo 1 jogador)
-                            if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not crank.ativo and not mercador_alien.ativo:
+                            # Após fechar tela de fim de jogo, verificar se Rex deve aparecer (primeira corrida, modo 1 jogador, não no modo arcade)
+                            if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not crank.ativo and not mercador_alien.ativo and not modo_arcade:
                                 rex.verificar_aparecer()
-                            # Verificar se o Crank deve aparecer (após o Rex, modo 1 jogador)
-                            if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not crank.ativo:
+                            # Verificar se o Crank deve aparecer (após o Rex, modo 1 jogador, não no modo arcade)
+                            if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not crank.ativo and not modo_arcade:
                                 crank.verificar_aparecer_pos_corrida()
                             # Verificar se o mercador alien deve aparecer (após o Crank, modo 1 jogador)
                             if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not mercador_alien.ativo and not crank.ativo:
@@ -1588,7 +1643,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             if i == 0:
                                 jogo_pausado = False
                             elif i == 1:
-                                return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                                return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                             elif i == 2:
                                 gerenciador_estatisticas.finalizar_sessao()
                                 return
@@ -1620,7 +1675,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             if chave == "continuar":
                                 jogo_pausado = False
                             elif chave == "reiniciar":
-                                return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                                return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                             elif chave == "menu":
                                 gerenciador_estatisticas.finalizar_sessao()
                                 return
@@ -1652,7 +1707,22 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             opcao_pausa_selecionada = 0
             elif ev.type == pygame.JOYBUTTONDOWN:
                 from core.gamepad_manager import gerenciador_gamepad
-                if ev.button == 6:
+                # Detectar tipo de controle para mapear botão de pausa corretamente
+                tipo_controle = "generic"
+                if ev.joy < len(gerenciador_gamepad.joysticks):
+                    tipo_controle = gerenciador_gamepad._detectar_tipo_controle(ev.joy)
+                
+                # PS5/PS4: botão 6 = Share, botão 8/9 = Options
+                # Xbox: botão 6 = Back (View), botão 7 = Start
+                botao_pausa = False
+                if tipo_controle == "xbox":
+                    botao_pausa = (ev.button == 6 or ev.button == 7)  # Back ou Start
+                elif tipo_controle in ["ps5", "ps4"]:
+                    botao_pausa = (ev.button == 6 or ev.button == 8 or ev.button == 9)  # Share ou Options
+                else:
+                    botao_pausa = (ev.button == 6)  # Fallback genérico
+                
+                if botao_pausa:
                     if modo_jogo == ModoJogo.DOIS_JOGADORES:
                         if estado_fim_jogo_p1 is not None or estado_fim_jogo_p2 is not None:
                             pass
@@ -1714,7 +1784,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 if chave == "continuar":
                                     jogo_pausado = False
                                 elif chave == "reiniciar":
-                                    return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                                    return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                                 elif chave == "menu":
                                     gerenciador_estatisticas.finalizar_sessao()
                                     return
@@ -1736,7 +1806,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         if chave == "continuar":
                             jogo_pausado = False
                         elif chave == "reiniciar":
-                            return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia)
+                            return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                         elif chave == "menu":
                             gerenciador_estatisticas.finalizar_sessao()
                             return
@@ -1812,8 +1882,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             # Verificar se há NPCs ativos (cutscenes) - não iniciar corrida durante cutscenes
             npcs_ativos = (akira.ativo or rex.ativo or crank.ativo or mercador_alien.ativo or glub.ativo)
             
-            # Verificar se Akira deve aparecer pré-corrida (modo 1 jogador, primeira vez na pista)
-            if modo_jogo == ModoJogo.UM_JOGADOR and tipo_jogo == TipoJogo.CORRIDA and not npcs_ativos:
+            # Verificar se Akira deve aparecer pré-corrida (modo 1 jogador, primeira vez na pista, não no modo arcade)
+            if modo_jogo == ModoJogo.UM_JOGADOR and tipo_jogo == TipoJogo.CORRIDA and not npcs_ativos and not modo_arcade:
                 numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                 akira.verificar_aparecer_pre_corrida(numero_pista)
                 npcs_ativos = akira.ativo  # Atualizar após verificar
@@ -2049,12 +2119,12 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 gerenciador_ranking.registrar_derrota_jogador()
                             
                             # Verificar se Akira deve aparecer pós-corrida (modo 1 jogador) - ANTES do Rex
-                            if modo_jogo == ModoJogo.UM_JOGADOR:
+                            if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
                                 colisoes_na_corrida = getattr(principal, '_colisoes_na_corrida', 0)
                                 akira.verificar_aparecer_pos_corrida(posicao_jogador_p1, colisoes_na_corrida, posicao_jogador_p1 == 1)
                             
-                            # Verificar se Rex deve aparecer (primeira corrida, modo 1 jogador) - DEPOIS de registrar a corrida
-                            if modo_jogo == ModoJogo.UM_JOGADOR:
+                            # Verificar se Rex deve aparecer (primeira corrida, modo 1 jogador, não no modo arcade) - DEPOIS de registrar a corrida
+                            if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
                                 rex.verificar_aparecer()
                             
                             # Desbloqueio direto como fallback caso os flags não estejam desbloqueados
@@ -2425,8 +2495,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             
                             numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                             gerenciador_estatisticas.registrar_corrida_completa(numero_pista, posicao_jogador_p1, tempo_final_p1)
-                            # Verificar se Rex deve aparecer (primeira corrida, modo 1 jogador) - DEPOIS de registrar a corrida
-                            if modo_jogo == ModoJogo.UM_JOGADOR:
+                            # Verificar se Rex deve aparecer (primeira corrida, modo 1 jogador, não no modo arcade) - DEPOIS de registrar a corrida
+                            if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
                                 rex.verificar_aparecer()
                             if novo_recorde:
                                 gerenciador_estatisticas.registrar_recorde(numero_pista)
@@ -3376,6 +3446,34 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     else:  # dificil
                         recompensa_dinheiro = 400
 
+                # Aplicar multiplicador de dinheiro baseado na popularidade
+                try:
+                    from core.status_jogador import status_jogador
+                    multiplicador_dinheiro = status_jogador.obter_multiplicador_dinheiro()
+                    recompensa_dinheiro = int(recompensa_dinheiro * multiplicador_dinheiro)
+                    
+                    # Atualizar popularidade baseado no resultado
+                    if posicao_jogador == 1:
+                        # Ganhou: +5 a +15 de popularidade (baseado na dificuldade)
+                        if dificuldade_ia == "facil":
+                            status_jogador.ganhar_popularidade(5.0)
+                        elif dificuldade_ia == "medio":
+                            status_jogador.ganhar_popularidade(10.0)
+                        else:  # dificil
+                            status_jogador.ganhar_popularidade(15.0)
+                    elif posicao_jogador >= 2:
+                        # Perdeu: -3 a -8 de popularidade (baseado na dificuldade e posição)
+                        if dificuldade_ia == "facil":
+                            status_jogador.perder_popularidade(3.0)
+                        elif dificuldade_ia == "medio":
+                            status_jogador.perder_popularidade(5.0)
+                        else:  # dificil
+                            status_jogador.perder_popularidade(8.0)
+                    
+                    status_jogador.salvar()
+                except Exception as e:
+                    print(f"Erro ao atualizar status do jogador: {e}")
+                
                 gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro)
 
                 # Registrar corrida no Crank (mas não aparecer ainda - só após fechar tela de fim de jogo)
@@ -3462,12 +3560,12 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                         # No modo GHOST/DRIFT, usar posicao_jogador e tempo_final que já foram definidos acima
                         gerenciador_estatisticas.registrar_corrida_completa(numero_pista, posicao_jogador, tempo_final)
-                        # Verificar se Akira deve aparecer pós-corrida (modo 1 jogador) - ANTES do Rex
-                        if modo_jogo == ModoJogo.UM_JOGADOR:
+                        # Verificar se Akira deve aparecer pós-corrida (modo 1 jogador, não no modo arcade) - ANTES do Rex
+                        if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
                             colisoes_na_corrida = getattr(principal, '_colisoes_na_corrida', 0)
                             akira.verificar_aparecer_pos_corrida(posicao_jogador, colisoes_na_corrida, posicao_jogador == 1)
-                        # Verificar se Rex deve aparecer (primeira corrida, modo 1 jogador) - DEPOIS de registrar a corrida
-                        if modo_jogo == ModoJogo.UM_JOGADOR:
+                        # Verificar se Rex deve aparecer (primeira corrida, modo 1 jogador, não no modo arcade) - DEPOIS de registrar a corrida
+                        if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
                             rex.verificar_aparecer()
                         # Desbloqueio direto como fallback caso os flags não estejam desbloqueados
                         # IMPORTANTE: Executar SEMPRE após completar corrida, independente de NPCs aparecerem
