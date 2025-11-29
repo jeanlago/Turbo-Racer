@@ -7,7 +7,6 @@ import os
 import json
 from config import LARGURA, ALTURA
 
-# Caminhos
 from config import DIR_PROJETO
 DIR_PISTAS = os.path.join(DIR_PROJETO, "assets", "images", "pistas")
 DIR_LAPS = os.path.join(DIR_PROJETO, "data", "laps")
@@ -24,9 +23,8 @@ class GerenciadorTiles:
         """Carrega todas as tiles de pista"""
         tiles_carregadas = 0
         
-        # Tiles de curva (b-1-1, b-1-2, etc.)
-        for b in range(1, 5):  # b-1 até b-4
-            for c in range(1, 5):  # 1 até 4
+        for b in range(1, 5):
+            for c in range(1, 5):
                 nome = f"b-{b}-{c}.png"
                 caminho = os.path.join(DIR_PISTAS, nome)
                 if os.path.exists(caminho):
@@ -36,7 +34,6 @@ class GerenciadorTiles:
                 else:
                     print(f"AVISO: Tile não encontrada: {caminho}")
         
-        # Tiles retas horizontais (st-h-3)
         for k in range(1, 5):
             nome = f"st-h-3-k{k}.png"
             caminho = os.path.join(DIR_PISTAS, nome)
@@ -44,10 +41,9 @@ class GerenciadorTiles:
                 chave = f"st-h-3-k{k}"
                 self.tiles[chave] = pygame.image.load(caminho).convert_alpha()
                 tiles_carregadas += 1
-            else:
-                print(f"AVISO: Tile não encontrada: {caminho}")
+        else:
+            print(f"AVISO: Tile não encontrada: {caminho}")
         
-        # Tile reta horizontal base
         nome = "st-h-3.png"
         caminho = os.path.join(DIR_PISTAS, nome)
         if os.path.exists(caminho):
@@ -56,7 +52,6 @@ class GerenciadorTiles:
         else:
             print(f"AVISO: Tile não encontrada: {caminho}")
         
-        # Tile reta horizontal com listra (largada/chegada)
         nome = "st-h-3-ch.png"
         caminho = os.path.join(DIR_PISTAS, nome)
         if os.path.exists(caminho):
@@ -66,7 +61,6 @@ class GerenciadorTiles:
         else:
             print(f"AVISO: Tile de largada/chegada não encontrada: {caminho}")
         
-        # Tiles retas verticais (st-v-3)
         for k in range(1, 5):
             nome = f"st-v-3-k{k}.png"
             caminho = os.path.join(DIR_PISTAS, nome)
@@ -74,10 +68,9 @@ class GerenciadorTiles:
                 chave = f"st-v-3-k{k}"
                 self.tiles[chave] = pygame.image.load(caminho).convert_alpha()
                 tiles_carregadas += 1
-            else:
-                print(f"AVISO: Tile não encontrada: {caminho}")
+        else:
+            print(f"AVISO: Tile não encontrada: {caminho}")
         
-        # Tile reta vertical base
         nome = "st-v-3.png"
         caminho = os.path.join(DIR_PISTAS, nome)
         if os.path.exists(caminho):
@@ -86,7 +79,6 @@ class GerenciadorTiles:
         else:
             print(f"AVISO: Tile não encontrada: {caminho}")
         
-        # Tile overhead (fundo)
         nome = "overhead_tile.png"
         caminho = os.path.join(DIR_PISTAS, nome)
         if os.path.exists(caminho):
@@ -121,15 +113,13 @@ class PistaTiles:
         self.gerenciador_tiles = GerenciadorTiles()
         self.surface_pista = None
         self.definicao_pista = None
-        self.posicao_inicial = (0, 0)  # Posição inicial do jogador
+        self.posicao_inicial = (0, 0)
         
     def carregar_definicao_pista(self, numero_pista):
         """
         Carrega a definição de uma pista (hardcoded por enquanto, como no GRIP)
         Retorna uma lista de tuplas: (nome_tile, offset_x, offset_y)
         """
-        # Por enquanto, vamos usar as definições do GRIP
-        # Futuramente pode ser carregado de JSON
         definicoes = {
             1: self._definicao_pista_1,
             2: self._definicao_pista_2,
@@ -148,27 +138,14 @@ class PistaTiles:
     
     def _definicao_pista_1(self):
         """Definição da pista 1 (baseada no GRIP)"""
-        # Posição inicial relativa ao centro da pista
-        # A tile "st-h-3-ch" (linha de largada/chegada) está em (0, -100) relativa ao centro
-        # No GRIP, a linha de largada está em (position[0]+50, position[1]-100)
-        # Mas a tile horizontal está centrada em (0, -100)
-        # Para centralizar os carros na largura da pista, vamos usar a posição do GRIP ajustada
-        # A linha de largada no GRIP é vertical em x+50, mas a tile é horizontal
-        # Vamos posicionar no centro da tile horizontal, que está em (0, -100)
-        # Mas precisamos ajustar o Y para ficar mais centralizado na altura da pista
-        # A tile está em y=-100, mas podemos ajustar um pouco para centralizar melhor
-        # No GRIP, a linha de largada está em (position[0]+50, position[1]-100)
-        # A tile st-h-3-ch está em (0, -100) relativa ao centro
-        # Vamos usar a posição do GRIP (x+50) mas ajustar Y para centralizar melhor na altura da pista
-        # Isso coloca os carros na linha de largada, mas mais centralizados verticalmente
-        self.posicao_inicial_relativa = (50, -50)  # Relativo ao centro (2500, 2500) - alinhado com linha de largada do GRIP, mais centralizado
+        self.posicao_inicial_relativa = (50, -50)
         
         return [
             ("st-h-3-k2", -1000, -115),
             ("st-h-3", -700, -100),
             ("st-h-3", -400, -100),
             ("st-h-3", -100, -100),
-            ("st-h-3-ch", 0, -100),  # Tile de largada/chegada com listra branca
+            ("st-h-3-ch", 0, -100),
             ("st-h-3-k4", 300, -100),
             ("b-4-1", 600, -100),
             ("b-3-1", 600, 300),
@@ -512,11 +489,9 @@ class PistaTiles:
         if posicao_centro is None:
             posicao_centro = (self.largura // 2, self.altura // 2)
         
-        # Carregar definição da pista primeiro para calcular limites reais
         self.definicao_pista = self.carregar_definicao_pista(numero_pista)
         print(f"Definição da pista {numero_pista} carregada: {len(self.definicao_pista)} tiles")
         
-        # Calcular limites reais das tiles para expandir a superfície se necessário
         centro_x, centro_y = posicao_centro
         min_x = float('inf')
         max_x = float('-inf')
@@ -534,35 +509,29 @@ class PistaTiles:
                 min_y = min(min_y, y)
                 max_y = max(max_y, y + tile_h)
         
-        # Adicionar margem de segurança
         margem = 500
         min_x = min(0, min_x - margem)
         max_x = max(self.largura, max_x + margem)
         min_y = min(0, min_y - margem)
         max_y = max(self.altura, max_y + margem)
         
-        # Calcular dimensões expandidas
         largura_expandida = int(max_x - min_x)
         altura_expandida = int(max_y - min_y)
         
-        # Limitar tamanho máximo para evitar problemas de memória (pygame tem limite de ~32767 pixels)
         tamanho_maximo = 30000
         if largura_expandida > tamanho_maximo or altura_expandida > tamanho_maximo:
             print(f"AVISO: Pista muito grande ({largura_expandida}x{altura_expandida}), limitando a {tamanho_maximo}")
             largura_expandida = min(largura_expandida, tamanho_maximo)
             altura_expandida = min(altura_expandida, tamanho_maximo)
         
-        # Atualizar dimensões da superfície
         self.largura = largura_expandida
         self.altura = altura_expandida
         
-        # Ajustar centro para o novo sistema de coordenadas
         offset_x_superficie = -min_x
         offset_y_superficie = -min_y
         centro_x_ajustado = centro_x + offset_x_superficie
         centro_y_ajustado = centro_y + offset_y_superficie
         
-        # Armazenar offset para uso externo
         self.offset_x_superficie = offset_x_superficie
         self.offset_y_superficie = offset_y_superficie
         
@@ -570,37 +539,29 @@ class PistaTiles:
         print(f"Limites das tiles: min_x={min_x:.0f}, max_x={max_x:.0f}, min_y={min_y:.0f}, max_y={max_y:.0f}")
         print(f"Offset da superfície: ({offset_x_superficie:.0f}, {offset_y_superficie:.0f})")
         
-        # Criar superfície expandida para a pista
         self.surface_pista = pygame.Surface((largura_expandida, altura_expandida))
         
-        # Preencher com fundo verde usando overhead_tile repetida (estilo GRIP)
         overhead = self.gerenciador_tiles.obter_overhead()
         if overhead:
             tile_w, tile_h = overhead.get_size()
             print(f"Desenhando fundo com tile {tile_w}x{tile_h}")
-            # Preencher toda a superfície expandida com tiles de fundo
             for y in range(0, altura_expandida + tile_h, tile_h):
                 for x in range(0, largura_expandida + tile_w, tile_w):
                     self.surface_pista.blit(overhead, (x, y))
             print(f"Fundo verde desenhado em superfície {largura_expandida}x{altura_expandida}")
         else:
-            # Fallback: preencher com verde sólido
             print("AVISO: Usando verde sólido (overhead_tile não encontrada)")
             self.surface_pista.fill((0, 200, 0))
         
-        # Renderizar todas as tiles da pista no novo sistema de coordenadas
         tiles_desenhadas = 0
         tiles_fora_limites = 0
         
         for nome_tile, offset_x, offset_y in self.definicao_pista:
             tile = self.gerenciador_tiles.obter_tile(nome_tile)
             if tile:
-                # Calcular posição absoluta na superfície expandida
-                # Ajustar para o novo sistema de coordenadas
                 x = centro_x_ajustado + offset_x
                 y = centro_y_ajustado + offset_y
                 
-                # Verificar se está dentro dos limites da superfície expandida
                 if 0 <= x < largura_expandida and 0 <= y < altura_expandida:
                     self.surface_pista.blit(tile, (int(x), int(y)))
                     tiles_desenhadas += 1
@@ -615,8 +576,6 @@ class PistaTiles:
         if self.definicao_pista:
             print(f"Primeira tile em: ({centro_x + self.definicao_pista[0][1]}, {centro_y + self.definicao_pista[0][2]})")
         
-        # Após construir a pista, tentar encontrar o centro real na largada
-        # Isso garante que a posição inicial seja calculada corretamente
         print("Tentando encontrar centro real da pista na largada...")
         centro_largada = self.encontrar_centro_pista_na_largada()
         if centro_largada:
@@ -630,34 +589,25 @@ class PistaTiles:
         Desenha a pista dinamicamente baseada na posição do jogador (estilo GRIP)
         posicao_jogador: (x, y) - posição atual do jogador no mundo
         """
-        # Desenhar fundo verde usando overhead_tile repetida
         overhead = self.gerenciador_tiles.obter_overhead()
         if overhead:
             tile_w, tile_h = overhead.get_size()
-            # Calcular offset do fundo baseado na posição (estilo GRIP)
             bg_x = int(posicao_jogador[0]) % tile_w
             bg_y = int(posicao_jogador[1]) % tile_h
             
-            # Desenhar tiles de fundo cobrindo toda a tela visível
             for y in range(-tile_h, surface_destino.get_height() + tile_h, tile_h):
                 for x in range(-tile_w, surface_destino.get_width() + tile_w, tile_w):
                     surface_destino.blit(overhead, (x - bg_x, y - bg_y))
         else:
-            # Fallback: preencher com verde
             surface_destino.fill((0, 200, 0))
         
-        # Desenhar tiles da pista baseadas na posição do jogador
         if self.definicao_pista:
             px, py = posicao_jogador
             for nome_tile, offset_x, offset_y in self.definicao_pista:
                 tile = self.gerenciador_tiles.obter_tile(nome_tile)
                 if tile:
-                    # Calcular posição relativa ao jogador (estilo GRIP)
                     x = px + offset_x
                     y = py + offset_y
-                    # Converter para coordenadas de tela
-                    # No GRIP, position[0] e position[1] são a posição do jogador
-                    # e as tiles são desenhadas relativas a essa posição
                     screen_x = x - px + surface_destino.get_width() // 2
                     screen_y = y - py + surface_destino.get_height() // 2
                     surface_destino.blit(tile, (screen_x, screen_y))
@@ -672,36 +622,25 @@ class PistaTiles:
             return
         
         if camera is None:
-            # Desenhar toda a pista (não recomendado para pistas grandes)
             surface_destino.blit(self.surface_pista, (0, 0))
         else:
-            # Desenhar apenas a parte visível
-            # Por enquanto, desenhamos toda a pista
-            # TODO: Implementar culling baseado na câmera
             surface_destino.blit(self.surface_pista, (0, 0))
     
     def encontrar_centro_tile_largada(self):
         """Encontra o centro da tile st-h-3-ch (linha de largada)"""
-        # Obter a tile st-h-3-ch
         tile = self.gerenciador_tiles.obter_tile("st-h-3-ch")
         if tile is None:
             print("AVISO: Tile st-h-3-ch não encontrada")
             return None
         
-        # Obter dimensões da tile
         tile_w, tile_h = tile.get_size()
         print(f"Tile st-h-3-ch: {tile_w}x{tile_h} pixels")
         
-        # A tile está posicionada em (0, -100) relativa ao centro
-        # O canto superior esquerdo da tile está em (centro_x + 0, centro_y - 100)
-        # O CENTRO da tile está em (centro_x + tile_w/2, centro_y - 100 + tile_h/2)
         centro_x, centro_y = 2500, 2500
         
-        # Centro da tile em coordenadas absolutas
         tile_center_x = centro_x + (tile_w // 2)
         tile_center_y = centro_y - 100 + (tile_h // 2)
         
-        # Retornar relativo ao centro da superfície
         offset_x = tile_center_x - centro_x
         offset_y = tile_center_y - centro_y
         
@@ -710,12 +649,10 @@ class PistaTiles:
     
     def encontrar_centro_pista_na_largada(self):
         """Encontra o centro real da pista na linha de largada, verificando a tile st-h-3-ch"""
-        # Primeiro, tentar usar o centro geométrico da tile
         centro_tile = self.encontrar_centro_tile_largada()
         if centro_tile:
             return centro_tile
         
-        # Fallback: procurar o centro da pista verificando pixels
         if self.surface_pista is None:
             return None
         
@@ -724,14 +661,11 @@ class PistaTiles:
         except:
             return None
         
-        # A tile st-h-3-ch está em (0, -100) relativa ao centro
         centro_x, centro_y = 2500, 2500
         tile_y = centro_y - 100
         
-        # Procurar o centro horizontal da pista nessa linha Y
         pontos_pista = []
         
-        # Verificar uma faixa de Y ao redor da linha de largada
         for y_offset in range(-10, 11, 1):
             y = int(tile_y + y_offset)
             if 0 <= y < self.surface_pista.get_height():
@@ -768,16 +702,13 @@ class PistaTiles:
     
     def obter_posicao_inicial(self):
         """Retorna a posição inicial do jogador (relativa ao centro)"""
-        # Tentar encontrar o centro real da pista na linha de largada
         centro_real = self.encontrar_centro_pista_na_largada()
         if centro_real:
             print(f"Centro real da pista na largada encontrado: {centro_real}")
             return centro_real
         
-        # Retorna posição relativa ao centro da pista
         if hasattr(self, 'posicao_inicial_relativa'):
             return self.posicao_inicial_relativa
-        # Fallback: posição padrão (alinhado com linha de largada do GRIP, mais centralizado na pista)
         return (50, -50)
     
     def verificar_se_na_pista(self, x, y):
@@ -825,12 +756,10 @@ class PistaTiles:
         Retorna (min_x, min_y, max_x, max_y) em coordenadas absolutas
         """
         if not hasattr(self, 'definicao_pista') or not self.definicao_pista:
-            # Se não tem definição, retornar limites padrão
             return (0, 0, 5000, 5000)
         
         centro_x, centro_y = 2500, 2500
         
-        # Encontrar limites das tiles
         min_x = float('inf')
         max_x = float('-inf')
         min_y = float('inf')
@@ -848,7 +777,5 @@ class PistaTiles:
                 min_y = min(min_y, y)
                 max_y = max(max_y, y + tile_h)
         
-        # Retornar limites exatos sem margem - isso garante mapeamento preciso no minimapa
-        # A margem será adicionada apenas na visualização do minimapa se necessário
         return (min_x, min_y, max_x, max_y)
 

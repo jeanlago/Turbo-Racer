@@ -15,32 +15,25 @@ class StatusJogador:
     """Gerencia os status do jogador"""
     
     def __init__(self):
-        # Status (0.0 a 100.0)
-        self.popularidade = 50.0  # Ganha/perde com corridas, afeta multiplicador de dinheiro
-        self.fome = 100.0  # Desce com tempo, sobe ao comer
-        self.sono = 100.0  # Desce com tempo, sobe ao dormir
-        self.tedio = 0.0  # Sobe com tempo, desce ao assistir TV
+        self.popularidade = 50.0
+        self.fome = 100.0
+        self.sono = 100.0
+        self.tedio = 0.0
         
-        # Timestamps para decaimento
-        self.ultima_atualizacao = 0.0  # Timestamp da última atualização
+        self.ultima_atualizacao = 0.0
         
-        # Taxas de decaimento (por segundo)
-        self.taxa_fome = 0.5  # 0.5 por segundo = 50 por 100 segundos
-        self.taxa_sono = 0.3  # 0.3 por segundo = 30 por 100 segundos
-        self.taxa_tedio = 0.2  # 0.2 por segundo = 20 por 100 segundos
+        self.taxa_fome = 0.5
+        self.taxa_sono = 0.3
+        self.taxa_tedio = 0.2
         
-        # Carregar status salvos
         self.carregar()
     
     def atualizar(self, dt: float):
         """Atualiza os status com base no tempo decorrido"""
-        # Decaimento de fome
         self.fome = max(0.0, self.fome - self.taxa_fome * dt)
         
-        # Decaimento de sono
         self.sono = max(0.0, self.sono - self.taxa_sono * dt)
         
-        # Aumento de tédio
         self.tedio = min(100.0, self.tedio + self.taxa_tedio * dt)
     
     def comer(self, quantidade: float = 50.0):
@@ -50,11 +43,10 @@ class StatusJogador:
     def dormir(self, local: str = "cama", quantidade: float = None):
         """Aumenta sono ao dormir"""
         if quantidade is None:
-            # Valores padrão por local
             valores = {
-                "cama": 100.0,  # Recarrega completamente
-                "sofa": 50.0,  # Recarrega metade
-                "cafe": 30.0   # Recarrega pouco (café)
+                "cama": 100.0,
+                "sofa": 50.0,
+                "cafe": 30.0
             }
             quantidade = valores.get(local, 50.0)
         
@@ -74,7 +66,6 @@ class StatusJogador:
     
     def obter_multiplicador_dinheiro(self) -> float:
         """Retorna multiplicador de dinheiro baseado na popularidade"""
-        # Popularidade 0 = 0.5x, 50 = 1.0x, 100 = 1.5x
         return 0.5 + (self.popularidade / 100.0)
     
     def pode_fazer_upgrade(self) -> Tuple[bool, str]:
@@ -91,8 +82,6 @@ class StatusJogador:
     
     def obter_multiplicador_controle(self) -> float:
         """Retorna multiplicador de controle baseado no sono"""
-        # Sono 0 = 0.5x controle, 100 = 1.0x controle
-        # Fórmula: 0.5 + (sono / 200.0) = 0.5 + (100 / 200.0) = 1.0 quando sono = 100
         return 0.5 + (self.sono / 200.0)
     
     def carregar(self):
@@ -123,6 +112,5 @@ class StatusJogador:
         except Exception as e:
             print(f"Erro ao salvar status: {e}")
 
-# Instância global
 status_jogador = StatusJogador()
 

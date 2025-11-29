@@ -1,4 +1,3 @@
-# src/core/glub.py
 """Sistema do Glub - Comprador de peças antigas/usadas"""
 import pygame
 import random
@@ -7,7 +6,6 @@ import json
 from config import DIR_PROJETO, LARGURA, ALTURA
 from core.progresso import gerenciador_progresso
 
-# Import lazy para evitar import circular
 def _get_render_text():
     """Importa render_text de forma lazy para evitar import circular"""
     from core.menu import render_text
@@ -15,7 +13,6 @@ def _get_render_text():
 
 CAMINHO_GLUB_DATA = os.path.join(DIR_PROJETO, "data", "glub.json")
 
-# Caminhos dos sprites
 CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "glub")
 SPRITE_ENCONTRO = os.path.join(CAMINHO_SPRITES, "encontro.png")
 SPRITE_CURIOSO = os.path.join(CAMINHO_SPRITES, "curioso.png")
@@ -30,8 +27,7 @@ SPRITE_SEM_ENTENDER = os.path.join(CAMINHO_SPRITES, "sem_entender.png")
 class Glub:
     """Glub - Comprador de peças antigas/usadas por preços altos"""
     
-    # Multiplicador de preço (quanto ele paga pela peça antiga)
-    MULTIPLICADOR_PRECO = 2.5  # Paga 2.5x o valor original da peça antiga
+    MULTIPLICADOR_PRECO = 2.5
     
     def __init__(self):
         self.carregar_estado()
@@ -46,34 +42,28 @@ class Glub:
         self.sprite_sem_entender = None
         self.sprites_carregados = False
         
-        # Estado atual da interação
         self.ativo = False
-        self.oferta_atual = None  # {'tipo_upgrade': str, 'nivel_antigo': int, 'preco': int}
+        self.oferta_atual = None
         self.sprite_atual = None
         self.texto_atual = ""
-        self.opcao_selecionada = 0  # 0 = Aceitar, 1 = Recusar
-        self.fase_dialogo = "apresentacao"  # "apresentacao", "oferta", "reacao"
+        self.opcao_selecionada = 0
+        self.fase_dialogo = "apresentacao"
         
-        # Sistema de animação de texto flutuante "+$X"
-        self.animacoes_dinheiro = []  # Lista de animações ativas: [{'x': int, 'y': int, 'texto': str, 'tempo_restante': float, 'alpha': int}]
+        self.animacoes_dinheiro = []
         
-        # Sistema de animação de texto letra por letra
-        self.texto_completo = ""  # Texto completo a ser exibido
-        self.texto_exibido = ""  # Texto já exibido (animação)
-        self.tempo_animacao = 0.0  # Tempo acumulado para animação
-        self.velocidade_texto = 80.0  # Caracteres por segundo (igual ao Barão e Crank)
+        self.texto_completo = ""
+        self.texto_exibido = ""
+        self.tempo_animacao = 0.0
+        self.velocidade_texto = 80.0
         
-        # Sistema de nome revelado
-        self.nome_revelado = False  # Inicializar antes de carregar_estado()
+        self.nome_revelado = False
         
-        # Sons
         self.som_compra = None
         self._carregar_sons()
     
     def _carregar_sons(self):
         """Carrega os sons do Glub"""
         try:
-            # Garantir que pygame.mixer está inicializado
             if not pygame.mixer.get_init():
                 pygame.mixer.init()
             
@@ -260,7 +250,6 @@ class Glub:
         self.texto_exibido = ""
         self.tempo_animacao = 0.0
         
-        # Verificar se o texto contém o nome do personagem e marcar como revelado
         if not getattr(self, 'nome_revelado', False):
             texto_lower = texto.lower()
             if "glub" in texto_lower or "eu sou" in texto_lower or "meu nome" in texto_lower:
@@ -396,7 +385,6 @@ class Glub:
                         self.opcao_selecionada = 1
                 elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
                     if self.fase_dialogo == "apresentacao":
-                        # Se o texto ainda está sendo escrito, completar animação (não avança)
                         if len(self.texto_exibido) < len(self.texto_completo):
                             self._completar_animacao_texto()
                             # Não fazer mais nada neste pressionamento
@@ -412,7 +400,6 @@ class Glub:
                             texto_completo = self.obter_texto_oferta()
                             self._iniciar_animacao_texto(texto_completo)
                     elif self.fase_dialogo == "oferta":
-                        # Se o texto ainda está sendo escrito, completar animação (não avança)
                         if len(self.texto_exibido) < len(self.texto_completo):
                             self._completar_animacao_texto()
                             # Não fazer mais nada neste pressionamento
@@ -428,7 +415,6 @@ class Glub:
                                 self.processar_recusar()
                                 return "recusado"
                     elif self.fase_dialogo == "reacao":
-                        # Se o texto ainda está sendo escrito, completar animação (não avança)
                         if len(self.texto_exibido) < len(self.texto_completo):
                             self._completar_animacao_texto()
                             # Não fazer mais nada neste pressionamento
@@ -438,7 +424,6 @@ class Glub:
                             return "fechado"
                 elif ev.key == pygame.K_ESCAPE:
                     if self.fase_dialogo == "oferta":
-                        # Se o texto ainda está sendo escrito, completar animação (não avança)
                         if len(self.texto_exibido) < len(self.texto_completo):
                             self._completar_animacao_texto()
                             # Não fazer mais nada neste pressionamento
@@ -447,7 +432,6 @@ class Glub:
                             self.processar_recusar()
                             return "recusado"
                     elif self.fase_dialogo == "reacao":
-                        # Se o texto ainda está sendo escrito, completar animação (não avança)
                         if len(self.texto_exibido) < len(self.texto_completo):
                             self._completar_animacao_texto()
                             # Não fazer mais nada neste pressionamento
@@ -463,7 +447,6 @@ class Glub:
             elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                 mouse_x, mouse_y = pygame.mouse.get_pos()
                 
-                # Verificar clique nos botões (mesma lógica do desenho)
                 caixa_altura = int(ALTURA * 0.28)
                 caixa_y = ALTURA - caixa_altura - 20
                 caixa_largura = LARGURA
@@ -477,7 +460,6 @@ class Glub:
                 botoes_x_inicio = caixa_x + caixa_largura - total_largura_botoes - 30
                 
                 if self.fase_dialogo == "apresentacao":
-                    # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
                         # Não fazer mais nada neste clique
@@ -497,7 +479,6 @@ class Glub:
                             self.opcao_selecionada = 0
                 
                 elif self.fase_dialogo == "oferta":
-                    # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
                         # Não fazer mais nada neste clique
@@ -537,7 +518,6 @@ class Glub:
                                 break
                 
                 elif self.fase_dialogo == "reacao":
-                    # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
                         # Não fazer mais nada neste clique
@@ -604,7 +584,6 @@ class Glub:
         self._atualizar_animacoes_dinheiro(dt)
         
         if not self.ativo:
-            # Desenhar animações mesmo quando inativo (para continuar animação após fechar)
             self._desenhar_animacoes_dinheiro(tela)
             return
         
@@ -672,21 +651,15 @@ class Glub:
             center_x = sprite_x + sprite_w // 2
             center_y = sprite_y + sprite_h // 2
             
-            # Desenhar múltiplos círculos concêntricos com alpha decrescente
             for i in range(num_circles):
-                # Raio diminui do externo para o interno
                 radius = int(glow_radius * (1.0 - (i / num_circles)))
-                # Alpha diminui do centro (mais opaco) para fora (mais transparente)
-                # Inverter: círculos maiores (externos) têm alpha menor
                 alpha = int(80 * (1.0 - (i / num_circles)))
                 
                 if radius > 0 and alpha > 0:
-                    # Criar superfície para este círculo
                     circle_size = radius * 2 + 10
                     circle_surface = pygame.Surface((circle_size, circle_size), pygame.SRCALPHA)
                     circle_center = circle_size // 2
                     
-                    # Desenhar círculo com cor dourada e alpha
                     pygame.draw.circle(
                         circle_surface,
                         (255, 215, 0, alpha),
@@ -694,7 +667,6 @@ class Glub:
                         radius
                     )
                     
-                    # Desenhar glow antes do sprite
                     glow_x = center_x - circle_center
                     glow_y = center_y - circle_center
                     tela.blit(circle_surface, (glow_x, glow_y))
@@ -724,7 +696,6 @@ class Glub:
         elif self.sprite_atual == self.sprite_sem_entender:
             cor_contorno = (200, 200, 100)  # Amarelo esverdeado para sem entender
         
-        # Desenhar caixa de diálogo (igual ao Rex)
         caixa_largura = 1000
         caixa_altura = 200
         caixa_x = (LARGURA - caixa_largura) // 2
@@ -744,7 +715,6 @@ class Glub:
         # Atualizar animação de texto
         self._atualizar_animacao_texto(dt)
         
-        # Desenhar texto do diálogo usando render_text com pixel_style
         if self.texto_exibido:
             # Quebrar texto em linhas usando render_text para medir largura
             palavras = self.texto_exibido.split(' ')
@@ -770,7 +740,6 @@ class Glub:
                 tela.blit(linha_render, (caixa_x + 20, y_texto))
                 y_texto += 25
         
-        # Desenhar indicador de continuar sempre que o texto estiver completo
         if len(self.texto_exibido) >= len(self.texto_completo):
             indicador = render_text("Pressione ENTER ou clique para continuar...", 16, (200, 200, 200), bold=False, pixel_style=True)
             indicador_x = caixa_x + caixa_largura - indicador.get_width() - 20

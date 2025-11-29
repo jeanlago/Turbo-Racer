@@ -11,7 +11,6 @@ from config import LARGURA, ALTURA, FPS, DIR_PROJETO
 from core.territorios import TERRITORIOS, Territorio, obter_territorios_desbloqueados, obter_territorio
 from core.mapa_locations import gerenciador_localizacoes, EstadoLocalizacao
 
-# Caminhos (será obtido dinamicamente baseado em dia/noite)
 from config import obter_caminho_sprite_dia_noite
 def obter_caminho_mapa_cidade():
     """Retorna o caminho do mapa da cidade baseado no ciclo dia/noite"""
@@ -20,8 +19,6 @@ CAMINHO_MAPA_CIDADE = obter_caminho_mapa_cidade()
 CAMINHO_AREAS_MAPA = os.path.join(DIR_PROJETO, "data", "mapa_areas.json")
 DIR_HOVER = os.path.join(DIR_PROJETO, "assets", "images", "hover", "mapa")
 
-# Mapeamento de sprites de hover por área/território
-# Usa palavras-chave para detectar qual sprite usar
 MAPEAMENTO_HOVER_SPRITES = {
     "bueiro": os.path.join(DIR_HOVER, "bueiro.png"),
     "pixel": os.path.join(DIR_HOVER, "bueiro.png"),
@@ -42,42 +39,24 @@ MAPEAMENTO_HOVER_SPRITES = {
     "akira": os.path.join(DIR_HOVER, "montanha.png"),
     
     "oficina": os.path.join(DIR_HOVER, "oficina.png"),
-
-    # Autódromo (com e sem acento, para bater com "autódromo" e "Autódromo" do JSON)
     "autodromo": os.path.join(DIR_HOVER, "autodromo.png"),
     "autódromo": os.path.join(DIR_HOVER, "autodromo.png"),
 }
 
-# Escalas individuais para cada hover (multiplicador da área clicável)
-# Valores menores = hover menor, valores maiores = hover maior
-# IMPORTANTE: Adicione todas as variações possíveis (com/sem acento, sinônimos)
 ESCALAS_HOVER = {
-    # Bueiro do Pixel
     "bueiro": 2.0,
     "pixel": 2.0,
     "bunker": 2.0,
-    
-    # Iate do Barão
     "iate": 3.0,
     "barao": 3.0,
     "barão": 3.0,
-    
-    # Fábrica do Boris
     "fábrica": 4.0,
-    
-    # Prédio do Rex
     "predio": 5.0,
     "prédio": 5.0,
     "rex": 5.0,
-    
-    # Montanha Akira
     "montanha": 4.0,
     "akira": 4.0,
-    
-    # Oficina
     "oficina": 4.0,
-    
-    # Autódromo
     "autodromo": 3.0,
     "autódromo": 3.0,
 }
@@ -114,7 +93,6 @@ def mostrar_pensamento_jogador(screen, mensagem: str, duracao: float = 3.0) -> b
     clock = pygame.time.Clock()
     tempo_decorrido = 0.0
     
-    # Quebrar mensagem em linhas
     palavras = mensagem.split(' ')
     linhas = []
     linha_atual = ""
@@ -132,7 +110,6 @@ def mostrar_pensamento_jogador(screen, mensagem: str, duracao: float = 3.0) -> b
     if linha_atual:
         linhas.append(linha_atual)
     
-    # Calcular dimensões da caixa
     altura_linha = 30
     padding = 30
     caixa_largura = largura_max + padding * 2
@@ -144,7 +121,6 @@ def mostrar_pensamento_jogador(screen, mensagem: str, duracao: float = 3.0) -> b
         dt = clock.tick(FPS) / 1000.0
         tempo_decorrido += dt
         
-        # Processar eventos
         eventos = pygame.event.get()
         for ev in eventos:
             if ev.type == pygame.QUIT:
@@ -156,28 +132,21 @@ def mostrar_pensamento_jogador(screen, mensagem: str, duracao: float = 3.0) -> b
                 if ev.button == 1:
                     return True
         
-        # Desenhar overlay escuro
         overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 150))
         screen.blit(overlay, (0, 0))
         
-        # Desenhar caixa de pensamento
         caixa_fundo = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
         caixa_fundo.fill((0, 0, 0, 220))
         screen.blit(caixa_fundo, (caixa_x, caixa_y))
         pygame.draw.rect(screen, (150, 150, 150), (caixa_x, caixa_y, caixa_largura, caixa_altura), 2)
         
-        # Desenhar ícone de pensamento (opcional - pode ser um balão)
-        # Por enquanto, apenas texto
-        
-        # Desenhar linhas de texto
         y_texto = caixa_y + padding
         for linha in linhas:
             linha_render = render_text(linha, 20, (255, 255, 255), bold=False, pixel_style=True)
             screen.blit(linha_render, (caixa_x + padding, y_texto))
             y_texto += altura_linha
         
-        # Desenhar instrução
         instrucao = render_text("Pressione ESPAÇO ou clique para continuar", 14, (200, 200, 200), bold=False, pixel_style=True)
         instrucao_x = caixa_x + (caixa_largura - instrucao.get_width()) // 2
         screen.blit(instrucao, (instrucao_x, caixa_y + caixa_altura - 30))
@@ -190,11 +159,10 @@ def mostrar_menu_casa_oficina(screen) -> Optional[str]:
     """Mostra menu de escolha entre casa e oficina"""
     render_text = _get_render_text()
     clock = pygame.time.Clock()
-    opcao_selecionada = 0  # 0 = Casa, 1 = Oficina
+    opcao_selecionada = 0
     escolhido = False
     resultado = None
     
-    # Carregar imagens usando sistema dia/noite
     from config import obter_caminho_sprite_dia_noite
     CAMINHO_CASA = obter_caminho_sprite_dia_noite("casa")
     CAMINHO_OFICINA = obter_caminho_sprite_dia_noite("oficina")
@@ -240,7 +208,6 @@ def mostrar_menu_casa_oficina(screen) -> Optional[str]:
             elif ev.type == pygame.MOUSEBUTTONDOWN:
                 if ev.button == 1:
                     mouse_x, mouse_y = ev.pos
-                    # Verificar clique nas opções
                     caixa_largura = 800
                     caixa_altura = 400
                     caixa_x = (LARGURA - caixa_largura) // 2
@@ -252,7 +219,6 @@ def mostrar_menu_casa_oficina(screen) -> Optional[str]:
                     total_largura = opcao_largura * 2 + espacamento
                     inicio_x = caixa_x + (caixa_largura - total_largura) // 2
                     
-                    # Casa (esquerda)
                     casa_x = inicio_x
                     casa_y = caixa_y + 50
                     casa_rect = pygame.Rect(casa_x, casa_y, opcao_largura, opcao_altura)
@@ -260,7 +226,6 @@ def mostrar_menu_casa_oficina(screen) -> Optional[str]:
                         resultado = "casa"
                         escolhido = True
                     
-                    # Oficina (direita)
                     oficina_x = inicio_x + opcao_largura + espacamento
                     oficina_y = caixa_y + 50
                     oficina_rect = pygame.Rect(oficina_x, oficina_y, opcao_largura, opcao_altura)
@@ -268,15 +233,12 @@ def mostrar_menu_casa_oficina(screen) -> Optional[str]:
                         resultado = "oficina"
                         escolhido = True
         
-        # Desenhar
         screen.fill((20, 20, 30))
         
-        # Overlay escuro
         overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 200))
         screen.blit(overlay, (0, 0))
         
-        # Caixa de seleção
         caixa_largura = 800
         caixa_altura = 400
         caixa_x = (LARGURA - caixa_largura) // 2
@@ -287,30 +249,25 @@ def mostrar_menu_casa_oficina(screen) -> Optional[str]:
         screen.blit(caixa_fundo, (caixa_x, caixa_y))
         pygame.draw.rect(screen, (150, 150, 150), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
         
-        # Título
         titulo = render_text("Onde você quer ir?", 32, (255, 255, 255), bold=True, pixel_style=True)
         titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
         screen.blit(titulo, (titulo_x, caixa_y + 20))
         
-        # Opções
         opcao_largura = 300
         opcao_altura = 300
         espacamento = 50
         total_largura = opcao_largura * 2 + espacamento
         inicio_x = caixa_x + (caixa_largura - total_largura) // 2
         
-        # Casa (esquerda)
         casa_x = inicio_x
         casa_y = caixa_y + 80
         casa_rect = pygame.Rect(casa_x, casa_y, opcao_largura, opcao_altura)
         
-        # Verificar hover
         mouse_x, mouse_y = pygame.mouse.get_pos()
         casa_hover = casa_rect.collidepoint(mouse_x, mouse_y)
         if casa_hover:
             opcao_selecionada = 0
         
-        # Desenhar opção casa
         if opcao_selecionada == 0:
             pygame.draw.rect(screen, (100, 150, 255), casa_rect, 4)
         else:
@@ -356,7 +313,6 @@ def mostrar_menu_casa_oficina(screen) -> Optional[str]:
         oficina_texto_x = oficina_x + (opcao_largura - oficina_texto.get_width()) // 2
         screen.blit(oficina_texto, (oficina_texto_x, oficina_y + opcao_altura - 40))
         
-        # Instruções
         instrucoes = render_text("Use SETAS ou clique para escolher | ESC para cancelar", 16, (150, 150, 150), bold=False, pixel_style=True)
         instrucoes_x = caixa_x + (caixa_largura - instrucoes.get_width()) // 2
         screen.blit(instrucoes, (instrucoes_x, caixa_y + caixa_altura - 30))
@@ -372,28 +328,24 @@ def mapa_cidade_loop(screen) -> Optional[str]:
     """
     clock = pygame.time.Clock()
     
-    # Carregar imagem do mapa com zoom
-    ZOOM_MAPA = 1.25  # Zoom de 25% para dar impressão de mapa maior
+    ZOOM_MAPA = 1.25
     offset_x_zoom = (LARGURA * ZOOM_MAPA - LARGURA) // 2
     offset_y_zoom = (ALTURA * ZOOM_MAPA - ALTURA) // 2
     
-    # Variáveis para arrastar o mapa
     arrastando = False
     mouse_inicio_x = 0
     mouse_inicio_y = 0
     offset_inicio_x = offset_x_zoom
     offset_inicio_y = offset_y_zoom
     
-    # Obter caminho dinamicamente baseado em dia/noite
     caminho_cidade = obter_caminho_mapa_cidade()
     if os.path.exists(caminho_cidade):
         try:
             bg_raw = pygame.image.load(caminho_cidade).convert_alpha()
-            # Aplicar zoom: escalar para um tamanho maior
             bg_largura_zoom = int(LARGURA * ZOOM_MAPA)
             bg_altura_zoom = int(ALTURA * ZOOM_MAPA)
             bg_zoom = pygame.transform.scale(bg_raw, (bg_largura_zoom, bg_altura_zoom))
-            bg_zoom_ref = bg_zoom  # Guardar referência para redesenhar durante arrasto
+            bg_zoom_ref = bg_zoom
             mapa_carregado = True
         except Exception as e:
             print(f"Erro ao carregar mapa da cidade: {e}")
@@ -405,18 +357,15 @@ def mapa_cidade_loop(screen) -> Optional[str]:
     
     render_text = _get_render_text()
     
-    # Carregar áreas do mapa
     areas_mapa = carregar_areas_mapa()
     if not areas_mapa:
         print(f"AVISO: Nenhuma área carregada do mapa! Verifique {CAMINHO_AREAS_MAPA}")
     else:
         print(f"✓ {len(areas_mapa)} áreas do mapa carregadas")
     
-    # Carregar sprites de hover (com suporte dia/noite)
     from config import obter_caminho_hover_dia_noite
     hover_sprites = {}
     for key, caminho in MAPEAMENTO_HOVER_SPRITES.items():
-        # Tentar carregar versão dia/noite
         caminho_hover = obter_caminho_hover_dia_noite(caminho)
         if os.path.exists(caminho_hover):
             try:
@@ -425,23 +374,18 @@ def mapa_cidade_loop(screen) -> Optional[str]:
             except Exception as e:
                 print(f"Erro ao carregar sprite de hover {key}: {e}")
     
-    # Mapear áreas para territórios (por ID ou nome)
     area_hover = None
     territorio_selecionado: Optional[str] = None
     
-    # Animações
     tempo_animacao = 0.0
     import math
     
-    # Estado de pause
     mapa_pausado = False
     opcao_pausa_selecionada = 0
     
-    # Estado de feedback de salvamento
     mostrar_mensagem_salvo = False
     tempo_mensagem_salvo = 0.0
     
-    # Estado anterior do dia/noite para detectar mudanças
     from config import obter_estado_dia_noite
     estado_dia_noite_anterior = obter_estado_dia_noite()
     
@@ -449,11 +393,9 @@ def mapa_cidade_loop(screen) -> Optional[str]:
         dt = clock.tick(FPS) / 1000.0
         tempo_animacao += dt
         
-        # Atualizar tempo do jogo (1 minuto real = 1 hora do jogo)
         from core.tempo_jogo import gerenciador_tempo
         gerenciador_tempo.atualizar(dt)
         
-        # Verificar se mudou dia/noite e recarregar hovers se necessário
         estado_dia_noite_atual = obter_estado_dia_noite()
         if estado_dia_noite_atual != estado_dia_noite_anterior:
             estado_dia_noite_anterior = estado_dia_noite_atual

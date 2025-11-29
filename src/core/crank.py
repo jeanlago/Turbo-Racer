@@ -1,4 +1,3 @@
-# src/core/crank.py
 """Sistema do Crank - Mecânico rabugento que reage ao desempenho do jogador"""
 import pygame
 import random
@@ -7,7 +6,6 @@ import json
 from config import DIR_PROJETO, LARGURA, ALTURA
 from core.progresso import gerenciador_progresso
 
-# Import lazy para evitar import circular
 def _get_render_text():
     """Importa render_text de forma lazy para evitar import circular"""
     from core.menu import render_text
@@ -15,12 +13,10 @@ def _get_render_text():
 
 CAMINHO_CRANK_DATA = os.path.join(DIR_PROJETO, "data", "crank.json")
 
-# Caminho dos ícones
 CAMINHO_ICONS = os.path.join(DIR_PROJETO, "assets", "images", "icons")
 ICONE_SETA = os.path.join(CAMINHO_ICONS, "seta.png")
 ICONE_ENCARECEU = os.path.join(CAMINHO_ICONS, "encareceu.png")
 
-# Caminhos dos sprites
 CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "crank")
 SPRITE_NORMAL = os.path.join(CAMINHO_SPRITES, "normal.png")
 SPRITE_ALEGRE = os.path.join(CAMINHO_SPRITES, "alegre.png")
@@ -35,14 +31,12 @@ SPRITE_INCREDULO = os.path.join(CAMINHO_SPRITES, "incredulo.png")
 class Crank:
     """Crank - Mecânico rabugento que reage ao desempenho do jogador"""
     
-    # Níveis de humor (afetam preços)
-    HUMOR_MUITO_BRAVO = -2  # Preços +50%
-    HUMOR_BRAVO = -1        # Preços +25%
-    HUMOR_NORMAL = 0        # Preços normais
-    HUMOR_FELIZ = 1         # Preços -10%
-    HUMOR_MUITO_FELIZ = 2   # Preços -20%
+    HUMOR_MUITO_BRAVO = -2
+    HUMOR_BRAVO = -1
+    HUMOR_NORMAL = 0
+    HUMOR_FELIZ = 1
+    HUMOR_MUITO_FELIZ = 2
     
-    # Multiplicadores de preço baseados no humor
     MULTIPLICADORES_PRECO = {
         HUMOR_MUITO_BRAVO: 1.5,
         HUMOR_BRAVO: 1.25,
@@ -52,7 +46,6 @@ class Crank:
     }
     
     def __init__(self):
-        # Inicializar nome_revelado antes de carregar_estado para garantir que existe
         self.nome_revelado = False
         self.carregar_estado()
         self.sprite_normal = None
@@ -243,7 +236,6 @@ class Crank:
         self.tutorial_mostrado = gerenciador_progresso.crank_tutorial_mostrado
         self.tutorial_upgrades_mostrado = gerenciador_progresso.crank_tutorial_upgrades_mostrado
         self.prefixo_cor_ultimo_carro = gerenciador_progresso.crank_prefixo_cor_ultimo_carro
-        # Carregar nome_revelado (já inicializado em __init__)
         self.nome_revelado = gerenciador_progresso.crank_nome_revelado
     
     def salvar_estado(self):
@@ -261,7 +253,6 @@ class Crank:
         from core.progresso import gerenciador_progresso
         from main import CARROS_DISPONIVEIS
         
-        # Verificar qual carro foi usado na corrida
         carro_p1_atual = gerenciador_progresso.obter_carro_atual(1)
         if carro_p1_atual is None:
             carro_p1_atual = 0
@@ -346,7 +337,6 @@ class Crank:
         from core.progresso import gerenciador_progresso
         from main import CARROS_DISPONIVEIS
         
-        # Verificar se o carro atual mudou (se mudou, resetar saúde)
         carro_p1_atual = gerenciador_progresso.obter_carro_atual(1)
         if carro_p1_atual is None:
             carro_p1_atual = 0
@@ -381,7 +371,6 @@ class Crank:
         """
         from core.progresso import gerenciador_progresso
         
-        # Verificar se há compras recentes do mercador alien
         ultima_compra = gerenciador_progresso.obter_ultima_compra_alien()
         if not ultima_compra:
             return False
@@ -446,8 +435,6 @@ class Crank:
         else:  # 4 ou 5
             qualidade = "alta_performance"
         
-        # Verificar se é peça de drift (Akira) ou força bruta (Boris)
-        # Por enquanto, vamos assumir que suspensão e pneus são de drift
         # e motor, turbo, nitro são de força bruta
         pecas_drift = ['suspensao', 'pneus']
         pecas_forca_bruta = ['motor', 'turbo', 'nitro']
@@ -561,7 +548,6 @@ class Crank:
     def _avancar_dialogo_alien_golpe(self):
         """Avança o diálogo sobre golpe do mercador alien"""
         if self.dialogo_alien_parte == 0:
-            # Parte 1: "Mas que P***ARIA é essa debaixo do capô?!"
             if self.sprite_bravo:
                 self.sprite_atual = self.sprite_bravo
             elif self.sprite_estressado:
@@ -574,7 +560,6 @@ class Crank:
             print(f"DEBUG: Após _iniciar_animacao_texto, texto_completo: {self.texto_completo}, texto_exibido: {self.texto_exibido}")
         
         elif self.dialogo_alien_parte == 1:
-            # Parte 2: "Eu fui trocar o filtro de óleo..."
             if self.sprite_normal:
                 self.sprite_atual = self.sprite_normal  # Pointing/Lecturing
             else:
@@ -583,7 +568,6 @@ class Crank:
             self._iniciar_animacao_texto(texto_completo)
         
         elif self.dialogo_alien_parte == 2:
-            # Parte 3: "Deixa eu adivinhar..."
             if self.sprite_normal:
                 self.sprite_atual = self.sprite_normal  # Smug/Dismissive
             else:
@@ -592,7 +576,6 @@ class Crank:
             self._iniciar_animacao_texto(texto_completo)
         
         elif self.dialogo_alien_parte == 3:
-            # Parte 4: "Parabéns, piloto..."
             if self.sprite_normal:
                 self.sprite_atual = self.sprite_normal  # Smug/Dismissive
             else:
@@ -601,7 +584,6 @@ class Crank:
             self._iniciar_animacao_texto(texto_completo)
         
         elif self.dialogo_alien_parte == 4:
-            # Parte 5: "Eu já arranquei fora..."
             if self.sprite_normal:
                 self.sprite_atual = self.sprite_normal  # Neutral/Grumpy
             elif self.sprite_estressado:
@@ -612,13 +594,11 @@ class Crank:
             self._iniciar_animacao_texto(texto_completo)
         
         else:
-            # Finalizar diálogo e marcar como já mostrado
             self._finalizar_dialogo_alien()
     
     def _avancar_dialogo_alien_melhoria(self):
         """Avança o diálogo sobre melhoria boa do mercador alien"""
         if self.dialogo_alien_parte == 0:
-            # Parte 1: "Ei. Vem cá. Me explica uma coisa."
             if self.sprite_normal:
                 self.sprite_atual = self.sprite_normal  # Pointing/Lecturing (confuso)
             else:
@@ -627,7 +607,6 @@ class Crank:
             self._iniciar_animacao_texto(texto_completo)
         
         elif self.dialogo_alien_parte == 1:
-            # Parte 2: "Eu tô olhando pra esse... 'Módulo de Propulsão'..."
             if self.sprite_normal:
                 self.sprite_atual = self.sprite_normal  # Pointing/Lecturing
             else:
@@ -636,7 +615,6 @@ class Crank:
             self._iniciar_animacao_texto(texto_completo)
         
         elif self.dialogo_alien_parte == 2:
-            # Parte 3: "Pelos manuais, isso não deveria funcionar!"
             if self.sprite_bravo:
                 self.sprite_atual = self.sprite_bravo  # Angry (frustração técnica)
             elif self.sprite_estressado:
@@ -647,7 +625,6 @@ class Crank:
             self._iniciar_animacao_texto(texto_completo)
         
         elif self.dialogo_alien_parte == 3:
-            # Parte 4: "Mas... eu coloquei no dinamômetro..."
             if self.sprite_bravo:
                 self.sprite_atual = self.sprite_bravo
             elif self.sprite_estressado:
@@ -669,7 +646,6 @@ class Crank:
             self._iniciar_animacao_texto(texto_completo)
         
         elif self.dialogo_alien_parte == 5:
-            # Parte 6: "Mas se faz você ganhar corridas..."
             if self.sprite_normal:
                 self.sprite_atual = self.sprite_normal  # Neutral/Grumpy
             elif self.sprite_estressado:
@@ -680,13 +656,11 @@ class Crank:
             self._iniciar_animacao_texto(texto_completo)
         
         else:
-            # Finalizar diálogo
             self.fechar()
     
     def _avancar_dialogo_alien_multimelhoria(self):
         """Avança o diálogo sobre multimelhoria do mercador alien"""
         if self.dialogo_alien_parte == 0:
-            # Parte 1: "..." (silêncio)
             if self.sprite_bravo:
                 self.sprite_atual = self.sprite_bravo  # Serious/Angry
             elif self.sprite_estressado:
@@ -697,7 +671,6 @@ class Crank:
             self._iniciar_animacao_texto(texto_completo)
         
         elif self.dialogo_alien_parte == 1:
-            # Parte 2: "Eu abri o capô hoje de manhã..."
             if self.sprite_bravo:
                 self.sprite_atual = self.sprite_bravo  # Serious/Angry
             elif self.sprite_estressado:
@@ -708,7 +681,6 @@ class Crank:
             self._iniciar_animacao_texto(texto_completo)
         
         elif self.dialogo_alien_parte == 2:
-            # Parte 3: "Fios de neon por todo lado..."
             if self.sprite_normal:
                 self.sprite_atual = self.sprite_normal  # Pointing/Lecturing, gesticulando
             elif self.sprite_estressado:
@@ -719,7 +691,6 @@ class Crank:
             self._iniciar_animacao_texto(texto_completo)
         
         elif self.dialogo_alien_parte == 3:
-            # Parte 4: "Você entregou a alma desse carro..."
             if self.sprite_normal:
                 self.sprite_atual = self.sprite_normal  # Pointing/Lecturing
             elif self.sprite_estressado:
@@ -730,7 +701,6 @@ class Crank:
             self._iniciar_animacao_texto(texto_completo)
         
         elif self.dialogo_alien_parte == 4:
-            # Parte 5: "Olha, se você prefere confiar..."
             if self.sprite_normal:
                 self.sprite_atual = self.sprite_normal  # Smug/Dismissive (amargo/triste)
             elif self.sprite_estressado:
@@ -741,7 +711,6 @@ class Crank:
             self._iniciar_animacao_texto(texto_completo)
         
         elif self.dialogo_alien_parte == 5:
-            # Parte 6: "Mas a minha chave de boca não encaixa..."
             if self.sprite_normal:
                 self.sprite_atual = self.sprite_normal  # Neutral/Grumpy, batendo o pé
             elif self.sprite_estressado:
@@ -752,7 +721,6 @@ class Crank:
             self._iniciar_animacao_texto(texto_completo)
         
         else:
-            # Finalizar diálogo e marcar como já mostrado
             self._finalizar_dialogo_alien()
     
     def mostrar_tutorial(self):
@@ -800,7 +768,6 @@ class Crank:
         else:
             self.sprite_atual = self.sprite_convencido if self.sprite_convencido else None
         
-        # Texto inicial - Parte 0
         texto_completo = "Hmph. Finalmente parou de admirar a lataria e veio aonde a mágica acontece. Tava demorando."
         self._iniciar_animacao_texto(texto_completo)
         
@@ -851,10 +818,8 @@ class Crank:
         self.texto_atual = ""  # Garantir que texto_atual também começa vazio
         self.tempo_animacao = 0.0
         
-        # Verificar se o texto contém o nome do personagem e marcar como revelado
         if not getattr(self, 'nome_revelado', False):
             texto_lower = texto.lower()
-            # Verificar várias formas de mencionar o nome
             if ("crank" in texto_lower or 
                 "eu sou" in texto_lower or 
                 "meu nome" in texto_lower or
@@ -1020,7 +985,6 @@ class Crank:
             else:
                 self.sprite_atual = self.sprite_surpreso if self.sprite_surpreso else None
             
-            # Se o nome já foi definido, pular esta parte
             if gerenciador_progresso.nome_jogador != "JOGADOR":
                 self.tutorial_parte = 3
                 self._avancar_tutorial()
@@ -1364,7 +1328,6 @@ class Crank:
         for ev in eventos:
             if ev.type == pygame.KEYDOWN:
                 if self.fase_dialogo == "veredito":
-                    # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
                         # Não fazer mais nada neste pressionamento
@@ -1380,7 +1343,6 @@ class Crank:
                             return "fechado"
                 
                 elif self.fase_dialogo == "resposta":
-                    # Só processar se o texto estiver completo
                     if len(self.texto_exibido) >= len(self.texto_completo):
                         # Navegar entre opções
                         if ev.key in (pygame.K_UP, pygame.K_w):
@@ -1396,7 +1358,6 @@ class Crank:
                         return "fechado"
                 
                 elif self.fase_dialogo == "reacao":
-                    # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
                         # Não fazer mais nada neste pressionamento
@@ -1407,7 +1368,6 @@ class Crank:
                             return "fechado"
                 
                 elif self.fase_dialogo == "reacao_instalacao":
-                    # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
                         # Não fazer mais nada neste pressionamento
@@ -1418,7 +1378,6 @@ class Crank:
                             return "fechado"
                 
                 elif self.fase_dialogo == "dano_critico":
-                    # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
                         # Não fazer mais nada neste pressionamento
@@ -1483,7 +1442,6 @@ class Crank:
                             if char.isalnum() or char in ['_', '-', ' ']:
                                 self.nome_input += char
                     else:
-                        # Se o texto ainda está sendo escrito, completar animação (não avança)
                         if len(self.texto_exibido) < len(self.texto_completo):
                             self._completar_animacao_texto()
                             # Não fazer mais nada neste pressionamento
@@ -1497,7 +1455,6 @@ class Crank:
                             return "fechado"
                 
                 elif self.fase_dialogo == "tutorial_upgrades":
-                    # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
                         # Não fazer mais nada neste pressionamento
@@ -1511,7 +1468,6 @@ class Crank:
                         return "fechado"
                 
                 elif self.fase_dialogo == "dialogo_alien":
-                    # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
                         # Não fazer mais nada neste pressionamento
@@ -1526,7 +1482,6 @@ class Crank:
                         return "processado"
                 
                 elif self.fase_dialogo == "confirmar_upgrade":
-                    # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
                         # Não fazer mais nada neste pressionamento
@@ -1568,10 +1523,8 @@ class Crank:
                 botao_altura = 38
                 
                 if self.fase_dialogo == "veredito":
-                    # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
-                        # Não fazer mais nada neste clique
                     else:
                         # Texto completo, agora pode avançar
                         if self.precisa_resposta:
@@ -1649,7 +1602,6 @@ class Crank:
                             hitboxes.append(pygame.Rect(botao_x_opcao, texto_y_calc, botao_largura_opcao, altura_opcao))
                             y_calc = linha_y_calc + espacamento_opcao
                         
-                        # Verificar clique (usar as hitboxes calculadas)
                         for i, rect in enumerate(hitboxes):
                             if rect.collidepoint(mouse_x, mouse_y):
                                 self.opcao_selecionada = i
@@ -1657,10 +1609,8 @@ class Crank:
                                 break
                 
                 elif self.fase_dialogo == "reacao":
-                    # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
-                        # Não fazer mais nada neste clique
                     else:
                         # Clicar em qualquer lugar fecha
                         caixa_rect = pygame.Rect(0, caixa_y, LARGURA, caixa_altura)
@@ -1669,10 +1619,8 @@ class Crank:
                             return "fechado"
                 
                 elif self.fase_dialogo == "reacao_instalacao":
-                    # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
-                        # Não fazer mais nada neste clique
                     else:
                         # Clicar em qualquer lugar fecha
                         caixa_rect = pygame.Rect(0, caixa_y, LARGURA, caixa_altura)
@@ -1681,12 +1629,9 @@ class Crank:
                             return "fechado"
                 
                 elif self.fase_dialogo == "dano_critico":
-                    # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
-                        # Não fazer mais nada neste clique
                     else:
-                        # Verificar clique nos botões de reparar/desistir
                         from core.i18n import t
                         opcoes = [t("menu.reparar"), t("menu.desistir")]
                         espacamento = 25
@@ -1724,13 +1669,10 @@ class Crank:
                 elif self.fase_dialogo == "tutorial":
                     # Se está na fase de input de nome, NÃO permitir avançar com clique
                     if self.input_nome_ativo:
-                        # Bloquear qualquer clique durante input de nome
                         return "processado"  # Marcar que o evento foi processado (bloqueado)
                     
-                    # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
-                        # Não fazer mais nada neste clique
                     else:
                         # Clicar em qualquer lugar da caixa avança o tutorial
                         caixa_rect = pygame.Rect(0, caixa_y, LARGURA, caixa_altura)
@@ -1739,10 +1681,8 @@ class Crank:
                             return "processado"  # Marcar que o evento foi processado
                 
                 elif self.fase_dialogo == "tutorial_upgrades":
-                    # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
-                        # Não fazer mais nada neste clique
                     else:
                         # Clicar em qualquer lugar da caixa avança o tutorial de upgrades
                         caixa_rect = pygame.Rect(0, caixa_y, LARGURA, caixa_altura)
@@ -1751,10 +1691,8 @@ class Crank:
                             return "processado"  # Marcar que o evento foi processado
                 
                 elif self.fase_dialogo == "dialogo_alien":
-                    # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
-                        # Não fazer mais nada neste clique
                     else:
                         # Clicar em qualquer lugar da caixa avança o diálogo alien
                         caixa_rect = pygame.Rect(0, caixa_y, LARGURA, caixa_altura)
@@ -1764,12 +1702,9 @@ class Crank:
                             return "processado"  # Marcar que o evento foi processado
                 
                 elif self.fase_dialogo == "confirmar_upgrade":
-                    # Se o texto ainda está sendo escrito, completar animação (não avança)
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
-                        # Não fazer mais nada neste clique
                     else:
-                        # Verificar clique nas opções de confirmação
                         from core.i18n import t
                         render_text = _get_render_text()
                         opcoes = [t("menu.confirmar"), t("menu.cancelar")]
@@ -1791,7 +1726,6 @@ class Crank:
                             hitboxes.append(pygame.Rect(botao_x, texto_y_calc, botao_largura, altura_opcao))
                             y_calc = linha_y_calc + espacamento
                         
-                        # Verificar clique
                         for i, rect in enumerate(hitboxes):
                             if rect.collidepoint(mouse_x, mouse_y):
                                 if i == 0:  # Confirmar
@@ -1803,7 +1737,6 @@ class Crank:
                                     self.upgrade_pendente = None
                                     self.fechar()
                                     return "cancelado"
-                        # Se clicou fora das opções mas dentro da caixa, não fazer nada (aguardar clique nas opções)
         
         return None
     
@@ -1903,7 +1836,6 @@ class Crank:
         else:
             sprite_x = 20
         
-        # Desenhar sprite do personagem (com efeito de sombra se estiver na fase de apresentação)
         if self.sprite_atual:
             if self.fase_dialogo == "tutorial" and self.tutorial_parte == 0 and self.tutorial_fase_apresentacao == "sombra":
                 # Desenhar como sombra (silhueta escura)

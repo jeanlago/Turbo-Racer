@@ -9,11 +9,11 @@ from typing import Dict, List, Optional, Tuple
 
 class TipoTerritorio(Enum):
     """Tipos de territórios disponíveis"""
-    DINHEIRO_RAPIDO = "dinheiro_rapido"  # Alto risco, alta recompensa
-    PECAS_BRUTAS = "pecas_brutas"  # Sorte/azar, peças
-    TECNICA = "tecnica"  # Melhorar dirigibilidade
-    INFORMACAO = "informacao"  # Desbloqueios, informações
-    PROGRESSAO = "progressao"  # História principal
+    DINHEIRO_RAPIDO = "dinheiro_rapido"
+    PECAS_BRUTAS = "pecas_brutas"
+    TECNICA = "tecnica"
+    INFORMACAO = "informacao"
+    PROGRESSAO = "progressao"
 
 class Territorio:
     """Representa um território no mapa da cidade"""
@@ -25,8 +25,8 @@ class Territorio:
         descricao: str,
         tipo: TipoTerritorio,
         npc_id: str,
-        posicao_mapa: Tuple[int, int],  # Posição no mapa isométrico (x, y)
-        area_clicavel: Tuple[int, int, int, int],  # (x, y, largura, altura) para hitbox
+        posicao_mapa: Tuple[int, int],
+        area_clicavel: Tuple[int, int, int, int],
         desbloqueado: bool = True,
         imagem_fundo: Optional[str] = None,
         atividades: Optional[List[Dict]] = None
@@ -56,7 +56,6 @@ class Territorio:
         return (x <= mouse_x <= x + largura and 
                 y <= mouse_y <= y + altura)
 
-# Definição dos territórios da cidade
 TERRITORIOS = {
     "docas_barao": Territorio(
         id="docas_barao",
@@ -64,8 +63,8 @@ TERRITORIOS = {
         descricao="Empréstimos e corridas de aposta alta. Alto risco, alta recompensa.",
         tipo=TipoTerritorio.DINHEIRO_RAPIDO,
         npc_id="barao",
-        posicao_mapa=(200, 150),  # Posição no mapa isométrico
-        area_clicavel=(180, 130, 120, 80),  # Hitbox retangular
+        posicao_mapa=(200, 150),
+        area_clicavel=(180, 130, 120, 80),
         desbloqueado=True,
         atividades=[
             {"tipo": "emprestimo", "nome": "Pegar Empréstimo", "risco": "alto"},
@@ -78,7 +77,7 @@ TERRITORIOS = {
         nome="A Fábrica do Boris",
         descricao="Peças brutas e corridas de arrancada. Sorte e azar determinam o resultado.",
         tipo=TipoTerritorio.PECAS_BRUTAS,
-        npc_id="boris",  # Assumindo que existe um NPC Boris
+        npc_id="boris",
         posicao_mapa=(600, 200),
         area_clicavel=(580, 180, 140, 90),
         desbloqueado=True,

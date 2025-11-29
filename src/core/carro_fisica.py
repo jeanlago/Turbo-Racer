@@ -259,19 +259,12 @@ class CarroFisica:
         if camera is None:
             return x, y
         
-        # Obter a visão atual da câmera
         visao = camera.ret_visao()
-        
-        # Aplicar o zoom da câmera para corrigir as coordenadas
-        # Quando a câmera tem zoom > 1, as coordenadas precisam ser ajustadas
         zoom_factor = camera.zoom
         
-        # Converter coordenadas do mundo para coordenadas da superfície do guide
-        # considerando o offset da câmera
         x_corrigido = int((x - visao.left) * zoom_factor)
         y_corrigido = int((y - visao.top) * zoom_factor)
         
-        # Garantir que as coordenadas estejam dentro dos limites da superfície
         x_corrigido = max(0, min(superficie_mascara.get_width() - 1, x_corrigido))
         y_corrigido = max(0, min(superficie_mascara.get_height() - 1, y_corrigido))
         
@@ -291,7 +284,6 @@ class CarroFisica:
             player_id: "p1" ou "p2" para identificar qual tecla de freio de mão usar no teclado
         """
         if inputs_controle is not None:
-            # Usar inputs de controle se fornecidos
             acelerar = inputs_controle.get("acelerar", False)
             direita = inputs_controle.get("direita", False)
             esquerda = inputs_controle.get("esquerda", False)
@@ -300,7 +292,6 @@ class CarroFisica:
             freio_mao_pressed = inputs_controle.get("freio_mao", False)
             drift_pressed = inputs_controle.get("drift", False)
         else:
-            # Usar teclado (comportamento padrão)
             acelerar = teclas[self.controles[0]]
             direita  = teclas[self.controles[1]]
             esquerda = teclas[self.controles[2]]
@@ -310,7 +301,6 @@ class CarroFisica:
             if self.turbo_key is not None:
                 turbo_pressed = bool(teclas[self.turbo_key])
             
-            # Freio de mão do teclado: Space para P1, K_KP0 para P2
             freio_mao_pressed = False
             if player_id == "p1":
                 freio_mao_pressed = teclas[pygame.K_SPACE]
@@ -318,7 +308,6 @@ class CarroFisica:
                 freio_mao_pressed = teclas[pygame.K_KP0]
             drift_pressed = False
 
-        # Ativar/desativar freio de mão ou drift (tanto de controle quanto de teclado)
         if freio_mao_pressed or drift_pressed:
             self.ativar_drift()
         else:
@@ -327,96 +316,69 @@ class CarroFisica:
         self._step(acelerar, direita, esquerda, frear_re, turbo_pressed, superficie_mascara, dt, camera, superficie_pista_renderizada)
 
     def _step(self, acelerar, direita, esquerda, frear_re, turbo_pressed, superficie_mascara, dt, camera=None, superficie_pista_renderizada=None):
-        # Escalas arcade
         TIME_SCALE        = 2.9
         ARCADE_SPEED_MULT = 2.5
         dt_fis = dt * TIME_SCALE
 
         x_ant, y_ant = self.x, self.y
 
-        # Turbo (HOLD)
         self.turbo_ativo = bool(turbo_pressed and self.turbo_carga > 0.0)
 
-        # Verificar se está na grama ANTES de aplicar forças (para limitar aceleração)
         na_grama = False
         if superficie_pista_renderizada is not None:
-            # Sistema GRIP: verificar se está na grama
             cx, cy = int(self.x), int(self.y)
             na_grama = verificar_na_grama_grip(superficie_pista_renderizada, cx, cy, raio=15)
-            # Armazenar flag de grama para uso em outras partes do código
             self.na_grama = na_grama
 
-        # Decompõe velocidade (precisa fazer antes de calcular fator de grama para ré)
         v_long, v_lat = self._decomp_vel()
 
-        # ======== DRIFT / ESTADO ========
         slip = math.degrees(math.atan2(v_lat, max(0.1, abs(v_long))))
         speed_abs = abs(v_long)
 
-        # precisa de mais slip e mais velocidade para “armar”
         drifteando = (
             self.freio_mao_ativo or self.drift_ativado or
             (acelerar and (abs(slip) > 14.0) and speed_abs > 90.0)
         )
 
-        # direção desejada
         steer_input = -1.0 if direita else (1.0 if esquerda else 0.0)
         
-        # Aplicar multiplicador de controle baseado no sono
         try:
             from core.status_jogador import status_jogador
             multiplicador_controle = status_jogador.obter_multiplicador_controle()
             steer_input *= multiplicador_controle
         except Exception as e:
-            # Se houver erro, usar controle normal (multiplicador 1.0)
             pass
         
-        # Inverter direção em ré para comportamento intuitivo
-        # Quando está de ré, virar para direita deve fazer o carro ir para direita
-        # IMPORTANTE: Só inverter quando REALMENTE estiver em ré (v_long < 0.0)
-        # NÃO inverter quando apenas está freando (frear_re) mas ainda está indo para frente
-        esta_em_re = v_long < 0.0  # Qualquer velocidade negativa = em ré
-        if esta_em_re:  # Só inverter quando REALMENTE estiver em ré
+        esta_em_re = v_long < 0.0
+        if esta_em_re:
             steer_input = -steer_input
 
-        # lock reduz com a velocidade, mas menos em ré para permitir virar
         if v_long < 0.0:
-            # Em ré: reduzir MUITO MENOS o lock para permitir virar mesmo em altas velocidades
-            # Aumentar o mínimo de 0.40 para 0.70 para manter mais lock em altas velocidades
-            # Reduzir ainda menos a influência da velocidade (0.3 ao invés de 0.5)
-            lock_scale = max(0.70, 1.0 - self.speed_steer_k * abs(v_long) * 0.3)  # Redução muito menor em ré
+            lock_scale = max(0.70, 1.0 - self.speed_steer_k * abs(v_long) * 0.3)
         else:
-            # Em frente: comportamento normal
-            lock_scale = max(0.20, 1.0 - self.speed_steer_k * abs(v_long))  # ★ um pouco mais agressivo
+            lock_scale = max(0.20, 1.0 - self.speed_steer_k * abs(v_long))
         target_wheel = self.steer_rad_max * lock_scale * steer_input
 
-        # slewing da roda
         if target_wheel > self._steer_wheel:
             self._steer_wheel = min(self._steer_wheel + self.steer_rate*dt_fis, target_wheel)
         else:
             self._steer_wheel = max(self._steer_wheel - self.steer_rate*dt_fis, target_wheel)
 
-        # centragem suave quando NÃO está derrapando (tira “nervosismo”)
-        if not drifteando and abs(steer_input) < 0.5:            # ★
-            self._steer_wheel += (-self._steer_wheel) * 2.0 * dt_fis  # ★
+        if not drifteando and abs(steer_input) < 0.5:
+            self._steer_wheel += (-self._steer_wheel) * 2.0 * dt_fis
 
-        # contra-esterço leve quando escorrega
         if abs(slip) > 9.0 and (acelerar or self.freio_mao_ativo or self.drift_ativado):
-            target_counter = -math.radians(0.50 * slip)          # ★ um tico menos
+            target_counter = -math.radians(0.50 * slip)
             self._steer_wheel += self.counter_steer_assist * (target_counter - self._steer_wheel) * 6.0 * dt_fis
 
-        # cargas
         Fzf, Fzr = self._static_normal_loads()
 
-        # grip dependente da velocidade
         spd_k = min(1.0, speed_abs / 450.0)
-        Cf_eff = self.Cf_base * (1.0 - 0.16*spd_k)               # ★ ligeiro ajuste
+        Cf_eff = self.Cf_base * (1.0 - 0.16*spd_k)
         Cr_eff = self.Cr_base * (1.0 - 0.04*spd_k)
 
-        # fora do drift: mais grip e viés pró-traseira (estabilidade)
         escapando = (abs(slip) > 12.0) or self.freio_mao_ativo or self.drift_ativado
         if escapando:
-            # solta traseira e dá mordida na dianteira → carro aponta melhor
             Cf_eff *= self.drift_front_bias
             Cr_eff *= self.drift_rear_cut
             if self.freio_mao_ativo:
@@ -427,144 +389,96 @@ class CarroFisica:
             Cf_eff *= 1.12
             Cr_eff *= 1.18
 
-
-        # power oversteer contido
         if (acelerar and abs(steer_input) > 0.15 and abs(v_long) > self.min_speed_oversteer):
             cut = 1.0 - self.power_oversteer_k * min(1.0, abs(steer_input))
-            Cr_eff *= max(0.70, cut)  # ★ não deixa a traseira cair demais
+            Cr_eff *= max(0.70, cut)
 
-        # slip por eixo
         r = self.yaw_rate
         alpha_f = self._steer_wheel - math.atan2(v_lat + self.a*r, max(0.1, abs(v_long)))
         alpha_r = - math.atan2(v_lat - self.b*r, max(0.1, abs(v_long)))
 
-        # força lateral por eixo
         Fy_f = max(-self.mu_peak*Fzf, min(Cf_eff * math.tanh(alpha_f / self.alpha_sat),  self.mu_peak*Fzf))
         Fy_r = max(-self.mu_peak*Fzr, min(Cr_eff * math.tanh(alpha_r / self.alpha_sat),  self.mu_peak*Fzr))
 
-        # --- Longitudinal ---
         thr = 1.0 if acelerar else 0.0
         brk = 1.0 if frear_re else 0.0
 
-        # Turbo estilo Need for Speed: aumentar significativamente a força do motor
-        # Se turbo está ativo, aplicar boost muito maior
         if self.turbo_ativo:
-            turbo_multiplier = TURBO_FATOR  # Boost muito forte
+            turbo_multiplier = TURBO_FATOR
         else:
             turbo_multiplier = 1.0
         
-        # Se está na grama, reduzir força do motor significativamente
-        # Limitar aceleração para que não ultrapasse muito 100 km/h (frente) ou 50 km/h (ré)
-        # Verificar se está tentando ir de ré: usar tecla de ré (brk) como indicador principal
         esta_tentando_re = brk > 0.0
         
         if na_grama:
-            # Calcular velocidade atual para ajustar força do motor dinamicamente
             velocidade_atual_temp = math.sqrt(v_long*v_long + v_lat*v_lat)
             ARCADE_SPEED_MULT = 2.5
             PXPS_TO_KMH = 1.0
             velocidade_kmh_temp = velocidade_atual_temp * ARCADE_SPEED_MULT * PXPS_TO_KMH
             
-            # Limites diferentes para frente e ré
             if esta_tentando_re:
-                # Ré: limite de 50 km/h, muito mais permissivo
                 limite_kmh = 50.0
                 if velocidade_kmh_temp <= limite_kmh:
-                    # Abaixo ou no alvo: permitir aceleração quase normal (90% da força para ré)
                     fator_grama = 0.90
                 else:
-                    # Acima do alvo: reduzir progressivamente
                     excesso = velocidade_kmh_temp - limite_kmh
-                    # Reduzir de 90% para 60% conforme excesso aumenta
                     fator_grama = max(0.60, 0.90 - (excesso / 10.0) * 0.30)
             else:
-                # Frente: limite de 100 km/h
                 limite_kmh = 100.0
                 if velocidade_kmh_temp <= limite_kmh:
-                    # Abaixo ou no alvo: permitir aceleração limitada (35% da força)
                     fator_grama = 0.35
                 else:
-                    # Acima do alvo: reduzir progressivamente
                     excesso = velocidade_kmh_temp - limite_kmh
-                    # Reduzir de 35% para 15% conforme excesso aumenta
                     fator_grama = max(0.15, 0.35 - (excesso / 15.0) * 0.20)
         else:
             fator_grama = 1.0
         Fx_long = self.engine_force_fwd * thr * turbo_multiplier * fator_grama
-        
-        # Boost adicional: reduzir resistência do arrasto quando turbo está ativo
-        # Isso permite que o carro acelere mais e atinja velocidades maiores
-        # A resistência será aplicada mais abaixo no código, mas aqui podemos ajustar
 
-        # freio sempre contra o movimento
         if brk > 0.0:
-            # Para ré, sempre aplicar força de ré (não usar freio quando está em baixa velocidade)
             if v_long < 0.0:
-                # Já está em ré, aplicar força de ré
                 if na_grama and esta_tentando_re:
                     fator_grama_rev = fator_grama
                 else:
                     fator_grama_rev = 1.0
                 Fx_long += -self.engine_force_rev * brk * fator_grama_rev
             elif abs(v_long) > 1.0:
-                # Está indo para frente, aplicar freio
                 Fx_long += -math.copysign(self.brake_force, v_long) * brk
             else:
-                # Parado ou quase parado, aplicar força de ré
                 if na_grama and esta_tentando_re:
                     fator_grama_rev = fator_grama
                 else:
                     fator_grama_rev = 1.0
                 Fx_long += -self.engine_force_rev * brk * fator_grama_rev
 
-        # ré -> frente com W (mata ré rápido)
         if v_long < 0.0 and thr > 0.0:
-            # Aplicar freio proporcional à velocidade de ré
             velocidade_re_abs = abs(v_long)
             if velocidade_re_abs > 1.0:
-                # Quanto mais rápido em ré, mais forte o freio
                 fator_freio_re = min(2.0, 1.0 + velocidade_re_abs / 10.0)
                 Fx_long = +self.brake_force * fator_freio_re
             else:
                 Fx_long = +self.brake_force * 1.0
 
-        # limite de ré suave e natural (como limitador de motor real)
-        # Usar uma abordagem mais física: reduzir força do motor progressivamente
-        # ao invés de aplicar freio artificial
-        # IMPORTANTE: Aplicar sempre que estiver em ré, não apenas quando brk > 0.0
-        # E usar velocidade total (magnitude) ao invés de apenas v_long
         if v_long < 0.0:
-            # Calcular velocidade total (magnitude do vetor velocidade) em km/h
-            # Isso previne que velocidade lateral seja convertida em longitudinal
             velocidade_total_pxps = math.sqrt(v_long*v_long + v_lat*v_lat)
             ARCADE_SPEED_MULT = 2.5
             PXPS_TO_KMH = 1.0
             velocidade_rev_kmh = velocidade_total_pxps * ARCADE_SPEED_MULT * PXPS_TO_KMH
             
-            # Velocidade alvo: ~38 km/h (centro da oscilação natural)
-            # Zona de oscilação natural: 32-45 km/h
             VEL_ALVO_KMH = 38.0
-            VEL_INICIO_LIMITE_KMH = 35.0  # Começar a reduzir força aqui
-            VEL_MAX_KMH = 45.0  # Máximo suave (não aplicar freio, apenas reduzir força)
+            VEL_INICIO_LIMITE_KMH = 35.0
+            VEL_MAX_KMH = 45.0
             
             if velocidade_rev_kmh > VEL_INICIO_LIMITE_KMH:
-                # Reduzir força do motor progressivamente conforme velocidade aumenta
-                # Isso cria uma zona de oscilação natural
                 if velocidade_rev_kmh < VEL_ALVO_KMH:
-                    # Entre 35-38 km/h: reduzir força gradualmente (50% a 100%)
                     progresso = (velocidade_rev_kmh - VEL_INICIO_LIMITE_KMH) / (VEL_ALVO_KMH - VEL_INICIO_LIMITE_KMH)
-                    fator_forca = 1.0 - progresso * 0.5  # De 100% para 50%
+                    fator_forca = 1.0 - progresso * 0.5
                 else:
-                    # Acima de 38 km/h: reduzir força mais agressivamente
                     excesso = velocidade_rev_kmh - VEL_ALVO_KMH
-                    max_excesso = VEL_MAX_KMH - VEL_ALVO_KMH  # 7 km/h
-                    fator_forca = 0.5 - (excesso / max_excesso) * 0.4  # De 50% para 10%
+                    max_excesso = VEL_MAX_KMH - VEL_ALVO_KMH
+                    fator_forca = 0.5 - (excesso / max_excesso) * 0.4
                     fator_forca = max(0.1, fator_forca)
                 
-                # Aplicar redução na força de ré sempre que estiver em ré
-                # Isso previne aceleração excessiva ao virar
                 if brk > 0.0:
-                    # Reduzir a força de ré aplicada
                     Fx_long *= fator_forca
 
         Fx_f, Fy_f = self._ellipse_clamp(0.0, Fy_f, Fzf)
@@ -655,32 +569,23 @@ class CarroFisica:
             ARCADE_SPEED_MULT = 2.5
             PXPS_TO_KMH = 1.0
             velocidade_rev_kmh = velocidade_total_pxps * ARCADE_SPEED_MULT * PXPS_TO_KMH
-            VEL_MAX_KMH = 45.0  # Máximo suave
+            VEL_MAX_KMH = 45.0
             
             if velocidade_rev_kmh > VEL_MAX_KMH:
-                # Se ultrapassou o máximo, reduzir velocidade total diretamente
-                # Isso previne que velocidade lateral seja convertida em longitudinal
                 velocidade_max_pxps = VEL_MAX_KMH / (ARCADE_SPEED_MULT * PXPS_TO_KMH)
                 fator_reducao_vel = velocidade_max_pxps / velocidade_total_pxps
                 v_long *= fator_reducao_vel
                 v_lat *= fator_reducao_vel
                 self._recomp_vel(v_long, v_lat)
 
-        # Perda de velocidade só no drift para fechar a curva
         if escapando:
-            # damping multiplicativo por segundo (ex.: 0.85 => -15%/s)
             v_long *= (self.drift_long_damp ** dt_fis)
-            # opcional: "freio" linear leve (se quiser fechar ainda mais)
-            # v_long -= 20.0 * dt_fis
 
-    
-        # anti-crab quando NÃO escapando (mais forte)
         if not escapando:
-            v_lat -= v_lat * (2.6 + 0.008 * abs(v_long)) * dt_fis   # ★ mais sangria lateral
+            v_lat -= v_lat * (2.6 + 0.008 * abs(v_long)) * dt_fis
             if steer_input != 0.0:
-                v_lat -= v_lat * (1.2 + 0.004 * abs(v_long)) * dt_fis  # ★
+                v_lat -= v_lat * (1.2 + 0.004 * abs(v_long)) * dt_fis
 
-        # baixa velocidade: gira mais, desliza menos
         LOW_SPEED = 80.0
         if not escapando and abs(v_long) < LOW_SPEED:
             self.yaw_rate += (self.steer_rad_max * steer_input * 1.5 - self.yaw_rate) * 0.5 * dt_fis
@@ -723,10 +628,9 @@ class CarroFisica:
                 v_long *= esc
                 v_lat  *= esc
         else:
-            # Sem turbo: limite normal
             if speed > self.V_SOFT:
                 cut = (speed - self.V_SOFT) / max(1e-6, self.V_TOP - self.V_SOFT)
-                v_long *= (1.0 - 0.10*cut)  # Reduzido de 0.25 para 0.10 para ser menos restritivo
+                v_long *= (1.0 - 0.10*cut)
                 v_lat  *= (1.0 - 0.10*cut)
             if speed > self.V_TOP:
                 esc = self.V_TOP / speed
@@ -751,9 +655,6 @@ class CarroFisica:
         yaw_max = 3.2 - 1.4*spdf
         self.yaw_rate = max(-yaw_max, min(yaw_max, self.yaw_rate))
 
-        # Calcular yaw_target considerando se está em ré
-        # Em ré, v_long é negativo, mas steer_wheel já foi invertido pelo steer_input
-        # Então precisamos usar abs(v_long) para manter o sinal correto
         yaw_target = (abs(v_long) * math.tan(self._steer_wheel)) / max(0.1, self.L)
         blend = 0.7 if not escapando else 0.35
         self.yaw_rate += (yaw_target - self.yaw_rate) * blend * dt_fis
@@ -809,23 +710,18 @@ class CarroFisica:
                 v_long *= fator_atrito
                 v_lat *= fator_atrito
             else:
-                # Se está abaixo ou no alvo, aplicar atrito muito leve para ré
                 if esta_em_re:
-                    # Ré: quase sem atrito quando abaixo do limite
-                    fator_atrito = 0.99 ** dt  # Atrito mínimo na ré: ~1% por segundo
+                    fator_atrito = 0.99 ** dt
                 else:
-                    fator_atrito = 0.95 ** dt  # Atrito moderado na frente: ~5% por segundo
+                    fator_atrito = 0.95 ** dt
                 v_long *= fator_atrito
                 v_lat *= fator_atrito
             
             self._recomp_vel(v_long, v_lat)
         
-        # Colisão com a pista - Sistema antigo (compatibilidade)
-        # No sistema GRIP, não há colisão, apenas redução de velocidade na grama
         houve_colisao = False
         
         if superficie_pista_renderizada is None:
-            # Sistema antigo: usar mask para compatibilidade
             fx, fy = self._vetor_frente()
             dir_frente_x, dir_frente_y = fx, fy
             dir_direita_x, dir_direita_y = self._vetor_direita()
@@ -834,19 +730,17 @@ class CarroFisica:
             colisao_count = 0
             total_amostras = 0
             
-            # Mais amostras para melhor detecção, especialmente nas bordas
             amostras_local = [
-                (0, 0),      # Centro
-                (10, 0), (-10, 0), (0, 6), (0, -6),  # Pontos principais
-                (6, 3), (-6, 3), (6, -3), (-6, -3),  # Pontos diagonais
-                (15, 0), (-15, 0), (0, 9), (0, -9)   # Pontos externos
+                (0, 0),
+                (10, 0), (-10, 0), (0, 6), (0, -6),
+                (6, 3), (-6, 3), (6, -3), (-6, -3),
+                (15, 0), (-15, 0), (0, 9), (0, -9)
             ]
             
             for ox, oy in amostras_local:
                 px = int(cx + ox * dir_frente_x + oy * dir_direita_x)
                 py = int(cy + ox * dir_frente_y + oy * dir_direita_y)
                 
-                # Aplicar correção de coordenadas baseada na câmera se disponível
                 if camera is not None:
                     px, py = self._corrigir_coordenadas_para_guide(px, py, camera, superficie_mascara)
                 
@@ -969,68 +863,40 @@ class CarroFisica:
                 # Garantir que não ultrapasse
                 self.y = min(pista_h, self.y)
 
-        # HUD - velocímetro mais fiel ao que anda na tela
-        # v_long está em pixels/segundo (antes do multiplicador arcade)
-        # O movimento aplica ARCADE_SPEED_MULT = 2.5, mas para o velocímetro
-        # queremos mostrar a velocidade "real" que o jogador vê na tela
-        # Calcular velocidade considerando o multiplicador arcade aplicado no movimento
         ARCADE_SPEED_MULT = 2.5
         velocidade_com_mult = abs(v_long) * ARCADE_SPEED_MULT
         
-        # Converter para km/h: 
-        # v_long está em px/s, e V_TOP = 1000 px/s é o limite máximo teórico
-        # Com as otimizações (mais potência, menos arrasto), o carro pode atingir velocidades maiores
-        # PXPS_TO_KMH = 1.0 faz com que velocidade_com_mult de ~200 px/s resulte em ~200 km/h
         PXPS_TO_KMH = 1.0
         self.velocidade_kmh = velocidade_com_mult * PXPS_TO_KMH
-        self.velocidade = v_long  # mantém a telemetria longitudinal se precisar
+        self.velocidade = v_long
 
-        # Partículas & drift FX
         if MODO_DRIFT:
-            # Usar a função dedicada para atualizar estado de drift
             self._atualizar_estado_drift(v_long, v_lat, dt_fis)
         
-        # Atualizar skidmarks
         self.skidmarks.atualizar(dt_fis)
 
-        # Turbo (hold) carga - estilo Need for Speed
-        # IMPORTANTE: Só spawnar partículas se turbo está REALMENTE ativo E tem carga disponível
         if self.turbo_ativo and self.turbo_carga > 0.0:
-            # Consumir carga do turbo
             self.turbo_carga = max(0.0, self.turbo_carga - 25.0 * dt_fis)
             
-            # Só spawnar partículas se ainda tem carga após consumir
             if self.turbo_carga > 0.0:
-                # SEMPRE spawnar partículas quando turbo está ativo e há carga
-                # Dois escapamentos: esquerda e direita da traseira do carro
                 fx, fy = self._vetor_frente()
                 rx, ry = self._vetor_direita()
                 
-                # Ajustar posição de spawn para a traseira do carro (não no centro)
-                offset_traseira = 35.0  # pixels atrás do centro do carro
-                offset_lateral = 6.0  # pixels para os lados (esquerda e direita) - reduzido para aproximar
+                offset_traseira = 35.0
+                offset_lateral = 6.0
                 
-                # Escapamento esquerdo (visto de trás, esquerda do carro)
                 pos_x_nitro_esq = self.x - fx * offset_traseira - rx * offset_lateral
                 pos_y_nitro_esq = self.y - fy * offset_traseira - ry * offset_lateral
                 
-                # Escapamento direito (visto de trás, direita do carro)
                 pos_x_nitro_dir = self.x - fx * offset_traseira + rx * offset_lateral
                 pos_y_nitro_dir = self.y - fy * offset_traseira + ry * offset_lateral
                 
-                # Spawnar partículas nos dois escapamentos
-                # Usar dt_fis que já está escalado corretamente
                 self.emissor_nitro.spawn(pos_x_nitro_esq, pos_y_nitro_esq, -fx, -fy, 120.0, dt_fis)
                 self.emissor_nitro.spawn(pos_x_nitro_dir, pos_y_nitro_dir, -fx, -fy, 120.0, dt_fis)
         else:
-            # Recarregar turbo quando não está ativo
             self.turbo_carga = min(100.0, self.turbo_carga + 12.0 * dt_fis)
-            # Resetar acumulador quando turbo não está ativo para evitar problemas
             self.emissor_nitro._accum = 0.0
-            # Remover TODAS as partículas quando turbo para para evitar partículas "fantasma" no chão
-            # Isso garante que não fiquem partículas soltas no chão
             if len(self.emissor_nitro.ps) > 0:
-                # Remover todas as partículas quando turbo para
                 self.emissor_nitro.ps.clear()
 
 
@@ -1042,59 +908,44 @@ class CarroFisica:
         vel = math.sqrt(vel_sq) if vel_sq > 0.01 else 0.0
         slip = abs(math.degrees(math.atan2(v, max(0.1, abs(u)))))
         
-        # Detecção de drift: handbrake ativo OU drift natural (extremamente sensível)
         self.drifting = self.freio_mao_ativo or (vel > 5.0 and (slip > 0.5 or abs(v) > 1.0))
         
-        # Se está na grama, sempre criar skidmarks (independente de estar derrapando)
         criar_skidmark = self.drifting or self.na_grama
         
         if criar_skidmark:
-            # Se handbrake ativo, intensidade máxima; senão, baseada na velocidade
             if self.freio_mao_ativo:
-                self.drift_intensidade = 1.0  # Intensidade máxima para handbrake
+                self.drift_intensidade = 1.0
             elif self.na_grama:
-                # Na grama: intensidade baseada na velocidade (sempre criar marca)
-                self.drift_intensidade = min(1.0, max(0.3, abs(u) / 60.0))  # Mínimo de 0.3 na grama
+                self.drift_intensidade = min(1.0, max(0.3, abs(u) / 60.0))
             else:
-                self.drift_intensidade = min(1.0, abs(v) / 40.0)  # Mais sensível para intensidade
+                self.drift_intensidade = min(1.0, abs(v) / 40.0)
             
-            # Criar skidmark quando derrapando OU na grama (com controle de frequência otimizado)
-            # Para bots, usar frequência menor para evitar lag (0.2s ao invés de 0.1s)
-            # Na grama, usar frequência um pouco maior para não sobrecarregar
             if self.na_grama:
                 frequencia_skidmark = 0.15 if hasattr(self, 'eh_bot') and self.eh_bot else 0.08
             else:
                 frequencia_skidmark = 0.2 if hasattr(self, 'eh_bot') and self.eh_bot else 0.1
                 
             if self._ultimo_skidmark > frequencia_skidmark:
-                # Criar skidmarks dos 2 pneus traseiros paralelos
                 fx, fy = self._vetor_frente()
-                offset_tras = 12  # pixels atrás do carro (bem próximo)
-                offset_lateral = 10  # pixels para os lados (bem próximo das quinas)
+                offset_tras = 12
+                offset_lateral = 10
                 
-                # Pneu traseiro esquerdo
                 pos_x_esq = self.x - fx * offset_tras - fy * offset_lateral
                 pos_y_esq = self.y - fy * offset_tras + fx * offset_lateral
                 self.skidmarks.adicionar_skidmark(pos_x_esq, pos_y_esq, self.angulo, self.drift_intensidade, "traseiro_esq", na_grama=self.na_grama)
                 
-                # Pneu traseiro direito
                 pos_x_dir = self.x - fx * offset_tras + fy * offset_lateral
                 pos_y_dir = self.y - fy * offset_tras - fx * offset_lateral
                 self.skidmarks.adicionar_skidmark(pos_x_dir, pos_y_dir, self.angulo, self.drift_intensidade, "traseiro_dir", na_grama=self.na_grama)
                 
-                # Se muito angular, criar marcas dos pneus dianteiros também
-                # Para bots, apenas criar pneus dianteiros em ângulos muito grandes (otimização)
-                # Na grama, sempre criar pneus dianteiros também
                 angulo_minimo_dianteiro = 1.0 if (hasattr(self, 'eh_bot') and self.eh_bot) else 0.5
                 if abs(self.angulo) > angulo_minimo_dianteiro or self.na_grama:
-                    offset_frente = 10  # pixels na frente do carro (bem próximo)
+                    offset_frente = 10
                     
-                    # Pneu dianteiro esquerdo
                     pos_x_frente_esq = self.x + fx * offset_frente - fy * offset_lateral
                     pos_y_frente_esq = self.y + fy * offset_frente + fx * offset_lateral
                     self.skidmarks.adicionar_skidmark(pos_x_frente_esq, pos_y_frente_esq, self.angulo, self.drift_intensidade * 0.7, "dianteiro_esq", na_grama=self.na_grama)
                     
-                    # Pneu dianteiro direito
                     pos_x_frente_dir = self.x + fx * offset_frente + fy * offset_lateral
                     pos_y_frente_dir = self.y + fy * offset_frente - fx * offset_lateral
                     self.skidmarks.adicionar_skidmark(pos_x_frente_dir, pos_y_frente_dir, self.angulo, self.drift_intensidade * 0.7, "dianteiro_dir", na_grama=self.na_grama)
@@ -1102,11 +953,9 @@ class CarroFisica:
                 self._ultimo_skidmark = 0.0
         else:
             self.drift_intensidade *= 0.95
-            # Parar o rastro quando não estiver derrapando E não estiver na grama
             if not self.na_grama:
                 self.skidmarks.parar_rastro()
         
-        # Atualizar timer de skidmark
         self._ultimo_skidmark += dt
 
     def _atualizar_velocimetro(self, u, dt):
@@ -1127,14 +976,10 @@ class CarroFisica:
             self.rpm = 800
             self.marcha_atual = 0
 
-    # ---------------- Render ----------------
     def desenhar(self, superficie, camera=None):
         if camera is None:
-            # Cache de sprite rotacionado
-            # Arredondar ângulo para evitar recálculos frequentes que causam "flicando"
-            angulo_arredondado = round(self.angulo, 1)  # Arredondar para 1 casa decimal
+            angulo_arredondado = round(self.angulo, 1)
             if self._sprite_angulo_cache is None or self._sprite_angulo_cache != angulo_arredondado:
-                # Usar rotozoom com zoom=1.0 para melhor qualidade na rotação
                 self._sprite_rot_cache = pygame.transform.rotozoom(self.sprite_base, self.angulo, 1.0)
                 self._sprite_angulo_cache = angulo_arredondado
             sprite_rot = self._sprite_rot_cache
@@ -1143,25 +988,16 @@ class CarroFisica:
             self.emissor_nitro.draw(superficie, camera)
             return
         sx, sy = camera.mundo_para_tela(self.x, self.y)
-        # Cache com zoom (mais complexo, mas ainda vale a pena)
-        # Usar precisão menor no cache para evitar recálculos frequentes que causam "flicando"
-        # Arredondar ângulo e zoom para reduzir recálculos
-        angulo_arredondado = round(self.angulo, 1)  # Arredondar para 1 casa decimal
-        zoom_arredondado = round(camera.zoom, 2)  # Arredondar para 2 casas decimais
+        angulo_arredondado = round(self.angulo, 1)
+        zoom_arredondado = round(camera.zoom, 2)
         cache_key = (angulo_arredondado, zoom_arredondado)
         if self._sprite_angulo_cache is None or self._sprite_angulo_cache != cache_key:
-            # rotozoom já usa interpolação suave, mas vamos garantir qualidade
-            # Se o zoom for muito diferente de 1.0, pode causar perda de qualidade
-            # Vamos usar rotozoom que já tem boa qualidade
             self._sprite_rot_cache = pygame.transform.rotozoom(self.sprite_base, self.angulo, camera.zoom)
             self._sprite_angulo_cache = cache_key
         sprite_rot = self._sprite_rot_cache
         rect = sprite_rot.get_rect(center=(sx, sy))
-        # Usar blit com flags para melhor qualidade (se disponível)
         superficie.blit(sprite_rot, rect.topleft)
         self.emissor_nitro.draw(superficie, camera)
-
-    # ---------------- API extra ----------------
     def usar_turbo(self):
         if self._turbo_cd > 0.0:
             return

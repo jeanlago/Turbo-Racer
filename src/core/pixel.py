@@ -1,4 +1,3 @@
-# src/core/pixel.py
 """Sistema do Pixel - O Fennec Informante que vende informações secretas"""
 import pygame
 import random
@@ -7,7 +6,6 @@ import json
 from config import DIR_PROJETO, LARGURA, ALTURA
 from core.progresso import gerenciador_progresso
 
-# Import lazy para evitar import circular
 def _get_render_text():
     """Importa render_text de forma lazy para evitar import circular"""
     from core.menu import render_text
@@ -15,21 +13,18 @@ def _get_render_text():
 
 CAMINHO_PIXEL_DATA = os.path.join(DIR_PROJETO, "data", "pixel.json")
 
-# Caminhos dos sprites
 CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "pixel")
-# Mapeamento: tentar primeiro os nomes esperados, depois os arquivos existentes
 SPRITE_DIGITANDO = os.path.join(CAMINHO_SPRITES, "digitando.png")
-SPRITE_DIGITANDO_FALLBACK = os.path.join(CAMINHO_SPRITES, "ocupado.png")  # Fallback
+SPRITE_DIGITANDO_FALLBACK = os.path.join(CAMINHO_SPRITES, "ocupado.png")
 SPRITE_ASSUSTADO = os.path.join(CAMINHO_SPRITES, "assustado.png")
-SPRITE_ASSUSTADO_FALLBACK = os.path.join(CAMINHO_SPRITES, "silêncio.png")  # Fallback
+SPRITE_ASSUSTADO_FALLBACK = os.path.join(CAMINHO_SPRITES, "silêncio.png")
 SPRITE_NEUTRO = os.path.join(CAMINHO_SPRITES, "neutro.png")
-SPRITE_NEUTRO_FALLBACK = os.path.join(CAMINHO_SPRITES, "Gemini_Generated_Image_4kuc1f4kuc1f4kuc.png")  # Fallback
+SPRITE_NEUTRO_FALLBACK = os.path.join(CAMINHO_SPRITES, "Gemini_Generated_Image_4kuc1f4kuc1f4kuc.png")
 SPRITE_PARANOICO = os.path.join(CAMINHO_SPRITES, "paranoico.png")
-SPRITE_PARANOICO_FALLBACK = os.path.join(CAMINHO_SPRITES, "silêncio.png")  # Fallback
+SPRITE_PARANOICO_FALLBACK = os.path.join(CAMINHO_SPRITES, "silêncio.png")
 SPRITE_VENDENDO = os.path.join(CAMINHO_SPRITES, "vendendo.png")
-SPRITE_VENDENDO_FALLBACK = os.path.join(CAMINHO_SPRITES, "oferta.png")  # Fallback
+SPRITE_VENDENDO_FALLBACK = os.path.join(CAMINHO_SPRITES, "oferta.png")
 
-# Caminho do fundo (bunker) - usar sistema dia/noite
 def obter_caminho_bunker():
     from config import obter_caminho_sprite_dia_noite
     return obter_caminho_sprite_dia_noite("bunker")
@@ -49,29 +44,24 @@ class Pixel:
         self.sprite_fundo = None
         self.sprites_carregados = False
         
-        # Estado atual da interação
         self.ativo = False
         self.sprite_atual = None
         self.texto_atual = ""
-        self.fase_dialogo = "fechado"  # "primeira_aparicao", "loja", "compra", "fechado"
+        self.fase_dialogo = "fechado"
         self.parte_dialogo = 0
-        self.parte_cutscene = 0  # Parte da cutscene de primeira aparição
+        self.parte_cutscene = 0
         
-        # Sistema de animação de texto letra por letra
         self.texto_completo = ""
         self.texto_exibido = ""
         self.tempo_animacao = 0.0
-        self.velocidade_texto = 80.0  # Caracteres por segundo (mais rápido que outros NPCs)
+        self.velocidade_texto = 80.0
         
-        # Sistema de nome revelado
         self.nome_revelado = False
         self.primeira_aparicao_mostrada = False
         
-        # Estado da loja de informações
         self.loja_aberta = False
-        self.informacao_selecionada = None  # {'tipo': str, 'preco': int, 'descricao': str}
+        self.informacao_selecionada = None
         
-        # Informações disponíveis para venda
         self.informacoes_disponiveis = []
         self._gerar_informacoes()
     
@@ -192,33 +182,27 @@ class Pixel:
     def _avancar_cutscene(self):
         """Avança para a próxima parte da cutscene"""
         partes = [
-            # Parte 0: Digitando (sem diálogo por 2 segundos)
             {
                 "sprite": "digitando",
                 "texto": "",
                 "duracao": 2.0
             },
-            # Parte 1: Assustado
             {
                 "sprite": "assustado",
                 "texto": "SHHH! Fecha! Fecha a entrada! Você quer deixar o sinal vazar? Você tem ideia de quantos firewalls eu tive que quebrar para manter este lugar fora do grid?"
             },
-            # Parte 2: Desconfiado
             {
                 "sprite": "paranoico",
                 "texto": "Espera... minha leitura biométrica diz que você é o novato. O projeto de estimação do Crank. Hmpf. O guaxinim velho finalmente achou alguém para sujar as mãos."
             },
-            # Parte 3: Filosofia
             {
                 "sprite": "digitando",
                 "texto": "Olha, eu não me importo com o seu carro. Eu não me importo com lataria e óleo. O mundo lá em cima é só barulho analógico. A verdade... a verdade está aqui embaixo. Nos dados. No fluxo binário."
             },
-            # Parte 4: Poder da informação
             {
                 "sprite": "vendendo",
                 "texto": "Eu vejo tudo. Sei onde o Rex esconde o dinheiro das apostas. Sei qual sensor do carro da Akira está falhando. Sei quando o próximo carregamento ilegal do Barão chega no porto."
             },
-            # Parte 5: Proposta
             {
                 "sprite": "paranoico",
                 "texto": "Informação é poder, novato. E eu sou a fonte. Se você tiver os créditos para pagar pela largura de banda, eu posso te dar a vantagem que você precisa. Mas seja rápido. Meus dados expiram. Tique-taque."
@@ -228,7 +212,6 @@ class Pixel:
         if self.parte_cutscene < len(partes):
             parte = partes[self.parte_cutscene]
             
-            # Definir sprite
             sprite_nome = parte.get("sprite", "neutro")
             if sprite_nome == "digitando" and self.sprite_digitando:
                 self.sprite_atual = self.sprite_digitando
@@ -239,10 +222,8 @@ class Pixel:
             elif sprite_nome == "vendendo" and self.sprite_vendendo:
                 self.sprite_atual = self.sprite_vendendo
             else:
-                # Fallback
                 self.sprite_atual = self.sprite_neutro if self.sprite_neutro else self.sprite_digitando
             
-            # Definir texto
             texto = parte.get("texto", "")
             if texto:
                 self._iniciar_animacao_texto(texto)
@@ -250,7 +231,6 @@ class Pixel:
                 self.texto_completo = ""
                 self.texto_exibido = ""
         else:
-            # Fim da cutscene
             self.primeira_aparicao_mostrada = True
             self.salvar_estado()
             self.fase_dialogo = "loja"
@@ -261,7 +241,6 @@ class Pixel:
         self.loja_aberta = True
         self.sprite_atual = self.sprite_digitando if self.sprite_digitando else self.sprite_neutro
         
-        # Saudação aleatória
         saudacoes = [
             "Você de novo? Rápido, estou no meio de uma descriptografia de nível 5. O que você quer?",
             "Espero que não tenha sido seguido. Meus sensores de proximidade estão apitando que nem loucos. Fala logo.",
@@ -277,7 +256,6 @@ class Pixel:
         self.texto_exibido = ""
         self.tempo_animacao = 0.0
         
-        # Verificar se deve revelar nome
         texto_lower = texto.lower()
         if "pixel" in texto_lower or "meu nome" in texto_lower or "me chamo pixel" in texto_lower:
             if not self.nome_revelado:
@@ -370,18 +348,14 @@ class Pixel:
         
         render_text = _get_render_text()
         
-        # Desenhar fundo
         if self.sprite_fundo:
-            # Redimensionar fundo para caber na tela (igual ao Boris)
             fundo_redimensionado = pygame.transform.scale(self.sprite_fundo, (LARGURA, ALTURA))
             tela.blit(fundo_redimensionado, (0, 0))
         else:
-            # Fallback: overlay escuro (bunker)
             overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
-            overlay.fill((0, 20, 10, 200))  # Verde escuro para bunker
+            overlay.fill((0, 20, 10, 200))
             tela.blit(overlay, (0, 0))
         
-        # Desenhar sprite do Pixel
         if self.sprite_atual:
             sprite_original_w = self.sprite_atual.get_width()
             sprite_original_h = self.sprite_atual.get_height()
@@ -389,12 +363,10 @@ class Pixel:
             sprite_novo_h = int(sprite_original_h * 0.7)
             sprite_redimensionado = pygame.transform.scale(self.sprite_atual, (sprite_novo_w, sprite_novo_h))
             
-            # Centralizar horizontalmente e posicionar mais baixo (60% da altura, igual ao Boris)
             sprite_x = LARGURA // 2 - sprite_novo_w // 2
             sprite_y = int(ALTURA * 0.6) - sprite_novo_h // 2
             tela.blit(sprite_redimensionado, (sprite_x, sprite_y))
         
-        # Desenhar caixa de diálogo
         caixa_largura = 1000
         caixa_altura = 200
         caixa_x = (LARGURA - caixa_largura) // 2

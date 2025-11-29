@@ -1,4 +1,3 @@
-# src/core/barao.py
 """Sistema do Barão - Agiota sofisticado que oferece empréstimos com juros"""
 import pygame
 import os
@@ -6,13 +5,11 @@ import random
 from config import DIR_PROJETO, LARGURA, ALTURA
 from core.progresso import gerenciador_progresso
 
-# Import lazy para evitar import circular
 def _get_render_text():
     """Importa render_text de forma lazy para evitar import circular"""
     from core.menu import render_text
     return render_text
 
-# Caminhos dos sprites
 CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "barao")
 SPRITE_NEUTRO = os.path.join(CAMINHO_SPRITES, "neutro.png")
 SPRITE_AGUARDANDO = os.path.join(CAMINHO_SPRITES, "aguardando.png")
@@ -22,17 +19,15 @@ SPRITE_AMEACANDO = os.path.join(CAMINHO_SPRITES, "ameacando.png")
 SPRITE_DESDEM = os.path.join(CAMINHO_SPRITES, "desdem.png")
 SPRITE_OFERECENDO = os.path.join(CAMINHO_SPRITES, "oferecendo.png")
 
-# Caminho do fundo (usar fundo da garagem escurecido)
 CAMINHO_FUNDO = os.path.join(DIR_PROJETO, "assets", "images", "ui", "garage_bg.png")
 
 class Barao:
     """O Barão - Agiota sofisticado que oferece empréstimos com juros"""
     
-    # Valores do empréstimo
     VALOR_EMPRESTIMO = 5000
-    JUROS_PORCENTAGEM = 50  # 50% de juros
-    VALOR_TOTAL = int(VALOR_EMPRESTIMO * (1 + JUROS_PORCENTAGEM / 100))  # 7500
-    PRAZO_CORRIDAS = 3  # 3 corridas para pagar
+    JUROS_PORCENTAGEM = 50
+    VALOR_TOTAL = int(VALOR_EMPRESTIMO * (1 + JUROS_PORCENTAGEM / 100))
+    PRAZO_CORRIDAS = 3
     
     def __init__(self):
         self.carregar_estado()
@@ -46,27 +41,23 @@ class Barao:
         self.sprite_fundo = None
         self.sprites_carregados = False
         
-        # Estado atual da interação
         self.ativo = False
         self.sprite_atual = None
         self.texto_atual = ""
-        self.fase_dialogo = "fechado"  # "oferecendo", "aceitar_recusar", "lembrete", "cobranca", "pagamento", "calote", "fechado"
+        self.fase_dialogo = "fechado"
         self.parte_dialogo = 0
-        self.opcao_confirmacao_selecionada = 0  # 0 = aceitar, 1 = recusar
+        self.opcao_confirmacao_selecionada = 0
         
-        # Sistema de animação de texto letra por letra
         self.texto_completo = ""
         self.texto_exibido = ""
         self.tempo_animacao = 0.0
-        self.velocidade_texto = 80.0  # Caracteres por segundo (igual ao Crank)
+        self.velocidade_texto = 80.0
         
-        # Sistema de nome revelado
         self.nome_revelado = False
         
     def carregar_estado(self):
         """Carrega o estado do Barão do progresso.json"""
         self.nome_revelado = gerenciador_progresso.barao_nome_revelado
-        # Estado do empréstimo é gerenciado pelo gerenciador_progresso
     
     def salvar_estado(self):
         """Salva o estado do Barão no progresso.json"""
@@ -111,12 +102,10 @@ class Barao:
         if gerenciador_progresso.barao_emprestimo_ativo:
             return False
         
-        # Verificar se jogador está sem dinheiro (ou com muito pouco)
         dinheiro = gerenciador_progresso.dinheiro
         if dinheiro > 500:  # Ainda tem algum dinheiro
             return False
         
-        # Verificar se carro está quebrado
         from core.crank import crank
         saude_carro = crank.saude_carro if hasattr(crank, 'saude_carro') else 1.0
         if saude_carro > 0.3:  # Carro não está muito quebrado
@@ -419,7 +408,6 @@ class Barao:
         for evento in eventos:
             if evento.type == pygame.KEYDOWN:
                 if evento.key == pygame.K_SPACE or evento.key == pygame.K_RETURN:
-                    # Avançar diálogo ou completar animação
                     if len(self.texto_exibido) < len(self.texto_completo):
                         self._completar_animacao_texto()
                     elif self.fase_dialogo == "aceitar_recusar":
@@ -457,7 +445,6 @@ class Barao:
                     elif evento.key in (pygame.K_DOWN, pygame.K_s):
                         self.opcao_confirmacao_selecionada = (self.opcao_confirmacao_selecionada + 1) % len(opcoes)
             elif evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
-                # Clique do mouse
                 if self.fase_dialogo == "aceitar_recusar" and len(self.texto_exibido) >= len(self.texto_completo):
                     mouse_x, mouse_y = pygame.mouse.get_pos()
                     from core.i18n import t
@@ -493,7 +480,6 @@ class Barao:
                         
                         y_calc = linha_y_calc + espacamento
                 elif len(self.texto_exibido) < len(self.texto_completo):
-                    # Completar animação ao clicar
                     self._completar_animacao_texto()
                 else:
                     # Avançar diálogo
@@ -567,13 +553,10 @@ class Barao:
             else:
                 sprite_x = 20
             
-            # Desenhar sprite do personagem
             tela.blit(sprite_redimensionado, (sprite_x, sprite_y))
         
-        # Cor do contorno da caixa (dourado/amarelo para o Barão)
         cor_contorno = (255, 220, 100)
         
-        # Desenhar caixa de diálogo (igual ao Crank)
         render_text = _get_render_text()
         caixa_largura = 1000
         caixa_altura = 200
@@ -593,15 +576,12 @@ class Barao:
         # Atualizar animação de texto
         self._atualizar_animacao_texto(dt)
         
-        # Desenhar texto do diálogo usando render_text com pixel_style
         if self.texto_exibido:
-            # Quebrar texto em linhas usando render_text para medir largura
             palavras = self.texto_exibido.split(' ')
             linhas = []
             linha_atual = ""
             for palavra in palavras:
                 teste_linha = linha_atual + (" " if linha_atual else "") + palavra
-                # Usar render_text para medir a largura corretamente
                 teste_render = render_text(teste_linha, 18, (255, 255, 255), bold=False, pixel_style=True)
                 largura_teste = teste_render.get_width()
                 if largura_teste <= caixa_largura - 40:
@@ -619,10 +599,8 @@ class Barao:
                 tela.blit(linha_render, (caixa_x + 20, y_texto))
                 y_texto += 25
         
-        # Desenhar opções de aceitar/recusar (se estiver na fase de aceitar_recusar e texto completo)
         if self.fase_dialogo == "aceitar_recusar" and len(self.texto_exibido) >= len(self.texto_completo):
             from core.i18n import t
-            # Usar traduções existentes (confirmar/cancelar) ou texto direto
             try:
                 aceitar_texto = t("menu.confirmar")  # Usar "Confirmar" como aceitar
                 recusar_texto = t("menu.cancelar")  # Usar "Cancelar" como recusar

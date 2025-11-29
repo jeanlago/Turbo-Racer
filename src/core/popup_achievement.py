@@ -41,7 +41,6 @@ class PopupAchievement:
     def carregar_icones(self):
         """Carrega os ícones de achievement e concluído"""
         try:
-            # Ícone de achievement
             caminho_achievement = os.path.join(DIR_PROJETO, "assets", "images", "icons", "achievements.png")
             if os.path.exists(caminho_achievement):
                 self.icone_achievement = pygame.image.load(caminho_achievement).convert_alpha()
@@ -49,8 +48,6 @@ class PopupAchievement:
             else:
                 self.criar_icone_achievement_simples()
             
-            # Ícone de concluído (checkmark)
-            # Tentar vários nomes possíveis
             caminhos_concluido = [
                 os.path.join(DIR_PROJETO, "assets", "images", "icons", "concluido.png"),
                 os.path.join(DIR_PROJETO, "assets", "images", "icons", "check.png"),
@@ -64,7 +61,6 @@ class PopupAchievement:
                     self.icone_concluido = pygame.transform.scale(self.icone_concluido, (30, 30))
                     break
             
-            # Se não encontrou, criar um ícone simples de checkmark
             if self.icone_concluido is None:
                 self.criar_icone_concluido_simples()
                 
@@ -82,7 +78,6 @@ class PopupAchievement:
     def criar_icone_concluido_simples(self):
         """Cria um ícone de checkmark simples"""
         self.icone_concluido = pygame.Surface((30, 30), pygame.SRCALPHA)
-        # Desenhar um checkmark verde
         pygame.draw.line(self.icone_concluido, (0, 255, 0), (8, 15), (12, 20), 3)
         pygame.draw.line(self.icone_concluido, (0, 255, 0), (12, 20), (22, 8), 3)
     
@@ -137,10 +132,8 @@ class PopupAchievement:
             nome_achievement: Nome do achievement (pode ser chave de tradução ou texto direto)
             recompensa: Valor da recompensa em dinheiro
         """
-        # Tentar traduzir se for uma chave de tradução
         try:
             from core.i18n import t
-            # Mapeamento de nomes para chaves de tradução
             mapeamento_traducoes = {
                 "Primeira Corrida": "achievements.primeira_corrida",
                 "Velocista": "achievements.velocista",
@@ -153,11 +146,10 @@ class PopupAchievement:
                 "Tunado": "achievements.upgrade_completo",
                 "Veterano": "achievements.veterano",
             }
-            # Tentar traduzir
             if nome_achievement in mapeamento_traducoes:
                 nome_achievement = t(mapeamento_traducoes[nome_achievement])
         except:
-            pass  # Se falhar, usar o nome original
+            pass
         
         self.ativo = True
         self.tempo_visivel = 0.0
@@ -270,14 +262,10 @@ class PopupAchievement:
         pygame.draw.rect(self.surface, self.cor_fundo, (0, 0, self.largura, self.altura), border_radius=8)
         pygame.draw.rect(self.surface, cor_borda_atual, (0, 0, self.largura, self.altura), 3, border_radius=8)
         
-        # Removido: ícones de achievement e concluído (conforme solicitado pelo usuário)
-        
-        # Texto do achievement
         nome_limpo = self.limpar_caracteres_especiais(self.nome_achievement)
         fonte = pygame.font.SysFont("arial", 16, bold=True)
         texto_achievement = fonte.render(nome_limpo, True, self.cor_texto)
         
-        # Texto de recompensa se houver
         texto_recompensa = ""
         if self.recompensa > 0:
             fonte_recompensa = pygame.font.SysFont("arial", 14, bold=True)
@@ -285,13 +273,11 @@ class PopupAchievement:
         
         texto_altura = texto_achievement.get_height()
         area_texto_y = (self.altura - texto_altura) // 2 - (8 if texto_recompensa else 0)
-        # Ajustar posição do texto já que os ícones foram removidos
         area_texto = pygame.Rect(15, area_texto_y, self.largura - 30, texto_altura + 4)
         clip_surface = pygame.Surface((area_texto.width, area_texto.height), pygame.SRCALPHA)
         clip_surface.blit(texto_achievement, (0 - self.texto_offset, 0))
         self.surface.blit(clip_surface, (area_texto.x, area_texto.y))
         
-        # Recompensa abaixo do nome
         if texto_recompensa:
             recompensa_y = area_texto_y + texto_altura + 4
             self.surface.blit(texto_recompensa, (15, recompensa_y))
@@ -303,6 +289,5 @@ class PopupAchievement:
         else:
             tela.blit(self.surface, (self.posicao_x, self.posicao_y))
 
-# Instância global do pop-up
 popup_achievement = PopupAchievement()
 

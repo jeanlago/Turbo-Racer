@@ -13,20 +13,17 @@ def ranking_loop(screen):
     
     clock = pygame.time.Clock()
     
-    # Layout
     caixa_largura = 900
     caixa_altura = 700
     caixa_x = (LARGURA - caixa_largura) // 2
     caixa_y = (ALTURA - caixa_altura) // 2
     
-    # Estado de seleção
     voltar_selecionado = True
     animacao_cursor = 0.0
     
     while True:
         dt = clock.tick(FPS) / 1000.0
         
-        # Atualizar animação do cursor
         animacao_cursor += dt * 3.0
         
         gerenciador_musica.verificar_fim_musica()
@@ -35,12 +32,10 @@ def ranking_loop(screen):
         mouse_x, mouse_y = pygame.mouse.get_pos()
         popup_musica.verificar_hover(mouse_x, mouse_y)
         
-        # Processar eventos
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 return False
             
-            # Processar eventos de controle
             from core.gamepad_manager import gerenciador_gamepad
             controle_processado = False
             if gerenciador_gamepad.obter_numero_controles() > 0:
@@ -68,26 +63,21 @@ def ranking_loop(screen):
                 if ev.key == pygame.K_ESCAPE:
                     return True
         
-        # Desenhar
         screen.blit(bg, (0, 0))
         
-        # Overlay
         overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 100))
         screen.blit(overlay, (0, 0))
         
-        # Caixa principal
         caixa_fundo = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
         caixa_fundo.fill((0, 0, 0, 150))
         screen.blit(caixa_fundo, (caixa_x, caixa_y))
         pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
         
-        # Título
         titulo = render_text("HIERARQUIA", 36, (255, 220, 100), bold=True, pixel_style=True)
         titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
         screen.blit(titulo, (titulo_x, caixa_y + 20))
         
-        # Cabeçalhos (usando render_text para consistência)
         y_cabecalho = caixa_y + 80
         x_pos = caixa_x + 50
         x_nome = caixa_x + 150
@@ -104,12 +94,10 @@ def ranking_loop(screen):
         screen.blit(cabecalho_vitorias, (x_vitorias, y_cabecalho))
         screen.blit(cabecalho_derrotas, (x_derrotas, y_cabecalho))
         
-        # Linha separadora
         pygame.draw.line(screen, (128, 128, 128), 
                         (caixa_x + 30, y_cabecalho + 35), 
                         (caixa_x + caixa_largura - 30, y_cabecalho + 35), 2)
         
-        # Listar ranking
         ranking = gerenciador_ranking.obter_ranking()
         posicao_jogador = gerenciador_ranking.obter_posicao_jogador()
         from core.progresso import gerenciador_progresso
@@ -122,7 +110,6 @@ def ranking_loop(screen):
             derrotas = piloto.get('derrotas', 0)
             e_jogador = piloto.get('e_jogador', False) or nome == "JOGADOR" or nome == gerenciador_progresso.nome_jogador
             
-            # Cores especiais para top 3
             if pos == 1:
                 cor_pos = (255, 215, 0)  # Ouro
                 cor_nome = (255, 215, 0)
@@ -139,11 +126,9 @@ def ranking_loop(screen):
                 cor_pos = (255, 255, 255)
                 cor_nome = (255, 255, 255)
             
-            # Posição
             texto_pos = render_text(f"{pos}º", 18, cor_pos, bold=False, pixel_style=True)
             screen.blit(texto_pos, (x_pos, y_atual))
             
-            # Nome (usar nome do jogador se for ele)
             if e_jogador:
                 nome_display = gerenciador_progresso.nome_jogador
             else:
@@ -151,15 +136,12 @@ def ranking_loop(screen):
             texto_nome = render_text(nome_display, 18, cor_nome, bold=e_jogador, pixel_style=True)
             screen.blit(texto_nome, (x_nome, y_atual))
             
-            # Vitórias
             texto_vitorias = render_text(str(vitorias), 18, (0, 255, 0), bold=False, pixel_style=True)
             screen.blit(texto_vitorias, (x_vitorias, y_atual))
             
-            # Derrotas
             texto_derrotas = render_text(str(derrotas), 18, (255, 100, 100), bold=False, pixel_style=True)
             screen.blit(texto_derrotas, (x_derrotas, y_atual))
             
-            # Destaque visual para jogador
             if e_jogador:
                 highlight_rect = pygame.Rect(caixa_x + 25, y_atual - 5, caixa_largura - 50, 30)
                 highlight_surface = pygame.Surface((highlight_rect.width, highlight_rect.height), pygame.SRCALPHA)
@@ -169,17 +151,14 @@ def ranking_loop(screen):
             
             y_atual += 40
         
-        # Botão voltar
         voltar_largura = 120
         voltar_altura = 40
         voltar_x = caixa_x + (caixa_largura - voltar_largura) // 2
         voltar_y = caixa_y + caixa_altura - 50
         voltar_rect = pygame.Rect(voltar_x, voltar_y, voltar_largura, voltar_altura)
         
-        # Verificar hover
         voltar_hover = voltar_rect.collidepoint(mouse_x, mouse_y)
         
-        # Cores do botão baseadas no hover
         if voltar_hover:
             cor_voltar = (255, 80, 80)
             cor_borda = (255, 150, 150)
@@ -197,8 +176,6 @@ def ranking_loop(screen):
         voltar_texto_x = voltar_x + (voltar_largura - voltar_texto.get_width()) // 2
         voltar_texto_y = voltar_y + (voltar_altura - voltar_texto.get_height()) // 2
         screen.blit(voltar_texto, (voltar_texto_x, voltar_texto_y))
-        
-        # Instruções removidas conforme solicitado
         
         popup_musica.desenhar(screen)
         pygame.display.flip()

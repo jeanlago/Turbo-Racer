@@ -41,7 +41,6 @@ class GerenciadorLocalizacoes:
                 import traceback
                 traceback.print_exc()
         else:
-            # Inicializar com valores padrão
             self._inicializar_padrao()
     
     def _inicializar_padrao(self):
@@ -88,7 +87,6 @@ class GerenciadorLocalizacoes:
         if location_id not in self.locations:
             return EstadoLocalizacao.INVISIVEL
         state = self.locations[location_id]["state"]
-        # Garantir que retorna o valor correto do enum
         if state not in [EstadoLocalizacao.INVISIVEL, EstadoLocalizacao.BLOQUEADO_VISIVEL, EstadoLocalizacao.DESBLOQUEADO]:
             return EstadoLocalizacao.INVISIVEL
         return state
@@ -111,7 +109,6 @@ class GerenciadorLocalizacoes:
     def tornar_visivel(self, location_id: str):
         """Torna uma localização visível (mas ainda bloqueada)"""
         if location_id not in self.locations:
-            # Criar entrada se não existir
             self.locations[location_id] = {
                 "nome": location_id.replace("_", " ").title(),
                 "state": EstadoLocalizacao.BLOQUEADO_VISIVEL,
@@ -126,7 +123,6 @@ class GerenciadorLocalizacoes:
     def desbloquear(self, location_id: str):
         """Desbloqueia uma localização"""
         if location_id not in self.locations:
-            # Criar entrada se não existir
             self.locations[location_id] = {
                 "nome": location_id.replace("_", " ").title(),
                 "state": EstadoLocalizacao.DESBLOQUEADO,
@@ -139,15 +135,12 @@ class GerenciadorLocalizacoes:
     
     def processar_efeito_narrativa(self, effect: str):
         """Processa um efeito da narrativa que pode afetar localizações"""
-        # Verificar unlockLocation:
         if effect.startswith("unlockLocation:"):
             location_id = effect.split(":", 1)[1]
             self.desbloquear(location_id)
         
-        # Verificar unlockRaceSet: (pode desbloquear localização relacionada)
         elif effect.startswith("unlockRaceSet:"):
             race_set = effect.split(":", 1)[1]
-            # Mapear race set para location
             race_to_location = {
                 "cinturao_industrial": "cinturao_industrial",
                 "montanha": "montanha",
@@ -156,12 +149,9 @@ class GerenciadorLocalizacoes:
             if race_set in race_to_location:
                 self.desbloquear(race_to_location[race_set])
         
-        # Verificar menções na narrativa (tornar visível)
-        # Isso será feito manualmente ou via flags específicas
         elif effect.startswith("mentionLocation:"):
             location_id = effect.split(":", 1)[1]
             self.tornar_visivel(location_id)
 
-# Instância global
 gerenciador_localizacoes = GerenciadorLocalizacoes()
 

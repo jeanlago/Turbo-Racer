@@ -1,4 +1,3 @@
-# src/core/boris.py
 """Sistema do Boris - O Sucateiro Ciborgue que vende peças com preços variáveis"""
 import pygame
 import random
@@ -7,7 +6,6 @@ import json
 from config import DIR_PROJETO, LARGURA, ALTURA
 from core.progresso import gerenciador_progresso
 
-# Import lazy para evitar import circular
 def _get_render_text():
     """Importa render_text de forma lazy para evitar import circular"""
     from core.menu import render_text
@@ -15,15 +13,13 @@ def _get_render_text():
 
 CAMINHO_BORIS_DATA = os.path.join(DIR_PROJETO, "data", "boris.json")
 
-# Caminhos dos sprites (usando os nomes reais dos arquivos)
 CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "boris")
-SPRITE_TRABALHANDO = os.path.join(CAMINHO_SPRITES, "boris_.png")  # Fallback: usar sprite base
-SPRITE_RABUGENTO = os.path.join(CAMINHO_SPRITES, "boris_irritado_leve.png")  # Usar irritado como rabugento
+SPRITE_TRABALHANDO = os.path.join(CAMINHO_SPRITES, "boris_.png")
+SPRITE_RABUGENTO = os.path.join(CAMINHO_SPRITES, "boris_irritado_leve.png")
 SPRITE_NEUTRO = os.path.join(CAMINHO_SPRITES, "boris_neutro.png")
-SPRITE_AMEAÇADOR = os.path.join(CAMINHO_SPRITES, "boris_ameacador.png")  # Sem acento no arquivo
-SPRITE_CONVENCIDO = os.path.join(CAMINHO_SPRITES, "boris_persuasivo.png")  # Usar persuasivo como convencido
+SPRITE_AMEAÇADOR = os.path.join(CAMINHO_SPRITES, "boris_ameacador.png")
+SPRITE_CONVENCIDO = os.path.join(CAMINHO_SPRITES, "boris_persuasivo.png")
 
-# Caminho do fundo (será obtido dinamicamente com dia/noite)
 def obter_caminho_fabrica():
     from config import obter_caminho_sprite_dia_noite
     return obter_caminho_sprite_dia_noite("fabrica")
@@ -31,13 +27,11 @@ def obter_caminho_fabrica():
 class Boris:
     """Boris - O Sucateiro Ciborgue que vende peças com preços variáveis"""
     
-    # Probabilidades de preço
-    PROBABILIDADE_PRECO_OTIMO = 0.25  # 25% de chance de preço bom
-    PROBABILIDADE_PRECO_PESSIMO = 0.75  # 75% de chance de preço ruim
+    PROBABILIDADE_PRECO_OTIMO = 0.25
+    PROBABILIDADE_PRECO_PESSIMO = 0.75
     
-    # Multiplicadores de preço
-    MULTIPLICADOR_PRECO_OTIMO = 0.5  # 50% do preço normal (barato)
-    MULTIPLICADOR_PRECO_PESSIMO = 2.0  # 200% do preço normal (caro)
+    MULTIPLICADOR_PRECO_OTIMO = 0.5
+    MULTIPLICADOR_PRECO_PESSIMO = 2.0
     
     def __init__(self):
         self.carregar_estado()
@@ -49,28 +43,24 @@ class Boris:
         self.sprite_fundo = None
         self.sprites_carregados = False
         
-        # Estado atual da interação
         self.ativo = False
         self.sprite_atual = None
         self.texto_atual = ""
-        self.fase_dialogo = "fechado"  # "primeira_aparicao", "loja", "compra", "fechado"
+        self.fase_dialogo = "fechado"
         self.parte_dialogo = 0
-        self.parte_cutscene = 0  # Parte da cutscene de primeira aparição
+        self.parte_cutscene = 0
         
-        # Sistema de animação de texto letra por letra
         self.texto_completo = ""
         self.texto_exibido = ""
         self.tempo_animacao = 0.0
-        self.velocidade_texto = 60.0  # Caracteres por segundo
+        self.velocidade_texto = 60.0
         
-        # Sistema de nome revelado
         self.nome_revelado = False
         self.primeira_aparicao_mostrada = False
         
-        # Estado da loja
         self.loja_aberta = False
-        self.peça_selecionada = None  # {'tipo': str, 'preco_base': int, 'preco_final': int, 'preco_tipo': str}
-        self.preco_tipo_atual = None  # "otimo" ou "pessimo"
+        self.peça_selecionada = None
+        self.preco_tipo_atual = None
         
     def carregar_estado(self):
         """Carrega o estado do Boris do progresso.json"""
@@ -158,33 +148,27 @@ class Boris:
     def _avancar_cutscene(self):
         """Avança para a próxima parte da cutscene"""
         partes = [
-            # Parte 0: Trabalhando (sem diálogo por 3 segundos)
             {
                 "sprite": "trabalhando",
                 "texto": "",
                 "duracao": 3.0
             },
-            # Parte 1: Percebimento
             {
                 "sprite": "rabugento",
                 "texto": "GRRR! Quem é o rato que ousa invadir meu chiqueiro? Ah, é o novato de quem todos falam."
             },
-            # Parte 2: Filosofia
             {
                 "sprite": "ameaçador",
                 "texto": "Olho para essa sua lata velha e só vejo uma coisa: falta de RESPEITO. Respeito pelo metal! Respeito pelo torque!"
             },
-            # Parte 3: Crítica à Akira
             {
                 "sprite": "ameaçador",
                 "texto": "Aquela panda lá em cima fala de 'fluxo', de 'dançar com a pista'... BAH! Besteira! Corrida é briga. É metal contra metal. É fazer o motor gritar até ele implorar por misericórdia."
             },
-            # Parte 4: Proposta
             {
                 "sprite": "convencido",
                 "texto": "Você está no meu território agora, o Fosso de Ferrugem. Aqui nós construímos monstros. Se você quer peças que aguentem porrada, veio ao lugar certo."
             },
-            # Parte 5: Aviso sobre preço
             {
                 "sprite": "rabugento",
                 "texto": "Mas não espere que eu seja gentil com o preço. Eu sou mecânico, não instituição de caridade. Vamos ver o que você precisa. E torça para eu estar de bom humor."
@@ -194,7 +178,6 @@ class Boris:
         if self.parte_cutscene < len(partes):
             parte = partes[self.parte_cutscene]
             
-            # Definir sprite
             sprite_nome = parte.get("sprite", "rabugento")
             print(f"[BORIS] Definindo sprite: {sprite_nome} (parte {self.parte_cutscene})")
             
@@ -210,9 +193,8 @@ class Boris:
             elif sprite_nome == "convencido" and self.sprite_convencido:
                 self.sprite_atual = self.sprite_convencido
                 print(f"[BORIS] ✓ Sprite atual definido como convencido")
-            else:
-                # Fallback: tentar qualquer sprite disponível
-                if self.sprite_rabugento:
+                else:
+                    if self.sprite_rabugento:
                     self.sprite_atual = self.sprite_rabugento
                     print(f"[BORIS] ⚠ Usando fallback rabugento para sprite: {sprite_nome}")
                 elif self.sprite_neutro:
@@ -231,7 +213,6 @@ class Boris:
                     self.sprite_atual = None
                     print(f"[BORIS] ✗ ERRO: Nenhum sprite disponível para {sprite_nome}!")
             
-            # Definir texto
             texto = parte.get("texto", "")
             if texto:
                 self._iniciar_animacao_texto(texto)
@@ -239,7 +220,6 @@ class Boris:
                 self.texto_completo = ""
                 self.texto_exibido = ""
         else:
-            # Fim da cutscene
             self.primeira_aparicao_mostrada = True
             self.salvar_estado()
             self.fase_dialogo = "loja"
@@ -250,7 +230,6 @@ class Boris:
         self.loja_aberta = True
         self.sprite_atual = self.sprite_rabugento if self.sprite_rabugento else self.sprite_neutro
         
-        # Saudação padrão
         saudacoes = [
             "Você de novo? Espero que tenha trazido dinheiro, ou um carro para eu compactar. O que você quer?",
             "Rápido, fala logo! Estou no meio de um transplante de pistão aqui. O que quebrou dessa vez?",
@@ -414,7 +393,6 @@ class Boris:
         
         render_text = _get_render_text()
         
-        # Desenhar fundo (sempre recarregar para suportar mudanças dia/noite)
         CAMINHO_FABRICA = obter_caminho_fabrica()
         if os.path.exists(CAMINHO_FABRICA):
             try:
@@ -423,18 +401,15 @@ class Boris:
                 print(f"[BORIS] Erro ao recarregar fundo: {e}")
         
         if self.sprite_fundo:
-            # Redimensionar fundo para caber na tela
             fundo_w, fundo_h = self.sprite_fundo.get_size()
             fundo_redimensionado = pygame.transform.scale(self.sprite_fundo, (LARGURA, ALTURA))
             tela.blit(fundo_redimensionado, (0, 0))
         else:
-            # Fallback: overlay escuro
             print(f"[BORIS] AVISO: sprite_fundo é None, usando fallback. Caminho tentado: {CAMINHO_FABRICA}")
             overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 200))
             tela.blit(overlay, (0, 0))
         
-        # Desenhar sprite do Boris
         if self.sprite_atual:
             sprite_original_w = self.sprite_atual.get_width()
             sprite_original_h = self.sprite_atual.get_height()
@@ -443,13 +418,11 @@ class Boris:
             sprite_redimensionado = pygame.transform.scale(self.sprite_atual, (sprite_novo_w, sprite_novo_h))
             
             sprite_x = LARGURA // 2 - sprite_novo_w // 2
-            # Mesma altura do Rex
             sprite_y = ALTURA // 2 - sprite_novo_h // 2 - 50
             tela.blit(sprite_redimensionado, (sprite_x, sprite_y))
         else:
             print(f"[BORIS] AVISO: sprite_atual é None! fase_dialogo={self.fase_dialogo}, parte_cutscene={self.parte_cutscene}")
         
-        # Desenhar caixa de diálogo
         caixa_largura = 1000
         caixa_altura = 200
         caixa_x = (LARGURA - caixa_largura) // 2

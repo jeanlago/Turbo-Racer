@@ -60,7 +60,6 @@ class GerenciadorMusica:
                 return True
             except pygame.error as e:
                 print(f"Erro ao tocar música {self.musicas[indice]['nome']}: {e}")
-                # Se houver erro, desabilitar música para evitar loop
                 self.musica_habilitada = False
                 self.musica_tocando = False
                 return False
@@ -126,5 +125,4 @@ class GerenciadorMusica:
         """Retorna o total de músicas"""
         return len(self.musicas)
 
-# Instância global do gerenciador de música
 gerenciador_musica = GerenciadorMusica()

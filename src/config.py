@@ -3,9 +3,6 @@ import sys
 import glob
 import contextlib
 
-# Aplicar filtro de stderr para suprimir avisos do libpng sobre iCCP
-# Isso deve ser feito antes de qualquer import do pygame
-# Verificar se o filtro já foi aplicado para evitar múltiplas aplicações
 if not hasattr(sys.stderr, '_filtered_libpng'):
     class FilteredStderr:
         """Filtra avisos do libpng sobre iCCP do stderr"""
@@ -14,9 +11,8 @@ if not hasattr(sys.stderr, '_filtered_libpng'):
             self._filtered_libpng = True
         
         def write(self, message):
-            # Filtrar avisos do libpng sobre iCCP
             if 'iCCP' in message and 'known incorrect sRGB profile' in message:
-                return  # Ignorar este aviso
+                return
             self.original_stderr.write(message)
         
         def flush(self):
@@ -25,7 +21,6 @@ if not hasattr(sys.stderr, '_filtered_libpng'):
         def __getattr__(self, name):
             return getattr(self.original_stderr, name)
     
-    # Aplicar filtro
     sys.stderr = FilteredStderr(sys.stderr)
 
 LARGURA, ALTURA = 1280, 720
@@ -61,9 +56,7 @@ CAMINHO_TROFEU_PRATA = os.path.join(DIR_ICONS, "trofeu_prata.png")
 CAMINHO_TROFEU_BRONZE = os.path.join(DIR_ICONS, "trofeu_bronze.png")
 CAMINHO_TROFEU_VAZIO = os.path.join(DIR_ICONS, "trofeu_vazio.png")
 
-# Sistema de ciclo dia/noite
-# Por padrão, começa como dia. Pode ser alterado dinamicamente durante o jogo
-_estado_dia_noite = "dia"  # "dia" ou "noite"
+_estado_dia_noite = "dia"
 
 def definir_estado_dia_noite(estado: str):
     """Define o estado atual do ciclo dia/noite
@@ -111,17 +104,14 @@ def obter_caminho_sprite_dia_noite(nome_base: str, diretorio: str = None, extens
     estado = obter_estado_dia_noite()
     sufixo = "_dia" if estado == "dia" else "_noite"
     
-    # Tentar primeiro com sufixo dia/noite
     caminho_com_sufixo = os.path.join(diretorio, f"{nome_base}{sufixo}{extensao}")
     if os.path.exists(caminho_com_sufixo):
         return caminho_com_sufixo
     
-    # Tentar o nome base sem sufixo
     caminho_base = os.path.join(diretorio, f"{nome_base}{extensao}")
     if os.path.exists(caminho_base):
         return caminho_base
     
-    # Se não encontrou nenhum, retornar o caminho com sufixo (pode não existir, mas é o esperado)
     return caminho_com_sufixo
 
 @contextlib.contextmanager
@@ -147,14 +137,11 @@ def obter_caminho_hover_dia_noite(caminho_hover: str) -> str:
     Returns:
         Caminho completo do arquivo hover (dia/noite ou fallback)
     """
-    # Se o caminho não é absoluto, assumir que é relativo ao DIR_PROJETO
     if not os.path.isabs(caminho_hover):
         caminho_hover = os.path.join(DIR_PROJETO, caminho_hover)
     
-    # Normalizar separadores de caminho
     caminho_hover = caminho_hover.replace("\\", os.sep).replace("/", os.sep)
     
-    # Extrair diretório e nome do arquivo
     diretorio = os.path.dirname(caminho_hover)
     nome_completo = os.path.basename(caminho_hover)
     nome_base, extensao = os.path.splitext(nome_completo)
@@ -162,16 +149,13 @@ def obter_caminho_hover_dia_noite(caminho_hover: str) -> str:
     estado = obter_estado_dia_noite()
     sufixo = "_dia" if estado == "dia" else "_noite"
     
-    # Tentar primeiro com sufixo dia/noite
     caminho_com_sufixo = os.path.join(diretorio, f"{nome_base}{sufixo}{extensao}")
     if os.path.exists(caminho_com_sufixo):
         return caminho_com_sufixo
     
-    # Tentar o nome base sem sufixo (fallback)
     if os.path.exists(caminho_hover):
         return caminho_hover
     
-    # Se não encontrou nenhum, retornar o caminho com sufixo (pode não existir, mas é o esperado)
     return caminho_com_sufixo
 
 def escanear_mapas_automaticamente():

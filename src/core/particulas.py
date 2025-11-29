@@ -13,24 +13,21 @@ class Particula:
         self.scale0, self.scale1 = float(scale0), float(scale1)
         self.alpha0, self.alpha1 = int(alpha0), int(alpha1)
         self.tipo = tipo
-        self.tex_index = 0  # Cada partícula tem seu próprio índice de textura
+        self.tex_index = 0
 
     def alive(self): return self.t < self.life
     def update(self, dt):
         if not self.alive():
-            return False  # Retornar False se já morreu para evitar atualizações desnecessárias
+            return False
         self.t += dt
         self.x += self.vx * dt
         self.y += self.vy * dt
-        # Atualizar índice de textura individual (animação mais lenta)
-        self.tex_index = int((self.t * 0.05) % 12)  # 12 texturas disponíveis
-        return True  # Retornar True se ainda está vivo
+        self.tex_index = int((self.t * 0.05) % 12)
+        return True
     def interp(self):
         k = max(0.0, min(1.0, self.t / self.life))
         scale = self.scale0 + (self.scale1 - self.scale0) * k
-        # Fade suave: começa com alpha0, vai até 0 no final
-        # Usar curva suave para evitar piscada
-        fade_curve = 1.0 - (k * k)  # Curva quadrática para fade mais suave
+        fade_curve = 1.0 - (k * k)
         alpha = int(self.alpha0 * fade_curve)
         return scale, alpha
 
@@ -90,21 +87,18 @@ class EmissorColisao:
 
 class EmissorFumaca:
     def __init__(self):
-        # Carregar texturas de fumaça
         self.tex_fumaca = []
-        for i in range(12):  # pixels_00.png a pixels_11.png
+        for i in range(12):
             caminho = os.path.join(DIR_EFFECTS, "smoke", f"pixels_{i:02d}.png")
             if os.path.exists(caminho):
                 try:
                     img = pygame.image.load(caminho).convert_alpha()
-                    # Redimensionar para tamanho adequado
                     img = pygame.transform.scale(img, (16, 16))
                     self.tex_fumaca.append(img)
                 except Exception as e:
-                    pass  # Silenciar erros de carregamento
+                    pass
         
         if not self.tex_fumaca:
-            # Fallback se não encontrar as texturas
             self.tex_fumaca = [pygame.Surface((16, 16), pygame.SRCALPHA)]
             self.tex_fumaca[0].fill((100, 100, 100, 128))
         
@@ -115,47 +109,40 @@ class EmissorFumaca:
         self._frame_atual = 0
 
     def spawn(self, x, y, dirx, diry, taxa_qps, dt):
-        # Limitar número de partículas para performance
         if len(self.ps) >= self.max_particulas:
             return
             
-        # Reduzir taxa de spawn para boa performance
-        self._accum += taxa_qps * dt * 0.4  # Reduzir para 40% da taxa original
+        self._accum += taxa_qps * dt * 0.4
         n = int(self._accum)
         if n <= 0: 
             return
         self._accum -= n
         
-        # Limitar número de partículas criadas por frame
         n = min(n, self._particulas_por_frame)
         
         base_ang = math.atan2(diry, dirx) + math.pi
         for _ in range(n):
-            # Verificar limite novamente dentro do loop
             if len(self.ps) >= self.max_particulas:
                 break
                 
-            ang = base_ang + random.uniform(-0.05, 0.05)  # Dispersão ainda menor
-            v = random.uniform(20, 35)  # Velocidade mais concentrada
+            ang = base_ang + random.uniform(-0.05, 0.05)
+            v = random.uniform(20, 35)
             vx, vy = math.cos(ang)*v, math.sin(ang)*v
-            # Adicionar movimento vertical para cima
-            vy -= random.uniform(25, 40)  # Força para cima mais concentrada
-            life = random.uniform(3.0, 4.5)  # Vida um pouco menor
-            scale0 = random.uniform(1.5, 2.5)  # Tamanho menor inicial
-            scale1 = scale0 * random.uniform(1.5, 2.0)  # Crescimento menor
-            alpha0 = random.randint(120, 180)  # Menos opaco inicial
+            vy -= random.uniform(25, 40)
+            life = random.uniform(3.0, 4.5)
+            scale0 = random.uniform(1.5, 2.5)
+            scale1 = scale0 * random.uniform(1.5, 2.0)
+            alpha0 = random.randint(120, 180)
             p = Particula(x, y, vx, vy, life, random.uniform(0,360), scale0, scale1, alpha0, 0, "fumaca")
             self.ps.append(p)
 
     def update(self, dt):
-        # Atualizar partículas e remover as que morreram
         for p in self.ps:
             p.update(dt)
         self.ps = [p for p in self.ps if p.alive()]
         self._frame_atual += 1
 
     def draw(self, surface, camera=None):
-        # Otimização: pré-calcular zoom e limites da tela
         zoom = getattr(camera, "zoom", 1.0) if camera else 1.0
         largura_tela = surface.get_width()
         altura_tela = surface.get_height()
@@ -167,15 +154,11 @@ class EmissorFumaca:
             if camera:
                 x, y = camera.mundo_para_tela(x, y)
             
-            # Verificar se a partícula está dentro da tela (otimizado)
             if x < -margem or x > largura_tela + margem or y < -margem or y > altura_tela + margem:
-                continue  # Pular partículas fora da tela
+                continue
             
-            # Usar textura de fumaça se disponível
             if self.tex_fumaca:
-                # Usar índice individual de cada partícula (sem loop global)
                 tex_index = p.tex_index % len(self.tex_fumaca)
-                # Cache de transformações (limitado para não crescer muito)
                 if not hasattr(self, '_transform_cache'):
                     self._transform_cache = {}
                     self._cache_size_limit = 50
@@ -183,7 +166,6 @@ class EmissorFumaca:
                 cache_key = (tex_index, int(p.ang), int(scale * zoom * 10))
                 if cache_key not in self._transform_cache:
                     if len(self._transform_cache) > self._cache_size_limit:
-                        # Limpar cache antigo (FIFO)
                         oldest_key = next(iter(self._transform_cache))
                         del self._transform_cache[oldest_key]
                     img = pygame.transform.rotozoom(self.tex_fumaca[tex_index], p.ang, scale * zoom)
@@ -194,25 +176,19 @@ class EmissorFumaca:
                 img.set_alpha(alpha)
                 surface.blit(img, img.get_rect(center=(int(x), int(y))))
             else:
-                # Fallback: círculos coloridos mais visíveis
-                raio = max(8, int(scale * 20 * zoom))  # Raio maior e mínimo de 8 pixels
-                # Círculo externo cinza
+                raio = max(8, int(scale * 20 * zoom))
                 pygame.draw.circle(surface, (150, 150, 150), (int(x), int(y)), raio)
-                # Círculo interno branco para contraste
                 pygame.draw.circle(surface, (255, 255, 255), (int(x), int(y)), max(2, raio // 2))
-                # Ponto central para máxima visibilidade
                 pygame.draw.circle(surface, (0, 0, 0), (int(x), int(y)), 1)
 
 class EmissorNitro:
     def __init__(self):
-        # Carregar texturas de nitro
         self.tex_nitro = []
-        for i in range(4):  # pixels_00.png a pixels_03.png
+        for i in range(4):
             caminho = os.path.join(DIR_EFFECTS, "nitro", f"pixels_{i:02d}.png")
             if os.path.exists(caminho):
                 try:
                     img = pygame.image.load(caminho).convert_alpha()
-                    # Redimensionar para tamanho adequado
                     img = pygame.transform.scale(img, (16, 16))
                     self.tex_nitro.append(img)
                     print(f"Nitro carregado: {caminho}")
@@ -220,56 +196,47 @@ class EmissorNitro:
                     print(f"Erro ao carregar nitro {caminho}: {e}")
         
         if not self.tex_nitro:
-            # Fallback se não encontrar as texturas
             print("Criando fallback para nitro")
             self.tex_nitro = [pygame.Surface((16, 16), pygame.SRCALPHA)]
             self.tex_nitro[0].fill((0, 255, 255, 200))
         
         self.ps = []
         self._accum = 0.0
-        self.max_particulas = 30  # Aumentado para mais partículas visíveis
-        self._particulas_por_frame = 2  # 2 partículas por frame para nitro mais visível
+        self.max_particulas = 30
+        self._particulas_por_frame = 2
         self._frame_atual = 0
 
     def spawn(self, x, y, dirx, diry, taxa_qps, dt):
-        # Para nitro, sempre spawnar pelo menos uma partícula se chamado
-        # Garantir que partículas sempre apareçam quando turbo está ativo
         if len(self.ps) >= self.max_particulas:
-            # Se está cheio, remover partículas antigas para fazer espaço
-            # Manter apenas as mais recentes
-            self.ps = self.ps[-self.max_particulas//2:]  # Manter metade das mais recentes
+            self.ps = self.ps[-self.max_particulas//2:]
             
-        # Sistema de acumulação melhorado para garantir spawn consistente
         self._accum += taxa_qps * dt
         n = int(self._accum)
         
-        # Garantir que pelo menos 1 partícula seja spawnada se acumulou algo
         if n <= 0 and self._accum > 0.01:
             n = 1
             self._accum = 0.0
         
         if n > 0:
             self._accum -= n
-            n = min(n, self._particulas_por_frame * 3)  # Permitir mais partículas por frame
+            n = min(n, self._particulas_por_frame * 3)
             
             base_ang = math.atan2(diry, dirx)
             for _ in range(n):
                 if len(self.ps) >= self.max_particulas:
                     break
                     
-                ang = base_ang + random.uniform(-0.2, 0.2)  # Menos dispersão para nitro mais concentrado
-                v = random.uniform(100, 200)  # Mais rápido que fumaça (aumentado)
+                ang = base_ang + random.uniform(-0.2, 0.2)
+                v = random.uniform(100, 200)
                 vx, vy = math.cos(ang)*v, math.sin(ang)*v
-                life = random.uniform(0.3, 0.7)  # Vida um pouco menor para desaparecer mais rápido
-                scale0 = random.uniform(0.6, 1.0)  # Tamanho maior para melhor visibilidade
-                scale1 = scale0 * random.uniform(1.5, 2.5)  # Crescimento maior
-                alpha0 = random.randint(220, 255)  # Muito opaco para melhor visibilidade
+                life = random.uniform(0.3, 0.7)
+                scale0 = random.uniform(0.6, 1.0)
+                scale1 = scale0 * random.uniform(1.5, 2.5)
+                alpha0 = random.randint(220, 255)
                 p = Particula(x, y, vx, vy, life, random.uniform(0,360), scale0, scale1, alpha0, 0, "nitro")
                 self.ps.append(p)
 
     def update(self, dt):
-        # Atualizar partículas e remover as que morreram
-        # Usar list comprehension que já filtra partículas mortas
         self.ps = [p for p in self.ps if p.update(dt)]
         self._frame_atual += 1
 
@@ -285,11 +252,9 @@ class EmissorNitro:
             if camera:
                 x, y = camera.mundo_para_tela(x, y)
             
-            # Verificar se está visível
             if x < -margem or x > largura_tela + margem or y < -margem or y > altura_tela + margem:
                 continue
             
-            # Usar textura animada de nitro
             tex_index = int((self._frame_atual * 0.2) % len(self.tex_nitro))
             img = pygame.transform.rotozoom(self.tex_nitro[tex_index], p.ang, scale * zoom)
             img.set_alpha(alpha)

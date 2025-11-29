@@ -10,7 +10,7 @@ class GerenciadorProgresso:
     
     def __init__(self):
         self.dinheiro = 0
-        self.nome_jogador = "JOGADOR"  # Nome do jogador (será definido na primeira aparição de NPC)
+        self.nome_jogador = "JOGADOR"
         self.carros_desbloqueados = set()
         self.recordes_corrida = {}
         self.recordes_drift = {}
@@ -18,67 +18,52 @@ class GerenciadorProgresso:
         self.upgrades = {}
         self.carro_p1_atual = None
         self.carro_p2_atual = None
-        # Rastreamento de compras do mercador alien para diálogos raros do Crank
-        self.ultima_compra_alien = None  # {'tipo': 'golpe'|'upgrade_especial'|'multi_upgrade', 'quantidade': int, 'tipo_upgrade': str}
-        self.dialogo_alien_ja_mostrado = False  # Flag para rastrear se o diálogo sobre a última compra já foi mostrado
-        # Rastreamento de carros que já visitaram a tela de upgrades (para esconder exclamação)
-        self.upgrades_visitados = set()  # Set de prefixo_cor que já visitaram upgrades
+        self.ultima_compra_alien = None
+        self.dialogo_alien_ja_mostrado = False
+        self.upgrades_visitados = set()
         
-        # Dados dos NPCs (consolidados no progresso.json)
-        # Akira
         self.akira_nome_revelado = False
-        self.akira_dialogos_pre_corrida_mostrados = {}  # {pista: True/False}
+        self.akira_dialogos_pre_corrida_mostrados = {}
         
-        # Ranking
-        self.ranking_pilotos = []  # Lista de {nome, posicao, vitorias, derrotas, e_jogador}
+        self.ranking_pilotos = []
         self.ranking_posicao_jogador = 10
         
-        # Crank
-        self.crank_humor_atual = 0  # -2 a 2
-        self.crank_saude_carro = 1.0  # 0.0 a 1.0
+        self.crank_humor_atual = 0
+        self.crank_saude_carro = 1.0
         self.crank_tutorial_mostrado = False
         self.crank_tutorial_upgrades_mostrado = False
         self.crank_prefixo_cor_ultimo_carro = None
         self.crank_nome_revelado = False
         
-        # Rex
         self.rex_primeira_aparicao_mostrada = False
         self.rex_nome_revelado = False
         
-        # Glub
         self.glub_primeira_aparicao_feita = False
         self.glub_nome_revelado = False
         
-        # MercadorAlien
         self.mercador_ultima_aparicao = 0
         self.mercador_contador_eventos = 0
         self.mercador_nome_revelado = False
         
-        # Barão (Agiota)
         self.barao_nome_revelado = False
         self.barao_emprestimo_ativo = False
         self.barao_valor_devido = 0
         self.barao_corridas_restantes = 0
         
-        # Boris (Sucateiro)
         self.boris_nome_revelado = False
         self.boris_primeira_aparicao_mostrada = False
         
-        # Pixel (Informante)
         self.pixel_nome_revelado = False
         self.pixel_primeira_aparicao_mostrada = False
         
-        # Narrativa/Campanha
-        self.capitulo_atual = None  # ID do capítulo atual (ex: "ch1", "ch2", etc.)
-        self.capitulos_completos = set()  # Set de IDs de capítulos completados
+        self.capitulo_atual = None
+        self.capitulos_completos = set()
         
-        # Desbloqueios de menu
         self.hierarquia_desbloqueada = False
         self.oficina_desbloqueada = False
         
-        # Achievements
-        self.achievements_desbloqueados = set()  # Set de IDs de achievements desbloqueados
-        self.achievements_visualizados = set()  # Set de IDs de achievements já visualizados
+        self.achievements_desbloqueados = set()
+        self.achievements_visualizados = set()
         self.achievements_estatisticas = {
             "corridas_completas": 0,
             "voltas_drift": 0,
@@ -90,16 +75,14 @@ class GerenciadorProgresso:
             "upgrades_maximizados": 0
         }
         
-        # Desafios
         self.desafios_diarios = []
         self.desafios_semanais = []
-        self.missoes_pista = {}  # {numero_pista: [missoes]}
-        self.desafios_progresso = {}  # {desafio_id: progresso_atual}
-        self.desafios_completados = set()  # IDs de desafios completados
+        self.missoes_pista = {}
+        self.desafios_progresso = {}
+        self.desafios_completados = set()
         self.ultima_atualizacao_diaria = None
         self.ultima_atualizacao_semanal = None
         
-        # Estatísticas
         self.estatisticas_gerais = {
             "tempo_total_jogado": 0.0,
             "distancia_total": 0.0,
@@ -112,7 +95,7 @@ class GerenciadorProgresso:
             "recordes_estabelecidos": 0,
             "trofeus_ganhos": 0
         }
-        self.estatisticas_por_pista = {}  # {numero_pista: {estatisticas}}
+        self.estatisticas_por_pista = {}
         
         self.carregar()
     
@@ -140,16 +123,12 @@ class GerenciadorProgresso:
                     self.dialogo_alien_ja_mostrado = data.get('dialogo_alien_ja_mostrado', False)
                     self.upgrades_visitados = set(data.get('upgrades_visitados', []))
                     
-                    # Dados dos NPCs
-                    # Akira
                     self.akira_nome_revelado = data.get('akira_nome_revelado', False)
                     self.akira_dialogos_pre_corrida_mostrados = data.get('akira_dialogos_pre_corrida_mostrados', {})
                     
-                    # Ranking
                     self.ranking_pilotos = data.get('ranking_pilotos', [])
                     self.ranking_posicao_jogador = data.get('ranking_posicao_jogador', 10)
                     
-                    # Crank
                     self.crank_humor_atual = data.get('crank_humor_atual', 0)
                     self.crank_saude_carro = data.get('crank_saude_carro', 1.0)
                     self.crank_tutorial_mostrado = data.get('crank_tutorial_mostrado', False)
@@ -157,42 +136,33 @@ class GerenciadorProgresso:
                     self.crank_prefixo_cor_ultimo_carro = data.get('crank_prefixo_cor_ultimo_carro', None)
                     self.crank_nome_revelado = data.get('crank_nome_revelado', False)
                     
-                    # Rex
                     self.rex_primeira_aparicao_mostrada = data.get('rex_primeira_aparicao_mostrada', False)
                     self.rex_nome_revelado = data.get('rex_nome_revelado', False)
                     
-                    # Glub
                     self.glub_primeira_aparicao_feita = data.get('glub_primeira_aparicao_feita', False)
                     self.glub_nome_revelado = data.get('glub_nome_revelado', False)
                     
-                    # MercadorAlien
                     self.mercador_ultima_aparicao = data.get('mercador_ultima_aparicao', 0)
                     self.mercador_contador_eventos = data.get('mercador_contador_eventos', 0)
                     self.mercador_nome_revelado = data.get('mercador_nome_revelado', False)
                     
-                    # Barão
                     self.barao_nome_revelado = data.get('barao_nome_revelado', False)
                     self.barao_emprestimo_ativo = data.get('barao_emprestimo_ativo', False)
                     self.barao_valor_devido = data.get('barao_valor_devido', 0)
                     self.barao_corridas_restantes = data.get('barao_corridas_restantes', 0)
                     
-                    # Boris
                     self.boris_nome_revelado = data.get('boris_nome_revelado', False)
                     self.boris_primeira_aparicao_mostrada = data.get('boris_primeira_aparicao_mostrada', False)
                     
-                    # Pixel
                     self.pixel_nome_revelado = data.get('pixel_nome_revelado', False)
                     self.pixel_primeira_aparicao_mostrada = data.get('pixel_primeira_aparicao_mostrada', False)
                     
-                    # Narrativa/Campanha
                     self.capitulo_atual = data.get('capitulo_atual', None)
                     self.capitulos_completos = set(data.get('capitulos_completos', []))
                     
-                    # Desbloqueios de menu
                     self.hierarquia_desbloqueada = data.get('hierarquia_desbloqueada', False)
                     self.oficina_desbloqueada = data.get('oficina_desbloqueada', False)
                     
-                    # Achievements
                     self.achievements_desbloqueados = set(data.get('achievements_desbloqueados', []))
                     self.achievements_visualizados = set(data.get('achievements_visualizados', []))
                     self.achievements_estatisticas = data.get('achievements_estatisticas', {
@@ -206,7 +176,6 @@ class GerenciadorProgresso:
                         "upgrades_maximizados": 0
                     })
                     
-                    # Desafios
                     self.desafios_diarios = data.get('desafios_diarios', [])
                     self.desafios_semanais = data.get('desafios_semanais', [])
                     self.missoes_pista = data.get('missoes_pista', {})
@@ -215,7 +184,6 @@ class GerenciadorProgresso:
                     self.ultima_atualizacao_diaria = data.get('ultima_atualizacao_diaria', None)
                     self.ultima_atualizacao_semanal = data.get('ultima_atualizacao_semanal', None)
                     
-                    # Estatísticas
                     self.estatisticas_gerais = data.get('estatisticas_gerais', {
                         "tempo_total_jogado": 0.0,
                         "distancia_total": 0.0,
@@ -230,10 +198,8 @@ class GerenciadorProgresso:
                     })
                     self.estatisticas_por_pista = data.get('estatisticas_por_pista', {})
                     
-                    # Migrar dados antigos de arquivos separados (apenas na primeira vez)
                     self._migrar_dados_antigos()
                     
-                    # Garantir que upgrades seja um dicionário válido antes de migrar
                     if not isinstance(self.upgrades, dict):
                         self.upgrades = {}
                     
@@ -244,7 +210,6 @@ class GerenciadorProgresso:
                         import traceback
                         traceback.print_exc()
                     
-                    # Garantir que todas as chaves sejam strings para evitar KeyError com inteiros
                     if self.recordes_corrida:
                         try:
                             self.recordes_corrida = {str(k): v for k, v in self.recordes_corrida.items()}
@@ -313,16 +278,12 @@ class GerenciadorProgresso:
                 'dialogo_alien_ja_mostrado': self.dialogo_alien_ja_mostrado,
                 'upgrades_visitados': list(self.upgrades_visitados),
                 
-                # Dados dos NPCs
-                # Akira
                 'akira_nome_revelado': self.akira_nome_revelado,
                 'akira_dialogos_pre_corrida_mostrados': self.akira_dialogos_pre_corrida_mostrados,
                 
-                # Ranking
                 'ranking_pilotos': self.ranking_pilotos,
                 'ranking_posicao_jogador': self.ranking_posicao_jogador,
                 
-                # Crank
                 'crank_humor_atual': self.crank_humor_atual,
                 'crank_saude_carro': self.crank_saude_carro,
                 'crank_tutorial_mostrado': self.crank_tutorial_mostrado,
@@ -330,47 +291,37 @@ class GerenciadorProgresso:
                 'crank_prefixo_cor_ultimo_carro': self.crank_prefixo_cor_ultimo_carro,
                 'crank_nome_revelado': self.crank_nome_revelado,
                 
-                # Rex
                 'rex_primeira_aparicao_mostrada': self.rex_primeira_aparicao_mostrada,
                 'rex_nome_revelado': self.rex_nome_revelado,
                 
-                # Glub
                 'glub_primeira_aparicao_feita': self.glub_primeira_aparicao_feita,
                 'glub_nome_revelado': self.glub_nome_revelado,
                 
-                # MercadorAlien
                 'mercador_ultima_aparicao': self.mercador_ultima_aparicao,
                 'mercador_contador_eventos': self.mercador_contador_eventos,
                 'mercador_nome_revelado': self.mercador_nome_revelado,
                 
-                # Barão
                 'barao_nome_revelado': self.barao_nome_revelado,
                 'barao_emprestimo_ativo': self.barao_emprestimo_ativo,
                 'barao_valor_devido': self.barao_valor_devido,
                 'barao_corridas_restantes': self.barao_corridas_restantes,
                 
-                # Boris
                 'boris_nome_revelado': self.boris_nome_revelado,
                 'boris_primeira_aparicao_mostrada': self.boris_primeira_aparicao_mostrada,
                 
-                # Pixel
                 'pixel_nome_revelado': self.pixel_nome_revelado,
                 'pixel_primeira_aparicao_mostrada': self.pixel_primeira_aparicao_mostrada,
                 
-                # Narrativa/Campanha
                 'capitulo_atual': self.capitulo_atual,
                 'capitulos_completos': list(self.capitulos_completos),
                 
-                # Desbloqueios de menu
                 'hierarquia_desbloqueada': self.hierarquia_desbloqueada,
                 'oficina_desbloqueada': self.oficina_desbloqueada,
                 
-                # Achievements
                 'achievements_desbloqueados': list(self.achievements_desbloqueados),
                 'achievements_visualizados': list(self.achievements_visualizados),
                 'achievements_estatisticas': self.achievements_estatisticas,
                 
-                # Desafios
                 'desafios_diarios': self.desafios_diarios,
                 'desafios_semanais': self.desafios_semanais,
                 'missoes_pista': self.missoes_pista,
@@ -379,7 +330,6 @@ class GerenciadorProgresso:
                 'ultima_atualizacao_diaria': self.ultima_atualizacao_diaria,
                 'ultima_atualizacao_semanal': self.ultima_atualizacao_semanal,
                 
-                # Estatísticas
                 'estatisticas_gerais': self.estatisticas_gerais,
                 'estatisticas_por_pista': self.estatisticas_por_pista
             }

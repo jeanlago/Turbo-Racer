@@ -102,10 +102,8 @@ class GerenciadorMissoes:
         missoes_lista = []
         for missao_id, missao in self.missoes.items():
             missoes_lista.append(missao)
-        # Ordenar por capítulo e depois por ID
         missoes_lista.sort(key=lambda m: (m.get("chapter", "ch1"), m.get("id", "")))
         return missoes_lista
 
-# Instância global
 gerenciador_missoes = GerenciadorMissoes()
 

@@ -2,19 +2,16 @@ import os
 import math
 import random
 import sys
-# Suprimir avisos do libpng sobre iCCP
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 
-# Wrapper para filtrar avisos do libpng sobre iCCP
 class FilteredStderr:
     """Filtra avisos do libpng sobre iCCP do stderr"""
     def __init__(self, original_stderr):
         self.original_stderr = original_stderr
     
     def write(self, message):
-        # Filtrar avisos do libpng sobre iCCP
         if 'iCCP' in message and 'known incorrect sRGB profile' in message:
-            return  # Ignorar este aviso
+            return
         self.original_stderr.write(message)
     
     def flush(self):
@@ -23,7 +20,6 @@ class FilteredStderr:
     def __getattr__(self, name):
         return getattr(self.original_stderr, name)
 
-# Aplicar filtro ao stderr
 sys.stderr = FilteredStderr(sys.stderr)
 
 import pygame
@@ -56,7 +52,6 @@ from core.akira import akira
 from core.ranking import gerenciador_ranking
 from config import CAMINHO_MENU
 
-# Lista de nomes para os bots
 NOMES_BOTS = [
     "SPEED DEMON", "NITRO RIDER", "TURBO BLAZE", "VELOCITY", "THUNDER",
     "SHADOW RACER", "PHANTOM", "NIGHT RIDER", "STORM", "LIGHTNING",
@@ -359,28 +354,21 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             return None
         
         titulo, subtitulo, trofeu, posicao, pontuacao, recompensa, opcao_atual, hover_animation = estado
-        # Verificar se está em modo 2 jogadores e se o outro jogador ainda não terminou
         mostrar_espectador = False
         if modo_jogo == ModoJogo.DOIS_JOGADORES:
-            # Verificar se ambos os carros finalizaram a corrida (não apenas se os estados existem)
-            # Isso evita mostrar opção de assistir quando um jogador já terminou mas virou espectador
             carro1_finalizou = corrida.finalizou.get(carro1, False) if carro1 is not None else False
             carro2_finalizou = corrida.finalizou.get(carro2, False) if carro2 is not None else False
             
             if lado == 'esquerdo' and not carro2_finalizou:
-                # Player 1 terminou, mas player 2 ainda não
                 mostrar_espectador = True
             elif lado == 'direito' and not carro1_finalizou:
-                # Player 2 terminou, mas player 1 ainda não
                 mostrar_espectador = True
         
-        # Se o outro jogador ainda não terminou, mostrar apenas opção de assistir
         if mostrar_espectador:
             opcoes = [
                 ("ASSISTIR JOGADOR", "espectador")
             ]
         else:
-            # Ambos terminaram ou modo 1 jogador - mostrar todas as opções
             opcoes = [
                 ("REINICIAR JOGO", "reiniciar"),
                 ("TROCAR CARRO", "trocar_carro"),
@@ -457,28 +445,21 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         from core.menu import render_text, verificar_clique_opcao
         
         titulo, subtitulo, trofeu, posicao, pontuacao, recompensa, opcao_atual, hover_animation = estado
-        # Verificar se está em modo 2 jogadores e se o outro jogador ainda não terminou
         mostrar_espectador = False
         if modo_jogo == ModoJogo.DOIS_JOGADORES:
-            # Verificar se ambos os carros finalizaram a corrida (não apenas se os estados existem)
-            # Isso evita mostrar opção de assistir quando um jogador já terminou mas virou espectador
             carro1_finalizou = corrida.finalizou.get(carro1, False) if carro1 is not None else False
             carro2_finalizou = corrida.finalizou.get(carro2, False) if carro2 is not None else False
             
             if lado == 'esquerdo' and not carro2_finalizou:
-                # Player 1 terminou, mas player 2 ainda não
                 mostrar_espectador = True
             elif lado == 'direito' and not carro1_finalizou:
-                # Player 2 terminou, mas player 1 ainda não
                 mostrar_espectador = True
         
-        # Se o outro jogador ainda não terminou, mostrar apenas opção de assistir
         if mostrar_espectador:
             opcoes = [
                 ("ASSISTIR JOGADOR", "espectador")
             ]
         else:
-            # Ambos terminaram ou modo 1 jogador - mostrar todas as opções
             opcoes = [
                 ("REINICIAR JOGO", "reiniciar"),
                 ("TROCAR CARRO", "trocar_carro"),
@@ -583,7 +564,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             tela.blit(rec_texto, (rec_x, y_info))
             y_info += 50
         
-        # Atualizar animação do cursor do controle
         from core.gamepad_manager import gerenciador_gamepad
         if not hasattr(desenhar_tela_fim_jogo, '_animacao_cursor'):
             desenhar_tela_fim_jogo._animacao_cursor = 0.0
@@ -845,7 +825,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 botao_fundo.fill(cor_fundo)
                 tela.blit(botao_fundo, (x, base_y))
             
-            # Cursor do controle
             if i == opcao_atual and gerenciador_gamepad.obter_numero_controles() > 0:
                 tamanho_cursor = 3 + int(2 * abs(math.sin(desenhar_tela_resultados_finais._animacao_cursor * math.pi)))
                 cursor_rect = pygame.Rect(
@@ -861,8 +840,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             texto_y = base_y + (botao_altura - texto.get_height()) // 2
             tela.blit(texto, (texto_x, texto_y))
     
-    # Validar índices de carros antes de acessar
-    # Usar variável local para evitar conflito com imports dentro da função
     carros_disponiveis = CARROS_DISPONIVEIS
     
     if carro_selecionado_p1 is None or carro_selecionado_p1 < 0 or carro_selecionado_p1 >= len(carros_disponiveis):
@@ -1036,7 +1013,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         
         carros_selecionados_ia = random.sample(carros_disponiveis_ia, min(num_ias, len(carros_disponiveis_ia)))
         
-        # Selecionar nomes aleatórios únicos para os bots
         nomes_disponiveis = NOMES_BOTS.copy()
         random.shuffle(nomes_disponiveis)
         
@@ -1044,7 +1020,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             upgrades_ia = gerenciador_progresso.obter_todos_upgrades(carro_data["prefixo_cor"])
             multiplicador_ia = carro_data.get("multiplicador_base", 1.0)
             
-            # Atribuir nome aleatório ao bot
             nome_bot = nomes_disponiveis[i] if i < len(nomes_disponiveis) else f"BOT-{i+1}"
             
             carro_ia = CarroFisica(

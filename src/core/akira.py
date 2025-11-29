@@ -1,4 +1,3 @@
-# src/core/akira.py
 """Sistema da Akira - Mestra do Fluxo que aparece antes e depois das corridas"""
 import pygame
 import os
@@ -7,7 +6,6 @@ from config import DIR_PROJETO, LARGURA, ALTURA
 from core.progresso import gerenciador_progresso
 from core.estatisticas import gerenciador_estatisticas
 
-# Import lazy para evitar import circular
 def _get_render_text():
     """Importa render_text de forma lazy para evitar import circular"""
     from core.menu import render_text
@@ -15,7 +13,6 @@ def _get_render_text():
 
 CAMINHO_AKIRA_DATA = os.path.join(DIR_PROJETO, "data", "akira.json")
 
-# Caminhos dos sprites (usando sprites genéricos por enquanto, pode ser ajustado depois)
 CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "akira")
 SPRITE_NEUTRO = os.path.join(CAMINHO_SPRITES, "neutro.png")
 SPRITE_ENSINANDO = os.path.join(CAMINHO_SPRITES, "ensinando.png")
@@ -23,7 +20,6 @@ SPRITE_FOCADA = os.path.join(CAMINHO_SPRITES, "focada.png")
 SPRITE_RESPEITO = os.path.join(CAMINHO_SPRITES, "respeito.png")
 SPRITE_DECEPCIONADA = os.path.join(CAMINHO_SPRITES, "decepcionada.png")
 
-# Caminhos das cenas de fundo
 CAMINHO_CENA_FUNDO_PRE = os.path.join(DIR_PROJETO, "assets", "images", "ui", "pista_corrida.png")
 CAMINHO_CENA_FUNDO_FIM = os.path.join(DIR_PROJETO, "assets", "images", "ui", "fim_corrida.png")
 
@@ -37,38 +33,32 @@ class Akira:
         self.sprite_focada = None
         self.sprite_respeito = None
         self.sprite_decepcionada = None
-        self.sprite_fundo_pre = None  # Fundo para pré-corrida
-        self.sprite_fundo_fim = None  # Fundo para fim de corrida
+        self.sprite_fundo_pre = None
+        self.sprite_fundo_fim = None
         self.sprites_carregados = False
         
-        # Estado atual da interação
         self.ativo = False
         self.sprite_atual = None
         self.texto_atual = ""
-        self.modo_dialogo = None  # "pre_corrida" ou "fim_corrida"
-        self.numero_pista_atual = 1  # Pista atual (1-9)
-        self.parte_dialogo = 0  # Parte atual do diálogo
+        self.modo_dialogo = None
+        self.numero_pista_atual = 1
+        self.parte_dialogo = 0
         
-        # Dados da última corrida (para reação pós-corrida)
         self.ultima_corrida = {
             'posicao': None,
             'colisoes': 0,
             'venceu': False
         }
         
-        # Sistema de animação de texto letra por letra
-        self.texto_completo = ""  # Texto completo a ser exibido
-        self.texto_exibido = ""  # Texto já exibido (animação)
-        self.tempo_animacao = 0.0  # Tempo acumulado para animação
-        self.velocidade_texto = 50.0  # Caracteres por segundo
+        self.texto_completo = ""
+        self.texto_exibido = ""
+        self.tempo_animacao = 0.0
+        self.velocidade_texto = 50.0
         
-        # Sistema de nome revelado
-        self.nome_revelado = False  # Inicializar antes de carregar_estado()
+        self.nome_revelado = False
         
     def carregar_estado(self):
         """Carrega o estado da Akira APENAS de progresso.json"""
-        # Usar APENAS progresso.json (sistema consolidado)
-        # Não usar mais akira.json para evitar problemas de sincronização
         if hasattr(gerenciador_progresso, 'akira_dialogos_pre_corrida_mostrados'):
             self.dialogos_pre_corrida_mostrados = gerenciador_progresso.akira_dialogos_pre_corrida_mostrados.copy() if gerenciador_progresso.akira_dialogos_pre_corrida_mostrados else {}
             self.nome_revelado = gerenciador_progresso.akira_nome_revelado if hasattr(gerenciador_progresso, 'akira_nome_revelado') else False
@@ -76,17 +66,14 @@ class Akira:
             self.nome_revelado = False
             self.dialogos_pre_corrida_mostrados = {}
         
-        # Se akira.json existe, tentar migrar dados uma vez (apenas se progresso.json estiver vazio)
         if os.path.exists(CAMINHO_AKIRA_DATA) and not self.dialogos_pre_corrida_mostrados:
             try:
                 with open(CAMINHO_AKIRA_DATA, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    # Migrar apenas se progresso.json não tiver dados
                     if not self.dialogos_pre_corrida_mostrados:
                         self.dialogos_pre_corrida_mostrados = data.get('dialogos_pre_corrida_mostrados', {})
                     if not self.nome_revelado:
                         self.nome_revelado = data.get('nome_revelado', False)
-                    # Salvar no progresso.json e deletar akira.json
                     self.salvar_estado()
                     try:
                         os.remove(CAMINHO_AKIRA_DATA)
@@ -122,13 +109,11 @@ class Akira:
             # Criar diretório se não existir
             os.makedirs(CAMINHO_SPRITES, exist_ok=True)
             
-            # Tentar carregar sprites (usar fallback se não existirem)
             if os.path.exists(SPRITE_NEUTRO):
                 self.sprite_neutro = pygame.image.load(SPRITE_NEUTRO).convert_alpha()
                 print(f"✓ Sprite neutro carregado")
             else:
                 print(f"✗ AVISO: Sprite neutro não encontrado: {SPRITE_NEUTRO}")
-                # Criar sprite placeholder temporário
                 self.sprite_neutro = pygame.Surface((200, 200), pygame.SRCALPHA)
                 self.sprite_neutro.fill((150, 100, 100, 255))
             
@@ -137,43 +122,39 @@ class Akira:
                 print(f"✓ Sprite ensinando carregado")
             else:
                 print(f"✗ AVISO: Sprite ensinando não encontrado: {SPRITE_ENSINANDO}")
-                self.sprite_ensinando = self.sprite_neutro  # Fallback
+                self.sprite_ensinando = self.sprite_neutro
             
             if os.path.exists(SPRITE_FOCADA):
                 self.sprite_focada = pygame.image.load(SPRITE_FOCADA).convert_alpha()
                 print(f"✓ Sprite focada carregado")
             else:
                 print(f"✗ AVISO: Sprite focada não encontrado: {SPRITE_FOCADA}")
-                self.sprite_focada = self.sprite_neutro  # Fallback
+                self.sprite_focada = self.sprite_neutro
             
             if os.path.exists(SPRITE_RESPEITO):
                 self.sprite_respeito = pygame.image.load(SPRITE_RESPEITO).convert_alpha()
                 print(f"✓ Sprite respeito carregado")
             else:
                 print(f"✗ AVISO: Sprite respeito não encontrado: {SPRITE_RESPEITO}")
-                self.sprite_respeito = self.sprite_neutro  # Fallback
+                self.sprite_respeito = self.sprite_neutro
             
             if os.path.exists(SPRITE_DECEPCIONADA):
                 self.sprite_decepcionada = pygame.image.load(SPRITE_DECEPCIONADA).convert_alpha()
                 print(f"✓ Sprite decepcionada carregado")
             else:
                 print(f"✗ AVISO: Sprite decepcionada não encontrado: {SPRITE_DECEPCIONADA}")
-                self.sprite_decepcionada = self.sprite_neutro  # Fallback
+                self.sprite_decepcionada = self.sprite_neutro
             
-            # Carregar cena de fundo para pré-corrida
             if os.path.exists(CAMINHO_CENA_FUNDO_PRE):
                 self.sprite_fundo_pre = pygame.image.load(CAMINHO_CENA_FUNDO_PRE).convert()
-                # Redimensionar para a tela
                 self.sprite_fundo_pre = pygame.transform.scale(self.sprite_fundo_pre, (LARGURA, ALTURA))
                 print(f"✓ Cena de fundo pré-corrida carregada: {CAMINHO_CENA_FUNDO_PRE}")
             else:
                 print(f"✗ AVISO: Cena de fundo pré-corrida não encontrada: {CAMINHO_CENA_FUNDO_PRE}")
                 self.sprite_fundo_pre = None
             
-            # Carregar cena de fundo para fim de corrida
             if os.path.exists(CAMINHO_CENA_FUNDO_FIM):
                 self.sprite_fundo_fim = pygame.image.load(CAMINHO_CENA_FUNDO_FIM).convert()
-                # Redimensionar para a tela
                 self.sprite_fundo_fim = pygame.transform.scale(self.sprite_fundo_fim, (LARGURA, ALTURA))
                 print(f"✓ Cena de fundo fim de corrida carregada: {CAMINHO_CENA_FUNDO_FIM}")
             else:
@@ -189,26 +170,21 @@ class Akira:
     
     def verificar_aparecer_pre_corrida(self, numero_pista):
         """Verifica se a Akira deve aparecer antes de uma corrida"""
-        # Garantir que os sprites estão carregados
         if not self.sprites_carregados:
             self.carregar_sprites()
         
-        # Verificar se já mostrou o diálogo pré-corrida para esta pista
         pista_key = str(numero_pista)
         
-        # Garantir que dialogos_pre_corrida_mostrados está inicializado
         if not hasattr(self, 'dialogos_pre_corrida_mostrados'):
             self.dialogos_pre_corrida_mostrados = {}
         
-        # Sincronizar com progresso.json se necessário
         if hasattr(gerenciador_progresso, 'akira_dialogos_pre_corrida_mostrados'):
             if gerenciador_progresso.akira_dialogos_pre_corrida_mostrados:
                 self.dialogos_pre_corrida_mostrados = gerenciador_progresso.akira_dialogos_pre_corrida_mostrados.copy()
         
         if self.dialogos_pre_corrida_mostrados.get(pista_key, False):
-            return False  # Já mostrou para esta pista
+            return False
         
-        # Ativar e iniciar diálogo pré-corrida
         self.ativo = True
         self.modo_dialogo = "pre_corrida"
         self.numero_pista_atual = numero_pista
@@ -220,18 +196,15 @@ class Akira:
     
     def verificar_aparecer_pos_corrida(self, posicao, colisoes, venceu):
         """Verifica se a Akira deve aparecer depois de uma corrida"""
-        # Garantir que os sprites estão carregados
         if not self.sprites_carregados:
             self.carregar_sprites()
         
-        # Registrar dados da corrida
         self.ultima_corrida = {
             'posicao': posicao,
             'colisoes': colisoes,
             'venceu': venceu
         }
         
-        # Sempre aparecer após corrida para dar feedback
         self.ativo = True
         self.modo_dialogo = "fim_corrida"
         self.parte_dialogo = 0
@@ -351,7 +324,6 @@ class Akira:
         boa_colocacao = venceu or (posicao is not None and posicao <= 3)
         carro_limpo = colisoes == 0 or colisoes <= 2
         
-        # Se for a primeira corrida, adicionar explicações sobre hierarquia e oficina
         if primeira_corrida:
             if self.parte_dialogo == 0:
                 if boa_colocacao and carro_limpo:
@@ -367,7 +339,6 @@ class Akira:
                     self.sprite_atual = self.sprite_decepcionada
                     self._iniciar_animacao_texto("Um desastre completo. Você foi lento e destrutivo. Correu como um elefante numa loja de porcelana.")
             elif self.parte_dialogo == 1:
-                # Segunda parte: comentário sobre o mecânico
                 if boa_colocacao and carro_limpo:
                     self.sprite_atual = self.sprite_respeito
                     self._iniciar_animacao_texto("E o Velho ficará de bom humor hoje. É raro ver um carro voltar tão inteiro depois de uma vitória dessas.")
@@ -381,40 +352,31 @@ class Akira:
                     self.sprite_atual = self.sprite_decepcionada
                     self._iniciar_animacao_texto("Se eu fosse você, nem aparecia na oficina hoje. O Velho é capaz de te jogar uma chave inglesa na cabeça quando vir o estado desse carro. Lamentável.")
             elif self.parte_dialogo == 2:
-                # Terceira parte: explicar sobre a oficina
                 self.sprite_atual = self.sprite_ensinando
                 self._iniciar_animacao_texto("Falando em oficina... Agora que você completou sua primeira corrida, pode visitar a oficina no menu principal. Lá você encontrará o Crank, o mecânico. Ele pode melhorar seu carro com upgrades, mas cuidado: ele é rabugento e reage ao estado do seu veículo.")
             elif self.parte_dialogo == 3:
-                # Quarta parte: explicar sobre a hierarquia
                 self.sprite_atual = self.sprite_ensinando
                 self._iniciar_animacao_texto("E no menu, você também encontrará a 'Hierarquia'. É o ranking dos pilotos. Cada vitória te coloca mais alto, cada derrota te empurra para baixo. É lá que você verá sua posição entre os melhores pilotos das ruas.")
             else:
-                # Desbloquear hierarquia e oficina
                 gerenciador_progresso.hierarquia_desbloqueada = True
                 gerenciador_progresso.oficina_desbloqueada = True
                 gerenciador_progresso.salvar()
                 self.fechar()
         else:
-            # Diálogo normal (não é primeira corrida) - código original
             if self.parte_dialogo == 0:
                 if boa_colocacao and carro_limpo:
-                    # Cenário A: Boa Colocação + Carro Limpo
                     self.sprite_atual = self.sprite_respeito
                     self._iniciar_animacao_texto("Impressionante. Você encontrou o Fluxo hoje. Rápido e suave, como a água contornando uma pedra. Uma vitória merecida e elegante.")
                 elif boa_colocacao and not carro_limpo:
-                    # Cenário B: Boa Colocação + Carro Destruído
                     self.sprite_atual = self.sprite_neutro
                     self._iniciar_animacao_texto("Você venceu... mas a que custo? Sua condução foi bárbara. Você tratou a pista como um campo de batalha, não um parceiro de dança.")
                 elif not boa_colocacao and carro_limpo:
-                    # Cenário C: Má Colocação + Carro Limpo
                     self.sprite_atual = self.sprite_ensinando
                     self._iniciar_animacao_texto("Sua técnica foi limpa, houve respeito pela máquina. Isso é louvável. Mas faltou o espírito de luta.")
                 else:
-                    # Cenário D: Má Colocação + Carro Destruído
                     self.sprite_atual = self.sprite_decepcionada
                     self._iniciar_animacao_texto("Um desastre completo. Você foi lento e destrutivo. Correu como um elefante numa loja de porcelana.")
             elif self.parte_dialogo == 1:
-                # Segunda parte: comentário sobre o mecânico
                 if boa_colocacao and carro_limpo:
                     self.sprite_atual = self.sprite_respeito
                     self._iniciar_animacao_texto("E o Velho ficará de bom humor hoje. É raro ver um carro voltar tão inteiro depois de uma vitória dessas.")
@@ -436,7 +398,6 @@ class Akira:
         self.texto_exibido = ""
         self.tempo_animacao = 0.0
         
-        # Verificar se o texto contém o nome do personagem e marcar como revelado
         if not getattr(self, 'nome_revelado', False):
             texto_lower = texto.lower()
             if "akira" in texto_lower or "eu sou" in texto_lower or "meu nome" in texto_lower:
@@ -464,12 +425,9 @@ class Akira:
         for ev in eventos:
             if ev.type == pygame.KEYDOWN:
                 if ev.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_ESCAPE):
-                    # Avançar diálogo ou fechar
                     if len(self.texto_exibido) < len(self.texto_completo):
-                        # Completar animação de texto
                         self._completar_animacao_texto()
                     else:
-                        # Avançar para próxima parte
                         self.parte_dialogo += 1
                         if self.modo_dialogo == "pre_corrida":
                             self._avancar_dialogo_pre_corrida()
@@ -477,12 +435,9 @@ class Akira:
                             self._avancar_dialogo_fim_corrida()
                     return "processado"
             elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                # Clique do mouse
                 if len(self.texto_exibido) < len(self.texto_completo):
-                    # Completar animação de texto
                     self._completar_animacao_texto()
                 else:
-                    # Avançar para próxima parte
                     self.parte_dialogo += 1
                     if self.modo_dialogo == "pre_corrida":
                         self._avancar_dialogo_pre_corrida()
@@ -490,29 +445,24 @@ class Akira:
                         self._avancar_dialogo_fim_corrida()
                 return "processado"
             elif ev.type == pygame.JOYBUTTONDOWN:
-                # Detectar tipo de controle
                 from core.gamepad_manager import gerenciador_gamepad
                 tipo_controle = "generic"
                 if ev.joy < len(gerenciador_gamepad.joysticks):
                     tipo_controle = gerenciador_gamepad._detectar_tipo_controle(ev.joy)
                 
-                # PS5/PS4: botão 0 = X (confirmar), botão 6 = Share, botão 8/9 = Options
-                # Xbox: botão 0 = A (confirmar), botão 6 = Back, botão 7 = Start
-                botao_confirmar = (ev.button == 0)  # X/A
+                botao_confirmar = (ev.button == 0)
                 botao_pausa = False
                 if tipo_controle == "xbox":
-                    botao_pausa = (ev.button == 6 or ev.button == 7)  # Back ou Start
+                    botao_pausa = (ev.button == 6 or ev.button == 7)
                 elif tipo_controle in ["ps5", "ps4"]:
-                    botao_pausa = (ev.button == 6 or ev.button == 8 or ev.button == 9)  # Share ou Options
+                    botao_pausa = (ev.button == 6 or ev.button == 8 or ev.button == 9)
                 else:
-                    botao_pausa = (ev.button == 6)  # Fallback genérico
+                    botao_pausa = (ev.button == 6)
                 
-                if botao_confirmar or botao_pausa:  # X/A ou Options/Start/Back
+                if botao_confirmar or botao_pausa:
                     if len(self.texto_exibido) < len(self.texto_completo):
-                        # Completar animação de texto
                         self._completar_animacao_texto()
                     else:
-                        # Avançar para próxima parte
                         self.parte_dialogo += 1
                         if self.modo_dialogo == "pre_corrida":
                             self._avancar_dialogo_pre_corrida()
@@ -536,7 +486,6 @@ class Akira:
         
         render_text = _get_render_text()
         
-        # Desenhar cena de fundo baseado no modo de diálogo
         sprite_fundo_atual = None
         if self.modo_dialogo == "pre_corrida":
             sprite_fundo_atual = self.sprite_fundo_pre
@@ -546,14 +495,11 @@ class Akira:
         if sprite_fundo_atual:
             tela.blit(sprite_fundo_atual, (0, 0))
         else:
-            # Fallback: overlay escuro
             overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 200))
             tela.blit(overlay, (0, 0))
         
-        # Desenhar sprite da Akira (reduzido)
         if self.sprite_atual:
-            # Redimensionar sprite para 70% do tamanho original
             sprite_original_w = self.sprite_atual.get_width()
             sprite_original_h = self.sprite_atual.get_height()
             sprite_novo_w = int(sprite_original_w * 0.7)
@@ -561,16 +507,12 @@ class Akira:
             sprite_redimensionado = pygame.transform.scale(self.sprite_atual, (sprite_novo_w, sprite_novo_h))
             
             sprite_x = LARGURA // 2 - sprite_novo_w // 2
-            # Ajustar posição Y baseado no modo de diálogo
             if self.modo_dialogo == "fim_corrida":
-                # Para fim de corrida, abaixar mais o NPC
-                sprite_y = ALTURA // 2 - sprite_novo_h // 2 + 50  # +50 em vez de -50
+                sprite_y = ALTURA // 2 - sprite_novo_h // 2 + 50
             else:
-                # Para pré-corrida, posição padrão
                 sprite_y = ALTURA // 2 - sprite_novo_h // 2 - 50
             tela.blit(sprite_redimensionado, (sprite_x, sprite_y))
         
-        # Desenhar caixa de diálogo
         caixa_largura = 1000
         caixa_altura = 200
         caixa_x = (LARGURA - caixa_largura) // 2
@@ -581,20 +523,16 @@ class Akira:
         tela.blit(caixa_fundo, (caixa_x, caixa_y))
         pygame.draw.rect(tela, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
         
-        # Desenhar nome do personagem
         nome_display = "???" if not getattr(self, 'nome_revelado', False) else "AKIRA"
         nome_texto = render_text(nome_display, 24, (200, 100, 150), bold=True, pixel_style=True)
         tela.blit(nome_texto, (caixa_x + 20, caixa_y + 10))
         
-        # Desenhar texto do diálogo usando render_text com pixel_style
         if self.texto_exibido:
-            # Quebrar texto em linhas usando render_text para medir largura
             palavras = self.texto_exibido.split(' ')
             linhas = []
             linha_atual = ""
             for palavra in palavras:
                 teste_linha = linha_atual + (" " if linha_atual else "") + palavra
-                # Usar render_text para medir a largura corretamente
                 teste_render = render_text(teste_linha, 18, (255, 255, 255), bold=False, pixel_style=True)
                 largura_teste = teste_render.get_width()
                 if largura_teste <= caixa_largura - 40:
@@ -612,7 +550,6 @@ class Akira:
                 tela.blit(linha_render, (caixa_x + 20, y_texto))
                 y_texto += 25
         
-        # Desenhar indicador de continuar
         if len(self.texto_exibido) >= len(self.texto_completo):
             indicador = render_text("Pressione ENTER ou clique para continuar...", 16, (200, 200, 200), bold=False, pixel_style=True)
             indicador_x = caixa_x + caixa_largura - indicador.get_width() - 20
@@ -623,7 +560,6 @@ class Akira:
         """Fecha o diálogo da Akira"""
         self.ativo = False
         
-        # Se era diálogo pré-corrida, marcar como mostrado
         if self.modo_dialogo == "pre_corrida":
             pista_key = str(self.numero_pista_atual)
             if not hasattr(self, 'dialogos_pre_corrida_mostrados'):

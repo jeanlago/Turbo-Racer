@@ -6,18 +6,17 @@ from config import DIR_PROJETO
 
 CAMINHO_RANKING = os.path.join(DIR_PROJETO, "data", "ranking.json")
 
-# Lista de nomes para o ranking (Top 10)
 NOMES_RANKING = [
-    "T-Rex_King",      # Posição 1 - O Rex
-    "Akira_Drift",     # Posição 2 - A Akira
-    "NightStalker",    # Posição 3
-    "ApexPredator",    # Posição 4
-    "The_Baron$$",     # Posição 5 - O Gato Persa agiota
-    "Camber_Queen",    # Posição 6
-    "Sly_Fox_GT",      # Posição 7
-    "Boost_Leak",      # Posição 8
-    "RoadRat",         # Posição 9
-    "JOGADOR"          # Posição 10 - O jogador começa aqui
+    "T-Rex_King",
+    "Akira_Drift",
+    "NightStalker",
+    "ApexPredator",
+    "The_Baron$$",
+    "Camber_Queen",
+    "Sly_Fox_GT",
+    "Boost_Leak",
+    "RoadRat",
+    "JOGADOR"
 ]
 
 class GerenciadorRanking:
@@ -53,7 +52,6 @@ class GerenciadorRanking:
     
     def carregar(self):
         """Carrega o ranking do progresso.json"""
-        # Os dados já estão no gerenciador_progresso, não precisa fazer nada
         pass
     
     def salvar(self):
@@ -63,11 +61,9 @@ class GerenciadorRanking:
     def _inicializar_ranking_se_necessario(self):
         """Inicializa o ranking com os nomes padrão se estiver vazio"""
         if not self.ranking:
-            # Criar ranking inicial com os 10 pilotos
             ranking_novo = []
             nome_jogador = self.gerenciador_progresso.nome_jogador
             for i, nome in enumerate(NOMES_RANKING, start=1):
-                # Substituir "JOGADOR" pelo nome real do jogador
                 nome_final = nome_jogador if nome == "JOGADOR" else nome
                 ranking_novo.append({
                     'nome': nome_final,
@@ -80,7 +76,6 @@ class GerenciadorRanking:
             self.gerenciador_progresso.ranking_posicao_jogador = 10
             self.salvar()
         else:
-            # Atualizar nome do jogador no ranking se mudou
             nome_jogador = self.gerenciador_progresso.nome_jogador
             for piloto in self.ranking:
                 if piloto.get('e_jogador', False) or piloto['nome'] == "JOGADOR" or piloto['nome'] == nome_jogador:

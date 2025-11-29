@@ -18,21 +18,17 @@ import os
 import sys
 import json
 
-# Adicionar o diretório src ao path ANTES de importar qualquer coisa
 diretorio_raiz = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 diretorio_src = os.path.join(diretorio_raiz, 'src')
 sys.path.insert(0, diretorio_src)
 sys.path.insert(0, diretorio_raiz)
 
-# Importar config primeiro (aplica filtro de stderr)
 from config import LARGURA, ALTURA, FPS, DIR_UI
 
-# Agora importar pygame (após o filtro estar aplicado)
 import pygame
 
 from core.menu import render_text
 
-# Variáveis ajustáveis para testar tamanhos (podem ser modificadas em tempo real)
 PAINEL_ESQ_X = 50
 PAINEL_ESQ_Y = 100
 PAINEL_ESQ_LARGURA = 500
@@ -50,13 +46,11 @@ TAMANHO_FONTE_OBJETIVO = 35
 ESPACAMENTO_MISSOES = 55
 ALTURA_ITEM_MISSAO = 45
 
-# Variáveis do botão de iniciar
 BTN_INICIAR_X = LARGURA // 2 - 120
 BTN_INICIAR_Y = ALTURA - 80
 BTN_INICIAR_LARGURA = 240
 BTN_INICIAR_ALTURA = 40
 
-# Arquivo para salvar/carregar configurações
 CONFIG_FILE = os.path.join(diretorio_raiz, "tools", "pc_missoes_config.json")
 
 def salvar_config():
@@ -87,13 +81,11 @@ def salvar_config():
         "BTN_INICIAR_ALTURA": BTN_INICIAR_ALTURA
     }
     try:
-        # Garantir que o diretório existe
         os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
         
         with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
             json.dump(config, f, indent=2)
         
-        # Verificar se o arquivo foi criado
         if os.path.exists(CONFIG_FILE):
             print(f"✓ Configurações salvas em: {CONFIG_FILE}")
             print(f"  Botão: X={BTN_INICIAR_X}, Y={BTN_INICIAR_Y}, L={BTN_INICIAR_LARGURA}, A={BTN_INICIAR_ALTURA}")
@@ -166,10 +158,8 @@ def main():
     pygame.display.set_caption("Teste - Tela de Missões do PC (E para editar)")
     clock = pygame.time.Clock()
     
-    # Carregar configurações salvas
     carregar_config()
     
-    # Carregar fundo
     caminho_tela_pc = os.path.join(DIR_UI, "tela_pc.png")
     if os.path.exists(caminho_tela_pc):
         bg_raw = pygame.image.load(caminho_tela_pc).convert_alpha()
@@ -178,7 +168,6 @@ def main():
         bg = pygame.Surface((LARGURA, ALTURA))
         bg.fill((20, 20, 30))
     
-    # Missões de exemplo
     missoes_exemplo = [
         {"id": "m1", "nome": "Primeira Faísca", "objetivo": "Encontre a garagem do Crank no bairro baixo."},
         {"id": "m2", "nome": "Teste de Sobrevivência", "objetivo": "Complete a corrida de teste da garagem do Crank."},
@@ -191,7 +180,6 @@ def main():
     missao_selecionada = 0
     missao_hover = None
     
-    # Estado de edição
     modo_edicao = False
     arrastando_painel_esq = False
     arrastando_painel_dir = False
@@ -246,7 +234,6 @@ def main():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Botão esquerdo
                     if modo_edicao:
-                        # Verificar se está clicando em um canto para redimensionar
                         canto_esq = detectar_canto_redimensionamento(
                             PAINEL_ESQ_X, PAINEL_ESQ_Y, PAINEL_ESQ_LARGURA, PAINEL_ESQ_ALTURA, mouse_x, mouse_y
                         )
@@ -273,7 +260,6 @@ def main():
                             y_inicial = PAINEL_DIR_Y
                             offset_x = mouse_x - PAINEL_DIR_X
                             offset_y = mouse_y - PAINEL_DIR_Y
-                        # Verificar se está clicando dentro de um painel para mover
                         elif (PAINEL_ESQ_X <= mouse_x <= PAINEL_ESQ_X + PAINEL_ESQ_LARGURA and
                               PAINEL_ESQ_Y <= mouse_y <= PAINEL_ESQ_Y + PAINEL_ESQ_ALTURA):
                             arrastando_painel_esq = True
@@ -298,7 +284,6 @@ def main():
                             offset_x = mouse_x - BTN_INICIAR_X
                             offset_y = mouse_y - BTN_INICIAR_Y
                     else:
-                        # Verificar clique em missão
                         y_inicio = PAINEL_ESQ_Y + 50
                         for i, missao in enumerate(missoes_exemplo):
                             y_missao = y_inicio + i * ESPACAMENTO_MISSOES
@@ -426,19 +411,15 @@ def main():
                     missao_hover = i
                     break
         
-        # Desenhar
         screen.blit(bg, (0, 0))
         
-        # Título
         titulo = render_text("MISSÕES", 28, (255, 255, 255), bold=True, pixel_style=True)
         titulo_x = (LARGURA - titulo.get_width()) // 2
         screen.blit(titulo, (titulo_x, 30))
         
-        # Painel esquerdo - Lista de missões (sem fundo escuro)
         cor_borda = (255, 255, 0) if modo_edicao else (255, 255, 0)
         pygame.draw.rect(screen, cor_borda, (PAINEL_ESQ_X, PAINEL_ESQ_Y, PAINEL_ESQ_LARGURA, PAINEL_ESQ_ALTURA), 3)
         
-        # Desenhar cantos de redimensionamento no modo edição
         if modo_edicao:
             margem = 10
             cantos = [
@@ -450,16 +431,13 @@ def main():
             for cx, cy in cantos:
                 pygame.draw.circle(screen, (255, 0, 0), (cx, cy), margem)
         
-        # Título do painel esquerdo
         painel_esq_titulo = render_text("MISSÕES", TAMANHO_FONTE_TITULO, (255, 255, 0), bold=True, pixel_style=True)
         screen.blit(painel_esq_titulo, (PAINEL_ESQ_X + 15, PAINEL_ESQ_Y + 15))
         
-        # Lista de missões
         y_inicio = PAINEL_ESQ_Y + 50
         for i, missao in enumerate(missoes_exemplo):
             y_missao = y_inicio + i * ESPACAMENTO_MISSOES
             
-            # Cor de fundo baseada em seleção/hover
             if i == missao_selecionada:
                 cor_fundo = (100, 150, 255, 200)
                 cor_texto = (255, 255, 255)
@@ -473,21 +451,16 @@ def main():
                 cor_texto = (180, 180, 180)
                 bold = False
             
-            # Fundo do item
             item_bg = pygame.Surface((PAINEL_ESQ_LARGURA - 30, ALTURA_ITEM_MISSAO), pygame.SRCALPHA)
             item_bg.fill(cor_fundo)
             screen.blit(item_bg, (PAINEL_ESQ_X + 15, y_missao))
             
-            # Nome da missão
             nome_texto = render_text(missao["nome"], TAMANHO_FONTE_MISSAO, cor_texto, bold=bold, pixel_style=True)
-            # Centralizar verticalmente na caixa
             texto_y = y_missao + (ALTURA_ITEM_MISSAO - nome_texto.get_height()) // 2
             screen.blit(nome_texto, (PAINEL_ESQ_X + 20, texto_y))
         
-        # Painel direito - Objetivo da missão selecionada (sem fundo escuro)
         pygame.draw.rect(screen, cor_borda, (PAINEL_DIR_X, PAINEL_DIR_Y, PAINEL_DIR_LARGURA, PAINEL_DIR_ALTURA), 3)
         
-        # Desenhar cantos de redimensionamento no modo edição
         if modo_edicao:
             cantos = [
                 (PAINEL_DIR_X, PAINEL_DIR_Y),
@@ -498,16 +471,13 @@ def main():
             for cx, cy in cantos:
                 pygame.draw.circle(screen, (255, 0, 0), (cx, cy), margem)
         
-        # Título do painel direito
         painel_dir_titulo = render_text("OBJETIVO DA MISSÃO", TAMANHO_FONTE_TITULO, (255, 255, 0), bold=True, pixel_style=True)
         screen.blit(painel_dir_titulo, (PAINEL_DIR_X + 20, PAINEL_DIR_Y + 20))
         
-        # Objetivo da missão selecionada
         if 0 <= missao_selecionada < len(missoes_exemplo):
             missao_atual = missoes_exemplo[missao_selecionada]
             objetivo = missao_atual.get("objetivo", "Nenhum objetivo definido")
             
-            # Verificar se é missão de corrida
             def eh_missao_corrida(missao):
                 if not missao:
                     return False
@@ -517,7 +487,6 @@ def main():
             
             missao_eh_corrida = eh_missao_corrida(missao_atual)
             
-            # Nomes das pistas (para teste)
             NOMES_PISTAS = {
                 1: "Pista Principal",
                 2: "Circuito Urbano",
@@ -569,7 +538,6 @@ def main():
                 circuito_nome = render_text(nome_circuito, 35, (255, 255, 255), bold=True, pixel_style=True)
                 screen.blit(circuito_nome, (PAINEL_DIR_X + 20, y_circuito + 40))
         
-        # Botão iniciar
         btn_bg = pygame.Surface((BTN_INICIAR_LARGURA, BTN_INICIAR_ALTURA), pygame.SRCALPHA)
         btn_bg.fill((0, 150, 0, 200))
         pygame.draw.rect(btn_bg, (255, 255, 255), (0, 0, BTN_INICIAR_LARGURA, BTN_INICIAR_ALTURA), 2)
@@ -580,7 +548,6 @@ def main():
         btn_texto_y = BTN_INICIAR_Y + (BTN_INICIAR_ALTURA - btn_texto.get_height()) // 2
         screen.blit(btn_texto, (btn_texto_x, btn_texto_y))
         
-        # Desenhar cantos de redimensionamento do botão no modo edição
         if modo_edicao:
             margem = 8
             cantos = [
@@ -592,7 +559,6 @@ def main():
             for cx, cy in cantos:
                 pygame.draw.circle(screen, (255, 0, 0), (cx, cy), margem)
         
-        # Instruções
         if modo_edicao:
             instrucoes = render_text(
                 "MODO EDIÇÃO: Arraste para mover | Arraste cantos para redimensionar | +/- espaçamento | PgUp/PgDn altura | S salvar | L carregar | E sair",
@@ -602,7 +568,6 @@ def main():
             instrucoes = render_text("↑↓ navegar | Clique selecionar | E editar | ESC sair", 12, (150, 150, 150), bold=False, pixel_style=True)
         screen.blit(instrucoes, (10, ALTURA - 25))
         
-        # Mostrar valores atuais (para debug)
         debug_text = render_text(
             f"Painel Esq: {PAINEL_ESQ_X},{PAINEL_ESQ_Y} {PAINEL_ESQ_LARGURA}x{PAINEL_ESQ_ALTURA} | "
             f"Painel Dir: {PAINEL_DIR_X},{PAINEL_DIR_Y} {PAINEL_DIR_LARGURA}x{PAINEL_DIR_ALTURA} | "
