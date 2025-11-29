@@ -193,8 +193,8 @@ class Boris:
             elif sprite_nome == "convencido" and self.sprite_convencido:
                 self.sprite_atual = self.sprite_convencido
                 print(f"[BORIS] ✓ Sprite atual definido como convencido")
-                else:
-                    if self.sprite_rabugento:
+            else:
+                if self.sprite_rabugento:
                     self.sprite_atual = self.sprite_rabugento
                     print(f"[BORIS] ⚠ Usando fallback rabugento para sprite: {sprite_nome}")
                 elif self.sprite_neutro:

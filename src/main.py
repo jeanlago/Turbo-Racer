@@ -10,8 +10,12 @@ class FilteredStderr:
         self.original_stderr = original_stderr
     
     def write(self, message):
-        if 'iCCP' in message and 'known incorrect sRGB profile' in message:
-            return
+        if message:
+            msg_lower = message.lower()
+            if 'libpng warning' in msg_lower and 'iCCP' in message:
+                return
+            if 'iCCP' in message and ('known incorrect' in msg_lower or 'sRGB profile' in msg_lower):
+                return
         self.original_stderr.write(message)
     
     def flush(self):
@@ -3304,7 +3308,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
         if jogo_terminado and tipo_jogo == TipoJogo.DRIFT and not tela_fim_mostrada:
             if not hasattr(principal, '_recompensa_drift_calculada'):
-                # Recompensas de drift baseadas na dificuldade (como Need for Speed)
                 if dificuldade_ia == "facil":
                     recompensa_drift = int(pontuacao_final / 150)
                 elif dificuldade_ia == "medio":
