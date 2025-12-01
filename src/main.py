@@ -12,9 +12,13 @@ class FilteredStderr:
     def write(self, message):
         if message:
             msg_lower = message.lower()
-            if 'libpng warning' in msg_lower and 'iCCP' in message:
+            # Filtrar todos os avisos do libpng sobre iCCP
+            if 'libpng' in msg_lower and 'iCCP' in message:
                 return
-            if 'iCCP' in message and ('known incorrect' in msg_lower or 'sRGB profile' in msg_lower):
+            if 'iCCP' in message:
+                return
+            # Filtrar avisos sobre sRGB profile
+            if 'srgb profile' in msg_lower or 'known incorrect' in msg_lower:
                 return
         self.original_stderr.write(message)
     
@@ -106,10 +110,14 @@ CARROS_DISPONIVEIS = [
 
 carregar_configuracoes_garagem()
 
-def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=None, modo_jogo=ModoJogo.UM_JOGADOR, tipo_jogo=TipoJogo.CORRIDA, voltas=1, dificuldade_ia="medio", modo_arcade=False):
+def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=None, modo_jogo=ModoJogo.UM_JOGADOR, tipo_jogo=TipoJogo.CORRIDA, voltas=1, dificuldade_ia="medio", modo_arcade=False, sem_bots=False):  # pyright: ignore[reportGeneralTypeIssues]
+    """
+    Função principal do jogo - contém o loop principal do jogo.
+    Complexidade intencional devido à natureza do loop de jogo que integra múltiplos sistemas.
+    """
     if hasattr(principal, '_recompensa_drift_calculada'):
         delattr(principal, '_recompensa_drift_calculada')
-    
+
     pygame.init()
 
     from config import carregar_configuracoes
@@ -790,7 +798,12 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             y_atual += 40
         
         base_y = int(ALTURA * 0.85)
-        botao_largura = 180
+        # Ajustar largura dos botões baseado no número de opções
+        num_opcoes = len(opcoes)
+        if num_opcoes >= 4:
+            botao_largura = 160  # Botões menores quando há 4 opções
+        else:
+            botao_largura = 180
         botao_altura = 50
         espacamento = 15
         
@@ -804,12 +817,26 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         mouse_x, mouse_y = pygame.mouse.get_pos()
         
         for i, (nome, chave) in enumerate(opcoes):
-            if i == 0:
-                x = (LARGURA - botao_largura) // 2 - botao_largura - espacamento
-            elif i == 1:
-                x = (LARGURA - botao_largura) // 2
+            # Ajustar posicionamento baseado no número de opções
+            num_opcoes = len(opcoes)
+            if num_opcoes == 4:
+                # 4 opções: distribuir igualmente
+                largura_total = (botao_largura * 4) + (espacamento * 3)
+                x_inicio = (LARGURA - largura_total) // 2
+                x = x_inicio + i * (botao_largura + espacamento)
+            elif num_opcoes == 3:
+                # 3 opções: esquerda, centro, direita
+                if i == 0:
+                    x = (LARGURA - botao_largura) // 2 - botao_largura - espacamento
+                elif i == 1:
+                    x = (LARGURA - botao_largura) // 2
+                else:
+                    x = (LARGURA - botao_largura) // 2 + botao_largura + espacamento
             else:
-                x = (LARGURA - botao_largura) // 2 + botao_largura + espacamento
+                # 2 opções ou menos: centralizar
+                largura_total = (botao_largura * num_opcoes) + (espacamento * (num_opcoes - 1))
+                x_inicio = (LARGURA - largura_total) // 2
+                x = x_inicio + i * (botao_largura + espacamento)
             
             botao_rect = pygame.Rect(x, base_y, botao_largura, botao_altura)
             botao_hover = botao_rect.collidepoint(mouse_x, mouse_y)
@@ -1003,7 +1030,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         carros.append(carro2)
 
     carros_ia = []
-    if tipo_jogo != TipoJogo.DRIFT and tipo_jogo != TipoJogo.GHOST:
+    # Se sem_bots=True, não criar bots (para corridas de teste)
+    if tipo_jogo != TipoJogo.DRIFT and tipo_jogo != TipoJogo.GHOST and not sem_bots:
         if modo_jogo == ModoJogo.DOIS_JOGADORES:
             num_ias = 2
         else:
@@ -1139,6 +1167,9 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     ultimo_clique_tempo = 0
     debounce_tempo = 200
 
+    # Controle de tempo para esconder o rastreador de missão após início da corrida
+    tempo_missao_apos_inicio = 0.0
+
     if CONFIGURACOES["audio"]["musica_habilitada"] and CONFIGURACOES["audio"]["musica_no_jogo"]:
         gerenciador_musica.definir_volume(CONFIGURACOES["audio"]["volume_musica"])
         if not gerenciador_musica.musica_tocando:
@@ -1160,6 +1191,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         
         if corrida.iniciada and not jogo_pausado:
             gerenciador_estatisticas.registrar_tempo_jogado(dt)
+
+        # Atualizar o tempo desde o início da corrida (para o rastreador de missão)
+        if corrida.iniciada and not jogo_pausado:
+            tempo_missao_apos_inicio += dt
+        else:
+            # Antes da corrida começar ou se a contagem for reiniciada, resetar o tempo
+            tempo_missao_apos_inicio = 0.0
 
         gerenciador_musica.verificar_fim_musica()
         
@@ -1279,7 +1317,18 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             continue
                     if acao_resultados:
                         evento_processado = True
-                        if acao_resultados == "reiniciar":
+                        if acao_resultados == "continuar_campanha":
+                            # Continuar a campanha - garantir que o progresso está salvo
+                            gerenciador_progresso.salvar()
+                            from core.missoes import gerenciador_missoes
+                            gerenciador_missoes.salvar()
+                            print(f"[CONTINUAR] Progresso e missões salvos antes de retornar")
+                            estado_resultados_finais = None
+                            estado_fim_jogo_p1 = None
+                            estado_fim_jogo_p2 = None
+                            rodando = False
+                            return
+                        elif acao_resultados == "reiniciar":
                             return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                         elif acao_resultados == "trocar_carro":
                             from core.menu import selecionar_carros_loop
@@ -1516,13 +1565,23 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         estado_resultados_finais["resultados"] = resultados
                     else:
                         # Criar novos resultados finais
+                        # No modo campanha, adicionar opção "Continuar" para seguir a história
+                        opcoes_resultado = []
+                        print(f"[RESULTADOS] Verificando modo: modo_arcade={modo_arcade}, modo_jogo={modo_jogo}")
+                        if not modo_arcade and modo_jogo == ModoJogo.UM_JOGADOR:
+                            print(f"[RESULTADOS] Adicionando opção CONTINUAR (modo campanha)")
+                            opcoes_resultado.append(("CONTINUAR", "continuar_campanha"))
+                        else:
+                            print(f"[RESULTADOS] Não adicionando CONTINUAR (modo_arcade={modo_arcade}, modo_jogo={modo_jogo})")
+                        opcoes_resultado.extend([
+                            ("TROCAR CARRO", "trocar_carro"),
+                            ("REINICIAR JOGO", "reiniciar"),
+                            ("MENU PRINCIPAL", "menu")
+                        ])
+                        print(f"[RESULTADOS] Opções finais: {[op[0] for op in opcoes_resultado]}")
                         estado_resultados_finais = {
                             "resultados": resultados,
-                            "opcoes": [
-                                ("TROCAR CARRO", "trocar_carro"),
-                                ("REINICIAR JOGO", "reiniciar"),
-                                ("MENU PRINCIPAL", "menu")
-                            ],
+                            "opcoes": opcoes_resultado,
                             "opcao_atual": 0
                         }
                     # Limpar estados das telas individuais para evitar sobreposição
@@ -1536,7 +1595,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 if estado_resultados_finais is not None:
                     acao = processar_tela_resultados_finais(ev, estado_resultados_finais)
                     if acao:
-                        if acao == "reiniciar":
+                        if acao == "continuar_campanha":
+                            # Continuar a campanha - apenas sair da tela de resultados
+                            # O código em menu.py continuará a narrativa automaticamente
+                            estado_resultados_finais = None
+                            rodando = False
+                            return
+                        elif acao == "reiniciar":
                             return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                         elif acao == "trocar_carro":
                             from core.menu import selecionar_carros_loop
@@ -1861,11 +1926,20 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             # Verificar se há NPCs ativos (cutscenes) - não iniciar corrida durante cutscenes
             npcs_ativos = (akira.ativo or rex.ativo or crank.ativo or mercador_alien.ativo or glub.ativo)
             
-            # Verificar se Akira deve aparecer pré-corrida (modo 1 jogador, primeira vez na pista, não no modo arcade)
-            if modo_jogo == ModoJogo.UM_JOGADOR and tipo_jogo == TipoJogo.CORRIDA and not npcs_ativos and not modo_arcade:
-                numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
-                akira.verificar_aparecer_pre_corrida(numero_pista)
-                npcs_ativos = akira.ativo  # Atualizar após verificar
+            # Verificar se Akira deve aparecer pré-corrida (modo 1 jogador, primeira vez na pista, APENAS no modo arcade)
+            # No modo campanha (modo_arcade=False), a narrativa é gerenciada pelo sistema de missões/roteiro,
+            # então a Akira NÃO deve aparecer antes das corridas - o roteiro já gerencia isso
+            if modo_jogo == ModoJogo.UM_JOGADOR and tipo_jogo == TipoJogo.CORRIDA and not npcs_ativos and modo_arcade:
+                # Só mostrar Akira pré-corrida no modo arcade (modo_arcade=True)
+                # No modo campanha, o roteiro já gerencia a narrativa
+                stats_gerais = gerenciador_estatisticas.obter_estatisticas_gerais()
+                corridas_completas = stats_gerais.get("corridas_completas", 0)
+                
+                # Só mostrar Akira pré-corrida se for realmente a primeira corrida (corridas_completas == 0)
+                if corridas_completas == 0:
+                    numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                    akira.verificar_aparecer_pre_corrida(numero_pista)
+                    npcs_ativos = akira.ativo  # Atualizar após verificar
             
             corrida.atualizar_contagem(dt, npcs_ativos=npcs_ativos)
         corrida.atualizar_tempo(dt, jogo_pausado)
@@ -2047,16 +2121,20 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         if tempo_final_p1 is not None:
                             numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                             
-                            # Verificar recorde ANTES de registrar (para comparar com o ghost)
-                            recorde_antes = gerenciador_progresso.obter_recorde(numero_pista)
+                            # Registrar recordes APENAS no modo arcade; no modo campanha o foco é narrativa
+                            if modo_arcade:
+                                # Verificar recorde ANTES de registrar (para comparar com o ghost)
+                                recorde_antes = gerenciador_progresso.obter_recorde(numero_pista)
+                                
+                                novo_recorde = gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p1)
+                                if novo_recorde:
+                                    print(f"Novo recorde na pista {numero_pista}: {tempo_final_p1:.2f}s")
+                                    # Atualizar estatística de recordes
+                                    gerenciador_achievements.atualizar_estatistica("recordes_estabelecidos", incrementar=True)
+                            else:
+                                recorde_antes = gerenciador_progresso.obter_recorde(numero_pista)
                             
-                            novo_recorde = gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p1)
-                            if novo_recorde:
-                                print(f"Novo recorde na pista {numero_pista}: {tempo_final_p1:.2f}s")
-                                # Atualizar estatística de recordes
-                                gerenciador_achievements.atualizar_estatistica("recordes_estabelecidos", incrementar=True)
-                            
-                            if tipo_jogo == TipoJogo.GHOST:
+                            if tipo_jogo == TipoJogo.GHOST and modo_arcade:
                                 if ghost_recorder_p1 and ghost_recorder_p1.gravando:
                                     salvar_ghost = False
                                     if recorde_antes is None or tempo_final_p1 < recorde_antes:
@@ -2097,8 +2175,9 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             else:
                                 gerenciador_ranking.registrar_derrota_jogador()
                             
-                            # Verificar se Akira deve aparecer pós-corrida (modo 1 jogador) - ANTES do Rex
-                            if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
+                            # Verificar se Akira deve aparecer pós-corrida (modo 1 jogador, APENAS no modo arcade)
+                            # No modo campanha, o roteiro já gerencia a narrativa, então não chamar Akira pós-corrida
+                            if modo_jogo == ModoJogo.UM_JOGADOR and modo_arcade:
                                 colisoes_na_corrida = getattr(principal, '_colisoes_na_corrida', 0)
                                 akira.verificar_aparecer_pos_corrida(posicao_jogador_p1, colisoes_na_corrida, posicao_jogador_p1 == 1)
                             
@@ -2204,7 +2283,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             if tempo_final_p2 is not None:
                                 numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                                 
-                                if gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p2):
+                                if modo_arcade and gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p2):
                                     print(f"Novo recorde na pista {numero_pista}: {tempo_final_p2:.2f}s")
                                 
                                 if posicao_jogador_p2 == 1:
@@ -2295,13 +2374,18 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             
                             resultados.sort(key=lambda x: x["posicao"] if x["posicao"] else 999)
                             
+                            # No modo campanha, adicionar opção "Continuar" para seguir a história
+                            opcoes_resultado = []
+                            if not modo_arcade and modo_jogo == ModoJogo.UM_JOGADOR:
+                                opcoes_resultado.append(("CONTINUAR", "continuar_campanha"))
+                            opcoes_resultado.extend([
+                                ("TROCAR CARRO", "trocar_carro"),
+                                ("REINICIAR JOGO", "reiniciar"),
+                                ("MENU PRINCIPAL", "menu")
+                            ])
                             estado_resultados_finais = {
                                 "resultados": resultados,
-                                "opcoes": [
-                                    ("TROCAR CARRO", "trocar_carro"),
-                                    ("REINICIAR JOGO", "reiniciar"),
-                                    ("MENU PRINCIPAL", "menu")
-                                ],
+                                "opcoes": opcoes_resultado,
                                 "opcao_atual": 0
                             }
                             estado_fim_jogo_p1 = None
@@ -2397,12 +2481,14 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     p2_espectador = False
                 
                 if not tela_fim_mostrada_p1 and corrida.finalizou.get(carro1, False):
+                    print(f"[MAIN] Corrida finalizada para P1! Verificando posição e tempo...")
                     vencedor_p1 = None
                     recompensa_dinheiro_p1 = 0
                     posicao_jogador_p1 = None
                     
                     todos_carros = [c for c in carros if c is not None]
                     posicao_jogador_p1 = obter_posicao_jogador(carro1, todos_carros)
+                    print(f"[MAIN] Posição do jogador P1: {posicao_jogador_p1}, total de carros: {len(todos_carros)}")
                     
                     if posicao_jogador_p1 == 1:
                         vencedor_p1 = "JOGADOR 1 VENCEU!"
@@ -2446,15 +2532,20 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     tela_fim_mostrada_p1 = True
                     trofeu_p1 = obter_trofeu_por_posicao(posicao_jogador_p1) if posicao_jogador_p1 else trofeu_vazio
                     
+                    print(f"[MAIN] Antes de registrar: posicao_jogador_p1={posicao_jogador_p1}, tela_fim_mostrada_p1={tela_fim_mostrada_p1}")
                     if posicao_jogador_p1 is not None:
                         tempo_final_p1 = corrida.tempo_final.get(carro1)
+                        print(f"[MAIN] tempo_final_p1 obtido: {tempo_final_p1}, tempo_final dict: {corrida.tempo_final}")
                         if tempo_final_p1 is not None:
                             numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                             
-                            novo_recorde = gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p1)
-                            if novo_recorde:
-                                print(f"Novo recorde na pista {numero_pista}: {tempo_final_p1:.2f}s")
-                                gerenciador_achievements.atualizar_estatistica("recordes_estabelecidos", incrementar=True)
+                            # Registrar recordes APENAS no modo arcade; no modo campanha o foco é narrativa
+                            novo_recorde = False
+                            if modo_arcade:
+                                novo_recorde = gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p1)
+                                if novo_recorde:
+                                    print(f"Novo recorde na pista {numero_pista}: {tempo_final_p1:.2f}s")
+                                    gerenciador_achievements.atualizar_estatistica("recordes_estabelecidos", incrementar=True)
                             
                             if posicao_jogador_p1 == 1:
                                 gerenciador_progresso.registrar_trofeu(numero_pista, "ouro")
@@ -2473,29 +2564,53 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             achievements_desbloqueados = gerenciador_achievements.verificar_achievements(gerenciador_progresso)
                             
                             numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                            print(f"[MAIN] Registrando corrida completa: pista={numero_pista}, posicao={posicao_jogador_p1}, tempo={tempo_final_p1}")
                             gerenciador_estatisticas.registrar_corrida_completa(numero_pista, posicao_jogador_p1, tempo_final_p1)
-                            # Verificar se Rex deve aparecer (primeira corrida, modo 1 jogador, não no modo arcade) - DEPOIS de registrar a corrida
+                            gerenciador_estatisticas.salvar()
+                            
+                            # Verificar se foi registrado corretamente
+                            stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(numero_pista)
+                            print(f"[MAIN] Estatísticas após registro: melhor_tempo={stats_pista.get('melhor_tempo')}, melhor_posicao={stats_pista.get('melhor_posicao')}, completas={stats_pista.get('corridas_completas', 0)}")
+                            
+                            # Completar missão se for training_01 e garantir que o progresso está salvo
                             if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
-                                rex.verificar_aparecer()
-                            if novo_recorde:
-                                gerenciador_estatisticas.registrar_recorde(numero_pista)
-                                gerenciador_desafios.atualizar_progresso("estabelecer_recorde", 1, gerenciador_progresso)
-                            if posicao_jogador_p1 in [1, 2, 3]:
-                                gerenciador_estatisticas.registrar_trofeu()
-                            
-                            gerenciador_desafios.atualizar_progresso("completar_corridas", 1, gerenciador_progresso)
-                            if posicao_jogador_p1 == 1:
-                                # A vitória já é registrada em registrar_corrida_completa quando posicao_final == 1
-                                gerenciador_desafios.atualizar_progresso("vencer_corridas", 1, gerenciador_progresso)
-                            
-                            colisoes_na_corrida = getattr(principal, '_colisoes_na_corrida', 0)
-                            if colisoes_na_corrida == 0:
-                                gerenciador_desafios.atualizar_progresso("completar_sem_colisao", 1, gerenciador_progresso)
-                            principal._colisoes_na_corrida = 0
-                            from core.i18n import t
-                            for ach in achievements_desbloqueados:
-                                nome_traduzido = t(f"achievements.{ach['id']}")
-                                popup_achievement.mostrar(nome_traduzido, ach['recompensa'])
+                                print(f"[MAIN] Modo campanha detectado. Verificando ultima_corrida_campanha: {getattr(gerenciador_progresso, 'ultima_corrida_campanha', 'N/A')}")
+                                if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "training_01":
+                                    from core.missoes import gerenciador_missoes
+                                    gerenciador_missoes.completar_por_cena("ch1_6_post_first_race_and_pixel")
+                                    gerenciador_missoes.salvar()
+                                    # Garantir que o progresso está salvo com a flag ainda ativa
+                                    gerenciador_progresso.salvar()
+                                    print(f"[MAIN] Missão m6_batismo_de_pista completada e salva. Flag ultima_corrida_campanha: {gerenciador_progresso.ultima_corrida_campanha}")
+                                else:
+                                    print(f"[MAIN] Não é training_01 ou flag não está definida. ultima_corrida_campanha: {getattr(gerenciador_progresso, 'ultima_corrida_campanha', 'N/A')}")
+                        else:
+                            print(f"[MAIN] ERRO: tempo_final_p1 é None! Não foi possível registrar a corrida.")
+                    else:
+                        print(f"[MAIN] ERRO: posicao_jogador_p1 é None! Não foi possível registrar a corrida.")
+                    
+                    # Verificar se Rex deve aparecer (primeira corrida, modo 1 jogador, não no modo arcade) - DEPOIS de registrar a corrida
+                    if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
+                        rex.verificar_aparecer()
+                    if novo_recorde and modo_arcade:
+                        gerenciador_estatisticas.registrar_recorde(numero_pista)
+                        gerenciador_desafios.atualizar_progresso("estabelecer_recorde", 1, gerenciador_progresso)
+                    if posicao_jogador_p1 in [1, 2, 3]:
+                        gerenciador_estatisticas.registrar_trofeu()
+                    
+                    gerenciador_desafios.atualizar_progresso("completar_corridas", 1, gerenciador_progresso)
+                    if posicao_jogador_p1 == 1:
+                        # A vitória já é registrada em registrar_corrida_completa quando posicao_final == 1
+                        gerenciador_desafios.atualizar_progresso("vencer_corridas", 1, gerenciador_progresso)
+                    
+                    colisoes_na_corrida = getattr(principal, '_colisoes_na_corrida', 0)
+                    if colisoes_na_corrida == 0:
+                        gerenciador_desafios.atualizar_progresso("completar_sem_colisao", 1, gerenciador_progresso)
+                    principal._colisoes_na_corrida = 0
+                    from core.i18n import t
+                    for ach in achievements_desbloqueados:
+                        nome_traduzido = t(f"achievements.{ach['id']}")
+                        popup_achievement.mostrar(nome_traduzido, ach['recompensa'])
                     
                     tempo_final_formatado_p1 = None
                     if posicao_jogador_p1 is not None:
@@ -2566,7 +2681,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             if tempo_final_p2 is not None:
                                 numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                                 
-                                if gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p2):
+                                if modo_arcade and gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p2):
                                     print(f"Novo recorde na pista {numero_pista}: {tempo_final_p2:.2f}s")
                                 
                                 if posicao_jogador_p2 == 1:
@@ -2657,13 +2772,18 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             
                             resultados.sort(key=lambda x: x["posicao"] if x["posicao"] else 999)
                             
+                            # No modo campanha, adicionar opção "Continuar" para seguir a história
+                            opcoes_resultado = []
+                            if not modo_arcade and modo_jogo == ModoJogo.UM_JOGADOR:
+                                opcoes_resultado.append(("CONTINUAR", "continuar_campanha"))
+                            opcoes_resultado.extend([
+                                ("TROCAR CARRO", "trocar_carro"),
+                                ("REINICIAR JOGO", "reiniciar"),
+                                ("MENU PRINCIPAL", "menu")
+                            ])
                             estado_resultados_finais = {
                                 "resultados": resultados,
-                                "opcoes": [
-                                    ("TROCAR CARRO", "trocar_carro"),
-                                    ("REINICIAR JOGO", "reiniciar"),
-                                    ("MENU PRINCIPAL", "menu")
-                                ],
+                                "opcoes": opcoes_resultado,
                                 "opcao_atual": 0
                             }
                             estado_fim_jogo_p1 = None
@@ -2723,7 +2843,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             if tempo_final_p2 is not None:
                                 numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                                 
-                                if gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p2):
+                                if modo_arcade and gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p2):
                                     print(f"Novo recorde na pista {numero_pista}: {tempo_final_p2:.2f}s")
                                 
                                 if posicao_jogador_p2 == 1:
@@ -3239,7 +3359,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 superficie_hud_p1 = pygame.Surface((metade_largura, ALTURA), pygame.SRCALPHA)
                 hud.desenhar_hud_completo(superficie_hud_p1, carro1, dt, offset_x=0)
                 tela.blit(superficie_hud_p1, (0, 0))
-                
+
                 pontuacoes_alvo = None
                 if tipo_jogo == TipoJogo.DRIFT:
                     num_checkpoints = len(checkpoints) if checkpoints else 19
@@ -3257,6 +3377,12 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     hud.desenhar_posicao_voltas(tela, corrida, carro2, carros, posicao=(LARGURA - 10, 10), alinhar_direita=True, tipo_jogo=tipo_jogo, drift_scoring=drift_scoring_p2_para_hud, pontuacoes_alvo=pontuacoes_alvo, trofeu_ouro=trofeu_ouro, trofeu_prata=trofeu_prata, trofeu_bronze=trofeu_bronze, trofeu_vazio=trofeu_vazio)
                 else:
                     hud.desenhar_posicao_voltas(tela, corrida, carro2, carros, posicao=(LARGURA - 10, 10), alinhar_direita=True, tipo_jogo=tipo_jogo)
+                
+                # Desenhar rastreador de missão no canto superior direito (modo dois jogadores, apenas no modo campanha)
+                # Mostrar sempre antes da corrida começar; após iniciar, manter visível apenas por alguns segundos
+                mostrar_rastreador = (not modo_arcade) and (not corrida.iniciada or tempo_missao_apos_inicio < 5.0)
+                if mostrar_rastreador:
+                    hud.desenhar_missao_ativa(tela, posicao=(LARGURA - 20, 10), alinhar_direita=True)
                 
                 if pista_tiles is not None:
                     limites_pista = pista_tiles.calcular_limites_reais_pista(numero_pista)
@@ -3288,9 +3414,12 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     hud.desenhar_posicao_voltas(tela, corrida, carro1, carros, posicao=(10, 10), tipo_jogo=tipo_jogo, drift_scoring=drift_scoring, pontuacoes_alvo=pontuacoes_alvo, trofeu_ouro=trofeu_ouro, trofeu_prata=trofeu_prata, trofeu_bronze=trofeu_bronze, trofeu_vazio=trofeu_vazio)
                 else:
                     hud.desenhar_posicao_voltas(tela, corrida, carro1, carros, posicao=(10, 10), tipo_jogo=tipo_jogo)
-                
-                # Desenhar missão ativa (se houver)
-                hud.desenhar_missao_ativa(tela, posicao=(LARGURA // 2 - 200, 10))
+
+                # Desenhar missão ativa no canto superior direito (apenas no modo campanha)
+                # Mostrar sempre antes da corrida começar; após iniciar, manter visível apenas por alguns segundos
+                mostrar_rastreador = (not modo_arcade) and (not corrida.iniciada or tempo_missao_apos_inicio < 5.0)
+                if mostrar_rastreador:
+                    hud.desenhar_missao_ativa(tela, posicao=(LARGURA - 20, 10), alinhar_direita=True)
 
                 if pista_tiles is not None:
                     limites_pista = pista_tiles.calcular_limites_reais_pista(numero_pista)
@@ -3382,8 +3511,10 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         if modo_jogo != ModoJogo.DOIS_JOGADORES and tipo_jogo != TipoJogo.DRIFT and not tela_fim_mostrada:
             # Verificar se todos os carros terminaram (incluindo bots) antes de coletar resultados
             todos_carros_finalizaram = corrida.todos_finalizados()
+            carro1_finalizou = corrida.finalizou.get(carro1, False)
             # Se todos finalizaram, coletar/atualizar resultados (mesmo se já existirem)
-            if corrida.finalizou.get(carro1, False) and todos_carros_finalizaram:
+            # No modo sem_bots, não precisa esperar todos finalizarem
+            if carro1_finalizou and (todos_carros_finalizaram or sem_bots):
                 vencedor = None
                 recompensa_dinheiro = 0
                 posicao_jogador = None
@@ -3479,36 +3610,61 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     trofeu = obter_trofeu_por_posicao(posicao_jogador) if posicao_jogador else trofeu_vazio
 
                 tempo_final = corrida.tempo_final.get(carro1)
+                print(f"[MAIN] Corrida finalizada (UM_JOGADOR): posicao={posicao_jogador}, tempo={tempo_final}, modo_arcade={modo_arcade}")
                 if tempo_final is not None:
                     numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+                    
+                    # Registrar corrida completa SEMPRE (tanto arcade quanto campanha)
+                    print(f"[MAIN] Registrando corrida completa: pista={numero_pista}, posicao={posicao_jogador}, tempo={tempo_final}")
+                    gerenciador_estatisticas.registrar_corrida_completa(numero_pista, posicao_jogador, tempo_final)
+                    gerenciador_estatisticas.salvar()
+                    
+                    # Verificar se foi registrado corretamente
+                    stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(numero_pista)
+                    print(f"[MAIN] Estatísticas após registro: melhor_tempo={stats_pista.get('melhor_tempo')}, melhor_posicao={stats_pista.get('melhor_posicao')}, completas={stats_pista.get('corridas_completas', 0)}")
+                    
+                    # Completar missão se for training_01 e garantir que o progresso está salvo
+                    if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
+                        print(f"[MAIN] Modo campanha detectado. Verificando ultima_corrida_campanha: {getattr(gerenciador_progresso, 'ultima_corrida_campanha', 'N/A')}")
+                        if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "training_01":
+                            from core.missoes import gerenciador_missoes
+                            gerenciador_missoes.completar_por_cena("ch1_6_post_first_race_and_pixel")
+                            gerenciador_missoes.salvar()
+                            # Garantir que o progresso está salvo com a flag ainda ativa
+                            gerenciador_progresso.salvar()
+                            print(f"[MAIN] Missão m6_batismo_de_pista completada e salva. Flag ultima_corrida_campanha: {gerenciador_progresso.ultima_corrida_campanha}")
+                        else:
+                            print(f"[MAIN] Não é training_01 ou flag não está definida. ultima_corrida_campanha: {getattr(gerenciador_progresso, 'ultima_corrida_campanha', 'N/A')}")
 
-                    recorde_antes = gerenciador_progresso.obter_recorde(numero_pista)
+                    # Registrar recordes APENAS no modo arcade; no modo campanha o foco é narrativa
+                    if modo_arcade:
+                        recorde_antes = gerenciador_progresso.obter_recorde(numero_pista)
 
-                    novo_recorde = gerenciador_progresso.registrar_recorde(numero_pista, tempo_final)
-                    if novo_recorde:
-                        print(f"Novo recorde na pista {numero_pista}: {tempo_final:.2f}s")
-                        # Atualizar estatística de recordes
-                        gerenciador_achievements.atualizar_estatistica("recordes_estabelecidos", incrementar=True)
+                        novo_recorde = gerenciador_progresso.registrar_recorde(numero_pista, tempo_final)
+                        if novo_recorde:
+                            print(f"Novo recorde na pista {numero_pista}: {tempo_final:.2f}s")
+                            # Atualizar estatística de recordes
+                            gerenciador_achievements.atualizar_estatistica("recordes_estabelecidos", incrementar=True)
 
-                        # Salvar ghost (sempre no modo relógio se melhor, ou quando novo recorde no modo drift)
-                        if (tipo_jogo == TipoJogo.GHOST or tipo_jogo == TipoJogo.DRIFT):
-                            if ghost_recorder_p1 and ghost_recorder_p1.gravando:
-                                salvar_ghost = False
-                                if tipo_jogo == TipoJogo.GHOST:
-                                    if recorde_antes is None or tempo_final < recorde_antes:
+                            # Salvar ghost (sempre no modo relógio se melhor, ou quando novo recorde no modo drift)
+                            if (tipo_jogo == TipoJogo.GHOST or tipo_jogo == TipoJogo.DRIFT):
+                                if ghost_recorder_p1 and ghost_recorder_p1.gravando:
+                                    salvar_ghost = False
+                                    if tipo_jogo == TipoJogo.GHOST:
+                                        if recorde_antes is None or tempo_final < recorde_antes:
+                                            salvar_ghost = True
+                                    elif tipo_jogo == TipoJogo.DRIFT and novo_recorde:
                                         salvar_ghost = True
-                                elif tipo_jogo == TipoJogo.DRIFT and novo_recorde:
-                                    salvar_ghost = True
 
-                                if salvar_ghost:
-                                    ghost_recorder_p1.parar_gravacao()
-                                    frames_gravados = ghost_recorder_p1.obter_dados()
-                                    if frames_gravados and len(frames_gravados) > 0:
-                                        gerenciador_ghosts.salvar_ghost(numero_pista, frames_gravados)
-                                        print(f"Ghost salvo para pista {numero_pista} ({len(frames_gravados)} frames)")
-                                else:
-                                    if ghost_recorder_p1 and ghost_recorder_p1.gravando:
+                                    if salvar_ghost:
                                         ghost_recorder_p1.parar_gravacao()
+                                        frames_gravados = ghost_recorder_p1.obter_dados()
+                                        if frames_gravados and len(frames_gravados) > 0:
+                                            gerenciador_ghosts.salvar_ghost(numero_pista, frames_gravados)
+                                            print(f"Ghost salvo para pista {numero_pista} ({len(frames_gravados)} frames)")
+                                    else:
+                                        if ghost_recorder_p1 and ghost_recorder_p1.gravando:
+                                            ghost_recorder_p1.parar_gravacao()
 
                         if tipo_jogo == TipoJogo.GHOST:
                             if trofeu == trofeu_ouro:
@@ -3537,9 +3693,16 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         
                         numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                         # No modo GHOST/DRIFT, usar posicao_jogador e tempo_final que já foram definidos acima
+                        print(f"[MAIN] Registrando corrida completa (modo arcade): pista={numero_pista}, posicao={posicao_jogador}, tempo={tempo_final}")
                         gerenciador_estatisticas.registrar_corrida_completa(numero_pista, posicao_jogador, tempo_final)
-                        # Verificar se Akira deve aparecer pós-corrida (modo 1 jogador, não no modo arcade) - ANTES do Rex
-                        if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
+                        gerenciador_estatisticas.salvar()
+                        
+                        # Verificar se foi registrado corretamente
+                        stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(numero_pista)
+                        print(f"[MAIN] Estatísticas após registro (arcade): melhor_tempo={stats_pista.get('melhor_tempo')}, melhor_posicao={stats_pista.get('melhor_posicao')}, completas={stats_pista.get('corridas_completas', 0)}")
+                        # Verificar se Akira deve aparecer pós-corrida (modo 1 jogador, APENAS no modo arcade)
+                        # No modo campanha, o roteiro já gerencia a narrativa, então não chamar Akira pós-corrida
+                        if modo_jogo == ModoJogo.UM_JOGADOR and modo_arcade:
                             colisoes_na_corrida = getattr(principal, '_colisoes_na_corrida', 0)
                             akira.verificar_aparecer_pos_corrida(posicao_jogador, colisoes_na_corrida, posicao_jogador == 1)
                         # Verificar se Rex deve aparecer (primeira corrida, modo 1 jogador, não no modo arcade) - DEPOIS de registrar a corrida
@@ -3601,13 +3764,18 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     estado_resultados_finais["resultados"] = resultados
                 else:
                     # Criar novos resultados finais
+                    # No modo campanha, adicionar opção "Continuar" para seguir a história
+                    opcoes_resultado = []
+                    if not modo_arcade and modo_jogo == ModoJogo.UM_JOGADOR:
+                        opcoes_resultado.append(("CONTINUAR", "continuar_campanha"))
+                    opcoes_resultado.extend([
+                        ("TROCAR CARRO", "trocar_carro"),
+                        ("REINICIAR JOGO", "reiniciar"),
+                        ("MENU PRINCIPAL", "menu")
+                    ])
                     estado_resultados_finais = {
                         "resultados": resultados,
-                        "opcoes": [
-                            ("TROCAR CARRO", "trocar_carro"),
-                            ("REINICIAR JOGO", "reiniciar"),
-                            ("MENU PRINCIPAL", "menu")
-                        ],
+                        "opcoes": opcoes_resultado,
                         "opcao_atual": 0
                     }
                 # Limpar estado de fim de jogo individual para evitar sobreposição

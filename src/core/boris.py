@@ -41,6 +41,8 @@ class Boris:
         self.sprite_ameaçador = None
         self.sprite_convencido = None
         self.sprite_fundo = None
+        self.sprite_fundo_redimensionado = None  # Cache do fundo redimensionado
+        self.sprites_redimensionados_cache = {}  # Cache de sprites redimensionados (chave: sprite original, valor: sprite redimensionado)
         self.sprites_carregados = False
         
         self.ativo = False
@@ -61,6 +63,7 @@ class Boris:
         self.loja_aberta = False
         self.peça_selecionada = None
         self.preco_tipo_atual = None
+        self.on_close_scene_id = None  # Cena a ser iniciada após fechar a loja (do sistema narrativo)
         
     def carregar_estado(self):
         """Carrega o estado do Boris do progresso.json"""
@@ -114,6 +117,9 @@ class Boris:
             print(f"[BORIS] Tentando carregar fundo da fábrica: {CAMINHO_FABRICA}")
             if os.path.exists(CAMINHO_FABRICA):
                 self.sprite_fundo = pygame.image.load(CAMINHO_FABRICA).convert_alpha()
+                # Redimensionar e cachear o fundo uma vez
+                from config import LARGURA, ALTURA
+                self.sprite_fundo_redimensionado = pygame.transform.scale(self.sprite_fundo, (LARGURA, ALTURA))
                 print(f"[BORIS] ✓ Fundo da fábrica carregado: {self.sprite_fundo.get_size()}")
             else:
                 print(f"[BORIS] ✗ Fundo da fábrica não encontrado: {CAMINHO_FABRICA}")
@@ -137,6 +143,12 @@ class Boris:
         self.ativo = True
         self.fase_dialogo = "primeira_aparicao"
         self.parte_cutscene = 0
+        # A partir do momento em que o Crank manda o jogador até aqui,
+        # o nome do Boris já não é mais um mistério para o jogador.
+        # Então podemos considerar o nome como "revelado" já na primeira cena.
+        if not self.nome_revelado:
+            self.nome_revelado = True
+            self.salvar_estado()
         self._iniciar_primeira_aparicao()
         return True
     
@@ -144,6 +156,61 @@ class Boris:
         """Inicia a cutscene de primeira aparição"""
         self.parte_cutscene = 0
         self._avancar_cutscene()
+    
+    def ativar_loja_narrativa(self, on_close_scene_id=None):
+        """Ativa o Boris para loja no contexto da narrativa"""
+        if not self.sprites_carregados:
+            self.carregar_sprites()
+        
+        # Se foi ativado pela narrativa, significa que já interagiu com o Boris
+        # Marcar primeira aparição como mostrada para não repetir
+        if not self.primeira_aparicao_mostrada:
+            self.primeira_aparicao_mostrada = True
+            self.salvar_estado()
+        
+        self.ativo = True
+        self.fase_dialogo = "loja"
+        self.on_close_scene_id = on_close_scene_id  # Armazenar cena para continuar após fechar
+        self._abrir_loja()
+        return True
+    
+    def ativar_loja_simples(self):
+        """Ativa o Boris diretamente em modo de loja, sem fala de saudação.
+        
+        Usado na campanha logo após a cena de história, para evitar repetir
+        diálogos de introdução. Apenas prepara o estado visual do Boris; a
+        tela de compra é desenhada externamente (em menu.py).
+        """
+        if not self.sprites_carregados:
+            self.carregar_sprites()
+        
+        # Se foi ativado pela narrativa, significa que já interagiu com o Boris
+        # Marcar primeira aparição como mostrada para não repetir
+        if not self.primeira_aparicao_mostrada:
+            self.primeira_aparicao_mostrada = True
+            self.salvar_estado()
+        
+        self.ativo = True
+        self.fase_dialogo = "loja"
+        # Limpar qualquer texto pendente para não ficar animando fala antiga
+        self.texto_completo = ""
+        self.texto_exibido = ""
+        self.tempo_animacao = 0.0
+        # Garantir que o nome está revelado neste ponto da campanha
+        if not self.nome_revelado:
+            self.nome_revelado = True
+            self.salvar_estado()
+
+        # Usar um sprite neutro/rabugento como pose de loja
+        if self.sprite_rabugento:
+            self.sprite_atual = self.sprite_rabugento
+        elif self.sprite_neutro:
+            self.sprite_atual = self.sprite_neutro
+        elif self.sprite_trabalhando:
+            self.sprite_atual = self.sprite_trabalhando
+        else:
+            self.sprite_atual = None
+        return True
     
     def _avancar_cutscene(self):
         """Avança para a próxima parte da cutscene"""
@@ -368,6 +435,15 @@ class Boris:
         # Remover dinheiro
         gerenciador_progresso.remover_dinheiro(preco)
         
+        # Completar missão m4_coracao_de_sucata se estiver ativa (comprar peça do Boris)
+        try:
+            from core.missoes import gerenciador_missoes
+            if gerenciador_missoes.missao_ativa_id == "m4_coracao_de_sucata":
+                gerenciador_missoes.completar_missao("m4_coracao_de_sucata")
+                print("[BORIS] Missão 'Coração de Sucata' completada após compra!")
+        except Exception as e:
+            print(f"[BORIS] Erro ao completar missão: {e}")
+        
         # Reação baseada no tipo de preço
         if peça_info['preco_tipo'] == "otimo":
             self.sprite_atual = self.sprite_neutro if self.sprite_neutro else self.sprite_rabugento
@@ -391,37 +467,52 @@ class Boris:
         if not self.ativo:
             return
         
+        # Garantir que os sprites estão carregados
+        if not self.sprites_carregados:
+            self.carregar_sprites()
+        
         render_text = _get_render_text()
         
-        CAMINHO_FABRICA = obter_caminho_fabrica()
-        if os.path.exists(CAMINHO_FABRICA):
-            try:
-                self.sprite_fundo = pygame.image.load(CAMINHO_FABRICA).convert_alpha()
-            except Exception as e:
-                print(f"[BORIS] Erro ao recarregar fundo: {e}")
-        
-        if self.sprite_fundo:
-            fundo_w, fundo_h = self.sprite_fundo.get_size()
-            fundo_redimensionado = pygame.transform.scale(self.sprite_fundo, (LARGURA, ALTURA))
-            tela.blit(fundo_redimensionado, (0, 0))
+        # Usar fundo redimensionado em cache (não recarregar toda vez)
+        if self.sprite_fundo_redimensionado:
+            tela.blit(self.sprite_fundo_redimensionado, (0, 0))
+        elif self.sprite_fundo:
+            # Se não tiver cache, criar uma vez (fallback)
+            from config import LARGURA, ALTURA
+            self.sprite_fundo_redimensionado = pygame.transform.scale(self.sprite_fundo, (LARGURA, ALTURA))
+            tela.blit(self.sprite_fundo_redimensionado, (0, 0))
         else:
-            print(f"[BORIS] AVISO: sprite_fundo é None, usando fallback. Caminho tentado: {CAMINHO_FABRICA}")
+            # Fallback: overlay escuro
+            from config import LARGURA, ALTURA
             overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 200))
             tela.blit(overlay, (0, 0))
         
         if self.sprite_atual:
-            sprite_original_w = self.sprite_atual.get_width()
-            sprite_original_h = self.sprite_atual.get_height()
-            sprite_novo_w = int(sprite_original_w * 0.7)
-            sprite_novo_h = int(sprite_original_h * 0.7)
-            sprite_redimensionado = pygame.transform.scale(self.sprite_atual, (sprite_novo_w, sprite_novo_h))
+            # Usar cache de sprite redimensionado (não redimensionar toda vez)
+            if self.sprite_atual not in self.sprites_redimensionados_cache:
+                sprite_original_w = self.sprite_atual.get_width()
+                sprite_original_h = self.sprite_atual.get_height()
+                # Aumentar escala para 0.85 (85%) para deixar o Boris maior
+                sprite_novo_w = int(sprite_original_w * 0.85)
+                sprite_novo_h = int(sprite_original_h * 0.85)
+                self.sprites_redimensionados_cache[self.sprite_atual] = pygame.transform.scale(self.sprite_atual, (sprite_novo_w, sprite_novo_h))
             
+            sprite_redimensionado = self.sprites_redimensionados_cache[self.sprite_atual]
+            sprite_novo_w, sprite_novo_h = sprite_redimensionado.get_size()
+            
+            from config import LARGURA, ALTURA
             sprite_x = LARGURA // 2 - sprite_novo_w // 2
-            sprite_y = ALTURA // 2 - sprite_novo_h // 2 - 50
+            # Posicionar mais próximo do chão, bem acima da caixa de diálogo
+            # A caixa de diálogo está em ALTURA - 200 - 50 = ALTURA - 250
+            # Descer mais o sprite (reduzir o offset de 150 para 100)
+            sprite_y = ALTURA - sprite_novo_h - 130
             tela.blit(sprite_redimensionado, (sprite_x, sprite_y))
         else:
             print(f"[BORIS] AVISO: sprite_atual é None! fase_dialogo={self.fase_dialogo}, parte_cutscene={self.parte_cutscene}")
+        
+        # Garantir que LARGURA e ALTURA estão disponíveis
+        from config import LARGURA, ALTURA
         
         caixa_largura = 1000
         caixa_altura = 200
@@ -481,6 +572,10 @@ class Boris:
         self.loja_aberta = False
         self.peça_selecionada = None
         self.preco_tipo_atual = None
+        # Se há uma cena para continuar após fechar, retornar o ID
+        on_close_scene_id = self.on_close_scene_id
+        self.on_close_scene_id = None  # Limpar após usar
+        return on_close_scene_id
 
 # Instância global
 boris = Boris()

@@ -64,19 +64,29 @@ class Glub:
     def _carregar_sons(self):
         """Carrega os sons do Glub"""
         try:
+            # Verificar se o mixer está inicializado
             if not pygame.mixer.get_init():
-                pygame.mixer.init()
+                try:
+                    pygame.mixer.init()
+                except pygame.error:
+                    # Se não conseguir inicializar, não há dispositivo de áudio
+                    print("[AVISO] Dispositivo de áudio não disponível. Sons do Glub desabilitados.")
+                    self.som_compra = None
+                    return
             
             caminho_som_compra = os.path.join(DIR_PROJETO, "assets", "sounds", "purchase", "caixa.mp3")
             if os.path.exists(caminho_som_compra):
-                self.som_compra = pygame.mixer.Sound(caminho_som_compra)
-                print(f"✓ Som de compra do Glub carregado")
+                try:
+                    self.som_compra = pygame.mixer.Sound(caminho_som_compra)
+                    print(f"✓ Som de compra do Glub carregado")
+                except pygame.error:
+                    print(f"✗ AVISO: Não foi possível carregar som de compra (áudio indisponível)")
+                    self.som_compra = None
             else:
                 print(f"✗ AVISO: Som de compra não encontrado: {caminho_som_compra}")
         except Exception as e:
             print(f"ERRO ao carregar sons do Glub: {e}")
-            import traceback
-            traceback.print_exc()
+            self.som_compra = None
     
     def carregar_sprites(self):
         """Carrega os sprites do Glub"""

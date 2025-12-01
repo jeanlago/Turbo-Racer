@@ -17,16 +17,20 @@
     {
       "id": "cinturao_industrial",
       "nome": "Cinturão Industrial",
-      "state": "locked_visible",
+      "state": "unlocked",
       "lockedThought": "Ouvi falar que aqui só entra quem tem inscrição paga… e eu não tô nessa lista ainda.",
-      "unlockFlags": ["unlockRaceSet:cinturao_industrial"]
+      "unlockFlags": [
+        "unlockRaceSet:cinturao_industrial"
+      ]
     },
     {
       "id": "montanha",
       "nome": "Montanha da Akira",
       "state": "locked_hidden",
       "lockedThought": "Dizem que uma piloto fantasma domina essa montanha. Ainda não fui convidado pra esse velório.",
-      "unlockFlags": ["unlockLocation:montanha"]
+      "unlockFlags": [
+        "unlockLocation:montanha"
+      ]
     },
     {
       "id": "torres_rex",
@@ -40,9 +44,9 @@
       "nome": "Circuito da Coroa",
       "state": "locked_hidden",
       "lockedThought": "Ainda não tenho motivo pra ir até lá...",
-      "unlockFlags": ["ch5_started"]
+      "unlockFlags": [
+        "ch5_started"
+      ]
     }
   ]
 }
-
-

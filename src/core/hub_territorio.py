@@ -225,15 +225,17 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
     
     # Carregar sprite do NPC (se existir)
     npc_sprite = None
-    caminho_npc = os.path.join(DIR_PROJETO, "assets", "images", "characters", territorio.npc_id)
-    if os.path.exists(caminho_npc):
-        # Tentar carregar sprite neutro
-        sprite_neutro = os.path.join(caminho_npc, "neutro.png")
-        if os.path.exists(sprite_neutro):
-            try:
-                npc_sprite = pygame.image.load(sprite_neutro).convert_alpha()
-            except:
-                pass
+    # Verificar se há NPC antes de construir o caminho
+    if territorio.npc_id:
+        caminho_npc = os.path.join(DIR_PROJETO, "assets", "images", "characters", territorio.npc_id)
+        if os.path.exists(caminho_npc):
+            # Tentar carregar sprite neutro
+            sprite_neutro = os.path.join(caminho_npc, "neutro.png")
+            if os.path.exists(sprite_neutro):
+                try:
+                    npc_sprite = pygame.image.load(sprite_neutro).convert_alpha()
+                except:
+                    pass
     
     # Lista de atividades
     atividades = territorio.atividades
@@ -242,17 +244,53 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
     # Animações
     tempo_animacao = 0.0
     
-    # Verificar se é território do Boris e mostrar primeira aparição
+    # Verificar se é território do Boris e mostrar primeira aparição / loja
     from core.boris import boris
+    from core.progresso import gerenciador_progresso
     mostrar_boris = False
     if territorio.npc_id and "boris" in territorio.npc_id.lower():
-        mostrar_boris = boris.verificar_aparecer_primeira_vez()
+        # Verificar capítulo atual - no Capítulo 2+, não mostrar introdução
+        capitulo_atual = gerenciador_progresso.obter_capitulo_atual()
+        if capitulo_atual and capitulo_atual != "ch1":
+            # No Capítulo 2 ou superior, sempre abrir a loja diretamente
+            boris.ativar_loja_narrativa(on_close_scene_id=None)
+            mostrar_boris = True
+        elif not boris.primeira_aparicao_mostrada:
+            # Se ainda não vimos a primeira aparição (Capítulo 1), tocar a cutscene normal
+            mostrar_boris = boris.verificar_aparecer_primeira_vez()
+        else:
+            # Após a introdução, ao entrar na Fábrica do Boris já abrir direto a "loja"
+            boris.ativar_loja_narrativa(on_close_scene_id=None)
+            mostrar_boris = True
     
     # Verificar se é território do Pixel e mostrar primeira aparição
     from core.pixel import pixel
     mostrar_pixel = False
     if territorio.npc_id and "pixel" in territorio.npc_id.lower():
         mostrar_pixel = pixel.verificar_aparecer_primeira_vez()
+    
+    # Verificar se é território do Fuligem (Cinturão Industrial)
+    from core.fuligem import fuligem
+    mostrar_fuligem = False
+    if territorio.npc_id and "fuligem" in territorio.npc_id.lower():
+        # Carregar sprites se necessário
+        if not fuligem.sprites_carregados:
+            fuligem.carregar_sprites()
+        
+        # Verificar se é noite (18h-6h)
+        if not fuligem.verificar_horario_noite():
+            # Não é noite, mostrar mensagem de bloqueio
+            fuligem.ativo = True
+            fuligem.fase_dialogo = "dia"
+            fuligem.sprite_atual = fuligem.sprite_irritado or fuligem.sprite_neutro
+            fuligem._iniciar_animacao_texto("Eles não fariam corridas assim de dia...")
+            mostrar_fuligem = True
+        elif not fuligem.primeira_aparicao_mostrada:
+            # Primeira vez - mostrar apresentação
+            mostrar_fuligem = fuligem.verificar_aparecer_primeira_vez()
+        else:
+            # Já foi apresentado - ativar menu de corridas
+            mostrar_fuligem = fuligem.ativar_corrida()
     
     # Estado de pause
     hub_pausado = False
@@ -300,8 +338,29 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
                 # Abrir loja do Pixel (implementar depois)
                 mostrar_pixel = False
         
-        # Processar eventos (apenas se Boris/Pixel não estiverem ativos, para evitar processamento duplo)
-        if not (mostrar_boris and boris.ativo) and not (mostrar_pixel and pixel.ativo):
+        # Processar Fuligem se ativo
+        if mostrar_fuligem and fuligem.ativo:
+            fuligem.atualizar(dt)
+            resultado_fuligem = fuligem.processar_eventos(eventos)
+            if resultado_fuligem == "fechado":
+                mostrar_fuligem = False
+            elif isinstance(resultado_fuligem, dict) and resultado_fuligem.get("corrida"):
+                # Iniciar corrida do Cinturão Industrial
+                pista = resultado_fuligem.get("pista")
+                if pista:
+                    # Retornar informação da corrida para ser processada
+                    return {
+                        "atividade": "corrida_cinturao",
+                        "nome": f"Corrida Cinturão Industrial - Pista {pista}",
+                        "territorio_id": territorio_id,
+                        "npc_id": territorio.npc_id,
+                        "pista": pista,
+                        "preco": resultado_fuligem.get("preco", 800)
+                    }
+                mostrar_fuligem = False
+        
+        # Processar eventos (apenas se Boris/Pixel/Fuligem não estiverem ativos, para evitar processamento duplo)
+        if not (mostrar_boris and boris.ativo) and not (mostrar_pixel and pixel.ativo) and not (mostrar_fuligem and fuligem.ativo):
             for ev in eventos:
                 if ev.type == pygame.QUIT:
                     return "menu_principal"  # Fechar jogo vai para menu principal
@@ -432,6 +491,12 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
             pixel.desenhar_dialogo(screen, dt)
             pygame.display.flip()
             continue  # Pular o resto do desenho se Pixel estiver ativo
+        
+        # Desenhar Fuligem se ativo
+        if mostrar_fuligem and fuligem.ativo:
+            fuligem.desenhar(screen)
+            pygame.display.flip()
+            continue  # Pular o resto do desenho se Fuligem estiver ativo
         
         # Desenhar menu de pause
         if hub_pausado:

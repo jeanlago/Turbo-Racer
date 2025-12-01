@@ -15,13 +15,29 @@ class GerenciadorMusica:
         self.musica_no_jogo = True
         self.musica_tocando = False
         self.nome_musica_atual = ""
+        self.audio_disponivel = False  # Flag para indicar se o áudio está disponível
         
+        # Tentar inicializar o mixer do pygame
         try:
             pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
+            self.audio_disponivel = True
         except pygame.error:
-            pygame.mixer.init()
+            try:
+                pygame.mixer.init()
+                self.audio_disponivel = True
+            except pygame.error as e:
+                print(f"AVISO: Dispositivo de áudio não encontrado. O jogo continuará sem som. ({e})")
+                self.audio_disponivel = False
+                self.musica_habilitada = False
         
-        pygame.mixer.music.set_volume(self.volume)
+        # Só configurar volume se o áudio estiver disponível
+        if self.audio_disponivel:
+            try:
+                pygame.mixer.music.set_volume(self.volume)
+            except pygame.error:
+                self.audio_disponivel = False
+                self.musica_habilitada = False
+        
         self.carregar_musicas()
     
     def carregar_musicas(self):
@@ -43,7 +59,7 @@ class GerenciadorMusica:
     
     def tocar_musica(self, indice=None):
         """Toca uma música específica ou a próxima na lista"""
-        if not self.musicas or not self.musica_habilitada:
+        if not self.audio_disponivel or not self.musicas or not self.musica_habilitada:
             return False
         
         if indice is None:
@@ -62,24 +78,35 @@ class GerenciadorMusica:
                 print(f"Erro ao tocar música {self.musicas[indice]['nome']}: {e}")
                 self.musica_habilitada = False
                 self.musica_tocando = False
+                self.audio_disponivel = False
                 return False
         return False
     
     def parar_musica(self):
         """Para a música atual"""
-        pygame.mixer.music.stop()
+        if self.audio_disponivel:
+            try:
+                pygame.mixer.music.stop()
+            except pygame.error:
+                pass
         self.musica_tocando = False
         self.nome_musica_atual = ""
     
     def pausar_musica(self):
         """Pausa a música atual"""
-        if self.musica_tocando:
-            pygame.mixer.music.pause()
+        if self.audio_disponivel and self.musica_tocando:
+            try:
+                pygame.mixer.music.pause()
+            except pygame.error:
+                pass
     
     def despausar_musica(self):
         """Despausa a música atual"""
-        if self.musica_tocando:
-            pygame.mixer.music.unpause()
+        if self.audio_disponivel and self.musica_tocando:
+            try:
+                pygame.mixer.music.unpause()
+            except pygame.error:
+                pass
     
     def proxima_musica(self):
         """Vai para a próxima música"""
@@ -102,12 +129,20 @@ class GerenciadorMusica:
     def definir_volume(self, volume):
         """Define o volume da música (0.0 a 1.0)"""
         self.volume = max(0.0, min(1.0, volume))
-        pygame.mixer.music.set_volume(self.volume)
+        if self.audio_disponivel:
+            try:
+                pygame.mixer.music.set_volume(self.volume)
+            except pygame.error:
+                pass
     
     def verificar_fim_musica(self):
         """Verifica se a música terminou e toca a próxima"""
-        if not pygame.mixer.music.get_busy() and self.musica_tocando:
-            self.proxima_musica()
+        if self.audio_disponivel and self.musica_tocando:
+            try:
+                if not pygame.mixer.music.get_busy():
+                    self.proxima_musica()
+            except pygame.error:
+                self.musica_tocando = False
     
     def obter_nome_musica_atual(self):
         """Retorna o nome da música atual"""

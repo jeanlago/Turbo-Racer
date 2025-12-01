@@ -405,7 +405,7 @@ class ScenarioEditor:
                         if not self.hover_sprites_lista:
                             print(f"AVISO: Nenhum sprite de hover encontrado em {CAMINHO_HOVER}")
                             self.menu_hover_aberto = False
-                elif hasattr(self, 'menu_hover_aberto') and self.menu_hover_aberto:
+                elif hasattr(self, 'menu_hover_aberto') and self.menu_hover_aberto and self.hitbox_selecionada:
                     # Navegação no menu de hover
                     if event.key == pygame.K_UP or event.key == pygame.K_w:
                         self.menu_hover_selecionado = (self.menu_hover_selecionado - 1) % (len(self.hover_sprites_lista) + 1)
@@ -465,7 +465,7 @@ class ScenarioEditor:
                     mouse_x, mouse_y = event.pos
                     
                     # Verificar se clicou no menu de hover
-                    if hasattr(self, 'menu_hover_aberto') and self.menu_hover_aberto:
+                    if hasattr(self, 'menu_hover_aberto') and self.menu_hover_aberto and self.hitbox_selecionada:
                         menu_x = LARGURA // 2 - 200
                         menu_y = ALTURA // 2 - 150
                         menu_w = 400

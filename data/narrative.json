@@ -122,20 +122,34 @@
               "text": "Se você conseguir voltar com o carro inteiro, eu penso se vale a pena investir em você."
             }
           ],
-          "gameplayTrigger": {
-            "trigger": "start_race",
-            "params": {
-              "raceId": "garage_test",
-              "onResultSceneId": "ch1_1c_crank_test_result"
+          "choices": [
+            {
+              "id": "ch1_1b_choice_1",
+              "text": "Ir correr",
+              "effects": [],
+              "gameplayTrigger": {
+                "trigger": "start_race",
+                "params": {
+                  "raceId": "garage_test",
+                  "onResultSceneId": "ch1_1c_crank_test_result"
+                }
+              },
+              "nextSceneId": null
+            },
+            {
+              "id": "ch1_1b_choice_2",
+              "text": "Ainda não",
+              "effects": [],
+              "nextSceneId": null
             }
-          },
+          ],
           "nextSceneId": null
         },
         {
           "id": "ch1_1c_crank_test_result",
           "bg": "bg_garagem",
           "sprites": [
-            { "id": "crank", "sprite": "crank_neutro", "position": "left" }
+            { "id": "crank", "sprite": "crank_neutro", "position": "center" }
           ],
           "lines": [
             {
@@ -176,7 +190,7 @@
           "id": "ch1_2_mission_boris",
           "bg": "bg_garagem",
           "sprites": [
-            { "id": "crank", "sprite": "crank_neutro", "position": "left" }
+            { "id": "crank", "sprite": "crank_neutro", "position": "center" }
           ],
           "lines": [
             {
@@ -333,7 +347,7 @@
           "id": "ch1_5_first_race_unlocked",
           "bg": "bg_garagem",
           "sprites": [
-            { "id": "crank", "sprite": "crank_neutro", "position": "left" }
+            { "id": "crank", "sprite": "crank_neutro", "position": "center" }
           ],
           "lines": [
             {
@@ -370,7 +384,7 @@
           "id": "ch1_6_post_first_race_and_pixel",
           "bg": "bg_garagem",
           "sprites": [
-            { "id": "crank", "sprite": "crank_neutro", "position": "left" }
+            { "id": "crank", "sprite": "crank_neutro", "position": "center" }
           ],
           "lines": [
             {
@@ -429,7 +443,7 @@
           "id": "ch2_1_crank_talks_barrier",
           "bg": "bg_garagem",
           "sprites": [
-            { "id": "crank", "sprite": "crank_neutro", "position": "left" }
+            { "id": "crank", "sprite": "crank_neutro", "position": "center" }
           ],
           "lines": [
             {
@@ -456,7 +470,7 @@
           "id": "ch2_2_barao_appears",
           "bg": "bg_garagem_noite",
           "sprites": [
-            { "id": "crank", "sprite": "crank_neutro", "position": "left" },
+            { "id": "crank", "sprite": "crank_neutro", "position": "center" },
             { "id": "barao", "sprite": "barao_sorriso_fino", "position": "right" }
           ],
           "lines": [
@@ -547,7 +561,7 @@
           "bg": "bg_garagem_noite",
           "sprites": [
             { "id": "barao", "sprite": "barao_sorriso_fino", "position": "right" },
-            { "id": "crank", "sprite": "crank_neutro", "position": "left" }
+            { "id": "crank", "sprite": "crank_neutro", "position": "center" }
           ],
           "lines": [
             {
@@ -595,10 +609,10 @@
               "text": "Você disse NÃO pro Barão. Isso é grande. Vai ser mais difícil, mas pelo menos a alma é sua."
             }
           ],
-          "nextSceneId": "ch2_7_boris_reacts"
+          "nextSceneId": "ch2_8_boris_unlock_offer"
         },
         {
-          "id": "ch2_7_boris_reacts",
+          "id": "ch2_8_boris_unlock_offer",
           "bg": "bg_fosso_ferrugem",
           "sprites": [
             { "id": "boris", "sprite": "boris_sorriso", "position": "right" }
@@ -606,36 +620,44 @@
           "lines": [
             {
               "speaker": "BORIS",
-              "conditions": ["hasDebt=true"],
-              "text": "Você anda comprando coisa boa e não chora preço… o Barão passou por aqui, né?"
+              "text": "Falando em lugares difíceis... eu conheço alguém que pode te dar acesso ao Cinturão Industrial."
             },
             {
               "speaker": "BORIS",
-              "conditions": ["hasDebt=true"],
-              "text": "Eu já corri pra ele. Cada peça era um nó novo na corda. Se vai afundar em dívida, pelo menos faz barulho."
+              "text": "É uma área profissional, com pilotos de verdade. Mas não é de graça."
             },
             {
               "speaker": "BORIS",
-              "conditions": ["hasDebt=false"],
-              "text": "Você ainda paga tudo do próprio bolso? Corajoso… ou teimoso. Crank deve estar orgulhoso."
+              "text": "Por 10.000 créditos, eu te arranjo a inscrição. Interessado?"
             }
           ],
-          "nextSceneId": "ch2_8_unlock_industrial"
+          "gameplayTrigger": {
+            "trigger": "openShop",
+            "params": {
+              "shopId": "boris_unlock_cinturao",
+              "preco": 3000
+            }
+          },
+          "nextSceneId": null
         },
         {
-          "id": "ch2_8_unlock_industrial",
-          "bg": "bg_garagem",
+          "id": "ch2_9_cinturao_unlocked",
+          "bg": "bg_fosso_ferrugem",
           "sprites": [
-            { "id": "crank", "sprite": "crank_neutro", "position": "left" }
+            { "id": "boris", "sprite": "boris_sorriso", "position": "right" }
           ],
           "lines": [
             {
-              "speaker": "CRANK",
-              "text": "Com essas peças e o que você juntou, dá pra encarar o Cinturão Industrial."
+              "speaker": "BORIS",
+              "text": "Pronto. Você está inscrito. O Cinturão Industrial está aberto pra você."
             },
             {
-              "speaker": "CRANK",
+              "speaker": "BORIS",
               "text": "Lá o público é menos bêbado e mais cruel. E os pilotos já aprenderam a odiar perder."
+            },
+            {
+              "speaker": "BORIS",
+              "text": "Boa sorte. Você vai precisar."
             }
           ],
           "effects": ["unlockRaceSet:cinturao_industrial"],
@@ -651,7 +673,7 @@
           "id": "ch3_1_crank_to_mountain",
           "bg": "bg_garagem",
           "sprites": [
-            { "id": "crank", "sprite": "crank_neutro", "position": "left" }
+            { "id": "crank", "sprite": "crank_neutro", "position": "center" }
           ],
           "lines": [
             {
@@ -810,7 +832,7 @@
           "id": "ch3_7_crank_reacts",
           "bg": "bg_garagem",
           "sprites": [
-            { "id": "crank", "sprite": "crank_neutro", "position": "left" }
+            { "id": "crank", "sprite": "crank_neutro", "position": "center" }
           ],
           "lines": [
             {
@@ -1188,7 +1210,7 @@
           "id": "ch5_5_stage1_post",
           "bg": "bg_pit_circuito",
           "sprites": [
-            { "id": "crank", "sprite": "crank_neutro", "position": "left" },
+            { "id": "crank", "sprite": "crank_neutro", "position": "center" },
             { "id": "pixel", "sprite": "pixel_neutro", "position": "hud" }
           ],
           "lines": [
@@ -1270,7 +1292,7 @@
           "id": "ch5_5_stage3_post",
           "bg": "bg_pit_circuito",
           "sprites": [
-            { "id": "crank", "sprite": "crank_neutro", "position": "left" }
+            { "id": "crank", "sprite": "crank_neutro", "position": "center" }
           ],
           "lines": [
             {
@@ -1315,7 +1337,7 @@
           "bg": "bg_podio",
           "sprites": [
             { "id": "pixel", "sprite": "pixel_malandro_triste", "position": "hud" },
-            { "id": "crank", "sprite": "crank_neutro", "position": "left" },
+            { "id": "crank", "sprite": "crank_neutro", "position": "center" },
             { "id": "akira", "sprite": "akira_neutra", "position": "right" }
           ],
           "lines": [

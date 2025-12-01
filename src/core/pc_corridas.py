@@ -5,6 +5,7 @@ Tela para selecionar e iniciar corridas no modo campanha
 """
 
 import os
+import json
 import pygame
 from typing import Optional
 from config import LARGURA, ALTURA, DIR_PROJETO, FPS
@@ -12,6 +13,67 @@ from config import LARGURA, ALTURA, DIR_PROJETO, FPS
 def _get_render_text():
     from core.menu import render_text
     return render_text
+
+def _sincronizar_missoes_com_estatisticas(gerenciador_missoes):
+    """Sincroniza missões com estatísticas de corridas completadas"""
+    from core.estatisticas import gerenciador_estatisticas
+    
+    # Mapeamento de missões para race_id e pista
+    mapeamento_missoes = {
+        "m6_batismo_de_pista": ("training_01", 1),
+        # Adicionar outros mapeamentos conforme necessário
+    }
+    
+    gerenciador_estatisticas.carregar()
+    
+    for missao_id, (race_id, numero_pista) in mapeamento_missoes.items():
+        if not gerenciador_missoes.esta_completa(missao_id):
+            stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(numero_pista)
+            if stats_pista:
+                melhor_tempo = stats_pista.get("melhor_tempo")
+                melhor_posicao = stats_pista.get("melhor_posicao")
+                
+                # Se a corrida foi completada (tem estatísticas)
+                if melhor_tempo is not None and melhor_posicao is not None:
+                    gerenciador_missoes.completar_missao(missao_id)
+
+def _carregar_config_pc_missoes():
+    """Carrega configurações do arquivo JSON se existir, senão retorna valores padrão"""
+    config_file = os.path.join(DIR_PROJETO, "tools", "pc_missoes_config.json")
+    
+    # Valores padrão (do arquivo test_pc_missoes.py)
+    config = {
+        "PAINEL_ESQ_X": 50,
+        "PAINEL_ESQ_Y": 100,
+        "PAINEL_ESQ_LARGURA": 500,
+        "PAINEL_ESQ_ALTURA": 500,
+        "PAINEL_DIR_X": 600,
+        "PAINEL_DIR_Y": 100,
+        "PAINEL_DIR_LARGURA": 600,
+        "PAINEL_DIR_ALTURA": 450,
+        "TAMANHO_FONTE_TITULO": 12,
+        "TAMANHO_FONTE_MISSAO": 20,
+        "TAMANHO_FONTE_OBJETIVO": 35,
+        "ESPACAMENTO_MISSOES": 55,
+        "ALTURA_ITEM_MISSAO": 45,
+        "BTN_INICIAR_X": LARGURA // 2 - 120,
+        "BTN_INICIAR_Y": ALTURA - 80,
+        "BTN_INICIAR_LARGURA": 240,
+        "BTN_INICIAR_ALTURA": 40
+    }
+    
+    if os.path.exists(config_file):
+        try:
+            with open(config_file, 'r', encoding='utf-8') as f:
+                config_carregada = json.load(f)
+                # Atualizar apenas as chaves que existem no arquivo
+                for key in config:
+                    if key in config_carregada:
+                        config[key] = config_carregada[key]
+        except Exception as e:
+            print(f"Aviso: Erro ao carregar configuração do PC: {e}")
+    
+    return config
 
 NOMES_PISTAS = {
     1: "Pista Principal",
@@ -44,10 +106,24 @@ def pc_corridas_loop(screen) -> Optional[dict]:
     clock = pygame.time.Clock()
     render_text = _get_render_text()
     
+    # Carregar configurações
+    config = _carregar_config_pc_missoes()
+    
+    # Recarregar missões para garantir dados atualizados
+    gerenciador_missoes.carregar()
+    
+    # Sincronizar missões com estatísticas de corridas (verificar se corridas foram completadas)
+    _sincronizar_missoes_com_estatisticas(gerenciador_missoes)
+    
+    # Garantir que as mudanças sejam salvas
+    gerenciador_missoes.salvar()
+    
+    # Obter todas as missões
     todas_missoes = gerenciador_missoes.obter_todas_missoes()
     
     missao_selecionada_idx = 0
     missao_hover_idx = None
+    scroll_offset = 0  # Offset para scroll das missões
     
     missao_ativa = gerenciador_missoes.obter_missao_ativa()
     if missao_ativa:
@@ -62,6 +138,34 @@ def pc_corridas_loop(screen) -> Optional[dict]:
         objetivo = missao.get("objetivo", "").lower()
         palavras_corrida = ["corrida", "corra", "circuito", "pista", "race", "teste de fluxo"]
         return any(palavra in objetivo for palavra in palavras_corrida)
+    
+    def obter_race_id_da_missao(missao):
+        """Mapeia missões para race_id"""
+        if not missao:
+            return None
+        missao_id = missao.get("id", "")
+        # Mapeamento de missões para corridas
+        mapeamento = {
+            "m6_batismo_de_pista": "training_01",
+            # Adicionar outros mapeamentos conforme necessário
+        }
+        return mapeamento.get(missao_id)
+    
+    def carregar_config_corrida(race_id):
+        """Carrega configuração da corrida do races.json"""
+        if not race_id:
+            return None
+        try:
+            caminho_races = os.path.join(DIR_PROJETO, "data", "races.json")
+            if os.path.exists(caminho_races):
+                with open(caminho_races, 'r', encoding='utf-8') as f:
+                    races_data = json.load(f)
+                    for race in races_data.get("races", []):
+                        if race.get("id") == race_id:
+                            return race
+        except Exception as e:
+            print(f"Erro ao carregar corrida {race_id}: {e}")
+        return None
     
     pista_selecionada = 1
     voltas_selecionadas = 1
@@ -117,43 +221,83 @@ def pc_corridas_loop(screen) -> Optional[dict]:
                     if missao_selecionada_idx < len(todas_missoes):
                         missao_atual = todas_missoes[missao_selecionada_idx]
                         if eh_missao_corrida(missao_atual):
+                            race_id = obter_race_id_da_missao(missao_atual)
+                            race_config = carregar_config_corrida(race_id) if race_id else None
+                            sem_bots = race_config.get("sem_bots", False) if race_config else False
+                            # Se a corrida tem configuração, usar os valores dela
+                            if race_config:
+                                pista_selecionada = race_config.get("track", pista_selecionada)
+                                voltas_selecionadas = race_config.get("laps", voltas_selecionadas)
+                                dificuldade_selecionada = race_config.get("difficulty", dificuldade_selecionada)
                             return {
                                 "pista": pista_selecionada,
                                 "voltas": voltas_selecionadas,
-                                "dificuldade": dificuldade_selecionada
+                                "dificuldade": dificuldade_selecionada,
+                                "race_id": race_id,
+                                "sem_bots": sem_bots
                             }
+            
+            elif event.type == pygame.MOUSEWHEEL:
+                # Scroll com a roda do mouse
+                painel_esq_y = 100
+                painel_esq_altura = 500
+                espacamento_missoes = 55
+                altura_item_missao = 45
+                y_inicio = painel_esq_y + 50
+                area_visivel_altura = painel_esq_altura - 100  # Altura disponível para missões
+                max_itens_visiveis = int(area_visivel_altura / espacamento_missoes)
+                
+                if event.y > 0:  # Scroll para cima
+                    scroll_offset = max(0, scroll_offset - 1)
+                elif event.y < 0:  # Scroll para baixo
+                    max_scroll = max(0, len(todas_missoes) - max_itens_visiveis)
+                    scroll_offset = min(max_scroll, scroll_offset + 1)
             
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     mouse_x, mouse_y = event.pos
                     
-                    painel_esq_x = 50
-                    painel_esq_y = 100
-                    painel_esq_largura = 500
-                    espacamento_missoes = 55
-                    altura_item_missao = 45
+                    painel_esq_x = config["PAINEL_ESQ_X"]
+                    painel_esq_y = config["PAINEL_ESQ_Y"]
+                    painel_esq_largura = config["PAINEL_ESQ_LARGURA"]
+                    painel_esq_altura = config["PAINEL_ESQ_ALTURA"]
+                    espacamento_missoes = config["ESPACAMENTO_MISSOES"]
+                    altura_item_missao = config["ALTURA_ITEM_MISSAO"]
                     y_inicio = painel_esq_y + 50
+                    area_visivel_altura = painel_esq_altura - 100
+                    max_itens_visiveis = int(area_visivel_altura / espacamento_missoes)
                     
-                    for i, missao in enumerate(todas_missoes):
-                        y_missao = y_inicio + i * espacamento_missoes
+                    # Verificar clique nas missões visíveis
+                    for i in range(scroll_offset, min(scroll_offset + max_itens_visiveis, len(todas_missoes))):
+                        y_missao = y_inicio + (i - scroll_offset) * espacamento_missoes
                         if (painel_esq_x + 15 <= mouse_x <= painel_esq_x + painel_esq_largura - 15 and
                             y_missao <= mouse_y <= y_missao + altura_item_missao):
                             missao_selecionada_idx = i
                             break
                     
-                    btn_iniciar_x = LARGURA // 2 - 120
-                    btn_iniciar_y = ALTURA - 80
-                    btn_iniciar_largura = 240
-                    btn_iniciar_altura = 40
+                    btn_iniciar_x = config["BTN_INICIAR_X"]
+                    btn_iniciar_y = config["BTN_INICIAR_Y"]
+                    btn_iniciar_largura = config["BTN_INICIAR_LARGURA"]
+                    btn_iniciar_altura = config["BTN_INICIAR_ALTURA"]
                     if (btn_iniciar_x <= mouse_x <= btn_iniciar_x + btn_iniciar_largura and
                         btn_iniciar_y <= mouse_y <= btn_iniciar_y + btn_iniciar_altura):
                         if missao_selecionada_idx < len(todas_missoes):
                             missao_atual = todas_missoes[missao_selecionada_idx]
                             if eh_missao_corrida(missao_atual):
+                                race_id = obter_race_id_da_missao(missao_atual)
+                                race_config = carregar_config_corrida(race_id) if race_id else None
+                                sem_bots = race_config.get("sem_bots", False) if race_config else False
+                                # Se a corrida tem configuração, usar os valores dela
+                                if race_config:
+                                    pista_selecionada = race_config.get("track", pista_selecionada)
+                                    voltas_selecionadas = race_config.get("laps", voltas_selecionadas)
+                                    dificuldade_selecionada = race_config.get("difficulty", dificuldade_selecionada)
                                 return {
                                     "pista": pista_selecionada,
                                     "voltas": voltas_selecionadas,
-                                    "dificuldade": dificuldade_selecionada
+                                    "dificuldade": dificuldade_selecionada,
+                                    "race_id": race_id,
+                                    "sem_bots": sem_bots
                                 }
             
             elif event.type == pygame.MOUSEMOTION:
@@ -162,16 +306,33 @@ def pc_corridas_loop(screen) -> Optional[dict]:
         screen.blit(bg, (0, 0))
         
         mouse_x, mouse_y = pygame.mouse.get_pos()
-        painel_esq_x = 50
-        painel_esq_y = 100
-        painel_esq_largura = 500
-        espacamento_missoes = 55
-        altura_item_missao = 45
+        painel_esq_x = config["PAINEL_ESQ_X"]
+        painel_esq_y = config["PAINEL_ESQ_Y"]
+        painel_esq_largura = config["PAINEL_ESQ_LARGURA"]
+        painel_esq_altura = config["PAINEL_ESQ_ALTURA"]
+        espacamento_missoes = config["ESPACAMENTO_MISSOES"]
+        altura_item_missao = config["ALTURA_ITEM_MISSAO"]
         y_inicio = painel_esq_y + 50
+        area_visivel_altura = painel_esq_altura - 100  # Altura disponível para missões (descontando título e margens)
+        max_itens_visiveis = int(area_visivel_altura / espacamento_missoes)
+        
+        # Ajustar scroll para manter a missão selecionada visível
+        if missao_selecionada_idx < scroll_offset:
+            scroll_offset = missao_selecionada_idx
+        elif missao_selecionada_idx >= scroll_offset + max_itens_visiveis:
+            scroll_offset = missao_selecionada_idx - max_itens_visiveis + 1
+        
+        # Garantir que scroll_offset não seja negativo ou maior que o necessário
+        max_scroll = max(0, len(todas_missoes) - max_itens_visiveis)
+        scroll_offset = max(0, min(scroll_offset, max_scroll))
+        
+        # Calcular índices visíveis
+        idx_inicio = scroll_offset
+        idx_fim = min(scroll_offset + max_itens_visiveis, len(todas_missoes))
         
         missao_hover_idx = None
-        for i, missao in enumerate(todas_missoes):
-            y_missao = y_inicio + i * espacamento_missoes
+        for i in range(idx_inicio, idx_fim):
+            y_missao = y_inicio + (i - scroll_offset) * espacamento_missoes
             if (painel_esq_x + 15 <= mouse_x <= painel_esq_x + painel_esq_largura - 15 and
                 y_missao <= mouse_y <= y_missao + altura_item_missao):
                 missao_hover_idx = i
@@ -181,46 +342,71 @@ def pc_corridas_loop(screen) -> Optional[dict]:
         titulo_x = (LARGURA - titulo.get_width()) // 2
         screen.blit(titulo, (titulo_x, 30))
         
-        painel_esq_altura = 500
+        # Usar altura do config (já carregada na linha 232)
         pygame.draw.rect(screen, (255, 255, 0), (painel_esq_x, painel_esq_y, painel_esq_largura, painel_esq_altura), 3)
         
-        painel_esq_titulo = render_text("MISSÕES", 20, (255, 255, 0), bold=True, pixel_style=True)
+        painel_esq_titulo = render_text("MISSÕES", config["TAMANHO_FONTE_TITULO"], (255, 255, 0), bold=True, pixel_style=True)
         screen.blit(painel_esq_titulo, (painel_esq_x + 15, painel_esq_y + 15))
         
-        espacamento_missoes = 55
-        altura_item_missao = 45
-        y_inicio = painel_esq_y + 50
-        for i, missao in enumerate(todas_missoes):
-            y_missao = y_inicio + i * espacamento_missoes
+        # Se não há missões disponíveis, mostrar mensagem
+        if len(todas_missoes) == 0:
+            mensagem_vazio = render_text("Nenhuma missão disponível", config["TAMANHO_FONTE_MISSAO"], (150, 150, 150), bold=False, pixel_style=True)
+            mensagem_y = painel_esq_y + 100
+            screen.blit(mensagem_vazio, (painel_esq_x + 20, mensagem_y))
+        else:
+            # Desenhar apenas as missões visíveis
+            for i in range(idx_inicio, idx_fim):
+                missao = todas_missoes[i]
+                y_missao = y_inicio + (i - scroll_offset) * espacamento_missoes
+                
+                # Verificar se está dentro dos limites do painel
+                if y_missao < painel_esq_y or y_missao + altura_item_missao > painel_esq_y + painel_esq_altura:
+                    continue
+                
+                esta_completa = gerenciador_missoes.esta_completa(missao["id"])
+                
+                if i == missao_selecionada_idx:
+                    cor_fundo = (100, 150, 255, 200)
+                    cor_texto = (255, 255, 255)
+                    bold = True
+                elif i == missao_hover_idx:
+                    cor_fundo = (80, 80, 80, 200)
+                    cor_texto = (200, 200, 255)
+                    bold = False
+                else:
+                    cor_fundo = (40, 40, 40, 150)
+                    cor_texto = (180, 180, 180)
+                    bold = False
+                
+                if esta_completa:
+                    cor_texto = (150, 255, 150) if i != missao_selecionada_idx else (200, 255, 200)
+                
+                item_bg = pygame.Surface((painel_esq_largura - 30, altura_item_missao), pygame.SRCALPHA)
+                item_bg.fill(cor_fundo)
+                screen.blit(item_bg, (painel_esq_x + 15, y_missao))
+                
+                nome_missao = missao.get("nome", "Missão sem nome")
+                if esta_completa:
+                    nome_missao = "✓ " + nome_missao
+                nome_texto = render_text(nome_missao, config["TAMANHO_FONTE_MISSAO"], cor_texto, bold=bold, pixel_style=True)
+                texto_y = y_missao + (altura_item_missao - nome_texto.get_height()) // 2
+                screen.blit(nome_texto, (painel_esq_x + 20, texto_y))
             
-            esta_completa = gerenciador_missoes.esta_completa(missao["id"])
-            
-            if i == missao_selecionada_idx:
-                cor_fundo = (100, 150, 255, 200)
-                cor_texto = (255, 255, 255)
-                bold = True
-            elif i == missao_hover_idx:
-                cor_fundo = (80, 80, 80, 200)
-                cor_texto = (200, 200, 255)
-                bold = False
-            else:
-                cor_fundo = (40, 40, 40, 150)
-                cor_texto = (180, 180, 180)
-                bold = False
-            
-            if esta_completa:
-                cor_texto = (150, 255, 150) if i != missao_selecionada_idx else (200, 255, 200)
-            
-            item_bg = pygame.Surface((painel_esq_largura - 30, altura_item_missao), pygame.SRCALPHA)
-            item_bg.fill(cor_fundo)
-            screen.blit(item_bg, (painel_esq_x + 15, y_missao))
-            
-            nome_missao = missao.get("nome", "Missão sem nome")
-            if esta_completa:
-                nome_missao = "✓ " + nome_missao
-            nome_texto = render_text(nome_missao, 20, cor_texto, bold=bold, pixel_style=True)
-            texto_y = y_missao + (altura_item_missao - nome_texto.get_height()) // 2
-            screen.blit(nome_texto, (painel_esq_x + 20, texto_y))
+            # Desenhar indicador de scroll se houver mais missões
+            if len(todas_missoes) > max_itens_visiveis:
+                barra_scroll_x = painel_esq_x + painel_esq_largura - 15
+                barra_scroll_y = y_inicio
+                barra_scroll_largura = 8
+                barra_scroll_altura = area_visivel_altura
+                
+                # Calcular posição e tamanho do indicador
+                scroll_ratio = scroll_offset / max(1, len(todas_missoes) - max_itens_visiveis)
+                indicador_altura = max(20, int(barra_scroll_altura * (max_itens_visiveis / len(todas_missoes))))
+                indicador_y = barra_scroll_y + int((barra_scroll_altura - indicador_altura) * scroll_ratio)
+                
+                # Desenhar barra de scroll
+                pygame.draw.rect(screen, (100, 100, 100), (barra_scroll_x, barra_scroll_y, barra_scroll_largura, barra_scroll_altura))
+                pygame.draw.rect(screen, (200, 200, 200), (barra_scroll_x, indicador_y, barra_scroll_largura, indicador_altura))
         
         if missao_selecionada_idx < len(todas_missoes):
             missao_selecionada_atual = todas_missoes[missao_selecionada_idx]
@@ -232,14 +418,14 @@ def pc_corridas_loop(screen) -> Optional[dict]:
             missao_selecionada_atual = None
             missao_eh_corrida = False
         
-        painel_x = 600
-        painel_y = 100
-        painel_largura = 600
-        painel_altura = 450
+        painel_x = config["PAINEL_DIR_X"]
+        painel_y = config["PAINEL_DIR_Y"]
+        painel_largura = config["PAINEL_DIR_LARGURA"]
+        painel_altura = config["PAINEL_DIR_ALTURA"]
         
         pygame.draw.rect(screen, (255, 255, 0), (painel_x, painel_y, painel_largura, painel_altura), 3)
         
-        painel_titulo = render_text("OBJETIVO DA MISSÃO", 12, (255, 255, 0), bold=True, pixel_style=True)
+        painel_titulo = render_text("OBJETIVO DA MISSÃO", config["TAMANHO_FONTE_TITULO"], (255, 255, 0), bold=True, pixel_style=True)
         screen.blit(painel_titulo, (painel_x + 20, painel_y + 20))
         
         if missao_selecionada_atual:
@@ -251,7 +437,7 @@ def pc_corridas_loop(screen) -> Optional[dict]:
             
             for palavra in palavras:
                 teste_linha = linha_atual + (" " if linha_atual else "") + palavra
-                teste_texto = render_text(teste_linha, 35, (255, 255, 255), bold=False, pixel_style=True)
+                teste_texto = render_text(teste_linha, config["TAMANHO_FONTE_OBJETIVO"], (255, 255, 255), bold=False, pixel_style=True)
                 if teste_texto.get_width() > painel_largura - 40:
                     if linha_atual:
                         linhas.append(linha_atual)
@@ -267,7 +453,7 @@ def pc_corridas_loop(screen) -> Optional[dict]:
             
             num_linhas_objetivo = len(linhas[:15])
             for i, linha in enumerate(linhas[:15]):
-                linha_texto = render_text(linha, 35, (255, 255, 255), bold=False, pixel_style=True)
+                linha_texto = render_text(linha, config["TAMANHO_FONTE_OBJETIVO"], (255, 255, 255), bold=False, pixel_style=True)
                 screen.blit(linha_texto, (painel_x + 20, y_texto + i * 42))
             
             if missao_eh_corrida:
@@ -278,13 +464,13 @@ def pc_corridas_loop(screen) -> Optional[dict]:
                 circuito_nome = render_text(nome_circuito, 35, (255, 255, 255), bold=True, pixel_style=True)
                 screen.blit(circuito_nome, (painel_x + 20, y_circuito + 40))
         else:
-            objetivo_texto = render_text("Nenhum objetivo definido", 150, (150, 150, 150), bold=False, pixel_style=True)
+            objetivo_texto = render_text("Nenhum objetivo definido", config["TAMANHO_FONTE_OBJETIVO"], (150, 150, 150), bold=False, pixel_style=True)
             screen.blit(objetivo_texto, (painel_x + 20, painel_y + 60))
         
-        btn_iniciar_x = LARGURA // 2 - 120
-        btn_iniciar_y = ALTURA - 80
-        btn_iniciar_largura = 240
-        btn_iniciar_altura = 40
+        btn_iniciar_x = config["BTN_INICIAR_X"]
+        btn_iniciar_y = config["BTN_INICIAR_Y"]
+        btn_iniciar_largura = config["BTN_INICIAR_LARGURA"]
+        btn_iniciar_altura = config["BTN_INICIAR_ALTURA"]
         
         btn_bg = pygame.Surface((btn_iniciar_largura, btn_iniciar_altura), pygame.SRCALPHA)
         btn_bg.fill((0, 150, 0, 200))

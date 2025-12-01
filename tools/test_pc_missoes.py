@@ -420,8 +420,8 @@ def main():
         cor_borda = (255, 255, 0) if modo_edicao else (255, 255, 0)
         pygame.draw.rect(screen, cor_borda, (PAINEL_ESQ_X, PAINEL_ESQ_Y, PAINEL_ESQ_LARGURA, PAINEL_ESQ_ALTURA), 3)
         
+        margem = 10  # Margem para desenhar cantos de redimensionamento
         if modo_edicao:
-            margem = 10
             cantos = [
                 (PAINEL_ESQ_X, PAINEL_ESQ_Y),
                 (PAINEL_ESQ_X + PAINEL_ESQ_LARGURA, PAINEL_ESQ_Y),

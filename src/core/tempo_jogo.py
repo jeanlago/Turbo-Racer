@@ -74,6 +74,14 @@ class GerenciadorTempoJogo:
         
         self._atualizar_estado_dia_noite()
     
+    def obter_hora_atual(self) -> float:
+        """Retorna a hora atual do jogo (0-24)
+        
+        Returns:
+            Hora atual como float (ex: 18.5 = 18:30)
+        """
+        return self.hora_jogo
+    
     def obter_hora_formatada(self) -> str:
         """Retorna a hora do jogo formatada (HH:MM)
         

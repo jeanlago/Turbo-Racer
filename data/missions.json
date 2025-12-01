@@ -61,7 +61,7 @@
       "nome": "Oferta Envenenada",
       "objetivo": "Decida se aceita ou não o empréstimo do Barão.",
       "activateOnSceneId": "ch2_2_barao_appears",
-      "completeOnSceneId": null,
+      "completeOnSceneId": "ch2_6_pixel_reacts",
       "chapter": "ch2"
     },
     {
@@ -76,7 +76,7 @@
       "id": "m10_portoes_do_cinturao",
       "nome": "Portões do Cinturão",
       "objetivo": "Desbloqueie e participe das corridas no Cinturão Industrial.",
-      "activateOnSceneId": "ch2_8_unlock_industrial",
+      "activateOnSceneId": "ch2_8_boris_unlock_offer",
       "completeOnSceneId": null,
       "chapter": "ch2"
     },

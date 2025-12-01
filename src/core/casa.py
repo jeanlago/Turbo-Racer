@@ -241,15 +241,57 @@ def casa_loop(screen, sprite_fundo: Optional[str] = None) -> Optional[str]:
                                                 break
                                     
                                     # Iniciar corrida no modo campanha
-                                    principal(
-                                        carro_selecionado_p1=carro_p1_idx,
-                                        mapa_selecionado=corrida_info["pista"],
-                                        modo_jogo=ModoJogo.UM_JOGADOR,
-                                        tipo_jogo=TipoJogo.CORRIDA,
-                                        voltas=corrida_info["voltas"],
-                                        dificuldade_ia=corrida_info["dificuldade"],
-                                        modo_arcade=False
-                                    )
+                                    try:
+                                        # Obter race_id e sem_bots se disponíveis
+                                        race_id = corrida_info.get("race_id")
+                                        sem_bots = corrida_info.get("sem_bots", False)
+                                        
+                                        # Se for training_01, definir flag para verificar após a corrida
+                                        if race_id == "training_01":
+                                            gerenciador_progresso.ultima_corrida_campanha = "training_01"
+                                            gerenciador_progresso.salvar()
+                                        
+                                        principal(
+                                            carro_selecionado_p1=carro_p1_idx,
+                                            mapa_selecionado=corrida_info["pista"],
+                                            modo_jogo=ModoJogo.UM_JOGADOR,
+                                            tipo_jogo=TipoJogo.CORRIDA,
+                                            voltas=corrida_info["voltas"],
+                                            dificuldade_ia=corrida_info["dificuldade"],
+                                            modo_arcade=False,
+                                            sem_bots=sem_bots
+                                        )
+                                        
+                                        # Após a corrida retornar, verificar se foi training_01 e continuar narrativa
+                                        if race_id == "training_01" and hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "training_01":
+                                            from core.estatisticas import gerenciador_estatisticas
+                                            gerenciador_estatisticas.carregar()
+                                            stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(1)
+                                            melhor_tempo = stats_pista.get("melhor_tempo", None) if stats_pista else None
+                                            melhor_posicao = stats_pista.get("melhor_posicao", None) if stats_pista else None
+                                            
+                                            if melhor_tempo is not None and melhor_posicao is not None:
+                                                from core.narrative_system import narrative_system
+                                                from core.menu import _iniciar_narrativa_pos_training_01
+                                                _iniciar_narrativa_pos_training_01(narrative_system, gerenciador_progresso)
+                                                return None
+                                    except Exception as e:
+                                        print(f"Erro ao executar corrida: {e}")
+                                        import traceback
+                                        traceback.print_exc()
+                                    
+                                    # Desativar NPCs que possam ter ficado ativos após a corrida
+                                    from core.akira import akira
+                                    from core.rex import rex
+                                    from core.crank import crank
+                                    from core.mercador_alien import mercador_alien
+                                    from core.glub import glub
+                                    
+                                    akira.ativo = False
+                                    rex.ativo = False
+                                    crank.ativo = False
+                                    mercador_alien.ativo = False
+                                    glub.ativo = False
                                 
                                 # Voltar para a casa após a corrida
                                 continue

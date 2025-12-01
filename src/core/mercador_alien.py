@@ -71,28 +71,44 @@ class MercadorAlien:
     def _carregar_sons(self):
         """Carrega os sons do mercador"""
         try:
+            # Verificar se o mixer está inicializado
             if not pygame.mixer.get_init():
-                pygame.mixer.init()
+                try:
+                    pygame.mixer.init()
+                except pygame.error:
+                    # Se não conseguir inicializar, não há dispositivo de áudio
+                    print("[AVISO] Dispositivo de áudio não disponível. Sons do mercador desabilitados.")
+                    self.som_compra = None
+                    self.som_fail = None
+                    return
             
             print(f"Tentando carregar som de compra de: {CAMINHO_SOM_COMPRA}")
             print(f"Arquivo existe? {os.path.exists(CAMINHO_SOM_COMPRA)}")
             if os.path.exists(CAMINHO_SOM_COMPRA):
-                self.som_compra = pygame.mixer.Sound(CAMINHO_SOM_COMPRA)
-                print(f"[OK] Som de compra carregado: {CAMINHO_SOM_COMPRA}")
+                try:
+                    self.som_compra = pygame.mixer.Sound(CAMINHO_SOM_COMPRA)
+                    print(f"[OK] Som de compra carregado: {CAMINHO_SOM_COMPRA}")
+                except pygame.error:
+                    print(f"[AVISO] Não foi possível carregar som de compra (áudio indisponível)")
+                    self.som_compra = None
             else:
                 print(f"[AVISO] Som de compra nao encontrado: {CAMINHO_SOM_COMPRA}")
             
             print(f"Tentando carregar som de fail de: {CAMINHO_SOM_FAIL}")
             print(f"Arquivo existe? {os.path.exists(CAMINHO_SOM_FAIL)}")
             if os.path.exists(CAMINHO_SOM_FAIL):
-                self.som_fail = pygame.mixer.Sound(CAMINHO_SOM_FAIL)
-                print(f"[OK] Som de fail carregado: {CAMINHO_SOM_FAIL}")
+                try:
+                    self.som_fail = pygame.mixer.Sound(CAMINHO_SOM_FAIL)
+                    print(f"[OK] Som de fail carregado: {CAMINHO_SOM_FAIL}")
+                except pygame.error:
+                    print(f"[AVISO] Não foi possível carregar som de fail (áudio indisponível)")
+                    self.som_fail = None
             else:
                 print(f"[AVISO] Som de fail nao encontrado: {CAMINHO_SOM_FAIL}")
         except Exception as e:
             print(f"ERRO ao carregar sons do mercador: {e}")
-            import traceback
-            traceback.print_exc()
+            self.som_compra = None
+            self.som_fail = None
     
     def _garantir_sons_carregados(self):
         """Garante que os sons estão carregados (carrega se necessário)"""

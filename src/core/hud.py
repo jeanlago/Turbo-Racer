@@ -52,6 +52,43 @@ class HUD:
         except Exception as e:
             print(f"Erro ao carregar imagens do HUD: {e}")
     
+    def desenhar_relogio_digital(self, superficie, posicao=(LARGURA - 150, 20)):
+        """Desenha um relógio digital mostrando a hora do jogo
+        
+        Args:
+            superficie: Superfície onde desenhar
+            posicao: Tupla (x, y) da posição do relógio (canto superior direito por padrão)
+        """
+        try:
+            from core.tempo_jogo import gerenciador_tempo
+            
+            # Criar fonte se não existir
+            if not hasattr(self, 'fonte_relogio'):
+                self.fonte_relogio = pygame.font.SysFont("consolas", 32, bold=True)
+            
+            # Obter hora formatada
+            hora_formatada = gerenciador_tempo.obter_hora_formatada()
+            
+            # Desenhar fundo semi-transparente
+            x, y = posicao
+            largura = 130
+            altura = 50
+            fundo = pygame.Surface((largura, altura), pygame.SRCALPHA)
+            fundo.fill((0, 0, 0, 180))  # Preto semi-transparente
+            superficie.blit(fundo, (x, y))
+            
+            # Desenhar borda
+            pygame.draw.rect(superficie, (100, 100, 100), (x, y, largura, altura), 2)
+            
+            # Desenhar hora
+            texto_hora = self.fonte_relogio.render(hora_formatada, True, (255, 255, 255))
+            texto_x = x + (largura - texto_hora.get_width()) // 2
+            texto_y = y + (altura - texto_hora.get_height()) // 2
+            superficie.blit(texto_hora, (texto_x, texto_y))
+        except Exception as e:
+            # Se houver erro, não desenhar o relógio
+            pass
+    
     def desenhar_hud_completo(self, superficie, carro, dt=0.016, offset_x=0):
         """
         Desenha o HUD completo (velocímetro e nitro) no canto inferior direito
@@ -61,6 +98,9 @@ class HUD:
         """
         if not carro:
             return
+        
+        # Desenhar relógio digital no canto superior direito
+        self.desenhar_relogio_digital(superficie)
         
         # Criar fonte se não existir
         if not hasattr(self, 'fonte_velocimetro'):
@@ -787,10 +827,11 @@ class HUD:
         texto_surf = self.fonte_tempos.render(texto_voltas, True, cor_voltas)
         superficie.blit(texto_surf, (posicao[0], y_offset))
     
-    def desenhar_missao_ativa(self, superficie, posicao=(20, 20)):
+    def desenhar_missao_ativa(self, superficie, posicao=(20, 20), alinhar_direita=False):
         """
         Desenha a missão ativa no HUD (nome e objetivo)
-        posicao: (x, y) onde desenhar (canto superior esquerdo por padrão)
+        posicao: (x, y) onde desenhar (canto superior esquerdo por padrão, ou canto superior direito se alinhar_direita=True)
+        alinhar_direita: Se True, alinha o texto à direita a partir da posição x
         """
         try:
             from core.missoes import gerenciador_missoes
@@ -815,7 +856,10 @@ class HUD:
             
             if nome:
                 texto_nome = self.fonte_missao_nome.render(nome, True, (255, 255, 0))  # Amarelo
-                superficie.blit(texto_nome, (posicao[0] + padding, y_offset + padding))
+                x_nome = posicao[0] + padding
+                if alinhar_direita:
+                    x_nome = posicao[0] - texto_nome.get_width() - padding
+                superficie.blit(texto_nome, (x_nome, y_offset + padding))
                 y_offset += texto_nome.get_height() + 5
             
             if objetivo:
@@ -840,7 +884,10 @@ class HUD:
                 
                 for linha in linhas:
                     texto_objetivo = self.fonte_missao_objetivo.render(linha, True, (255, 255, 255))  # Branco
-                    superficie.blit(texto_objetivo, (posicao[0] + padding, y_offset + padding))
+                    x_objetivo = posicao[0] + padding
+                    if alinhar_direita:
+                        x_objetivo = posicao[0] - texto_objetivo.get_width() - padding
+                    superficie.blit(texto_objetivo, (x_objetivo, y_offset + padding))
                     y_offset += texto_objetivo.get_height() + 3
         except Exception as e:
             # Silenciosamente falhar se o sistema de missões não estiver disponível

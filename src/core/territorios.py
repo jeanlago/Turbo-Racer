@@ -129,6 +129,22 @@ TERRITORIOS = {
         atividades=[
             {"tipo": "corrida_ranking", "nome": "Corrida do Ranking", "dificuldade": "alta", "reputacao": "alta"}
         ]
+    ),
+    
+    "cinturao_industrial": Territorio(
+        id="cinturao_industrial",
+        nome="Cinturão Industrial",
+        descricao="Corridas profissionais com pilotos experientes. Alto nível de competição. Apenas à noite (18h-6h).",
+        tipo=TipoTerritorio.PROGRESSAO,
+        npc_id="fuligem",
+        posicao_mapa=(400, 300),
+        area_clicavel=(380, 280, 150, 110),
+        desbloqueado=False,  # Desbloqueado pela cena ch2_8_unlock_industrial
+        atividades=[
+            {"tipo": "corrida_profissional", "nome": "Rota da Caldeira", "dificuldade": "alta", "recompensa": "alta", "pista": 4},
+            {"tipo": "corrida_profissional", "nome": "Circuito Industrial", "dificuldade": "alta", "recompensa": "alta", "pista": 5},
+            {"tipo": "corrida_torneio", "nome": "Torneio Industrial", "dificuldade": "muito_alta", "recompensa": "muito_alta", "pista": 6}
+        ]
     )
 }
 

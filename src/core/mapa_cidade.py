@@ -642,6 +642,12 @@ def mapa_cidade_loop(screen) -> Optional[str]:
         
         screen.blit(bg, (0, 0))
         
+        # Desenhar relógio digital no canto superior direito
+        from core.hud import HUD
+        if not hasattr(mapa_cidade_loop, '_hud_instance'):
+            mapa_cidade_loop._hud_instance = HUD()
+        mapa_cidade_loop._hud_instance.desenhar_relogio_digital(screen)
+        
         # Desenhar áreas do mapa
         for area in areas_mapa:
             territorio_id = area.get("territorio_id") or area.get("id")
@@ -1095,12 +1101,12 @@ def mapa_cidade_loop(screen) -> Optional[str]:
             
             screen.blit(mensagem, (mensagem_x, mensagem_y))
         
-        # Desenhar missão ativa (se houver)
+        # Desenhar missão ativa no canto superior direito (se houver)
         try:
             from core.hud import HUD
             if not hasattr(mapa_cidade_loop, '_hud_instance'):
                 mapa_cidade_loop._hud_instance = HUD()
-            mapa_cidade_loop._hud_instance.desenhar_missao_ativa(screen, posicao=(20, 20))
+            mapa_cidade_loop._hud_instance.desenhar_missao_ativa(screen, posicao=(LARGURA - 20, 10), alinhar_direita=True)
         except:
             pass
             

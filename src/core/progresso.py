@@ -56,6 +56,9 @@ class GerenciadorProgresso:
         self.pixel_nome_revelado = False
         self.pixel_primeira_aparicao_mostrada = False
         
+        self.fuligem_nome_revelado = False
+        self.fuligem_primeira_aparicao_mostrada = False
+        
         self.capitulo_atual = None
         self.capitulos_completos = set()
         
@@ -96,6 +99,9 @@ class GerenciadorProgresso:
             "trofeus_ganhos": 0
         }
         self.estatisticas_por_pista = {}
+        
+        # Flag para rastrear última corrida da campanha
+        self.ultima_corrida_campanha = None
         
         self.carregar()
     
@@ -157,6 +163,9 @@ class GerenciadorProgresso:
                     self.pixel_nome_revelado = data.get('pixel_nome_revelado', False)
                     self.pixel_primeira_aparicao_mostrada = data.get('pixel_primeira_aparicao_mostrada', False)
                     
+                    self.fuligem_nome_revelado = data.get('fuligem_nome_revelado', False)
+                    self.fuligem_primeira_aparicao_mostrada = data.get('fuligem_primeira_aparicao_mostrada', False)
+                    
                     self.capitulo_atual = data.get('capitulo_atual', None)
                     self.capitulos_completos = set(data.get('capitulos_completos', []))
                     
@@ -197,6 +206,9 @@ class GerenciadorProgresso:
                         "trofeus_ganhos": 0
                     })
                     self.estatisticas_por_pista = data.get('estatisticas_por_pista', {})
+                    
+                    # Carregar flag de última corrida da campanha
+                    self.ultima_corrida_campanha = data.get('ultima_corrida_campanha', None)
                     
                     self._migrar_dados_antigos()
                     
@@ -312,6 +324,9 @@ class GerenciadorProgresso:
                 'pixel_nome_revelado': self.pixel_nome_revelado,
                 'pixel_primeira_aparicao_mostrada': self.pixel_primeira_aparicao_mostrada,
                 
+                'fuligem_nome_revelado': self.fuligem_nome_revelado,
+                'fuligem_primeira_aparicao_mostrada': self.fuligem_primeira_aparicao_mostrada,
+                
                 'capitulo_atual': self.capitulo_atual,
                 'capitulos_completos': list(self.capitulos_completos),
                 
@@ -331,7 +346,9 @@ class GerenciadorProgresso:
                 'ultima_atualizacao_semanal': self.ultima_atualizacao_semanal,
                 
                 'estatisticas_gerais': self.estatisticas_gerais,
-                'estatisticas_por_pista': self.estatisticas_por_pista
+                'estatisticas_por_pista': self.estatisticas_por_pista,
+                
+                'ultima_corrida_campanha': self.ultima_corrida_campanha
             }
             
             with open(CAMINHO_PROGRESSO, 'w', encoding='utf-8') as f:

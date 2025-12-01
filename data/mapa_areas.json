@@ -64,6 +64,16 @@
       "altura": 60,
       "desbloqueada": true,
       "territorio_id": "pixel"
+    },
+    {
+      "id": "cinturao_industrial",
+      "nome": "Cinturão Industrial",
+      "x": 764,
+      "y": 300,
+      "largura": 120,
+      "altura": 80,
+      "desbloqueada": false,
+      "territorio_id": "cinturao_industrial"
     }
   ]
 }

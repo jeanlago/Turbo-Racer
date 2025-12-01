@@ -68,6 +68,9 @@ class Crank:
         self.glub_sprite_escurecido = None
         self.glub_sprite_carregado = False
         
+        # Flag para evitar logs repetidos de erro de sprite
+        self._erro_sprite_impresso = False
+        
         # Estado atual da interação
         self.ativo = False
         self.sprite_atual = None
@@ -177,6 +180,8 @@ class Crank:
                 print(f"✗ AVISO: Sprite incredulo não encontrado: {SPRITE_INCREDULO}")
             
             self.sprites_carregados = True
+            # Resetar flag de erro quando sprites são carregados com sucesso
+            self._erro_sprite_impresso = False
             
             # Carregar sprite do Glub para aparecer escurecido durante o diálogo
             self._carregar_sprite_glub()
@@ -1752,6 +1757,8 @@ class Crank:
         self.sprite_atual = None
         self.texto_atual = ""
         self.fase_dialogo = "fechado"
+        # Resetar flag de erro para permitir novo aviso se necessário
+        self._erro_sprite_impresso = False
     
     def desenhar_dialogo(self, tela, dt):
         """Desenha o diálogo do Crank na tela no estilo visual novel"""
@@ -1773,7 +1780,12 @@ class Crank:
             elif self.sprite_estressado:
                 self.sprite_atual = self.sprite_estressado
             else:
-                print(f"ERRO: Nenhum sprite disponível para o Crank!")
+                # Imprimir erro apenas uma vez para evitar spam de logs
+                if not self._erro_sprite_impresso:
+                    print(f"ERRO: Nenhum sprite disponível para o Crank! Desativando diálogo.")
+                    self._erro_sprite_impresso = True
+                    # Desativar o Crank se não houver sprites
+                    self.ativo = False
                 return
         
         # Overlay escuro no fundo (estilo visual novel)

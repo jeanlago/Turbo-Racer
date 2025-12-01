@@ -95,6 +95,26 @@ class NarrativeSystem:
         self.current_chapter_id = chapter_id
         scenes = chapter.get("scenes", [])
         if scenes:
+            # Se estamos no Capítulo 2, verificar se já decidimos sobre o empréstimo
+            if chapter_id == "ch2":
+                from core.progresso import gerenciador_progresso
+                # Se o Barão já foi visto (nome revelado), significa que já passamos pela decisão
+                if gerenciador_progresso.barao_nome_revelado:
+                    # Se o Pixel já foi visto, ir direto para a cena do Boris
+                    if gerenciador_progresso.pixel_primeira_aparicao_mostrada:
+                        # Procurar a cena ch2_8_boris_unlock_offer
+                        for scene in scenes:
+                            if scene.get("id") == "ch2_8_boris_unlock_offer":
+                                print(f"[NARRATIVA] Capítulo 2: Pulando para cena do Boris (empréstimo já decidido, Pixel já visto)")
+                                return self._iniciar_cena_sem_transicao(scene.get("id"))
+                    else:
+                        # Ir para a cena do Pixel
+                        for scene in scenes:
+                            if scene.get("id") == "ch2_6_pixel_reacts":
+                                print(f"[NARRATIVA] Capítulo 2: Pulando para cena do Pixel (empréstimo já decidido)")
+                                return self._iniciar_cena_sem_transicao(scene.get("id"))
+            
+            # Iniciar normalmente pela primeira cena
             self.iniciar_cena(scenes[0].get("id"))
             return True
         return False
@@ -111,10 +131,21 @@ class NarrativeSystem:
         
         return self._iniciar_cena_sem_transicao(scene_id)
     
-    def _iniciar_cena_sem_transicao(self, scene_id: str):
+    def _iniciar_cena_sem_transicao(self, scene_id: str, cenas_visitadas=None):
         """Inicia uma cena específica sem transição (usado internamente durante fade)"""
         if not self.narrative_data or not self.current_chapter_id:
             return False
+        
+        # Prevenir loops infinitos rastreando cenas já visitadas nesta cadeia
+        if cenas_visitadas is None:
+            cenas_visitadas = set()
+        
+        if scene_id in cenas_visitadas:
+            print(f"[NARRATIVA] Loop detectado! Cena {scene_id} já foi visitada nesta cadeia. Desativando narrativa.")
+            self.active = False
+            return False
+        
+        cenas_visitadas.add(scene_id)
         
         chapter = None
         for ch in self.narrative_data.get("chapters", []):
@@ -134,6 +165,42 @@ class NarrativeSystem:
         if not scene:
             return False
         
+        # Verificar se a cena já foi vista (primeira aparição de personagens)
+        from core.progresso import gerenciador_progresso
+        
+        # Mapeamento de cenas para flags de progresso
+        cena_para_flag = {
+            "ch1_3_meet_boris": ("boris_primeira_aparicao_mostrada", "boris"),
+            "ch1_7_pixel_intro": ("pixel_primeira_aparicao_mostrada", "pixel"),
+            "ch1_1_crank_garage_intro": ("crank_tutorial_mostrado", "crank"),
+        }
+        
+        if scene_id in cena_para_flag:
+            flag_name, personagem = cena_para_flag[scene_id]
+            flag_value = getattr(gerenciador_progresso, flag_name, False)
+            if flag_value:
+                print(f"[NARRATIVA] Cena {scene_id} já foi vista (flag {flag_name}=True), pulando...")
+                # Se a cena já foi vista, verificar se há próxima cena ou trigger
+                if scene.get("nextSceneId"):
+                    next_scene_id = scene.get("nextSceneId")
+                    print(f"[NARRATIVA] Avançando para próxima cena: {next_scene_id}")
+                    # Passar o conjunto de cenas visitadas para evitar loops
+                    return self._iniciar_cena_sem_transicao(next_scene_id, cenas_visitadas)
+                elif scene.get("gameplayTrigger"):
+                    # Se tem trigger, processar o trigger diretamente
+                    trigger = scene.get("gameplayTrigger")
+                    print(f"[NARRATIVA] Cena já vista, processando trigger: {trigger}")
+                    # Retornar o trigger para ser processado
+                    return {
+                        "trigger": trigger.get("trigger"),
+                        "params": trigger.get("params", {})
+                    }
+                else:
+                    # Cena já vista e não há próxima, desativar narrativa
+                    print(f"[NARRATIVA] Cena {scene_id} já vista e não há próxima cena, desativando narrativa")
+                    self.active = False
+                    return False
+        
         self.current_scene_id = scene_id
         self.current_line_index = 0
         self.active = True
@@ -141,8 +208,9 @@ class NarrativeSystem:
         
         try:
             from core.missoes import gerenciador_missoes
+            # Ativar missões que devem ser ativadas nesta cena
             gerenciador_missoes.ativar_por_cena(scene_id)
-            gerenciador_missoes.completar_por_cena(scene_id)
+            # Não completar aqui - será completado quando a cena terminar
         except:
             pass
         self.selected_choice = 0
@@ -430,6 +498,17 @@ class NarrativeSystem:
         if not scene:
             return
         
+        # Salvar flags de progresso quando a cena termina
+        self._salvar_flags_cena_atual()
+        
+        # Se a cena possui um gameplayTrigger, não avançar automaticamente aqui.
+        # O loop de narrativa em menu.py chama obter_trigger_atual quando todas
+        # as linhas terminam e então processa o trigger (ex: start_race, goto_map,
+        # open_shop). Se avançarmos de cena agora, o trigger se perde.
+        if scene.get("gameplayTrigger"):
+            print(f"[NARRATIVA] Cena {self.current_scene_id} tem gameplayTrigger, aguardando processamento no loop principal")
+            return
+        
         next_scene_id = scene.get("nextSceneId")
         if next_scene_id:
             self.iniciar_cena(next_scene_id)
@@ -441,6 +520,52 @@ class NarrativeSystem:
                 except:
                     pass
             self.active = False
+    
+    def _salvar_flags_cena_atual(self):
+        """Salva as flags de progresso quando uma cena termina"""
+        if not self.current_scene_id:
+            return
+        
+        from core.progresso import gerenciador_progresso
+        
+        # Completar missões que devem ser completadas nesta cena
+        try:
+            from core.missoes import gerenciador_missoes
+            gerenciador_missoes.completar_por_cena(self.current_scene_id)
+        except:
+            pass
+        
+        # Mapeamento de cenas para flags de progresso
+        cena_para_flag = {
+            "ch1_3_meet_boris": ("boris_primeira_aparicao_mostrada", "boris"),
+            "ch1_7_pixel_intro": ("pixel_primeira_aparicao_mostrada", "pixel"),
+            "ch1_1_crank_garage_intro": ("crank_tutorial_mostrado", "crank"),
+            "ch2_2_barao_appears": ("barao_nome_revelado", "barao"),
+        }
+        
+        if self.current_scene_id in cena_para_flag:
+            flag_name, personagem = cena_para_flag[self.current_scene_id]
+            if not getattr(gerenciador_progresso, flag_name, False):
+                print(f"[NARRATIVA] Salvando flag {flag_name}=True para cena {self.current_scene_id}")
+                setattr(gerenciador_progresso, flag_name, True)
+                
+                # Salvar também o nome revelado se aplicável
+                if personagem == "boris" and not gerenciador_progresso.boris_nome_revelado:
+                    gerenciador_progresso.boris_nome_revelado = True
+                elif personagem == "pixel" and not gerenciador_progresso.pixel_nome_revelado:
+                    gerenciador_progresso.pixel_nome_revelado = True
+                elif personagem == "barao" and not gerenciador_progresso.barao_nome_revelado:
+                    gerenciador_progresso.barao_nome_revelado = True
+                    # Salvar estado do Barão também
+                    try:
+                        from core.barao import barao
+                        barao.nome_revelado = True
+                        barao.salvar_estado()
+                    except Exception as e:
+                        print(f"[NARRATIVA] Erro ao salvar estado do Barão: {e}")
+                
+                gerenciador_progresso.salvar()
+                print(f"[NARRATIVA] Flag {flag_name} salva com sucesso!")
     
     def obter_trigger_da_cena(self, scene_id: str = None) -> Optional[Dict]:
         """Obtém o trigger de uma cena específica ou da cena atual"""
@@ -462,6 +587,8 @@ class NarrativeSystem:
         
         trigger = scene.get("gameplayTrigger")
         if trigger:
+            # Salvar flags quando a cena termina com trigger
+            self._salvar_flags_cena_atual()
             return {
                 "trigger": trigger.get("trigger"),
                 "params": trigger.get("params", {})
@@ -503,6 +630,11 @@ class NarrativeSystem:
                 
                 if key.startswith("has") or key.startswith("wants") or key.startswith("told") or key.startswith("set"):
                     flag_value = self.flags.get(key, False)
+                    # Verificar também no progresso se for hasDebt
+                    if key == "hasDebt":
+                        from core.progresso import gerenciador_progresso
+                        flag_value = flag_value or gerenciador_progresso.barao_emprestimo_ativo
+                    
                     if value.lower() == "true":
                         if not flag_value:
                             return False
@@ -511,6 +643,9 @@ class NarrativeSystem:
                             return False
                 elif key in self.variables:
                     if str(self.variables[key]) != value:
+                        return False
+                elif key == "lastRaceResult":
+                    if self.variables.get("lastRaceResult") != value:
                         return False
                 else:
                     return False
@@ -557,7 +692,10 @@ class NarrativeSystem:
                             for i, choice in enumerate(choices):
                                 choice_y = choice_y_start + i * choice_height
                                 if choice_y <= mouse_y <= choice_y + choice_height:
-                                    self._processar_escolha(choice)
+                                    resultado = self._processar_escolha(choice)
+                                    # Se a escolha retornou um trigger, retornar para ser processado
+                                    if resultado:
+                                        return resultado
                                     return None
                     else:
                         if self.time_skip_active or self.scene_transition_active:
@@ -575,7 +713,10 @@ class NarrativeSystem:
                         if scene:
                             choices = scene.get("choices", [])
                             if 0 <= self.selected_choice < len(choices):
-                                self._processar_escolha(choices[self.selected_choice])
+                                resultado = self._processar_escolha(choices[self.selected_choice])
+                                # Se a escolha retornou um trigger, retornar para ser processado
+                                if resultado:
+                                    return resultado
                     else:
                         if self.time_skip_active or self.scene_transition_active:
                             return None
@@ -611,6 +752,13 @@ class NarrativeSystem:
         for effect in effects:
             self._processar_efeito(effect)
         
+        # Verificar se há gameplayTrigger na escolha (ex: "Ir correr")
+        gameplay_trigger = choice.get("gameplayTrigger")
+        if gameplay_trigger:
+            # Se há trigger, fechar narrativa e retornar o trigger para ser processado
+            self.active = False
+            return gameplay_trigger
+        
         next_scene_id = choice.get("nextSceneId")
         if next_scene_id:
             self.scene_transition_active = True
@@ -622,47 +770,76 @@ class NarrativeSystem:
             self.choices_visible = False
             self.current_line_index += 1
             self._avancar_linha()
+        
+        return None
     
     def _processar_efeito(self, effect: str):
         """Processa um efeito (flag, desbloqueio, etc.)"""
         if effect.startswith("setFlag:"):
             flag_name = effect.split(":", 1)[1]
             self.flags[flag_name] = True
+            print(f"[NARRATIVA] Flag '{flag_name}' definida como True")
+            
+            # Se for hasDebt, também salvar no progresso
+            if flag_name == "hasDebt":
+                from core.progresso import gerenciador_progresso
+                from core.barao import barao
+                # Ativar empréstimo do Barão
+                gerenciador_progresso.barao_emprestimo_ativo = True
+                gerenciador_progresso.barao_valor_devido = barao.VALOR_TOTAL
+                gerenciador_progresso.barao_corridas_restantes = barao.PRAZO_CORRIDAS
+                gerenciador_progresso.salvar()
+                print(f"[NARRATIVA] Empréstimo do Barão ativado: valor_devido={gerenciador_progresso.barao_valor_devido}, corridas_restantes={gerenciador_progresso.barao_corridas_restantes}")
         elif effect.startswith("unlockLocation:"):
             location = effect.split(":", 1)[1]
             try:
                 from core.mapa_locations import gerenciador_localizacoes
                 gerenciador_localizacoes.desbloquear(location)
-                print(f"Desbloqueando localização: {location}")
-            except:
-                print(f"Desbloqueando localização: {location}")
+                print(f"[NARRATIVA] Desbloqueando localização: {location}")
+            except Exception as e:
+                print(f"[NARRATIVA] Erro ao desbloquear localização {location}: {e}")
         elif effect.startswith("unlockRace:") or effect.startswith("unlockRaceSet:"):
             race = effect.split(":", 1)[1]
             if effect.startswith("unlockRaceSet:"):
                 try:
                     from core.mapa_locations import gerenciador_localizacoes
                     gerenciador_localizacoes.processar_efeito_narrativa(effect)
-                except:
-                    pass
-            print(f"Desbloqueando corrida: {race}")
+                    print(f"[NARRATIVA] Desbloqueando conjunto de corridas: {race}")
+                except Exception as e:
+                    print(f"[NARRATIVA] Erro ao desbloquear conjunto de corridas {race}: {e}")
+            else:
+                print(f"[NARRATIVA] Desbloqueando corrida: {race}")
         elif effect.startswith("openShop:"):
             shop = effect.split(":", 1)[1]
             # TODO: abrir loja
-            print(f"Abrindo loja: {shop}")
+            print(f"[NARRATIVA] Abrindo loja: {shop}")
         elif effect.startswith("openGarage:"):
             garage_action = effect.split(":", 1)[1]
-            print(f"Abrindo garagem: {garage_action}")
+            print(f"[NARRATIVA] Abrindo garagem: {garage_action}")
         elif effect.startswith("addMoney:"):
             amount_str = effect.split(":", 1)[1]
-            print(f"Adicionando dinheiro: {amount_str}")
+            try:
+                from core.progresso import gerenciador_progresso
+                # Se for "loanAmount", usar valor do empréstimo do Barão
+                if amount_str == "loanAmount":
+                    from core.barao import barao
+                    amount = barao.VALOR_EMPRESTIMO
+                else:
+                    # Tentar converter para número
+                    amount = int(amount_str)
+                
+                gerenciador_progresso.adicionar_dinheiro(amount)
+                print(f"[NARRATIVA] Adicionando dinheiro: {amount}")
+            except Exception as e:
+                print(f"[NARRATIVA] Erro ao adicionar dinheiro '{amount_str}': {e}")
         elif effect.startswith("mentionLocation:"):
             location = effect.split(":", 1)[1]
             try:
                 from core.mapa_locations import gerenciador_localizacoes
                 gerenciador_localizacoes.tornar_visivel(location)
-                print(f"Tornando localização visível: {location}")
-            except:
-                print(f"Tornando localização visível: {location}")
+                print(f"[NARRATIVA] Tornando localização visível: {location}")
+            except Exception as e:
+                print(f"[NARRATIVA] Erro ao tornar localização visível {location}: {e}")
     
     def atualizar(self, dt: float):
         """Atualiza o sistema de narrativa"""
@@ -716,7 +893,16 @@ class NarrativeSystem:
                 if self.time_skip_fade_alpha <= 0.0:
                     self.time_skip_fade_alpha = 0.0
                     self.time_skip_active = False
-                    self._avancar_linha()
+                    # Após o time-skip, avançar para a próxima linha
+                    # Se não houver mais linhas, avançar para a próxima cena
+                    scene = self._obter_cena_atual()
+                    if scene:
+                        lines = scene.get("lines", [])
+                        if self.current_line_index >= len(lines):
+                            # Não há mais linhas, avançar para a próxima cena
+                            self._avancar_cena()
+                        else:
+                            self._avancar_linha()
         
         self._atualizar_animacao_texto(dt)
     
