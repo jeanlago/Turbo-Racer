@@ -30,6 +30,9 @@ if not hasattr(sys.stderr, '_filtered_libpng'):
 LARGURA, ALTURA = 1280, 720
 FPS = 60
 
+# Modo de teste: marca corridas como concluídas automaticamente ao clicar
+MODO_TESTE_CORRIDAS = True  # Altere para False para desativar
+
 def obter_caminho_base():
     """Retorna o caminho base do projeto, funcionando tanto em dev quanto no executável"""
     if getattr(sys, 'frozen', False):

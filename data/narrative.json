@@ -1009,6 +1009,69 @@
           "nextSceneId": "ch4_7_rex_direct_call"
         },
         {
+          "id": "ch4_7_iate_barao_visita",
+          "startTrigger": {
+            "type": "enter_location",
+            "params": { "locationId": "iate_barao" }
+          },
+          "bg": "iate_barao_dia",
+          "sprites": [
+            { "id": "barao", "sprite": "barao_sorriso_fino", "position": "right" }
+          ],
+          "lines": [
+            {
+              "speaker": "BARAO",
+              "text": "Ora, ora. Saiu da graxa e veio conhecer a vista do topo. A brisa do mar limpa o cheiro de pneu queimado, não acha?"
+            },
+            {
+              "speaker": "BARAO",
+              "conditions": ["hasDebt=true"],
+              "text": "Veio pedir mais? Ótimo. Meus termos você já conhece. O Boris está sem serviço ultimamente, adoraria fazer uma 'visita' se você atrasar."
+            },
+            {
+              "speaker": "BARAO",
+              "conditions": ["hasDebt=false"],
+              "text": "Interessante. Você veio até aqui sem me dever nada. Isso é raro. Quase todo piloto precisa de um empurrãozinho financeiro em algum momento."
+            },
+            {
+              "speaker": "BARAO",
+              "conditions": ["hasDebt=false"],
+              "text": "Bela vista, não é? O tipo de vista que custa caro. Mas você parece estar indo bem sozinho."
+            }
+          ],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch4_8_iate_barao_cobranca",
+          "startTrigger": {
+            "type": "enter_location",
+            "params": { 
+              "locationId": "iate_barao",
+              "timeOfDay": "night",
+              "requiredFlag": "hasDebt"
+            }
+          },
+          "bg": "iate_barao_noite",
+          "sprites": [
+            { "id": "barao", "sprite": "barao_neutro", "position": "right" }
+          ],
+          "lines": [
+            {
+              "speaker": "BARAO",
+              "text": "Bela vista, não é? O tipo de vista que custa caro. Você está atrasado."
+            },
+            {
+              "speaker": "BARAO",
+              "text": "Eu não gosto de esperar. Ou você vence a próxima grande corrida e me paga o dobro, ou seu carro vira âncora para o meu barco."
+            },
+            {
+              "speaker": "BARAO",
+              "text": "O Boris está ansioso pra fazer uma visita. Ele adora desmontar coisas. Principalmente quando não é convidado."
+            }
+          ],
+          "nextSceneId": null
+        },
+        {
           "id": "ch4_7_rex_direct_call",
           "bg": "bg_apartamento_jogador",
           "sprites": [
@@ -1210,8 +1273,7 @@
           "id": "ch5_5_stage1_post",
           "bg": "bg_pit_circuito",
           "sprites": [
-            { "id": "crank", "sprite": "crank_neutro", "position": "center" },
-            { "id": "pixel", "sprite": "pixel_neutro", "position": "hud" }
+            { "id": "crank", "sprite": "crank_neutro", "position": "center" }
           ],
           "lines": [
             {
@@ -1272,7 +1334,7 @@
           "id": "ch5_5_stage3_intro",
           "bg": "bg_circuito_hibrido",
           "sprites": [
-            { "id": "pixel", "sprite": "pixel_neutro", "position": "hud" },
+            { "id": "pixel", "sprite": "pixel_neutro", "position": "left" },
             { "id": "akira", "sprite": "akira_neutra", "position": "right" }
           ],
           "lines": [
@@ -1306,6 +1368,7 @@
               "text": "Você pisou exatamente onde o Rex queria. Ele vai repetir isso na edição."
             }
           ],
+          "effects": ["unlockLocation:autódromo"],
           "nextSceneId": "ch5_6_pre_final_rex"
         },
         {
@@ -1336,7 +1399,7 @@
           "id": "ch5_7_post_final_epilogue",
           "bg": "bg_podio",
           "sprites": [
-            { "id": "pixel", "sprite": "pixel_malandro_triste", "position": "hud" },
+            { "id": "pixel", "sprite": "pixel_malandro_triste", "position": "left" },
             { "id": "crank", "sprite": "crank_neutro", "position": "center" },
             { "id": "akira", "sprite": "akira_neutra", "position": "right" }
           ],
@@ -1370,6 +1433,104 @@
             {
               "speaker": "REX",
               "text": "Agora você escolhe: aceita o papel que te dei nesse tabuleiro… ou tenta virar o tabuleiro."
+            }
+          ],
+          "choices": [
+            {
+              "id": "aceitar_papel",
+              "text": "Aceitar o papel no tabuleiro",
+              "effects": ["setFlag:aceitouPapel"],
+              "nextSceneId": "ch5_9_creditos"
+            },
+            {
+              "id": "virar_tabuleiro",
+              "text": "Tentar virar o tabuleiro",
+              "effects": ["setFlag:virouTabuleiro"],
+              "nextSceneId": "ch5_9_creditos"
+            }
+          ]
+        },
+        {
+          "id": "ch5_9_creditos",
+          "bg": "bg_podio",
+          "sprites": [],
+          "lines": [
+            {
+              "speaker": "NARRATOR",
+              "text": "TURBO RACER"
+            }
+          ],
+          "effects": ["autoSave"],
+          "nextSceneId": "ch5_9_creditos_2"
+        },
+        {
+          "id": "ch5_9_creditos_2",
+          "bg": "bg_torre_alta",
+          "sprites": [],
+          "lines": [
+            {
+              "speaker": "NARRATOR",
+              "text": "Obrigado por jogar!"
+            }
+          ],
+          "nextSceneId": "ch5_9_creditos_3"
+        },
+        {
+          "id": "ch5_9_creditos_3",
+          "bg": "bg_garagem",
+          "sprites": [],
+          "lines": [
+            {
+              "speaker": "NARRATOR",
+              "text": "Sua jornada no asfalto chegou ao fim,"
+            }
+          ],
+          "nextSceneId": "ch5_9_creditos_4"
+        },
+        {
+          "id": "ch5_9_creditos_4",
+          "bg": "bg_mapa_cidade",
+          "sprites": [],
+          "lines": [
+            {
+              "speaker": "NARRATOR",
+              "text": "mas as estradas continuam abertas."
+            }
+          ],
+          "nextSceneId": "ch5_9_creditos_5"
+        },
+        {
+          "id": "ch5_9_creditos_5",
+          "bg": "bg_santuario_montanha",
+          "sprites": [],
+          "lines": [
+            {
+              "speaker": "NARRATOR",
+              "text": "Desenvolvido com dedicação"
+            }
+          ],
+          "nextSceneId": "ch5_9_creditos_6"
+        },
+        {
+          "id": "ch5_9_creditos_6",
+          "bg": "bg_cobertura_corporativa",
+          "sprites": [],
+          "lines": [
+            {
+              "speaker": "NARRATOR",
+              "text": "e paixão pela velocidade."
+            }
+          ],
+          "nextSceneId": "ch5_9_creditos_7"
+        },
+        {
+          "id": "ch5_9_creditos_7",
+          "bg": "bg_podio",
+          "sprites": [],
+          "lines": [
+            {
+              "speaker": "NARRATOR",
+              "text": "Até a próxima corrida, piloto."
             }
           ],
           "nextSceneId": null

@@ -1,0 +1,615 @@
+{
+  "chapters": [
+    {
+      "id": "ch1",
+      "name": "Ferrugem e Primeira Corrida",
+      "scenes": [
+        {
+          "id": "ch1_0_prologue",
+          "startTrigger": { "type": "immediate" },
+          "bg": "nissan_350z_inicial_noite",
+          "lines": [
+            { "speaker": "NARRATOR", "text": "A cidade cheira a gasolina velha, fritura de esquina e sonho queimado. Seu carro faz parte disso." },
+            { "speaker": "NARRATOR", "text": "Você perdeu o trampo, perdeu a grana. Sobrou um carro semi-morto e um nome rabiscado num papel amassado: CRANK." }
+          ],
+          "nextSceneId": "ch1_1_crank_garage_intro"
+        },
+        {
+          "id": "ch1_1_crank_garage_intro",
+          "bg": "bg_garagem",
+          "sprites": [ { "id": "crank", "sprite": "crank_ranzinza", "position": "left" } ],
+          "lines": [
+            { "speaker": "CRANK", "text": "…Mas que porcaria é essa debaixo do capô? Tá. Vamos fingir que isso é um carro." },
+            { "speaker": "CRANK", "text": "Escuta aqui, novato: eu conserto lata velha, mas não sou caridade. Minha chave de fenda só gira se ver dinheiro." },
+            { "speaker": "CRANK", "text": "Agora me diz, você veio aqui por quê?" }
+          ],
+          "choices": [
+            { "id": "c1", "text": "Quero correr.", "effects": ["setFlag:wantsToRace"], "nextSceneId": "ch1_1b_the_deal" },
+            { "id": "c2", "text": "Quero dinheiro.", "effects": ["setFlag:wantsMoney"], "nextSceneId": "ch1_1b_the_deal" },
+            { "id": "c3", "text": "Só quero sair dessa vida.", "effects": ["setFlag:wantsEscape"], "nextSceneId": "ch1_1b_the_deal" }
+          ]
+        },
+        {
+          "id": "ch1_1b_the_deal",
+          "bg": "bg_garagem",
+          "sprites": [ { "id": "crank", "sprite": "crank_neutro", "position": "left" } ],
+          "lines": [
+            { "speaker": "CRANK", "text": "Ambição eu respeito. Mas você está no nível 'pneu remold'. Vamos começar certo." },
+            { "speaker": "CRANK", "text": "Você vai atrás de um ogro chamado Boris, no Fosso de Ferrugem. Ele tem peças baratas que não vão explodir imediatamente." }
+          ],
+          "effects": ["unlockLocation:fosso_ferrugem", "addObjective:find_boris", "autoSave"],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch1_2_meet_boris",
+          "startTrigger": {
+            "type": "enter_location",
+            "params": { "locationId": "fosso_ferrugem" }
+          },
+          "bg": "bg_fosso_ferrugem",
+          "sprites": [ { "id": "boris", "sprite": "boris_sorriso", "position": "right" } ],
+          "lines": [
+            { "speaker": "BORIS", "text": "Olha só o que o vento tóxico trouxe pra minha sucata. Piloto burro é cliente fiel." }
+          ],
+          "choices": [
+            { "id": "c1", "text": "Crank me mandou.", "nextSceneId": "ch1_3_boris_deal" },
+            { "id": "c2", "text": "Preciso de peças.", "nextSceneId": "ch1_3_boris_deal" }
+          ]
+        },
+        {
+          "id": "ch1_3_boris_deal",
+          "bg": "bg_fosso_ferrugem",
+          "sprites": [ { "id": "boris", "sprite": "boris_sorriso_malandro", "position": "right" } ],
+          "lines": [
+            { "speaker": "BORIS", "text": "Crank, é? O velho ainda respira. Seguinte: tenho peças feias, baratas e fortes. Perfeitas pra você." },
+            { "speaker": "BORIS", "text": "E escuta: o dinheiro de verdade tá no Cinturão Industrial. Eu vendo o acesso por 3000 créditos. Se não quiser, vai chorar pro Crank." }
+          ],
+          "effects": ["openShop:boris_basic", "completeObjective:find_boris", "addObjective:return_to_crank", "autoSave"],
+          "gameplayTrigger": { "trigger": "open_shop_interface", "shopId": "boris_basic" },
+          "nextSceneId": null
+        },
+        {
+          "id": "ch1_4_garage_return",
+          "startTrigger": {
+            "type": "enter_location",
+            "params": { "locationId": "bg_garagem", "requiredItem": "any_part_from_boris" }
+          },
+          "bg": "bg_garagem",
+          "sprites": [ { "id": "crank", "sprite": "crank_suspeita", "position": "left" } ],
+          "lines": [
+            { "speaker": "CRANK", "text": "Foi no Boris, né? Dá cá a peça. Vou instalar. Se quebrar, a culpa é dele." },
+            { "type": "stageDirection", "text": "[TIME-SKIP: Tela preta, sons de montagem.]" }
+          ],
+          "effects": ["installFirstUpgrade"],
+          "nextSceneId": "ch1_4b_housing_offer"
+        },
+        {
+          "id": "ch1_4b_housing_offer",
+          "bg": "bg_garagem",
+          "sprites": [ { "id": "crank", "sprite": "crank_neutro", "position": "center" } ],
+          "lines": [
+            { "speaker": "CRANK", "text": "Pronto. Agora, duas coisas. Primeiro: você não tem onde cair morto. Tem um colchão no mezanino. Pode morar lá, mas eu cobro aluguel semanal." },
+            { "speaker": "CRANK", "text": "Segundo: O Boris tentou te vender o acesso ao Cinturão Industrial, não tentou?" }
+          ],
+          "choices": [
+            {
+              "id": "c1", "text": "Você pode me colocar lá dentro?",
+              "effects": ["unlockLocation:cinturao_industrial", "setFlag:housingActive"],
+              "lines": [ { "speaker": "CRANK", "text": "Hmpf. Vou liberar seu acesso com meus contatos. Mas não me faça passar vergonha." } ],
+              "nextSceneId": "ch1_5_race_briefing"
+            },
+            {
+              "id": "c2", "text": "Eu me viro com o Boris.",
+              "effects": ["setFlag:housingActive"],
+              "lines": [ { "speaker": "CRANK", "text": "Você quem sabe. Se gosta de jogar dinheiro fora com aquele ogro, o problema é seu." } ],
+              "nextSceneId": "ch1_5_race_briefing"
+            }
+          ]
+        },
+        {
+          "id": "ch1_5_race_briefing",
+          "bg": "bg_garagem",
+          "sprites": [ { "id": "crank", "sprite": "crank_neutro", "position": "center" } ],
+          "lines": [
+            { "speaker": "CRANK", "text": "Agora vai pra pista de treino aqui atrás. Corrida de iniciantes. Se voltar vivo, a gente conversa sobre o primeiro aluguel." },
+            { "speaker": "NARRATOR", "text": "Nova corrida desbloqueada: Circuito de Treino." }
+          ],
+          "effects": ["unlockRace:training_01", "completeObjective:return_to_crank", "addObjective:finish_training_race", "autoSave"],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch1_6_post_race",
+          "startTrigger": {
+            "type": "race_finished",
+            "params": { "raceId": "training_01" }
+          },
+          "bg": "bg_garagem",
+          "sprites": [ { "id": "crank", "sprite": "crank_neutro", "position": "center" } ],
+          "lines": [
+            { "speaker": "CRANK", "conditions": ["raceResult=win"], "text": "Ganhou? Hmm. Melhor que metade dos idiotas que aparecem aqui." },
+            { "speaker": "CRANK", "conditions": ["raceResult=lose"], "text": "Sem troféu, mas o carro tá inteiro. Já vi pior. A derrota faz parte." }
+          ],
+          "effects": ["completeObjective:finish_training_race"],
+          "nextSceneId": "ch1_7_pixel_voice_intro"
+        },
+        {
+          "id": "ch1_7_pixel_voice_intro",
+          "bg": "bg_garagem_interior_carro",
+          "sprites": [],
+          "lines": [
+            { "speaker": "RÁDIO", "text": "*Chiado estático e uma luzinha piscando no painel quebrado*" },
+            { "speaker": "PIXEL (Voz)", "text": "Opa! Calma, não bate no painel. Não é defeito, sou eu." },
+            { "speaker": "PIXEL (Voz)", "text": "Me chama de Pixel. Eu vivo nas frequências dessa cidade. E tô vendo você na pista com essa lata velha." },
+            { "speaker": "PIXEL (Voz)", "text": "Lá de cima, nas torres, o Rex já te notou. Ele adora gente nova pra testar… ou descartar. Fica esperto." }
+          ],
+          "effects": ["endChapter:ch1", "startChapter:ch2", "autoSave"],
+          "nextSceneId": null
+        }
+      ]
+    },
+    {
+      "id": "ch2",
+      "name": "Contrato com o Barão",
+      "scenes": [
+        {
+          "id": "ch2_1_barao_intro",
+          "startTrigger": {
+            "type": "enter_location",
+            "params": { "locationId": "bg_garagem", "timeOfDay": "night" }
+          },
+          "bg": "bg_garagem_noite",
+          "sprites": [
+            { "id": "crank", "sprite": "crank_neutro", "position": "left" },
+            { "id": "barao", "sprite": "barao_sorriso_fino", "position": "right" }
+          ],
+          "lines": [
+            { "speaker": "CRANK", "text": "Você precisa de peças melhores pro Cinturão. Sua carteira não aguenta. Falando em problemas financeiro..." },
+            { "speaker": "BARAO", "text": "Mrrr… que falta de educação não me convidar, Crank. Eu senti o cheiro de desespero." }
+          ],
+          "nextSceneId": "ch2_2_barao_offer"
+        },
+        {
+          "id": "ch2_2_barao_offer",
+          "bg": "bg_garagem_noite",
+          "sprites": [ { "id": "barao", "sprite": "barao_neutro", "position": "right" } ],
+          "lines": [
+            { "speaker": "BARAO", "text": "Eu coloco crédito na sua mão agora. Em troca, uma 'parceria'." },
+            { "speaker": "BARAO", "text": "Eu mordo 30% de cada prêmio seu. Se atrasar o pagamento principal, o Boris vem buscar uma peça do seu carro como juros." }
+          ],
+          "choices": [
+            {
+              "id": "accept", "text": "Aceitar empréstimo",
+              "effects": ["setFlag:hasDebt", "addMoney:5000"],
+              "lines": [ { "speaker": "BARAO", "text": "Coragem e imprudência. Gosto disso. Tá registrado. Não me decepcione." } ],
+              "nextSceneId": "ch2_3_time_skip"
+            },
+            {
+              "id": "refuse", "text": "Recusar",
+              "effects": ["setFlag:refusedDebt"],
+              "lines": [ { "speaker": "BARAO", "text": "Autocontrole? Raro. Tudo bem, a cidade quebra você devagar. Eu espero." } ],
+              "nextSceneId": "ch2_3_time_skip"
+            }
+          ]
+        },
+        {
+          "id": "ch2_3_time_skip",
+          "bg": "bg_garagem_noite",
+          "lines": [
+            { "type": "stageDirection", "text": "[TIME-SKIP: Você passa o dia seguinte trabalhando no carro e pensando na escolha.]" }
+          ],
+          "effects": ["advanceTime:1day", "autoSave"],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch2_4_pixel_reacts",
+          "startTrigger": {
+            "type": "time_passed",
+            "params": { "daysSinceScene": "ch2_3_time_skip", "days": 1 }
+          },
+          "bg": "bg_mapa_cidade",
+          "sprites": [ { "id": "pixel", "sprite": "pixel_neutro", "position": "hud" } ],
+          "lines": [
+            { "speaker": "PIXEL", "conditions": ["hasDebt=true"], "text": "Detectei a assinatura do Barão nas suas contas. 30% é pesado. Cuidado com o Boris, ele não usa chave de fenda pra cobrar." },
+            { "speaker": "PIXEL", "conditions": ["refusedDebt=true"], "text": "Você disse NÃO pro Barão? Uau. Vai ser mais difícil subir sem a grana, mas pelo menos o carro é só seu." }
+          ],
+          "effects": ["autoSave"],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch2_5_boris_offer_again",
+          "startTrigger": {
+            "type": "enter_location",
+            "params": { "locationId": "fosso_ferrugem" },
+            "conditions": ["locationUnlocked:cinturao_industrial=false"]
+          },
+          "bg": "bg_fosso_ferrugem",
+          "sprites": [ { "id": "boris", "sprite": "boris_sorriso", "position": "right" } ],
+          "lines": [
+            { "speaker": "BORIS", "text": "Ainda rodando no barro? Minha oferta tá de pé. 3000 créditos e você entra no Cinturão. Vai querer ou vai continuar chorando pro Crank?" }
+          ],
+          "choices": [
+            {
+              "id": "pay", "text": "Pagar 3000 pelo acesso",
+              "conditions": ["playerMoney>=3000"],
+              "effects": ["removeMoney:3000", "unlockLocation:cinturao_industrial", "autoSave"],
+              "lines": [ { "speaker": "BORIS", "text": "Aleluia. Tá inscrito. Tenta não morrer na primeira curva." } ],
+              "nextSceneId": null
+            },
+            {
+              "id": "refuse", "text": "Não vou pagar.",
+              "nextSceneId": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch3",
+      "name": "Fluxo da Montanha",
+      "scenes": [
+        {
+          "id": "ch3_1_crank_briefing",
+          "startTrigger": {
+            "type": "enter_location",
+            "params": {
+              "locationId": "bg_garagem",
+              "requiredFlag": "cinturaoUnlocked",
+              "minRacesWon": 3
+            }
+          },
+          "bg": "bg_garagem",
+          "sprites": [ { "id": "crank", "sprite": "crank_neutro", "position": "left" } ],
+          "lines": [
+            { "speaker": "CRANK", "text": "Você já mostrou que sabe enfiar o pé no Cinturão. Agora precisa mostrar que sabe tirar." },
+            { "speaker": "CRANK", "text": "Lá em cima tem a montanha. Pista ingrata. Quem manda lá é a Akira. Ela odeia o circo do Rex." }
+          ],
+          "nextSceneId": "ch3_2_pixel_route"
+        },
+        {
+          "id": "ch3_2_pixel_route",
+          "bg": "bg_garagem_interior_carro",
+          "sprites": [],
+          "lines": [
+            { "speaker": "PIXEL (Voz)", "text": "Nova rota liberada no GPS: Santuário da Montanha. Cuidado: ela não curte quem chega fazendo muito barulho." }
+          ],
+          "effects": ["unlockLocation:montanha_santuario", "addObjective:meet_akira", "autoSave"],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch3_3_meet_akira",
+          "startTrigger": {
+            "type": "enter_location",
+            "params": { "locationId": "montanha_santuario" }
+          },
+          "bg": "bg_santuario_montanha",
+          "sprites": [ { "id": "akira", "sprite": "akira_neutra", "position": "right" } ],
+          "lines": [
+            { "speaker": "AKIRA", "text": "..." },
+            { "speaker": "AKIRA", "text": "Você trouxe mais um carro barulhento pra minha montanha. Crank te mandou, não foi?" },
+            { "speaker": "AKIRA", "text": "Eu não treino qualquer um. Vamos testar. Uma volta. Sem público, sem prêmio. Só você e as curvas." },
+            { "speaker": "AKIRA", "text": "Se tratar a pista como inimiga, ela te devolve na mesma moeda. Se ouvir o ritmo dela… talvez tenha futuro." }
+          ],
+          "effects": ["unlockRace:mountain_test_run", "completeObjective:meet_akira", "addObjective:finish_mountain_test", "autoSave"],
+          "gameplayTrigger": {
+             "trigger": "start_race_setup",
+             "params": { "raceId": "mountain_test_run" }
+          },
+          "nextSceneId": null
+        },
+        {
+          "id": "ch3_4_test_result",
+          "startTrigger": {
+            "type": "race_finished",
+            "params": { "raceId": "mountain_test_run" }
+          },
+          "bg": "bg_santuario_montanha",
+          "sprites": [ { "id": "akira", "sprite": "akira_neutra", "position": "right" } ],
+          "lines": [
+            { "speaker": "AKIRA", "conditions": ["racePerformance=good"], "sprite": "akira_sorriso_sutil", "text": "Você ainda é bruto, mas eu vi momentos de sintonia. Algumas curvas foram dança, não briga." },
+            { "speaker": "AKIRA", "conditions": ["racePerformance=bad"], "sprite": "akira_seria", "text": "Você sobreviveu, mas não aprendeu. Ainda luta contra o carro, o tempo todo." },
+            { "speaker": "AKIRA", "text": "A montanha é paciente. As pistas estão abertas para você treinar." }
+          ],
+          "effects": ["unlockRaceSet:mountain_races", "completeObjective:finish_mountain_test", "autoSave"],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch3_5_crank_debrief",
+          "startTrigger": {
+            "type": "enter_location",
+            "params": { "locationId": "bg_garagem", "finishedQuest": "finish_mountain_test" }
+          },
+          "bg": "bg_garagem",
+          "sprites": [ { "id": "crank", "sprite": "crank_neutro", "position": "left" } ],
+          "lines": [
+            { "speaker": "CRANK", "text": "Sobreviveu à Akira? Se ela não te chutou de lá, alguma coisa boa ela viu." }
+          ],
+          "nextSceneId": "ch3_6_pixel_wrap_up"
+        },
+        {
+          "id": "ch3_6_pixel_wrap_up",
+          "bg": "bg_garagem_interior_carro",
+          "sprites": [],
+          "lines": [
+            { "speaker": "PIXEL (Voz)", "text": "Agora você tem os três mundos: a ferrugem do Boris, a indústria do Cinturão e o silêncio da Akira." },
+            { "speaker": "PIXEL (Voz)", "text": "Quando começar a vencer nos três, o Rex lá em cima não vai conseguir fingir que você não existe." }
+          ],
+          "effects": ["endChapter:ch3", "startChapter:ch4", "autoSave"],
+          "nextSceneId": null
+        }
+      ]
+    },
+    {
+      "id": "ch4",
+      "name": "Olhos nas Torres",
+      "scenes": [
+        {
+          "id": "ch4_1_pixel_warning",
+          "startTrigger": {
+            "type": "time_passed",
+            "params": { "daysSinceChapterStart": 1 }
+          },
+          "bg": "bg_garagem_interior_carro",
+          "sprites": [],
+          "lines": [
+            { "speaker": "PIXEL (Voz)", "text": "Seus dados explodiram nos servidores. Até agora, você era ruído. Agora é padrão interessante." },
+            { "speaker": "PIXEL (Voz)", "text": "Isso só acontece quando o Rex pensa: 'Talvez eu possa usar isso… ou destruir.'" }
+          ],
+          "effects": ["autoSave"],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch4_2_pixel_invitation",
+          "startTrigger": {
+            "type": "reputation_threshold",
+            "params": { "minReputation": 500 }
+          },
+          "bg": "bg_garagem_interior_carro",
+          "sprites": [],
+          "lines": [
+            { "speaker": "PIXEL (Voz)", "text": "Ok, cansei de ser só uma voz no seu rádio chiado. Você tá chamando atenção demais." },
+            { "speaker": "PIXEL (Voz)", "text": "O Rex já sabe seu nome. Tá na hora da gente conversar cara a cara. Vou mandar um endereço pro seu GPS. Não se atrasa." }
+          ],
+          "effects": ["unlockLocation:esconderijo_pixel", "addObjective:meet_pixel_physical", "autoSave"],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch4_3_meet_pixel_physical",
+          "startTrigger": {
+            "type": "enter_location",
+            "params": { "locationId": "esconderijo_pixel" }
+          },
+          "bg": "bg_esconderijo_hacker",
+          "sprites": [ { "id": "pixel", "sprite": "pixel_serio", "position": "center" } ],
+          "lines": [
+            { "speaker": "PIXEL", "text": "Então esse é o rosto por trás do volante. Mais... orgânico do que eu esperava." },
+            { "speaker": "PIXEL", "text": "O Rex não é só um organizador. Ele vê a cidade como um tabuleiro. Ele manipulou a queda da Iron Howl anos atrás." },
+            { "speaker": "PIXEL", "text": "Ele quer um campeão para controlar. Você precisa decidir se vai ser peão ou jogador." }
+          ],
+          "effects": ["completeObjective:meet_pixel_physical", "autoSave"],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch4_4_meet_glub",
+          "startTrigger": {
+            "type": "enter_location_first_time",
+            "params": { "locationId": "bg_beco_sucata" }
+          },
+          "bg": "bg_beco_sucata",
+          "sprites": [ { "id": "glub", "sprite": "glub_feliz", "position": "right" } ],
+          "lines": [
+            { "speaker": "GLUB", "text": "Oooooh! Cheiro de metal cansado! Eu sou o Glub. Eu reciclo histórias." },
+            { "speaker": "GLUB", "text": "Trocou peça no Crank? Traz a velha pra mim. Eu pago por quilo de sucata. Você ganha espaço e dinheiro." }
+          ],
+          "effects": ["unlockFeature:scrapSell", "autoSave"],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch4_5_meet_slick",
+          "startTrigger": {
+            "type": "enter_location_first_time",
+            "params": { "locationId": "bg_beco_neon" }
+          },
+          "bg": "bg_beco_neon",
+          "sprites": [ { "id": "slick", "sprite": "slick_sorriso_teatral", "position": "right" } ],
+          "lines": [
+            { "speaker": "SLICK", "text": "Saudações, unidade bípede de alto risco. Eu vendo coisas que não existem no ferro-velho." },
+            { "speaker": "SLICK", "text": "Upgrades que beiram o impossível. Você chama de upgrade, eu chamo de experimento." }
+          ],
+          "effects": ["openShop:slick_alien", "autoSave"],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch4_6_rex_call_prologue",
+          "startTrigger": {
+            "type": "reputation_threshold",
+            "params": { "minReputation": 1500, "zones": ["all"] }
+          },
+          "bg": "bg_apartamento_jogador",
+          "lines": [
+            { "type": "stageDirection", "text": "[O telefone toca. O identificador de chamadas brilha com um logotipo corporativo desconhecido.]" }
+          ],
+          "nextSceneId": "ch4_7_rex_direct_call"
+        },
+        {
+          "id": "ch4_7_rex_direct_call",
+          "bg": "bg_apartamento_jogador",
+          "sprites": [ { "id": "rex", "sprite": "rex_holograma_neutro", "position": "center" } ],
+          "lines": [
+            { "speaker": "REX", "text": "Boa noite. Você já sabe quem eu sou." },
+            { "speaker": "REX", "text": "Eu derrubei lendas maiores que você nesta cidade. Pilotos que achavam que eram reis da rua." },
+            { "speaker": "REX", "text": "Estou preparando um palco. O Circuito da Coroa. Continue vencendo, e talvez eu deixe você ser o ator principal." }
+          ],
+          "effects": ["setFlag:rexInterested", "endChapter:ch4", "startChapter:ch5", "autoSave"],
+          "nextSceneId": null
+        }
+      ]
+    },
+    {
+      "id": "ch5",
+      "name": "Jogo do Rei",
+      "scenes": [
+        {
+          "id": "ch5_1_rex_invite",
+          "startTrigger": {
+            "type": "time_passed",
+            "params": { "daysSinceChapterStart": 1 }
+          },
+          "bg": "bg_garagem_noite",
+          "sprites": [ { "id": "rex", "sprite": "rex_holograma_neutro", "position": "center" } ],
+          "lines": [
+            { "speaker": "SISTEMA", "text": "Convite recebido: Circuito da Coroa – Série Oficial Rex." },
+            { "speaker": "REX", "text": "Chegou a hora. Você correu na lama e na montanha. Agora quero ver você sob o meu holofote." },
+            { "speaker": "REX", "text": "Aceite e entre no Circuito da Coroa. Transmissão global, regras que eu dito. É a sua chance de subir ou cair espetacularmente." }
+          ],
+          "choices": [
+            {
+              "id": "accept_crown", "text": "Aceitar o desafio",
+              "effects": ["setFlag:crownCircuitActive", "unlockRaceSet:crown_circuit_stages", "autoSave"],
+              "nextSceneId": null
+            }
+          ]
+        },
+        {
+          "id": "ch5_2_crank_reaction",
+          "startTrigger": {
+            "type": "enter_location",
+            "params": { "locationId": "bg_garagem", "requiredFlag": "crownCircuitActive" }
+          },
+          "bg": "bg_garagem",
+          "sprites": [ { "id": "crank", "sprite": "crank_serio", "position": "left" } ],
+          "lines": [
+            { "speaker": "CRANK", "text": "Circuito da Coroa... última vez que ouvi esse nome foi na época da Iron Howl." },
+            { "speaker": "CRANK", "text": "Eu montava, Boris quebrava, Barão financiava e Rex produzia o circo. Metade faliu ou sumiu. Cuidado onde pisa." }
+          ],
+          "nextSceneId": "ch5_3_akira_call"
+        },
+        {
+          "id": "ch5_3_akira_call",
+          "bg": "bg_garagem_interior_carro",
+          "sprites": [ { "id": "akira", "sprite": "akira_seria", "position": "hud" } ],
+          "lines": [
+            { "speaker": "AKIRA", "text": "Eu senti o barulho daqui de cima. Rex abriu o Circuito. Ele vai mexer em tudo por audiência: traçado, clima, regras." },
+            { "speaker": "AKIRA", "text": "A única coisa que ainda é sua lá dentro é o jeito como você faz curva. Não esqueça disso." }
+          ],
+          "effects": ["addObjective:prepare_for_stage1", "autoSave"],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch5_4_boris_prep",
+          "startTrigger": {
+            "type": "enter_location",
+            "params": { "locationId": "fosso_ferrugem", "requiredFlag": "crownCircuitActive" }
+          },
+          "bg": "bg_fosso_ferrugem",
+          "sprites": [ { "id": "boris", "sprite": "boris_sorriso_malandro", "position": "right" } ],
+          "lines": [
+            { "speaker": "BORIS", "text": "Vai pro palco do Rex, hein? Se vai entrar nesse circo, entra com carro que aguenta pancada. Tenho peças da época da Iron Howl." }
+          ],
+          "effects": ["openShop:boris_circuit", "autoSave"],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch5_4d_barao_prep",
+          "startTrigger": {
+            "type": "enter_location",
+            "params": { "locationId": "bg_garagem", "timeOfDay": "night", "requiredFlag": "crownCircuitActive" }
+          },
+          "bg": "bg_garagem_noite",
+          "sprites": [ { "id": "barao", "sprite": "barao_sorriso_fino", "position": "right" } ],
+          "lines": [
+            { "speaker": "BARAO", "conditions": ["hasDebt=true"], "text": "Meu investimento chegou ao palco principal. Lembre-se: eu mordo uma parte de cada prêmio. Não tente ser criativo." },
+            { "speaker": "BARAO", "conditions": ["hasDebt=false"], "text": "Você chegou aqui sem me dever nada. Raro. Vou assistir com interesse." }
+          ],
+          "effects": ["autoSave"],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch5_5_stage1_intro",
+          "startTrigger": { "type": "race_selected", "params": { "raceId": "crown_stage1" } },
+          "bg": "bg_grid_circuito_urbano",
+          "sprites": [ { "id": "pixel", "sprite": "pixel_malandro", "position": "hud" } ],
+          "lines": [
+            { "speaker": "PIXEL", "text": "Arquibancada lotada, drones de câmera, narrador gritando. Bem-vindo ao Circo da Coroa." },
+            { "speaker": "NARRADOR", "text": "Etapa 1: Circuito Urbano – Alta velocidade." }
+          ],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch5_5_stage1_post",
+          "startTrigger": { "type": "race_finished", "params": { "raceId": "crown_stage1" } },
+          "bg": "bg_pit_circuito",
+          "sprites": [ { "id": "crank", "sprite": "crank_neutro", "position": "center" } ],
+          "lines": [
+            { "speaker": "CRANK", "conditions": ["raceResult=win"], "text": "Você não travou na frente das câmeras. Metade dos estreantes trava." },
+            { "speaker": "CRANK", "conditions": ["raceResult=lose"], "text": "Primeira etapa e você tropeçou. Dá pra virar, mas a pressão só aumenta." }
+          ],
+          "effects": ["unlockRace:crown_stage2", "autoSave"],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch5_6_stage2_intro",
+          "startTrigger": { "type": "race_selected", "params": { "raceId": "crown_stage2" } },
+          "bg": "bg_circuito_industrial",
+          "sprites": [ { "id": "pixel", "sprite": "pixel_serio", "position": "hud" } ],
+          "lines": [
+            { "speaker": "PIXEL", "text": "Tô vendo coisa esquisita: contêiner mudado, óleo onde não devia. Rex tá editando a pista ao vivo." },
+            { "speaker": "NARRATOR", "text": "Etapa 2: Zona Industrial Manipulada." }
+          ],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch5_6_stage2_post",
+          "startTrigger": { "type": "race_finished", "params": { "raceId": "crown_stage2" } },
+          "bg": "bg_cobertura_corporativa",
+          "sprites": [ { "id": "rex", "sprite": "rex_holograma_neutro", "position": "center" } ],
+          "lines": [
+            { "speaker": "REX", "conditions": ["raceResult=win"], "sprite": "rex_interessado", "text": "Adaptabilidade boa. Você me deu cenas ótimas com aquelas armadilhas." },
+            { "speaker": "REX", "conditions": ["raceResult=lose"], "sprite": "rex_entediado", "text": "Previsível. Caindo nos meus truques. Útil pro show, não pro resultado final." }
+          ],
+          "effects": ["unlockRace:crown_stage3", "autoSave"],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch5_7_pre_final",
+          "startTrigger": { "type": "race_selected", "params": { "raceId": "crown_final" } },
+          "bg": "bg_camarim_circuito",
+          "sprites": [ { "id": "rex", "sprite": "rex_neutro", "position": "center" } ],
+          "lines": [
+            { "speaker": "REX", "text": "Chegou até a final. Muita gente apostou que você quebraria antes." },
+            { "speaker": "REX", "conditions": ["hasDebt=true"], "text": "O Barão está ansioso. Se vencer, paga ele e sobe. Se perder, ele lucra com a sua queda e o Boris desmonta seu carro." },
+            { "speaker": "REX", "text": "Última corrida. Não é só sobre ser rápido. É sobre aguentar o peso de saber que a cidade inteira te assiste." }
+          ],
+          "nextSceneId": null
+        },
+        {
+          "id": "ch5_8_epilogue_podium",
+          "startTrigger": { "type": "race_finished", "params": { "raceId": "crown_final" } },
+          "bg": "bg_podio",
+          "sprites": [
+            { "id": "pixel", "sprite": "pixel_sorriso", "position": "hud" },
+            { "id": "crank", "sprite": "crank_neutro", "position": "left" },
+            { "id": "akira", "sprite": "akira_neutra", "position": "right" }
+          ],
+          "lines": [
+            { "speaker": "PIXEL", "text": "Acabou. Você não é mais o mesmo piloto que entrou na garagem do Crank com um carro morrendo." },
+            { "speaker": "CRANK", "text": "Eu vi você crescer, errar, quase desistir. Ainda me deu motivo pra continuar mexendo em motor." },
+            { "speaker": "AKIRA", "text": "Você dançou com a pista num palco que queria te ver tropeçar." }
+          ],
+          "nextSceneId": "ch5_9_rex_final_words"
+        },
+        {
+          "id": "ch5_9_rex_final_words",
+          "bg": "bg_torre_alta",
+          "sprites": [ { "id": "rex", "sprite": "rex_serio", "position": "center" } ],
+          "lines": [
+            { "speaker": "REX", "text": "Independente de vitória ou derrota lá embaixo, você provou uma coisa: é impossível ignorar você." },
+            { "speaker": "REX", "text": "Agora você escolhe: aceita o papel de campeão que te dei nesse meu tabuleiro... ou tenta virar o tabuleiro contra mim." }
+          ],
+          "effects": ["endGame", "autoSave"],
+          "nextSceneId": null
+        }
+      ]
+    }
+  ]
+}
+

@@ -232,6 +232,11 @@ class GerenciadorCorrida:
                 passou_checkpoint = False
                 contra_mao = False
                 
+                # Inicializar timer de travamento se não existir
+                if not hasattr(carro, 'checkpoint_travado_tempo'):
+                    carro.checkpoint_travado_tempo = 0.0
+                    carro.checkpoint_travado_posicao = (carro.x, carro.y)
+                
                 # Verificar se o carro está dentro do retângulo do checkpoint
                 if checkpoint_rect:
                     # Expandir o retângulo do checkpoint para considerar o tamanho do carro
@@ -287,19 +292,50 @@ class GerenciadorCorrida:
                                 if passou_checkpoint:
                                     carro.contra_mao_tempo = 0.0
                                 
-                                # Não passar checkpoint se estiver contra mão
+                                # Não passar checkpoint se estiver contra mão (a menos que esteja travado há muito tempo)
                                 if passou_checkpoint:
-                                    return
+                                    # Se está travado há mais de 5 segundos no mesmo checkpoint, forçar passagem
+                                    if carro.checkpoint_travado_tempo > 5.0:
+                                        print(f"AVISO: Carro {getattr(carro, 'nome', 'Desconhecido')} travado há {carro.checkpoint_travado_tempo:.1f}s no checkpoint {idx_cp + 1}, forçando passagem")
+                                        contra_mao = False  # Forçar passagem mesmo indo contra mão
+                                    else:
+                                        return
                             elif produto_escalar > 0.3:
                                 # Se está indo na direção correta (produto escalar positivo significativo), limpar flag
                                 if hasattr(carro, 'contra_mao') and carro.contra_mao:
                                     carro.contra_mao = False
                                     carro.contra_mao_tempo = 0.0
+                                # Resetar timer de travamento se está se movendo corretamente
+                                carro.checkpoint_travado_tempo = 0.0
+                
+                # Verificar se o carro está travado no mesmo checkpoint
+                distancia_movimento = ((carro.x - carro.checkpoint_travado_posicao[0])**2 + 
+                                      (carro.y - carro.checkpoint_travado_posicao[1])**2) ** 0.5
+                if distancia_movimento < 50:  # Se não se moveu muito desde a última verificação
+                    carro.checkpoint_travado_tempo += 0.016  # Assumir ~60 FPS (dt aproximado)
+                else:
+                    # Se se moveu, atualizar posição e resetar timer
+                    carro.checkpoint_travado_posicao = (carro.x, carro.y)
+                    carro.checkpoint_travado_tempo = 0.0
+                
+                # Se está travado há mais de 10 segundos no mesmo checkpoint, forçar passagem
+                if carro.checkpoint_travado_tempo > 10.0 and not passou_checkpoint:
+                    # Verificar se está próximo do checkpoint (dentro de 300px)
+                    distancia_checkpoint = ((carro.x - cx)**2 + (carro.y - cy)**2) ** 0.5
+                    if distancia_checkpoint < 300:
+                        print(f"AVISO: Carro {getattr(carro, 'nome', 'Desconhecido')} travado há {carro.checkpoint_travado_tempo:.1f}s próximo ao checkpoint {idx_cp + 1}, forçando passagem")
+                        passou_checkpoint = True
+                        contra_mao = False  # Ignorar detecção de contra mão
+                        carro.checkpoint_travado_tempo = 0.0
                 
                 if passou_checkpoint and not contra_mao:
                     # Limpar flag de contra mão se passou corretamente
                     if hasattr(carro, 'contra_mao'):
                         carro.contra_mao = False
+                    
+                    # Resetar timer de travamento
+                    carro.checkpoint_travado_tempo = 0.0
+                    carro.checkpoint_travado_posicao = (carro.x, carro.y)
                     
                     # Registrar tempo do checkpoint
                     tempo_atual = self.tempo_global

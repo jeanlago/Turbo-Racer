@@ -97,7 +97,6 @@ TERRITORIOS = {
         area_clicavel=(380, 380, 130, 100),
         desbloqueado=True,
         atividades=[
-            {"tipo": "loja_pecas", "nome": "Comprar Pneus de Drift", "risco": "baixo"},
             {"tipo": "desafio_touge", "nome": "Desafio de Montanha (Touge)", "risco": "medio", "pontos_penalidade": "alto"}
         ]
     ),

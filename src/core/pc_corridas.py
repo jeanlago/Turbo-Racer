@@ -7,7 +7,7 @@ Tela para selecionar e iniciar corridas no modo campanha
 import os
 import json
 import pygame
-from typing import Optional
+from typing import Optional, Dict
 from config import LARGURA, ALTURA, DIR_PROJETO, FPS
 
 def _get_render_text():
@@ -487,6 +487,143 @@ def pc_corridas_loop(screen) -> Optional[dict]:
         else:
             instrucoes = render_text("↑↓ navegar | Clique selecionar | ESC voltar", 12, (150, 150, 150), bold=False, pixel_style=True)
         screen.blit(instrucoes, (10, ALTURA - 25))
+        
+        pygame.display.flip()
+    
+    return None
+
+def autodromo_corridas_loop(screen) -> Optional[dict]:
+    """
+    Loop específico para o autódromo - mostra apenas corridas do Circuito da Coroa
+    Retorna um dicionário com informações da corrida selecionada ou None se cancelado
+    """
+    from core.progresso import gerenciador_progresso
+    
+    clock = pygame.time.Clock()
+    render_text = _get_render_text()
+    
+    # Corridas do Circuito da Coroa
+    corridas_coroa = [
+        {"id": "crown_stage1", "nome": "Circuito da Coroa - Etapa 1", "track": 8, "laps": 2, "difficulty": "dificil"},
+        {"id": "crown_stage2", "nome": "Circuito da Coroa - Etapa 2", "track": 8, "laps": 2, "difficulty": "dificil"},
+        {"id": "crown_stage3", "nome": "Circuito da Coroa - Etapa 3", "track": 8, "laps": 2, "difficulty": "dificil"},
+        {"id": "crown_final", "nome": "Corrida Final do Circuito da Coroa", "track": 8, "laps": 3, "difficulty": "dificil"}
+    ]
+    
+    # Verificar quais corridas estão desbloqueadas
+    corridas_desbloqueadas = []
+    if not hasattr(gerenciador_progresso, 'corridas_desbloqueadas'):
+        gerenciador_progresso.corridas_desbloqueadas = set()
+    
+    for corrida in corridas_coroa:
+        race_id = corrida["id"]
+        if race_id in gerenciador_progresso.corridas_desbloqueadas:
+            corridas_desbloqueadas.append(corrida)
+    
+    if not corridas_desbloqueadas:
+        # Nenhuma corrida desbloqueada - mostrar mensagem
+        bg = pygame.Surface((LARGURA, ALTURA))
+        bg.fill((20, 20, 30))
+        screen.blit(bg, (0, 0))
+        
+        mensagem = render_text("Nenhuma corrida do Circuito da Coroa disponível ainda.", 32, (255, 255, 255), bold=True, pixel_style=True)
+        mensagem_x = (LARGURA - mensagem.get_width()) // 2
+        mensagem_y = ALTURA // 2 - 50
+        screen.blit(mensagem, (mensagem_x, mensagem_y))
+        
+        instrucao = render_text("Pressione ESC para voltar", 20, (150, 150, 150), bold=False, pixel_style=True)
+        instrucao_x = (LARGURA - instrucao.get_width()) // 2
+        instrucao_y = mensagem_y + 80
+        screen.blit(instrucao, (instrucao_x, instrucao_y))
+        
+        pygame.display.flip()
+        
+        aguardando = True
+        while aguardando:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return None
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        return None
+            clock.tick(FPS)
+        
+        return None
+    
+    corrida_selecionada_idx = 0
+    
+    # Fundo
+    from config import DIR_UI
+    caminho_tela_pc = os.path.join(DIR_UI, "tela_pc.png")
+    if os.path.exists(caminho_tela_pc):
+        bg_raw = pygame.image.load(caminho_tela_pc).convert_alpha()
+        bg = pygame.transform.scale(bg_raw, (LARGURA, ALTURA))
+    else:
+        bg = pygame.Surface((LARGURA, ALTURA))
+        bg.fill((20, 20, 30))
+    
+    running = True
+    
+    while running:
+        dt = clock.tick(FPS) / 1000.0
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return None
+            
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return None
+                elif event.key == pygame.K_UP or event.key == pygame.K_w:
+                    corrida_selecionada_idx = max(0, corrida_selecionada_idx - 1)
+                elif event.key == pygame.K_DOWN or event.key == pygame.K_s:
+                    corrida_selecionada_idx = min(len(corridas_desbloqueadas) - 1, corrida_selecionada_idx + 1)
+                elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
+                    if corrida_selecionada_idx < len(corridas_desbloqueadas):
+                        corrida = corridas_desbloqueadas[corrida_selecionada_idx]
+                        return {
+                            "pista": corrida["track"],
+                            "voltas": corrida["laps"],
+                            "dificuldade": corrida["difficulty"],
+                            "race_id": corrida["id"],
+                            "sem_bots": False
+                        }
+        
+        screen.blit(bg, (0, 0))
+        
+        # Título
+        titulo = render_text("CIRCUITO DA COROA - AUTÓDROMO", 48, (255, 215, 0), bold=True, pixel_style=True)
+        titulo_x = (LARGURA - titulo.get_width()) // 2
+        screen.blit(titulo, (titulo_x, 30))
+        
+        # Lista de corridas
+        lista_y = 150
+        espacamento = 80
+        
+        for i, corrida in enumerate(corridas_desbloqueadas):
+            y_pos = lista_y + i * espacamento
+            
+            # Destaque para corrida selecionada
+            if i == corrida_selecionada_idx:
+                highlight = pygame.Surface((LARGURA - 200, 60), pygame.SRCALPHA)
+                highlight.fill((255, 215, 0, 50))
+                screen.blit(highlight, (100, y_pos - 10))
+                pygame.draw.rect(screen, (255, 215, 0), (100, y_pos - 10, LARGURA - 200, 60), 3)
+            
+            # Nome da corrida
+            nome_cor = (255, 255, 255) if i == corrida_selecionada_idx else (200, 200, 200)
+            nome_texto = render_text(corrida["nome"], 28, nome_cor, bold=(i == corrida_selecionada_idx), pixel_style=True)
+            screen.blit(nome_texto, (120, y_pos))
+            
+            # Informações
+            info_texto = f"Pista {corrida['track']} | {corrida['laps']} voltas | Dificuldade: {corrida['difficulty']}"
+            info_cor = (180, 180, 180) if i == corrida_selecionada_idx else (120, 120, 120)
+            info = render_text(info_texto, 18, info_cor, bold=False, pixel_style=True)
+            screen.blit(info, (120, y_pos + 35))
+        
+        # Instruções
+        instrucoes = render_text("↑↓ navegar | ENTER iniciar | ESC voltar", 16, (150, 150, 150), bold=False, pixel_style=True)
+        screen.blit(instrucoes, (10, ALTURA - 30))
         
         pygame.display.flip()
     

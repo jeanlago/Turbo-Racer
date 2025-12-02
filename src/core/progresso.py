@@ -24,6 +24,7 @@ class GerenciadorProgresso:
         
         self.akira_nome_revelado = False
         self.akira_dialogos_pre_corrida_mostrados = {}
+        self.akira_primeira_aparicao_mostrada = False
         
         self.ranking_pilotos = []
         self.ranking_posicao_jogador = 10
@@ -55,9 +56,11 @@ class GerenciadorProgresso:
         
         self.pixel_nome_revelado = False
         self.pixel_primeira_aparicao_mostrada = False
+        self.pixel_dialogo_explodiu_mostrado = False
         
         self.fuligem_nome_revelado = False
         self.fuligem_primeira_aparicao_mostrada = False
+        self.fuligem_corridas_desbloqueadas = [0]  # Corrida 1 (índice 0) sempre desbloqueada
         
         self.capitulo_atual = None
         self.capitulos_completos = set()
@@ -103,6 +106,12 @@ class GerenciadorProgresso:
         # Flag para rastrear última corrida da campanha
         self.ultima_corrida_campanha = None
         
+        # Flag para iniciar capítulo 4 após narrativa pós-corrida da montanha
+        self.iniciar_capitulo_4_apos_narrativa = False
+        
+        # Corridas desbloqueadas (race_id)
+        self.corridas_desbloqueadas = set()
+        
         self.carregar()
     
     def carregar(self):
@@ -131,6 +140,7 @@ class GerenciadorProgresso:
                     
                     self.akira_nome_revelado = data.get('akira_nome_revelado', False)
                     self.akira_dialogos_pre_corrida_mostrados = data.get('akira_dialogos_pre_corrida_mostrados', {})
+                    self.akira_primeira_aparicao_mostrada = data.get('akira_primeira_aparicao_mostrada', False)
                     
                     self.ranking_pilotos = data.get('ranking_pilotos', [])
                     self.ranking_posicao_jogador = data.get('ranking_posicao_jogador', 10)
@@ -162,9 +172,11 @@ class GerenciadorProgresso:
                     
                     self.pixel_nome_revelado = data.get('pixel_nome_revelado', False)
                     self.pixel_primeira_aparicao_mostrada = data.get('pixel_primeira_aparicao_mostrada', False)
+                    self.pixel_dialogo_explodiu_mostrado = data.get('pixel_dialogo_explodiu_mostrado', False)
                     
                     self.fuligem_nome_revelado = data.get('fuligem_nome_revelado', False)
                     self.fuligem_primeira_aparicao_mostrada = data.get('fuligem_primeira_aparicao_mostrada', False)
+                    self.fuligem_corridas_desbloqueadas = data.get('fuligem_corridas_desbloqueadas', [0])  # Corrida 1 sempre desbloqueada
                     
                     self.capitulo_atual = data.get('capitulo_atual', None)
                     self.capitulos_completos = set(data.get('capitulos_completos', []))
@@ -209,6 +221,9 @@ class GerenciadorProgresso:
                     
                     # Carregar flag de última corrida da campanha
                     self.ultima_corrida_campanha = data.get('ultima_corrida_campanha', None)
+                    self.iniciar_capitulo_4_apos_narrativa = data.get('iniciar_capitulo_4_apos_narrativa', False)
+                    corridas_desbloqueadas_data = data.get('corridas_desbloqueadas', [])
+                    self.corridas_desbloqueadas = set(corridas_desbloqueadas_data) if isinstance(corridas_desbloqueadas_data, list) else set()
                     
                     self._migrar_dados_antigos()
                     
@@ -292,6 +307,7 @@ class GerenciadorProgresso:
                 
                 'akira_nome_revelado': self.akira_nome_revelado,
                 'akira_dialogos_pre_corrida_mostrados': self.akira_dialogos_pre_corrida_mostrados,
+                'akira_primeira_aparicao_mostrada': self.akira_primeira_aparicao_mostrada,
                 
                 'ranking_pilotos': self.ranking_pilotos,
                 'ranking_posicao_jogador': self.ranking_posicao_jogador,
@@ -323,9 +339,11 @@ class GerenciadorProgresso:
                 
                 'pixel_nome_revelado': self.pixel_nome_revelado,
                 'pixel_primeira_aparicao_mostrada': self.pixel_primeira_aparicao_mostrada,
+                'pixel_dialogo_explodiu_mostrado': self.pixel_dialogo_explodiu_mostrado,
                 
                 'fuligem_nome_revelado': self.fuligem_nome_revelado,
                 'fuligem_primeira_aparicao_mostrada': self.fuligem_primeira_aparicao_mostrada,
+                'fuligem_corridas_desbloqueadas': self.fuligem_corridas_desbloqueadas,
                 
                 'capitulo_atual': self.capitulo_atual,
                 'capitulos_completos': list(self.capitulos_completos),
@@ -348,7 +366,9 @@ class GerenciadorProgresso:
                 'estatisticas_gerais': self.estatisticas_gerais,
                 'estatisticas_por_pista': self.estatisticas_por_pista,
                 
-                'ultima_corrida_campanha': self.ultima_corrida_campanha
+                'ultima_corrida_campanha': self.ultima_corrida_campanha,
+                'iniciar_capitulo_4_apos_narrativa': self.iniciar_capitulo_4_apos_narrativa,
+                'corridas_desbloqueadas': list(self.corridas_desbloqueadas) if isinstance(self.corridas_desbloqueadas, set) else self.corridas_desbloqueadas
             }
             
             with open(CAMINHO_PROGRESSO, 'w', encoding='utf-8') as f:

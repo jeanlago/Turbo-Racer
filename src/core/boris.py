@@ -440,9 +440,13 @@ class Boris:
             from core.missoes import gerenciador_missoes
             if gerenciador_missoes.missao_ativa_id == "m4_coracao_de_sucata":
                 gerenciador_missoes.completar_missao("m4_coracao_de_sucata")
+                gerenciador_missoes.salvar()
                 print("[BORIS] Missão 'Coração de Sucata' completada após compra!")
         except Exception as e:
             print(f"[BORIS] Erro ao completar missão: {e}")
+        
+        # Salvar progresso após compra
+        gerenciador_progresso.salvar()
         
         # Reação baseada no tipo de preço
         if peça_info['preco_tipo'] == "otimo":

@@ -66,6 +66,23 @@ class NarrativeSystem:
         self.hover_hitbox_atual = None
         self.hover_sprite_atual = None
         
+        # Sistema de créditos (auto-avanço)
+        self.creditos_auto_advance = False
+        self.creditos_tempo_mostrado = 0.0
+        self.creditos_tempo_por_cena = 3.0  # 3 segundos por cena de créditos
+        self.creditos_texto_fade_alpha = 0.0
+        self.creditos_texto_fade_direction = 1  # 1 = aparecendo, -1 = desaparecendo
+        
+        # Sistema de gatilhos dinâmicos
+        self.pending_scenes = []  # Cenas aguardando gatilhos
+        self.scenes_visited = set()  # Cenas já visitadas
+        self.chapter_start_time = {}  # Tempo de início de cada capítulo
+        
+        # Sistema de gatilhos dinâmicos
+        self.pending_scenes = []  # Cenas aguardando gatilhos
+        self.scenes_visited = set()  # Cenas já visitadas
+        self.chapter_start_time = {}  # Tempo de início de cada capítulo
+        
         self.carregar_narrativa()
         self.carregar_hitboxes_cenarios()
     
@@ -93,6 +110,9 @@ class NarrativeSystem:
             return False
         
         self.current_chapter_id = chapter_id
+        import time
+        self.chapter_start_time[chapter_id] = time.time()
+        
         scenes = chapter.get("scenes", [])
         if scenes:
             # Se estamos no Capítulo 2, verificar se já decidimos sobre o empréstimo
@@ -113,6 +133,14 @@ class NarrativeSystem:
                             if scene.get("id") == "ch2_6_pixel_reacts":
                                 print(f"[NARRATIVA] Capítulo 2: Pulando para cena do Pixel (empréstimo já decidido)")
                                 return self._iniciar_cena_sem_transicao(scene.get("id"))
+            
+            # Se estamos no Capítulo 3, verificar se já completamos o cinturão
+            if chapter_id == "ch3":
+                from core.progresso import gerenciador_progresso
+                from core.missoes import gerenciador_missoes
+                # Se a missão m10 já foi completada, podemos pular para a cena inicial do capítulo 3
+                if gerenciador_missoes.esta_completa("m10_portoes_do_cinturao"):
+                    print(f"[NARRATIVA] Capítulo 3: Cinturão já completado, iniciando normalmente")
             
             # Iniciar normalmente pela primeira cena
             self.iniciar_cena(scenes[0].get("id"))
@@ -206,6 +234,18 @@ class NarrativeSystem:
         self.active = True
         self.choices_visible = False
         
+        # Desativar NPCs quando a narrativa está ativa para evitar sobreposição
+        try:
+            from core.pixel import pixel
+            from core.crank import crank
+            from core.akira import akira
+            pixel.ativo = False
+            crank.ativo = False
+            # Não desativar Akira aqui pois ela pode ser usada na narrativa
+            print(f"[NARRATIVA] NPCs desativados ao iniciar cena {scene_id}")
+        except Exception as e:
+            print(f"[NARRATIVA] Erro ao desativar NPCs: {e}")
+        
         try:
             from core.missoes import gerenciador_missoes
             # Ativar missões que devem ser ativadas nesta cena
@@ -214,6 +254,13 @@ class NarrativeSystem:
         except:
             pass
         self.selected_choice = 0
+        
+        # Processar efeitos da cena (ex: unlockLocation, unlockRace, etc.)
+        effects = scene.get("effects", [])
+        if effects:
+            print(f"[NARRATIVA] Processando {len(effects)} efeito(s) da cena {scene_id}")
+            for effect in effects:
+                self._processar_efeito(effect)
         
         bg_name = scene.get("bg")
         if bg_name:
@@ -267,6 +314,8 @@ class NarrativeSystem:
             "bg_camarim_circuito": "predio_rex.png",
             "bg_podio": "autodromo_fora.png",
             "bg_torre_alta": "predio_rex.png",
+            "iate_barao_dia": "iate_barao_dia.png",
+            "iate_barao_noite": "iate_barao_noite.png",
             "nissan_350z_inicial_noite": "nissan_350z_inicial_noite.png"
         }
         return bg_mapping.get(bg_name)
@@ -327,26 +376,67 @@ class NarrativeSystem:
             return
         
         arquivo_cenario = self._obter_arquivo_cenario(bg_name)
-        if not arquivo_cenario:
-            arquivo_cenario = "cidade.png"
         
-        from config import obter_caminho_sprite_dia_noite
-        nome_base = os.path.splitext(arquivo_cenario)[0]
-        
-        sprites_dia_noite = ["cidade", "oficina", "casa", "monte_akira", "autodromo_fora", "fabrica", "predio_rex"]
-        
-        if nome_base in sprites_dia_noite:
-            bg_path = obter_caminho_sprite_dia_noite(nome_base, CAMINHO_BACKGROUNDS)
+        # Se o bg_name já especifica dia/noite explicitamente (ex: "iate_barao_dia", "iate_barao_noite")
+        # E não está no mapeamento (ou seja, é um arquivo específico), usar diretamente
+        if (bg_name.endswith("_dia") or bg_name.endswith("_noite")) and not arquivo_cenario:
+            # Se não encontrou no mapeamento, usar o bg_name como nome do arquivo
+            bg_path = os.path.join(CAMINHO_BACKGROUNDS, f"{bg_name}.png")
         else:
-            bg_path = os.path.join(CAMINHO_BACKGROUNDS, arquivo_cenario)
+            # Para backgrounds mapeados (ex: bg_garagem_noite -> oficina.png), usar sistema dia/noite
+            if not arquivo_cenario:
+                arquivo_cenario = "cidade.png"
+            
+            from config import obter_caminho_sprite_dia_noite, obter_estado_dia_noite
+            nome_base = os.path.splitext(arquivo_cenario)[0]
+            
+            sprites_dia_noite = ["cidade", "oficina", "casa", "monte_akira", "autodromo_fora", "fabrica", "predio_rex", "iate_barao"]
+            
+            if nome_base in sprites_dia_noite:
+                # Determinar se é dia ou noite baseado no bg_name
+                # Se o bg_name termina com _noite ou _dia, usar isso para determinar o arquivo
+                if bg_name.endswith("_noite"):
+                    # Forçar noite para backgrounds que especificam _noite
+                    # Criar caminho manualmente para noite
+                    bg_path = os.path.join(CAMINHO_BACKGROUNDS, f"{nome_base}_noite.png")
+                    if not os.path.exists(bg_path):
+                        # Se não existe _noite, tentar o padrão
+                        bg_path = obter_caminho_sprite_dia_noite(nome_base, CAMINHO_BACKGROUNDS)
+                elif bg_name.endswith("_dia"):
+                    # Forçar dia para backgrounds que especificam _dia
+                    # Criar caminho manualmente para dia
+                    bg_path = os.path.join(CAMINHO_BACKGROUNDS, f"{nome_base}_dia.png")
+                    if not os.path.exists(bg_path):
+                        # Se não existe _dia, tentar o padrão
+                        bg_path = obter_caminho_sprite_dia_noite(nome_base, CAMINHO_BACKGROUNDS)
+                else:
+                    # Usar estado atual do jogo
+                    bg_path = obter_caminho_sprite_dia_noite(nome_base, CAMINHO_BACKGROUNDS)
+                
+                estado_dia_noite = obter_estado_dia_noite()
+                print(f"[NARRATIVA] Carregando background {bg_name} -> {nome_base} ({estado_dia_noite}): {bg_path}")
+            else:
+                bg_path = os.path.join(CAMINHO_BACKGROUNDS, arquivo_cenario)
+                print(f"[NARRATIVA] Carregando background {bg_name} -> {arquivo_cenario}: {bg_path}")
         
         if os.path.exists(bg_path):
             try:
                 self.backgrounds[bg_name] = pygame.image.load(bg_path).convert()
                 bg = self.backgrounds[bg_name]
                 self.backgrounds[bg_name] = pygame.transform.scale(bg, (LARGURA, ALTURA))
+                print(f"[NARRATIVA] Background {bg_name} carregado com sucesso: {bg_path}")
             except Exception as e:
-                print(f"Erro ao carregar background {bg_name}: {e}")
+                print(f"[NARRATIVA] Erro ao carregar background {bg_name} de {bg_path}: {e}")
+                import traceback
+                traceback.print_exc()
+                # Criar fallback
+                self.backgrounds[bg_name] = pygame.Surface((LARGURA, ALTURA))
+                self.backgrounds[bg_name].fill((20, 20, 30))
+        else:
+            print(f"[NARRATIVA] AVISO: Background {bg_name} não encontrado em {bg_path}")
+            # Criar fallback
+            self.backgrounds[bg_name] = pygame.Surface((LARGURA, ALTURA))
+            self.backgrounds[bg_name].fill((20, 20, 30))
     
     def _carregar_sprites_cena(self, sprites_config: List[Dict]):
         """Carrega os sprites de uma cena"""
@@ -501,6 +591,20 @@ class NarrativeSystem:
         # Salvar flags de progresso quando a cena termina
         self._salvar_flags_cena_atual()
         
+        # Salvar progresso após avançar cena (IMPORTANTE: salvar sempre para não repetir cutscenes)
+        try:
+            from core.progresso import gerenciador_progresso
+            from core.missoes import gerenciador_missoes
+            from core.mapa_locations import gerenciador_localizacoes
+            gerenciador_progresso.salvar()
+            gerenciador_missoes.salvar()
+            gerenciador_localizacoes.salvar()
+            print(f"[NARRATIVA] Progresso salvo após avançar cena {self.current_scene_id}")
+        except Exception as e:
+            print(f"[NARRATIVA] Erro ao salvar progresso: {e}")
+            import traceback
+            traceback.print_exc()
+        
         # Se a cena possui um gameplayTrigger, não avançar automaticamente aqui.
         # O loop de narrativa em menu.py chama obter_trigger_atual quando todas
         # as linhas terminam e então processa o trigger (ex: start_race, goto_map,
@@ -513,12 +617,65 @@ class NarrativeSystem:
         if next_scene_id:
             self.iniciar_cena(next_scene_id)
         else:
+            # Se nextSceneId é null, verificar se há auto-save nos efeitos
+            effects = scene.get("effects", [])
+            if "autoSave" in effects:
+                try:
+                    from core.progresso import gerenciador_progresso
+                    from core.missoes import gerenciador_missoes
+                    from core.mapa_locations import gerenciador_localizacoes
+                    gerenciador_progresso.salvar()
+                    gerenciador_missoes.salvar()
+                    gerenciador_localizacoes.salvar()
+                    print(f"[NARRATIVA] Auto-save executado ao final da cena {self.current_scene_id} (nextSceneId: null)")
+                except Exception as e:
+                    print(f"[NARRATIVA] Erro ao executar auto-save: {e}")
+            
+            # Marcar cena como visitada
+            if self.current_scene_id:
+                self.scenes_visited.add(self.current_scene_id)
             if self.current_chapter_id:
                 try:
                     from core.progresso import gerenciador_progresso
-                    gerenciador_progresso.marcar_capitulo_completo(self.current_chapter_id)
-                except:
-                    pass
+                    
+                    # Se completou a última cena do capítulo 3 (ch3_8_pixel_wrap)
+                    if self.current_chapter_id == "ch3" and self.current_scene_id == "ch3_8_pixel_wrap":
+                        print(f"[NARRATIVA] Última cena do Capítulo 3 completada (ch3_8_pixel_wrap)")
+                        # Marcar capítulo 3 como completo
+                        gerenciador_progresso.marcar_capitulo_completo("ch3")
+                        
+                        # Verificar se deve iniciar capítulo 4 (após completar corrida da montanha)
+                        if getattr(gerenciador_progresso, 'iniciar_capitulo_4_apos_narrativa', False):
+                            print(f"[NARRATIVA] Flag iniciar_capitulo_4_apos_narrativa ativa, iniciando Capítulo 4...")
+                            gerenciador_progresso.iniciar_capitulo_4_apos_narrativa = False
+                            gerenciador_progresso.definir_capitulo_atual("ch4")
+                            gerenciador_progresso.salvar()
+                            # Iniciar capítulo 4
+                            if self.iniciar_capitulo("ch4"):
+                                return  # Narrativa continua ativa com o capítulo 4
+                        else:
+                            print(f"[NARRATIVA] Capítulo 3 marcado como completo. Capítulo 4 será iniciado após completar a corrida da montanha.")
+                            gerenciador_progresso.salvar()
+                    # Se completou a última cena do capítulo 4 (ch4_7_rex_direct_call)
+                    elif self.current_chapter_id == "ch4" and self.current_scene_id == "ch4_7_rex_direct_call":
+                        print(f"[NARRATIVA] Última cena do Capítulo 4 completada (ch4_7_rex_direct_call)")
+                        # Marcar capítulo 4 como completo
+                        gerenciador_progresso.marcar_capitulo_completo("ch4")
+                        gerenciador_progresso.definir_capitulo_atual("ch5")
+                        gerenciador_progresso.salvar()
+                        # Iniciar capítulo 5
+                        if self.iniciar_capitulo("ch5"):
+                            print(f"[NARRATIVA] Capítulo 5 iniciado automaticamente após completar Capítulo 4")
+                            return  # Narrativa continua ativa com o capítulo 5
+                    elif self.current_chapter_id != "ch3" and self.current_chapter_id != "ch4":
+                        # Para outros capítulos, marcar como completo normalmente
+                        gerenciador_progresso.marcar_capitulo_completo(self.current_chapter_id)
+                        gerenciador_progresso.salvar()
+                    
+                except Exception as e:
+                    print(f"[NARRATIVA] Erro ao processar fim de capítulo: {e}")
+                    import traceback
+                    traceback.print_exc()
             self.active = False
     
     def _salvar_flags_cena_atual(self):
@@ -541,11 +698,27 @@ class NarrativeSystem:
             "ch1_7_pixel_intro": ("pixel_primeira_aparicao_mostrada", "pixel"),
             "ch1_1_crank_garage_intro": ("crank_tutorial_mostrado", "crank"),
             "ch2_2_barao_appears": ("barao_nome_revelado", "barao"),
+            "ch3_1_crank_to_mountain": (None, "akira"),  # Crank menciona Akira pelo nome
         }
         
         if self.current_scene_id in cena_para_flag:
             flag_name, personagem = cena_para_flag[self.current_scene_id]
-            if not getattr(gerenciador_progresso, flag_name, False):
+            
+            # Se flag_name é None, apenas revelar o nome do personagem
+            if flag_name is None:
+                if personagem == "akira" and not gerenciador_progresso.akira_nome_revelado:
+                    print(f"[NARRATIVA] Revelando nome da Akira na cena {self.current_scene_id}")
+                    gerenciador_progresso.akira_nome_revelado = True
+                    # Salvar estado da Akira também
+                    try:
+                        from core.akira import akira
+                        akira.nome_revelado = True
+                        akira.salvar_estado()
+                    except Exception as e:
+                        print(f"[NARRATIVA] Erro ao salvar estado da Akira: {e}")
+                    gerenciador_progresso.salvar()
+                    print(f"[NARRATIVA] Nome da Akira revelado e salvo com sucesso!")
+            elif not getattr(gerenciador_progresso, flag_name, False):
                 print(f"[NARRATIVA] Salvando flag {flag_name}=True para cena {self.current_scene_id}")
                 setattr(gerenciador_progresso, flag_name, True)
                 
@@ -563,6 +736,15 @@ class NarrativeSystem:
                         barao.salvar_estado()
                     except Exception as e:
                         print(f"[NARRATIVA] Erro ao salvar estado do Barão: {e}")
+                elif personagem == "akira" and not gerenciador_progresso.akira_nome_revelado:
+                    gerenciador_progresso.akira_nome_revelado = True
+                    # Salvar estado da Akira também
+                    try:
+                        from core.akira import akira
+                        akira.nome_revelado = True
+                        akira.salvar_estado()
+                    except Exception as e:
+                        print(f"[NARRATIVA] Erro ao salvar estado da Akira: {e}")
                 
                 gerenciador_progresso.salvar()
                 print(f"[NARRATIVA] Flag {flag_name} salva com sucesso!")
@@ -773,6 +955,99 @@ class NarrativeSystem:
         
         return None
     
+    def verificar_gatilho_cena(self, scene: Dict) -> bool:
+        """Verifica se os gatilhos de uma cena foram atendidos"""
+        start_trigger = scene.get("startTrigger")
+        if not start_trigger:
+            # Se não tem startTrigger, assume "immediate" (compatibilidade com sistema antigo)
+            return True
+        
+        trigger_type = start_trigger.get("type", "immediate")
+        params = start_trigger.get("params", {})
+        conditions = start_trigger.get("conditions", [])
+        
+        # Verificar condições primeiro
+        if conditions:
+            if not self._verificar_condicoes(conditions):
+                return False
+        
+        # Verificar tipo de gatilho
+        if trigger_type == "immediate":
+            return True
+        elif trigger_type == "enter_location":
+            location_id = params.get("locationId")
+            # Isso será verificado externamente quando o jogador entrar no local
+            return False  # Retorna False para que seja verificado externamente
+        elif trigger_type == "race_finished":
+            race_id = params.get("raceId")
+            result = params.get("result", "any")
+            # Verificar se a corrida foi completada
+            from core.progresso import gerenciador_progresso
+            if hasattr(gerenciador_progresso, 'ultima_corrida_campanha'):
+                if gerenciador_progresso.ultima_corrida_campanha == race_id:
+                    if result == "any":
+                        return True
+                    # Verificar resultado da corrida
+                    race_result = self.variables.get("lastRaceResult", "")
+                    if result == race_result:
+                        return True
+            return False
+        elif trigger_type == "time_passed":
+            days = params.get("days", 1)
+            after_scene_id = params.get("afterSceneId") or params.get("daysSinceScene") or params.get("daysSinceChapterStart")
+            if after_scene_id:
+                # Verificar se passou o tempo necessário desde a cena
+                if after_scene_id in self.scenes_visited:
+                    # TODO: Implementar verificação de tempo real
+                    return True
+            return False
+        elif trigger_type == "reputation_threshold":
+            min_reputation = params.get("minReputation", 0)
+            # TODO: Implementar sistema de reputação
+            return False
+        elif trigger_type == "race_selected":
+            race_id = params.get("raceId")
+            # Isso será verificado externamente quando o jogador selecionar a corrida
+            return False
+        
+        return False
+    
+    def _verificar_condicoes(self, conditions: List[str]) -> bool:
+        """Verifica se todas as condições são atendidas"""
+        from core.progresso import gerenciador_progresso
+        
+        for condition in conditions:
+            if "=" in condition:
+                key, value = condition.split("=", 1)
+                if key == "hasDebt":
+                    if value == "true":
+                        if not getattr(gerenciador_progresso, 'barao_emprestimo_ativo', False):
+                            return False
+                    elif value == "false":
+                        if getattr(gerenciador_progresso, 'barao_emprestimo_ativo', False):
+                            return False
+                elif key == "raceResult":
+                    if value != self.variables.get("lastRaceResult", ""):
+                        return False
+                elif key == "racePerformance":
+                    # TODO: Implementar verificação de performance
+                    pass
+                elif key.startswith("locationUnlocked:"):
+                    location = key.split(":")[1]
+                    should_be_unlocked = value == "true"
+                    from core.mapa_locations import gerenciador_localizacoes
+                    is_unlocked = gerenciador_localizacoes.esta_desbloqueado(location)
+                    if should_be_unlocked != is_unlocked:
+                        return False
+                elif ">=" in condition:
+                    key, value = condition.split(">=", 1)
+                    if key == "playerMoney":
+                        required = int(value)
+                        if gerenciador_progresso.dinheiro < required:
+                            return False
+        
+        return True
+    
     def _processar_efeito(self, effect: str):
         """Processa um efeito (flag, desbloqueio, etc.)"""
         if effect.startswith("setFlag:"):
@@ -808,6 +1083,19 @@ class NarrativeSystem:
                 except Exception as e:
                     print(f"[NARRATIVA] Erro ao desbloquear conjunto de corridas {race}: {e}")
             else:
+                # unlockRace: desbloqueia uma corrida específica
+                # Salvar no progresso que a corrida está desbloqueada
+                try:
+                    from core.progresso import gerenciador_progresso
+                    if not hasattr(gerenciador_progresso, 'corridas_desbloqueadas'):
+                        gerenciador_progresso.corridas_desbloqueadas = set()
+                    if isinstance(gerenciador_progresso.corridas_desbloqueadas, list):
+                        gerenciador_progresso.corridas_desbloqueadas = set(gerenciador_progresso.corridas_desbloqueadas)
+                    gerenciador_progresso.corridas_desbloqueadas.add(race)
+                    gerenciador_progresso.salvar()
+                    print(f"[NARRATIVA] Corrida '{race}' desbloqueada e salva no progresso")
+                except Exception as e:
+                    print(f"[NARRATIVA] Erro ao desbloquear corrida {race}: {e}")
                 print(f"[NARRATIVA] Desbloqueando corrida: {race}")
         elif effect.startswith("openShop:"):
             shop = effect.split(":", 1)[1]
@@ -840,6 +1128,68 @@ class NarrativeSystem:
                 print(f"[NARRATIVA] Tornando localização visível: {location}")
             except Exception as e:
                 print(f"[NARRATIVA] Erro ao tornar localização visível {location}: {e}")
+        elif effect == "autoSave":
+            try:
+                from core.progresso import gerenciador_progresso
+                from core.missoes import gerenciador_missoes
+                from core.mapa_locations import gerenciador_localizacoes
+                gerenciador_progresso.salvar()
+                gerenciador_missoes.salvar()
+                gerenciador_localizacoes.salvar()
+                print(f"[NARRATIVA] Auto-save executado após cena {self.current_scene_id}")
+            except Exception as e:
+                print(f"[NARRATIVA] Erro ao executar auto-save: {e}")
+        elif effect.startswith("addObjective:"):
+            objective = effect.split(":", 1)[1]
+            try:
+                from core.missoes import gerenciador_missoes
+                # TODO: Implementar sistema de objetivos dinâmicos
+                print(f"[NARRATIVA] Adicionando objetivo: {objective}")
+            except Exception as e:
+                print(f"[NARRATIVA] Erro ao adicionar objetivo: {e}")
+        elif effect.startswith("completeObjective:"):
+            objective = effect.split(":", 1)[1]
+            try:
+                from core.missoes import gerenciador_missoes
+                # TODO: Implementar sistema de objetivos dinâmicos
+                print(f"[NARRATIVA] Completando objetivo: {objective}")
+            except Exception as e:
+                print(f"[NARRATIVA] Erro ao completar objetivo: {e}")
+        elif effect.startswith("removeMoney:"):
+            amount_str = effect.split(":", 1)[1]
+            try:
+                from core.progresso import gerenciador_progresso
+                amount = int(amount_str)
+                gerenciador_progresso.remover_dinheiro(amount)
+                print(f"[NARRATIVA] Removendo dinheiro: {amount}")
+            except Exception as e:
+                print(f"[NARRATIVA] Erro ao remover dinheiro '{amount_str}': {e}")
+        elif effect.startswith("advanceTime:"):
+            time_str = effect.split(":", 1)[1]
+            # TODO: Implementar avanço de tempo
+            print(f"[NARRATIVA] Avançando tempo: {time_str}")
+        elif effect.startswith("installFirstUpgrade"):
+            # TODO: Implementar instalação de primeiro upgrade
+            print(f"[NARRATIVA] Instalando primeiro upgrade")
+        elif effect.startswith("endChapter:"):
+            chapter_id = effect.split(":", 1)[1]
+            try:
+                from core.progresso import gerenciador_progresso
+                gerenciador_progresso.marcar_capitulo_completo(chapter_id)
+                print(f"[NARRATIVA] Capítulo {chapter_id} marcado como completo")
+            except Exception as e:
+                print(f"[NARRATIVA] Erro ao finalizar capítulo: {e}")
+        elif effect.startswith("startChapter:"):
+            chapter_id = effect.split(":", 1)[1]
+            try:
+                from core.progresso import gerenciador_progresso
+                gerenciador_progresso.definir_capitulo_atual(chapter_id)
+                print(f"[NARRATIVA] Capítulo {chapter_id} iniciado")
+            except Exception as e:
+                print(f"[NARRATIVA] Erro ao iniciar capítulo: {e}")
+        elif effect == "endGame":
+            # TODO: Implementar fim do jogo
+            print(f"[NARRATIVA] Fim do jogo")
     
     def atualizar(self, dt: float):
         """Atualiza o sistema de narrativa"""
@@ -904,6 +1254,33 @@ class NarrativeSystem:
                         else:
                             self._avancar_linha()
         
+        # Sistema de créditos (auto-avanço com fade)
+        if self.creditos_auto_advance:
+            self.creditos_tempo_mostrado += dt
+            
+            # Fade in do texto (primeiro 1 segundo)
+            if self.creditos_tempo_mostrado < 1.0:
+                self.creditos_texto_fade_alpha = min(1.0, self.creditos_tempo_mostrado / 1.0)
+                self.creditos_texto_fade_direction = 1
+            # Texto visível (1 segundo a 2.5 segundos)
+            elif self.creditos_tempo_mostrado < 2.5:
+                self.creditos_texto_fade_alpha = 1.0
+            # Fade out do texto (2.5 a 3.5 segundos)
+            elif self.creditos_tempo_mostrado < 3.5:
+                self.creditos_texto_fade_alpha = max(0.0, 1.0 - (self.creditos_tempo_mostrado - 2.5) / 1.0)
+                self.creditos_texto_fade_direction = -1
+            # Após 3.5 segundos, avançar para próxima cena
+            elif self.creditos_tempo_mostrado >= 3.5:
+                scene = self._obter_cena_atual()
+                if scene:
+                    next_scene_id = scene.get("nextSceneId")
+                    if next_scene_id:
+                        # Usar transição de cena para mudar o background
+                        self._iniciar_cena_com_transicao(next_scene_id)
+                    else:
+                        # Última cena de créditos, desativar auto-avanço
+                        self.creditos_auto_advance = False
+        
         self._atualizar_animacao_texto(dt)
     
     def desenhar(self, tela: pygame.Surface):
@@ -916,12 +1293,22 @@ class NarrativeSystem:
         scene = self._obter_cena_atual()
         if scene:
             bg_name = scene.get("bg")
-            if bg_name and bg_name in self.backgrounds:
-                tela.blit(self.backgrounds[bg_name], (0, 0))
+            if bg_name:
+                # Tentar carregar o background se não estiver carregado
+                if bg_name not in self.backgrounds:
+                    print(f"[NARRATIVA] Background {bg_name} não está carregado, tentando carregar...")
+                    self._carregar_background(bg_name)
+                
+                # Se ainda não está carregado após tentar, usar fallback
+                if bg_name in self.backgrounds:
+                    tela.blit(self.backgrounds[bg_name], (0, 0))
+                else:
+                    print(f"[NARRATIVA] ERRO: Não foi possível carregar background {bg_name}, usando fallback")
+                    # Fallback: fundo escuro
+                    tela.fill((20, 20, 30))
             else:
-                overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
-                overlay.fill((0, 0, 0, 200))
-                tela.blit(overlay, (0, 0))
+                # Sem background definido, usar fundo escuro
+                tela.fill((20, 20, 30))
         
         if self.hover_sprite_atual:
             tela.blit(self.hover_sprite_atual, (0, 0))
@@ -1018,6 +1405,11 @@ class NarrativeSystem:
         line = lines[self.current_line_index]
         speaker = line.get("speaker", "")
         
+        # Para cenas de créditos, usar fade no texto
+        texto_alpha = 1.0
+        if self.creditos_auto_advance:
+            texto_alpha = self.creditos_texto_fade_alpha
+        
         caixa_largura = 1000
         caixa_altura = 200
         caixa_x = (LARGURA - caixa_largura) // 2
@@ -1063,7 +1455,13 @@ class NarrativeSystem:
             y_texto = caixa_y + 50
             for linha in linhas:
                 linha_render = render_text(linha, 18, (255, 255, 255), bold=False, pixel_style=True)
-                tela.blit(linha_render, (caixa_x + 20, y_texto))
+                # Aplicar alpha para créditos
+                if self.creditos_auto_advance and texto_alpha < 1.0:
+                    linha_surface = linha_render.copy()
+                    linha_surface.set_alpha(int(texto_alpha * 255))
+                    tela.blit(linha_surface, (caixa_x + 20, y_texto))
+                else:
+                    tela.blit(linha_render, (caixa_x + 20, y_texto))
                 y_texto += 25
         
         if len(self.texto_exibido) >= len(self.texto_completo):

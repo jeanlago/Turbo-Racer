@@ -23,6 +23,8 @@ def obter_caminho_bunker():
     return obter_caminho_sprite_dia_noite("bunker")
 def obter_caminho_oficina():
     return obter_caminho_sprite_dia_noite("oficina")
+def obter_caminho_autodromo():
+    return obter_caminho_sprite_dia_noite("autodromo_fora")
 
 # Mantém compatibilidade com código existente
 CAMINHO_FABRICA = obter_caminho_fabrica()
@@ -54,6 +56,7 @@ def obter_mapeamento_fundos():
         # Akira - Monte
         "templo_akira": obter_caminho_monte_akira(),
         "monte_akira": obter_caminho_monte_akira(),
+        "monte": obter_caminho_monte_akira(),
         "montanha_akira": obter_caminho_monte_akira(),
         "akira": obter_caminho_monte_akira(),
         
@@ -75,6 +78,10 @@ def obter_mapeamento_fundos():
         "oficina": obter_caminho_oficina(),
         "garagem": obter_caminho_oficina(),
         "crank": obter_caminho_oficina(),
+        
+        # Autódromo
+        "autódromo": obter_caminho_autodromo(),
+        "autodromo": obter_caminho_autodromo(),
     }
 
 MAPEAMENTO_FUNDOS = obter_mapeamento_fundos()
@@ -138,6 +145,10 @@ def obter_fundo_territorio(territorio_id: str, npc_id: str = None, sprite_fundo_
         caminho = obter_caminho_bunker()
         if os.path.exists(caminho):
             return caminho
+    elif "autódromo" in territorio_id_lower or "autodromo" in territorio_id_lower:
+        caminho = obter_caminho_autodromo()
+        if os.path.exists(caminho):
+            return caminho
     
     return None
 
@@ -162,7 +173,7 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
     
     # Se não encontrar território, tentar criar um básico baseado no ID
     if not territorio:
-        # Verificar se é uma área especial (ex: oficina)
+        # Verificar se é uma área especial (ex: oficina, autódromo)
         territorio_id_lower = territorio_id.lower()
         area_nome_lower = (area_nome or "").lower()
         
@@ -173,6 +184,63 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
             from core.menu import selecionar_carros_loop
             selecionar_carros_loop(screen)
             return "voltar_mapa"  # Voltar para o mapa após sair da oficina
+        
+        # Verificar se é o iate do Barão - iniciar cena narrativa
+        if ("iate" in territorio_id_lower and "barao" in territorio_id_lower) or ("iate" in territorio_id_lower and "barão" in territorio_id_lower):
+            from core.narrative_system import narrative_system
+            from core.tempo_jogo import gerenciador_tempo
+            
+            # Verificar se é noite (18h-6h) e se tem dívida
+            hora_atual = gerenciador_tempo.obter_hora()
+            is_noite = hora_atual >= 18 or hora_atual < 6
+            from core.progresso import gerenciador_progresso
+            tem_divida = gerenciador_progresso.barao_emprestimo_ativo
+            
+            # Escolher cena baseado em hora e dívida
+            if is_noite and tem_divida:
+                cena_id = "ch4_8_iate_barao_cobranca"
+            else:
+                cena_id = "ch4_7_iate_barao_visita"
+            
+            # Tentar iniciar a cena narrativa
+            if narrative_system.iniciar_cena(cena_id):
+                narrative_system.active = True
+                # Loop de narrativa
+                clock_narrativa = pygame.time.Clock()
+                while narrative_system.active:
+                    dt = clock_narrativa.tick(FPS) / 1000.0
+                    narrative_system.atualizar(dt)
+                    
+                    eventos = pygame.event.get()
+                    for ev in eventos:
+                        if ev.type == pygame.QUIT:
+                            narrative_system.fechar()
+                            return None
+                    
+                    resultado = narrative_system.processar_eventos(eventos)
+                    if resultado == "fechado":
+                        narrative_system.fechar()
+                        break
+                    
+                    narrative_system.desenhar(screen)
+                    pygame.display.flip()
+            
+            return "voltar_mapa"
+        
+        # Verificar se é o autódromo - abrir menu de corridas do Circuito da Coroa
+        if ("autódromo" in territorio_id_lower or "autodromo" in territorio_id_lower or
+            "autódromo" in area_nome_lower or "autodromo" in area_nome_lower):
+            # Abrir menu de corridas do Circuito da Coroa
+            from core.pc_corridas import autodromo_corridas_loop
+            corrida_info = autodromo_corridas_loop(screen)
+            # Se uma corrida foi selecionada, retornar para iniciar a corrida
+            if corrida_info:
+                return {
+                    "atividade": "corrida_circuito_coroa",
+                    "tipo": "corrida",
+                    "parametros": corrida_info
+                }
+            return None  # Cancelado
         
         # Criar território temporário
         from core.territorios import Territorio, TipoTerritorio
@@ -237,9 +305,8 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
                 except:
                     pass
     
-    # Lista de atividades
+    # Lista de atividades (não usada mais - NPCs gerenciam suas próprias atividades)
     atividades = territorio.atividades
-    atividade_selecionada = 0
     
     # Animações
     tempo_animacao = 0.0
@@ -268,6 +335,27 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
     mostrar_pixel = False
     if territorio.npc_id and "pixel" in territorio.npc_id.lower():
         mostrar_pixel = pixel.verificar_aparecer_primeira_vez()
+    
+    # Verificar se é território da Akira (Montanha)
+    from core.akira import akira
+    mostrar_akira = False
+    if territorio.npc_id and "akira" in territorio.npc_id.lower():
+        # Verificar se a montanha está desbloqueada
+        from core.mapa_locations import gerenciador_localizacoes
+        if gerenciador_localizacoes.esta_desbloqueado("montanha"):
+            # Carregar sprites se necessário
+            if not akira.sprites_carregados:
+                akira.carregar_sprites()
+            
+            # Se é primeira vez, mostrar apresentação
+            if not akira.primeira_aparicao_mostrada:
+                mostrar_akira = akira.verificar_aparecer_primeira_vez()
+            else:
+                # Já foi apresentado - ativar diálogo da Akira para oferecer corrida
+                mostrar_akira = akira.ativar_dialogo_corrida()
+        else:
+            # Montanha ainda não desbloqueada
+            mostrar_akira = False
     
     # Verificar se é território do Fuligem (Cinturão Industrial)
     from core.fuligem import fuligem
@@ -323,6 +411,11 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
             boris.atualizar(dt)
             resultado_boris = boris.processar_eventos(eventos)
             if resultado_boris == "fechado":
+                # Salvar progresso após fechar diálogo do Boris
+                from core.progresso import gerenciador_progresso
+                from core.missoes import gerenciador_missoes
+                gerenciador_progresso.salvar()
+                gerenciador_missoes.salvar()
                 mostrar_boris = False
             elif resultado_boris == "abrir_loja":
                 # Abrir loja do Boris (implementar depois)
@@ -333,6 +426,11 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
             pixel.atualizar(dt)
             resultado_pixel = pixel.processar_eventos(eventos)
             if resultado_pixel == "fechado":
+                # Salvar progresso após fechar diálogo do Pixel
+                from core.progresso import gerenciador_progresso
+                from core.missoes import gerenciador_missoes
+                gerenciador_progresso.salvar()
+                gerenciador_missoes.salvar()
                 mostrar_pixel = False
             elif resultado_pixel == "abrir_loja":
                 # Abrir loja do Pixel (implementar depois)
@@ -343,6 +441,11 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
             fuligem.atualizar(dt)
             resultado_fuligem = fuligem.processar_eventos(eventos)
             if resultado_fuligem == "fechado":
+                # Salvar progresso após fechar diálogo do Fuligem
+                from core.progresso import gerenciador_progresso
+                from core.missoes import gerenciador_missoes
+                gerenciador_progresso.salvar()
+                gerenciador_missoes.salvar()
                 mostrar_fuligem = False
             elif isinstance(resultado_fuligem, dict) and resultado_fuligem.get("corrida"):
                 # Iniciar corrida do Cinturão Industrial
@@ -355,93 +458,172 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
                         "territorio_id": territorio_id,
                         "npc_id": territorio.npc_id,
                         "pista": pista,
-                        "preco": resultado_fuligem.get("preco", 800)
+                        "preco": resultado_fuligem.get("preco", 800),
+                        "recompensa": resultado_fuligem.get("recompensa", 0),
+                        "indice": resultado_fuligem.get("indice", 0)
                     }
                 mostrar_fuligem = False
         
-        # Processar eventos (apenas se Boris/Pixel/Fuligem não estiverem ativos, para evitar processamento duplo)
-        if not (mostrar_boris and boris.ativo) and not (mostrar_pixel and pixel.ativo) and not (mostrar_fuligem and fuligem.ativo):
-            for ev in eventos:
-                if ev.type == pygame.QUIT:
-                    return "menu_principal"  # Fechar jogo vai para menu principal
+        # Processar Akira se ativa
+        if mostrar_akira and akira.ativo:
+            # IMPORTANTE: Capturar o modo ANTES de processar eventos, pois fechar() reseta o modo
+            modo_antes_processar = akira.modo_dialogo
+            akira.atualizar(dt)
+            resultado_akira = akira.processar_eventos(eventos)
+            if resultado_akira == "fechado":
+                # Salvar progresso após fechar diálogo da Akira
+                from core.progresso import gerenciador_progresso
+                from core.missoes import gerenciador_missoes
+                gerenciador_progresso.salvar()
+                gerenciador_missoes.salvar()
                 
-                if ev.type == pygame.KEYDOWN:
-                    if ev.key == pygame.K_ESCAPE:
-                        # Alternar pause
-                        hub_pausado = not hub_pausado
+                mostrar_akira = False
+                
+                # Se acabou de completar a primeira aparição E o modo não era "corrida" (ou seja, não estava no menu de corridas),
+                # verificar se deve oferecer corrida (transição automática)
+                if akira.primeira_aparicao_mostrada and modo_antes_processar != "corrida" and not akira.ativo:
+                    # Tentar ativar diálogo de corrida novamente (transição automática após primeira aparição)
+                    mostrar_akira = akira.ativar_dialogo_corrida()
+                    if not mostrar_akira:
+                        # Se não conseguiu ativar (sem pneus), voltar ao mapa
+                        return "voltar_mapa"
+                else:
+                    # Akira fechou normalmente (jogador escolheu SAIR ou ESC do menu de corridas), voltar ao mapa
+                    # NÃO reativar o diálogo se o jogador escolheu sair explicitamente
+                    return "voltar_mapa"
+            elif isinstance(resultado_akira, dict) and resultado_akira.get("corrida"):
+                # Iniciar corrida da Akira
+                pista = resultado_akira.get("pista", 3)
+                # Definir flag de corrida campanha antes de retornar
+                from core.progresso import gerenciador_progresso
+                race_id = resultado_akira.get("race_id", "mountain_test")
+                if race_id == "mountain_test":
+                    gerenciador_progresso.ultima_corrida_campanha = "mountain_test"
+                    gerenciador_progresso.salvar()
+                return {
+                    "atividade": resultado_akira.get("tipo", "desafio_touge"),
+                    "nome": resultado_akira.get("nome", "Desafio de Montanha (Touge)"),
+                    "territorio_id": territorio_id,
+                    "npc_id": territorio.npc_id,
+                    "pista": pista,
+                    "race_id": race_id,
+                    "voltas": resultado_akira.get("voltas", 1),
+                    "dificuldade": resultado_akira.get("dificuldade", "medio"),
+                    "sem_bots": resultado_akira.get("sem_bots", False)
+                }
+        
+        # Processar eventos do celular (antes de outros eventos, mas apenas se nenhum NPC estiver ativo)
+        celular_processou_evento = False
+        try:
+            from core.celular import celular
+            from core.narrative_system import narrative_system
+            
+            # Verificar se deve mostrar celular (modo campanha, sem cutscenes, sem NPCs ativos)
+            npc_ativo = (mostrar_boris and boris.ativo) or (mostrar_pixel and pixel.ativo) or \
+                       (mostrar_fuligem and fuligem.ativo) or (mostrar_akira and akira.ativo)
+            cutscene_ativa = narrative_system.active if hasattr(narrative_system, 'active') else False
+            celular.verificar_visibilidade(modo_arcade=False, em_corrida=False, cutscene_ativa=cutscene_ativa or npc_ativo)
+            
+            # Processar eventos do celular apenas se nenhum NPC estiver ativo
+            if not npc_ativo:
+                for ev in eventos:
+                    if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                        if celular.processar_clique(ev.pos):
+                            # Celular foi clicado, processar eventos do menu
+                            resultado_celular = celular.processar_eventos([ev])
+                            if resultado_celular == "fechado":
+                                celular.menu_aberto = False
+                            celular_processou_evento = True
+                            break  # Não processar outros eventos se o celular foi clicado
+                    elif ev.type == pygame.KEYDOWN:
+                        # Processar teclas do celular se o menu estiver aberto
+                        if celular.menu_aberto:
+                            resultado_celular = celular.processar_eventos([ev])
+                            if resultado_celular == "fechado":
+                                celular.menu_aberto = False
+                            # Se ESC foi pressionado, não processar outros eventos
+                            if ev.key == pygame.K_ESCAPE:
+                                celular_processou_evento = True
+                                break
+        except Exception as e:
+            print(f"[HUB_TERRITORIO] Erro ao processar celular: {e}")
+            import traceback
+            traceback.print_exc()
+        
+        # Processar eventos (apenas se Boris/Pixel/Fuligem/Akira não estiverem ativos, para evitar processamento duplo)
+        # IMPORTANTE: Se Fuligem está ativo, não processar ESC aqui para evitar conflito
+        if not (mostrar_boris and boris.ativo) and not (mostrar_pixel and pixel.ativo) and not (mostrar_fuligem and fuligem.ativo) and not (mostrar_akira and akira.ativo):
+            # Se o celular processou um evento importante, pular processamento de outros eventos
+            if celular_processou_evento and celular.menu_aberto:
+                pass  # Não processar outros eventos se o menu do celular está aberto
+            else:
+                for ev in eventos:
+                    if ev.type == pygame.QUIT:
+                        return "menu_principal"  # Fechar jogo vai para menu principal
+                    
+                    if ev.type == pygame.KEYDOWN:
+                        if ev.key == pygame.K_ESCAPE:
+                            # Alternar pause
+                            hub_pausado = not hub_pausado
+                            if hub_pausado:
+                                opcao_pausa_selecionada = 0
+                        elif hub_pausado:
+                            # Processar navegação no menu de pause
+                            if ev.key in (pygame.K_UP, pygame.K_w):
+                                opcao_pausa_selecionada = (opcao_pausa_selecionada - 1) % 4
+                            elif ev.key in (pygame.K_DOWN, pygame.K_s):
+                                opcao_pausa_selecionada = (opcao_pausa_selecionada + 1) % 4
+                            elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
+                                # Selecionar opção
+                                if opcao_pausa_selecionada == 0:
+                                    # Continuar
+                                    hub_pausado = False
+                                elif opcao_pausa_selecionada == 1:
+                                    # Salvar
+                                    from core.progresso import gerenciador_progresso
+                                    gerenciador_progresso.salvar()
+                                    hub_pausado = False
+                                elif opcao_pausa_selecionada == 2:
+                                    # Opções (por enquanto, apenas continuar)
+                                    hub_pausado = False
+                                elif opcao_pausa_selecionada == 3:
+                                    # Menu principal
+                                    return "menu_principal"
+                    
+                    if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                        mouse_x, mouse_y = ev.pos
                         if hub_pausado:
-                            opcao_pausa_selecionada = 0
-                    elif hub_pausado:
-                        # Processar navegação no menu de pause
-                        if ev.key in (pygame.K_UP, pygame.K_w):
-                            opcao_pausa_selecionada = (opcao_pausa_selecionada - 1) % 4
-                        elif ev.key in (pygame.K_DOWN, pygame.K_s):
-                            opcao_pausa_selecionada = (opcao_pausa_selecionada + 1) % 4
-                        elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
-                            # Selecionar opção
-                            if opcao_pausa_selecionada == 0:
-                                # Continuar
-                                hub_pausado = False
-                            elif opcao_pausa_selecionada == 1:
-                                # Salvar
-                                from core.progresso import gerenciador_progresso
-                                gerenciador_progresso.salvar()
-                                hub_pausado = False
-                            elif opcao_pausa_selecionada == 2:
-                                # Opções (por enquanto, apenas continuar)
-                                hub_pausado = False
-                            elif opcao_pausa_selecionada == 3:
-                                # Menu principal
-                                return "menu_principal"
-                    elif ev.key in (pygame.K_UP, pygame.K_w):
-                        atividade_selecionada = (atividade_selecionada - 1) % len(atividades) if atividades else 0
-                    elif ev.key in (pygame.K_DOWN, pygame.K_s):
-                        atividade_selecionada = (atividade_selecionada + 1) % len(atividades) if atividades else 0
-                    elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
-                        if atividades and 0 <= atividade_selecionada < len(atividades):
-                            atividade = atividades[atividade_selecionada]
-                            return {
-                                "atividade": atividade.get("tipo"),
-                                "nome": atividade.get("nome"),
-                                "territorio_id": territorio_id,
-                                "npc_id": territorio.npc_id,
-                                **atividade  # Incluir todos os parâmetros da atividade
-                            }
-                
-                if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                    mouse_x, mouse_y = ev.pos
-                    if hub_pausado:
-                        # Processar clique no menu de pause
-                        caixa_largura = 500
-                        caixa_altura = 400
-                        caixa_x = (LARGURA - caixa_largura) // 2
-                        caixa_y = (ALTURA - caixa_altura) // 2
-                        
-                        opcoes_pausa = [
-                            ("CONTINUAR", "continuar"),
-                            ("SALVAR", "salvar"),
-                            ("OPÇÕES", "opcoes"),
-                            ("MENU PRINCIPAL", "menu")
-                        ]
-                        
-                        altura_total_opcoes = len(opcoes_pausa) * 60
-                        offset_opcoes = caixa_y + caixa_altura - altura_total_opcoes - 20
-                        
-                        if caixa_x <= mouse_x <= caixa_x + caixa_largura and caixa_y <= mouse_y <= caixa_y + caixa_altura:
-                            for i, (nome, chave) in enumerate(opcoes_pausa):
-                                y_opcao = offset_opcoes + i * 60
-                                opcao_rect = pygame.Rect(caixa_x + 20, y_opcao - 5, caixa_largura - 40, 60)
-                                if opcao_rect.collidepoint(mouse_x, mouse_y):
-                                    if i == 0:
-                                        # Continuar
-                                        hub_pausado = False
-                                    elif i == 1:
-                                        # Salvar
-                                        from core.progresso import gerenciador_progresso
-                                        gerenciador_progresso.salvar()
-                                        mostrar_mensagem_salvo = True
-                                        tempo_mensagem_salvo = 0.0
-                                        hub_pausado = False
+                            # Processar clique no menu de pause
+                            caixa_largura = 500
+                            caixa_altura = 400
+                            caixa_x = (LARGURA - caixa_largura) // 2
+                            caixa_y = (ALTURA - caixa_altura) // 2
+                            
+                            opcoes_pausa = [
+                                ("CONTINUAR", "continuar"),
+                                ("SALVAR", "salvar"),
+                                ("OPÇÕES", "opcoes"),
+                                ("MENU PRINCIPAL", "menu")
+                            ]
+                            
+                            altura_total_opcoes = len(opcoes_pausa) * 60
+                            offset_opcoes = caixa_y + caixa_altura - altura_total_opcoes - 20
+                            
+                            if caixa_x <= mouse_x <= caixa_x + caixa_largura and caixa_y <= mouse_y <= caixa_y + caixa_altura:
+                                for i, (nome, chave) in enumerate(opcoes_pausa):
+                                    y_opcao = offset_opcoes + i * 60
+                                    opcao_rect = pygame.Rect(caixa_x + 20, y_opcao - 5, caixa_largura - 40, 60)
+                                    if opcao_rect.collidepoint(mouse_x, mouse_y):
+                                        if i == 0:
+                                            # Continuar
+                                            hub_pausado = False
+                                        elif i == 1:
+                                            # Salvar
+                                            from core.progresso import gerenciador_progresso
+                                            gerenciador_progresso.salvar()
+                                            mostrar_mensagem_salvo = True
+                                            tempo_mensagem_salvo = 0.0
+                                            hub_pausado = False
                                     elif i == 2:
                                         # Opções (por enquanto, apenas continuar)
                                         hub_pausado = False
@@ -459,26 +641,26 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
                     voltar_rect = pygame.Rect(voltar_x, voltar_y, voltar_largura, voltar_altura)
                     if voltar_rect.collidepoint(mouse_x, mouse_y):
                         return "voltar_mapa"  # Voltar para o mapa
-                    
-                    # Verificar clique nas atividades
-                    caixa_x = LARGURA // 2 - 300
-                    caixa_y = ALTURA // 2 - 200
-                    atividade_altura = 60
-                    
-                    for i, atividade in enumerate(atividades):
-                        atividade_y = caixa_y + 100 + i * (atividade_altura + 10)
-                        atividade_rect = pygame.Rect(caixa_x + 20, atividade_y, 560, atividade_altura)
-                        if atividade_rect.collidepoint(mouse_x, mouse_y):
-                            return {
-                                "atividade": atividade.get("tipo"),
-                                "nome": atividade.get("nome"),
-                                "territorio_id": territorio_id,
-                                "npc_id": territorio.npc_id,
-                                **atividade
-                            }
         
-        # Desenhar
-        screen.blit(bg, (0, 0))
+        # Desenhar fundo apenas se nenhum NPC estiver ativo (NPCs desenham seus próprios fundos)
+        # EXCEÇÃO: Akira em primeira_aparicao, sem_preparo e corrida precisam do fundo do território
+        desenhar_fundo = True
+        if (mostrar_boris and boris.ativo) or (mostrar_pixel and pixel.ativo) or (mostrar_fuligem and fuligem.ativo):
+            desenhar_fundo = False
+        elif mostrar_akira and akira.ativo:
+            # Akira precisa do fundo do território para primeira_aparicao, sem_preparo e corrida
+            # Apenas pre_corrida e fim_corrida têm seus próprios fundos
+            if akira.modo_dialogo in ["pre_corrida", "fim_corrida"]:
+                desenhar_fundo = False
+        
+        if desenhar_fundo and bg:
+            screen.blit(bg, (0, 0))
+        
+        # Desenhar Akira se ativa (prioridade sobre outros NPCs)
+        if mostrar_akira and akira.ativo:
+            akira.desenhar_dialogo(screen, dt)
+            pygame.display.flip()
+            continue  # Pular o resto do desenho se Akira estiver ativa
         
         # Desenhar Boris se ativo
         if mostrar_boris and boris.ativo:
@@ -488,15 +670,41 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
         
         # Desenhar Pixel se ativo
         if mostrar_pixel and pixel.ativo:
+            # Garantir que os sprites estão carregados antes de desenhar
+            if not pixel.sprites_carregados:
+                pixel.carregar_sprites()
             pixel.desenhar_dialogo(screen, dt)
             pygame.display.flip()
             continue  # Pular o resto do desenho se Pixel estiver ativo
         
         # Desenhar Fuligem se ativo
         if mostrar_fuligem and fuligem.ativo:
-            fuligem.desenhar(screen)
+            fuligem.desenhar_dialogo(screen, dt)
             pygame.display.flip()
             continue  # Pular o resto do desenho se Fuligem estiver ativo
+        
+        # Atualizar e desenhar celular (modo campanha, sem cutscenes, sem NPCs ativos)
+        try:
+            from core.celular import celular
+            from core.narrative_system import narrative_system
+            
+            # Verificar se deve mostrar celular
+            npc_ativo = (mostrar_boris and boris.ativo) or (mostrar_pixel and pixel.ativo) or \
+                       (mostrar_fuligem and fuligem.ativo) or (mostrar_akira and akira.ativo)
+            cutscene_ativa = narrative_system.active if hasattr(narrative_system, 'active') else False
+            celular.verificar_visibilidade(modo_arcade=False, em_corrida=False, cutscene_ativa=cutscene_ativa or npc_ativo)
+            
+            # Atualizar celular
+            mouse_pos = pygame.mouse.get_pos()
+            celular.atualizar(dt, mouse_pos)
+            
+            # Desenhar celular
+            celular.desenhar(screen)
+        except Exception as e:
+            print(f"[HUB_TERRITORIO] Erro ao desenhar celular: {e}")
+            import traceback
+            traceback.print_exc()
+            pass
         
         # Desenhar menu de pause
         if hub_pausado:
@@ -594,109 +802,9 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
             pygame.display.flip()
             continue  # Pular o resto do desenho quando pausado
         
-        # Overlay escuro
-        overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 150))
-        screen.blit(overlay, (0, 0))
-        
-        # Botão VOLTAR no canto superior direito
-        voltar_largura = 120
-        voltar_altura = 40
-        voltar_x = LARGURA - voltar_largura - 20
-        voltar_y = 20
-        voltar_rect = pygame.Rect(voltar_x, voltar_y, voltar_largura, voltar_altura)
-        
-        # Verificar hover no botão voltar
-        mouse_x, mouse_y = pygame.mouse.get_pos()
-        voltar_hover = voltar_rect.collidepoint(mouse_x, mouse_y)
-        
-        # Desenhar botão voltar
-        if voltar_hover:
-            pygame.draw.rect(screen, (50, 50, 50), voltar_rect)
-            pygame.draw.rect(screen, (255, 255, 255), voltar_rect, 2)
-            cor_voltar = (255, 255, 255)
-        else:
-            pygame.draw.rect(screen, (30, 30, 30), voltar_rect)
-            pygame.draw.rect(screen, (150, 150, 150), voltar_rect, 2)
-            cor_voltar = (200, 200, 200)
-        
-        voltar_texto = render_text("VOLTAR", 24, cor_voltar, bold=True, pixel_style=True)
-        voltar_texto_x = voltar_x + (voltar_largura - voltar_texto.get_width()) // 2
-        voltar_texto_y = voltar_y + (voltar_altura - voltar_texto.get_height()) // 2
-        screen.blit(voltar_texto, (voltar_texto_x, voltar_texto_y))
-        
-        # Desenhar NPC (se existir)
-        if npc_sprite:
-            # Redimensionar NPC
-            npc_w = 300
-            npc_h = int(npc_sprite.get_height() * (npc_w / npc_sprite.get_width()))
-            npc_redimensionado = pygame.transform.scale(npc_sprite, (npc_w, npc_h))
-            
-            npc_x = 50
-            npc_y = ALTURA - npc_h - 50
-            screen.blit(npc_redimensionado, (npc_x, npc_y))
-        
-        # Caixa principal
-        caixa_largura = 600
-        caixa_altura = 400
-        caixa_x = LARGURA // 2 - caixa_largura // 2
-        caixa_y = ALTURA // 2 - caixa_altura // 2
-        
-        caixa_fundo = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
-        caixa_fundo.fill((0, 0, 0, 220))
-        screen.blit(caixa_fundo, (caixa_x, caixa_y))
-        pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
-        
-        # Título
-        titulo = render_text(territorio.nome, 32, (255, 255, 255), bold=True, pixel_style=True)
-        titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
-        screen.blit(titulo, (titulo_x, caixa_y + 20))
-        
-        # Descrição
-        desc_texto = render_text(territorio.descricao, 16, (200, 200, 200), bold=False, pixel_style=True)
-        desc_x = caixa_x + (caixa_largura - desc_texto.get_width()) // 2
-        screen.blit(desc_texto, (desc_x, caixa_y + 60))
-        
-        # Lista de atividades
-        if atividades:
-            atividade_altura = 60
-            atividade_y_inicial = caixa_y + 100
-            
-            for i, atividade in enumerate(atividades):
-                atividade_y = atividade_y_inicial + i * (atividade_altura + 10)
-                atividade_rect = pygame.Rect(caixa_x + 20, atividade_y, caixa_largura - 40, atividade_altura)
-                
-                # Destaque se selecionada
-                if i == atividade_selecionada:
-                    # Brilho pulsante
-                    import math
-                    pulso = 0.9 + 0.1 * abs(math.sin(tempo_animacao * 4.0))
-                    cor_destaque = tuple(min(255, int(c * pulso)) for c in (100, 150, 200))
-                    pygame.draw.rect(screen, cor_destaque, atividade_rect, 3)
-                else:
-                    pygame.draw.rect(screen, (100, 100, 100), atividade_rect, 1)
-                
-                # Nome da atividade
-                nome_atividade = render_text(atividade.get("nome", "Atividade"), 20, (255, 255, 255), bold=True, pixel_style=True)
-                screen.blit(nome_atividade, (atividade_rect.x + 10, atividade_rect.y + 10))
-                
-                # Informações adicionais (risco, recompensa, etc.)
-                info_parts = []
-                if "risco" in atividade:
-                    info_parts.append(f"Risco: {atividade['risco'].upper()}")
-                if "recompensa" in atividade:
-                    info_parts.append(f"Recompensa: {atividade['recompensa'].upper()}")
-                if "custo" in atividade:
-                    info_parts.append(f"Custo: {atividade['custo'].upper()}")
-                
-                if info_parts:
-                    info_texto = render_text(" | ".join(info_parts), 14, (150, 150, 150), bold=False, pixel_style=True)
-                    screen.blit(info_texto, (atividade_rect.x + 10, atividade_rect.y + 35))
-        # Removido: mensagem "Nenhuma atividade disponível"
-        
-        # Instruções
-        instrucoes = render_text("Selecione uma atividade | ESC para voltar ao mapa", 14, (150, 150, 150), bold=False, pixel_style=True)
-        screen.blit(instrucoes, (10, ALTURA - 30))
+        # Se nenhum NPC estiver ativo, apenas mostrar fundo (já desenhado acima)
+        # NPCs gerenciam suas próprias atividades através de diálogos
+        # Não desenhar overlay escuro nem botão voltar quando NPCs estão ativos
         
         # Desenhar mensagem de salvamento
         if mostrar_mensagem_salvo:

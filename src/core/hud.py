@@ -837,22 +837,66 @@ class HUD:
             from core.missoes import gerenciador_missoes
             missao = gerenciador_missoes.obter_missao_ativa()
             if not missao:
+                # Debug: verificar se há missão ativa
+                if hasattr(gerenciador_missoes, 'missao_ativa_id'):
+                    if gerenciador_missoes.missao_ativa_id:
+                        print(f"[HUD] Missão ativa ID: {gerenciador_missoes.missao_ativa_id}, mas não encontrada no dicionário")
+                        print(f"[HUD] Missões disponíveis: {list(gerenciador_missoes.missoes.keys())}")
+                    else:
+                        # Sem missão ativa - isso é normal, não exibir rastreador
+                        print(f"[HUD] Nenhuma missão ativa no momento (missao_ativa_id=None)")
                 return
+            
+            print(f"[HUD] Desenhando missão ativa: {missao.get('id', 'desconhecida')}")
             
             # Criar fonte se não existir
             if not hasattr(self, 'fonte_missao_nome'):
                 self.fonte_missao_nome = pygame.font.SysFont("consolas", 24, bold=True)
                 self.fonte_missao_objetivo = pygame.font.SysFont("consolas", 18)
             
-            nome = missao.get("nome", "")
-            objetivo = missao.get("objetivo", "")
+            # Usar os métodos que atualizam dinamicamente o objetivo
+            nome = gerenciador_missoes.obter_nome_missao()
+            objetivo = gerenciador_missoes.obter_objetivo_missao()
             
             if not nome and not objetivo:
+                print(f"[HUD] Missão ativa mas sem nome ou objetivo: nome='{nome}', objetivo='{objetivo}'")
                 return
+            
+            print(f"[HUD] Desenhando rastreador: nome='{nome}', objetivo='{objetivo[:50]}...'")
             
             # Desenhar fundo semi-transparente
             padding = 10
             y_offset = posicao[1]
+            
+            # Calcular altura total do texto para criar fundo
+            altura_total = 0
+            if nome:
+                altura_total += self.fonte_missao_nome.get_height() + 5
+            if objetivo:
+                # Estimar altura do objetivo (múltiplas linhas)
+                palavras = objetivo.split()
+                linhas_estimadas = 1
+                linha_atual = ""
+                for palavra in palavras:
+                    teste = linha_atual + (" " if linha_atual else "") + palavra
+                    largura_teste = self.fonte_missao_objetivo.size(teste)[0]
+                    if largura_teste <= 400:
+                        linha_atual = teste
+                    else:
+                        linhas_estimadas += 1
+                        linha_atual = palavra
+                altura_total += linhas_estimadas * (self.fonte_missao_objetivo.get_height() + 3)
+            
+            # Criar fundo semi-transparente
+            if altura_total > 0:
+                fundo_largura = 450
+                fundo_altura = altura_total + padding * 2
+                fundo_surface = pygame.Surface((fundo_largura, fundo_altura), pygame.SRCALPHA)
+                fundo_surface.fill((0, 0, 0, 180))  # Preto semi-transparente
+                
+                fundo_x = posicao[0] - fundo_largura - padding if alinhar_direita else posicao[0]
+                fundo_y = posicao[1]
+                superficie.blit(fundo_surface, (fundo_x, fundo_y))
             
             if nome:
                 texto_nome = self.fonte_missao_nome.render(nome, True, (255, 255, 0))  # Amarelo
@@ -890,8 +934,10 @@ class HUD:
                     superficie.blit(texto_objetivo, (x_objetivo, y_offset + padding))
                     y_offset += texto_objetivo.get_height() + 3
         except Exception as e:
-            # Silenciosamente falhar se o sistema de missões não estiver disponível
-            pass
+            # Logar erro em vez de silenciosamente falhar
+            print(f"[HUD] Erro ao desenhar missão ativa: {e}")
+            import traceback
+            traceback.print_exc()
     
     def desenhar_aviso_contra_mao(self, superficie, carro, dt=0.016):
         """

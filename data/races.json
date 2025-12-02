@@ -30,13 +30,40 @@
       "description": "Teste de dirigibilidade na montanha sob supervisão de Akira."
     },
     {
+      "id": "crown_stage1",
+      "nome": "Circuito da Coroa - Etapa 1",
+      "track": 8,
+      "laps": 2,
+      "difficulty": "dificil",
+      "tipo": "corrida",
+      "description": "Primeira etapa do Circuito da Coroa no autódromo. Alta velocidade e precisão."
+    },
+    {
+      "id": "crown_stage2",
+      "nome": "Circuito da Coroa - Etapa 2",
+      "track": 8,
+      "laps": 2,
+      "difficulty": "dificil",
+      "tipo": "corrida",
+      "description": "Segunda etapa do Circuito da Coroa no autódromo. Pista manipulada por Rex para criar espetáculo."
+    },
+    {
+      "id": "crown_stage3",
+      "nome": "Circuito da Coroa - Etapa 3",
+      "track": 8,
+      "laps": 2,
+      "difficulty": "dificil",
+      "tipo": "corrida",
+      "description": "Terceira etapa do Circuito da Coroa no autódromo. A pressão aumenta."
+    },
+    {
       "id": "crown_final",
       "nome": "Corrida Final do Circuito da Coroa",
-      "track": 9,
+      "track": 8,
       "laps": 3,
       "difficulty": "dificil",
       "tipo": "corrida",
-      "description": "A corrida final do Circuito da Coroa sob o olhar de Rex."
+      "description": "A corrida final do Circuito da Coroa no autódromo sob o olhar de Rex."
     }
   ]
 }

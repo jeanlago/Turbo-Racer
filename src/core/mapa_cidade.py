@@ -36,11 +36,17 @@ MAPEAMENTO_HOVER_SPRITES = {
     "rex": os.path.join(DIR_HOVER, "predio.png"),
     
     "montanha": os.path.join(DIR_HOVER, "montanha.png"),
+    "monte": os.path.join(DIR_HOVER, "montanha.png"),
     "akira": os.path.join(DIR_HOVER, "montanha.png"),
     
     "oficina": os.path.join(DIR_HOVER, "oficina.png"),
     "autodromo": os.path.join(DIR_HOVER, "autodromo.png"),
     "autódromo": os.path.join(DIR_HOVER, "autodromo.png"),
+    
+    "cinturao": os.path.join(DIR_HOVER, "cinturao.png"),
+    "cinturão": os.path.join(DIR_HOVER, "cinturao.png"),
+    "cinturao_industrial": os.path.join(DIR_HOVER, "cinturao.png"),
+    "fuligem": os.path.join(DIR_HOVER, "cinturao.png"),
 }
 
 ESCALAS_HOVER = {
@@ -55,10 +61,15 @@ ESCALAS_HOVER = {
     "prédio": 5.0,
     "rex": 5.0,
     "montanha": 4.0,
+    "monte": 4.0,
     "akira": 4.0,
     "oficina": 4.0,
     "autodromo": 3.0,
     "autódromo": 3.0,
+    "cinturao": 4.0,
+    "cinturão": 4.0,
+    "cinturao_industrial": 4.0,
+    "fuligem": 4.0,
 }
 
 def _get_render_text():
@@ -326,6 +337,19 @@ def mapa_cidade_loop(screen) -> Optional[str]:
     Loop principal da tela do mapa da cidade
     Retorna o ID do território selecionado ou None se cancelado
     """
+    # Recarregar estado das localizações ao entrar no mapa
+    from core.mapa_locations import gerenciador_localizacoes
+    gerenciador_localizacoes.carregar()
+    
+    # Verificar se a missão m18 foi completada e desbloquear autódromo se necessário
+    from core.missoes import gerenciador_missoes
+    gerenciador_missoes.carregar()
+    if gerenciador_missoes.esta_completa("m18_circo_da_coroa"):
+        if not gerenciador_localizacoes.esta_desbloqueado("autódromo"):
+            print(f"[MAPA_CIDADE] Missão m18 completada, desbloqueando autódromo...")
+            gerenciador_localizacoes.desbloquear("autódromo")
+            gerenciador_localizacoes.salvar()
+    
     clock = pygame.time.Clock()
     
     ZOOM_MAPA = 1.25
@@ -541,6 +565,19 @@ def mapa_cidade_loop(screen) -> Optional[str]:
                 else:
                     mouse_x, mouse_y = ev.pos
                     
+                    # Processar eventos do celular primeiro
+                    try:
+                        from core.celular import celular
+                        if celular.processar_clique((mouse_x, mouse_y)):
+                            # Celular foi clicado, processar eventos do menu
+                            eventos_celular = [ev]
+                            resultado_celular = celular.processar_eventos(eventos_celular)
+                            if resultado_celular == "fechado":
+                                celular.menu_aberto = False
+                            continue  # Não processar outros cliques se o celular foi clicado
+                    except Exception as e:
+                        print(f"[MAPA_CIDADE] Erro ao processar celular: {e}")
+                    
                     # Verificar se clicou em uma área primeiro
                     clicou_em_area = False
                     for area in areas_mapa:
@@ -609,8 +646,13 @@ def mapa_cidade_loop(screen) -> Optional[str]:
                                             if territorio:
                                                 territorio_selecionado = territorio.id
                                             else:
-                                                # Se não encontrar território, usar o ID da área
-                                                territorio_selecionado = area.get("id")
+                                                # Mapeamento especial para localizações sem território direto
+                                                # Montanha -> templo_akira
+                                                if territorio_id == "montanha":
+                                                    territorio_selecionado = "templo_akira"
+                                                else:
+                                                    # Se não encontrar território, usar o ID da área
+                                                    territorio_selecionado = area.get("id")
                                             return territorio_selecionado
                     
                     # Se não clicou em área, iniciar arrasto
@@ -1107,8 +1149,31 @@ def mapa_cidade_loop(screen) -> Optional[str]:
             if not hasattr(mapa_cidade_loop, '_hud_instance'):
                 mapa_cidade_loop._hud_instance = HUD()
             mapa_cidade_loop._hud_instance.desenhar_missao_ativa(screen, posicao=(LARGURA - 20, 10), alinhar_direita=True)
-        except:
+        except Exception as e:
+            print(f"[MAPA_CIDADE] Erro ao desenhar missão ativa: {e}")
+            import traceback
+        
+        # Atualizar e desenhar celular (modo campanha, sem cutscenes)
+        try:
+            from core.celular import celular
+            from core.narrative_system import narrative_system
+            
+            # Verificar se deve mostrar celular (modo campanha, sem cutscenes)
+            cutscene_ativa = narrative_system.active if hasattr(narrative_system, 'active') else False
+            celular.verificar_visibilidade(modo_arcade=False, em_corrida=False, cutscene_ativa=cutscene_ativa)
+            
+            # Atualizar celular
+            mouse_pos = pygame.mouse.get_pos()
+            celular.atualizar(dt, mouse_pos)
+            
+            # Desenhar celular
+            celular.desenhar(screen)
+        except Exception as e:
+            print(f"[MAPA_CIDADE] Erro ao desenhar celular: {e}")
+            import traceback
+            traceback.print_exc()
             pass
+            traceback.print_exc()
             
         pygame.display.flip()
 

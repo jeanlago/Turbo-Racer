@@ -19,13 +19,14 @@
       "desbloqueada": true
     },
     {
-      "id": "montanha_akira",
-      "nome": "Montanha Akira",
+      "id": "monte",
+      "nome": "Monte",
       "x": 134,
       "y": 153,
       "largura": 120,
       "altura": 80,
-      "desbloqueada": true
+      "desbloqueada": true,
+      "territorio_id": "montanha"
     },
     {
       "id": "prédio_do_rex",

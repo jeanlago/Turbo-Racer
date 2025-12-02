@@ -1,10 +1,8 @@
 {
   "missoes_completas": [
-    "m2_teste_de_sobrevivencia",
-    "m6_batismo_de_pista",
-    "m5_cirurgia_na_garagem",
-    "m4_coracao_de_sucata",
-    "m7_olhos_no_painel"
+    "m18_circo_da_coroa",
+    "m17_convite_da_coroa",
+    "m19_jogo_do_rei"
   ],
-  "missao_ativa_id": "m10_portoes_do_cinturao"
+  "missao_ativa_id": "m20_tabuleiro_virado"
 }

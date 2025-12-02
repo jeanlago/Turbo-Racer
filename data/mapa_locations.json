@@ -26,7 +26,7 @@
     {
       "id": "montanha",
       "nome": "Montanha da Akira",
-      "state": "locked_hidden",
+      "state": "unlocked",
       "lockedThought": "Dizem que uma piloto fantasma domina essa montanha. Ainda não fui convidado pra esse velório.",
       "unlockFlags": [
         "unlockLocation:montanha"
@@ -46,6 +46,23 @@
       "lockedThought": "Ainda não tenho motivo pra ir até lá...",
       "unlockFlags": [
         "ch5_started"
+      ]
+    },
+    {
+      "id": "autódromo",
+      "nome": "Autódromo",
+      "state": "unlocked",
+      "lockedThought": null,
+      "unlockFlags": []
+    },
+    {
+      "id": "iate_barao",
+      "nome": "Iate do Barão",
+      "state": "locked_visible",
+      "lockedThought": "O Barão tem um iate? Claro que tem. Mas ele só recebe quem ele quer.",
+      "unlockFlags": [
+        "hasDebt=true",
+        "ch2_completed"
       ]
     }
   ]

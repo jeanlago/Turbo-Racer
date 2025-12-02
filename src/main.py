@@ -1326,6 +1326,9 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             estado_resultados_finais = None
                             estado_fim_jogo_p1 = None
                             estado_fim_jogo_p2 = None
+                            # Limpar a tela antes de retornar
+                            tela.fill((0, 0, 0))
+                            pygame.display.flip()
                             rodando = False
                             return
                         elif acao_resultados == "reiniciar":
@@ -1596,9 +1599,12 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     acao = processar_tela_resultados_finais(ev, estado_resultados_finais)
                     if acao:
                         if acao == "continuar_campanha":
-                            # Continuar a campanha - apenas sair da tela de resultados
+                            # Continuar a campanha - limpar estado e retornar
                             # O código em menu.py continuará a narrativa automaticamente
                             estado_resultados_finais = None
+                            # Limpar a tela antes de retornar
+                            tela.fill((0, 0, 0))
+                            pygame.display.flip()
                             rodando = False
                             return
                         elif acao == "reiniciar":
@@ -2574,6 +2580,15 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             
                             # Completar missão se for training_01 e garantir que o progresso está salvo
                             if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
+                                # IMPORTANTE: Recarregar progresso para ter a flag atualizada
+                                gerenciador_progresso.carregar()
+                                
+                                # Avançar 8 horas no jogo após completar corrida no modo campanha
+                                from core.tempo_jogo import gerenciador_tempo
+                                gerenciador_tempo.avancar_horas(8.0)
+                                gerenciador_tempo.salvar()
+                                print(f"[MAIN] 8 horas avançadas no jogo após completar corrida no modo campanha")
+                                
                                 print(f"[MAIN] Modo campanha detectado. Verificando ultima_corrida_campanha: {getattr(gerenciador_progresso, 'ultima_corrida_campanha', 'N/A')}")
                                 if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "training_01":
                                     from core.missoes import gerenciador_missoes
@@ -2582,8 +2597,46 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                     # Garantir que o progresso está salvo com a flag ainda ativa
                                     gerenciador_progresso.salvar()
                                     print(f"[MAIN] Missão m6_batismo_de_pista completada e salva. Flag ultima_corrida_campanha: {gerenciador_progresso.ultima_corrida_campanha}")
+                                elif hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "mountain_test":
+                                    from core.missoes import gerenciador_missoes
+                                    # Completar missão m13_teste_de_fluxo
+                                    if gerenciador_missoes.missao_ativa_id == "m13_teste_de_fluxo":
+                                        gerenciador_missoes.completar_missao("m13_teste_de_fluxo")
+                                        gerenciador_missoes.salvar()
+                                        print(f"[MAIN] Missão m13_teste_de_fluxo completada após mountain_test")
+                                    # Garantir que o progresso está salvo com a flag ainda ativa
+                                    gerenciador_progresso.salvar()
+                                    print(f"[MAIN] Mountain test completado. Flag ultima_corrida_campanha: {gerenciador_progresso.ultima_corrida_campanha}")
                                 else:
-                                    print(f"[MAIN] Não é training_01 ou flag não está definida. ultima_corrida_campanha: {getattr(gerenciador_progresso, 'ultima_corrida_campanha', 'N/A')}")
+                                    print(f"[MAIN] Não é training_01 ou mountain_test ou flag não está definida. ultima_corrida_campanha: {getattr(gerenciador_progresso, 'ultima_corrida_campanha', 'N/A')}")
+                                
+                                # Completar missão m10_portoes_do_cinturao se o jogador completou uma corrida no Cinturão Industrial (pistas 4, 5 ou 6)
+                                if numero_pista in [4, 5, 6]:
+                                    print(f"[MAIN] Corrida do Cinturão Industrial completada na pista {numero_pista}")
+                                    
+                                    # Verificar se é corrida da campanha (flag definida)
+                                    is_corrida_campanha = (hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and 
+                                                          gerenciador_progresso.ultima_corrida_campanha and 
+                                                          gerenciador_progresso.ultima_corrida_campanha.startswith("cinturao_pista_"))
+                                    
+                                    if is_corrida_campanha:
+                                        print(f"[MAIN] Flag de corrida do cinturão detectada: {gerenciador_progresso.ultima_corrida_campanha}")
+                                        
+                                        # Completar missão se estiver ativa
+                                        from core.missoes import gerenciador_missoes
+                                        if gerenciador_missoes.missao_ativa_id == "m10_portoes_do_cinturao":
+                                            gerenciador_missoes.completar_missao("m10_portoes_do_cinturao")
+                                            gerenciador_missoes.salvar()
+                                            print(f"[MAIN] Missão m10_portoes_do_cinturao completada após corrida na pista {numero_pista}")
+                                        
+                                        # Garantir que o progresso está salvo (IMPORTANTE: salvar ANTES de limpar a flag)
+                                        gerenciador_progresso.salvar()
+                                        print(f"[MAIN] Progresso salvo após corrida no Cinturão Industrial (pista {numero_pista})")
+                                        
+                                        # NÃO limpar a flag aqui - deixar o menu.py fazer isso após verificar
+                                        # A flag será limpa no menu.py quando voltar ao mapa
+                                    else:
+                                        print(f"[MAIN] AVISO: Corrida do cinturão completada mas flag não encontrada. Pode não ser corrida da campanha.")
                         else:
                             print(f"[MAIN] ERRO: tempo_final_p1 é None! Não foi possível registrar a corrida.")
                     else:
@@ -3379,8 +3432,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     hud.desenhar_posicao_voltas(tela, corrida, carro2, carros, posicao=(LARGURA - 10, 10), alinhar_direita=True, tipo_jogo=tipo_jogo)
                 
                 # Desenhar rastreador de missão no canto superior direito (modo dois jogadores, apenas no modo campanha)
-                # Mostrar sempre antes da corrida começar; após iniciar, manter visível apenas por alguns segundos
-                mostrar_rastreador = (not modo_arcade) and (not corrida.iniciada or tempo_missao_apos_inicio < 5.0)
+                # Mostrar sempre no modo campanha
+                mostrar_rastreador = not modo_arcade
                 if mostrar_rastreador:
                     hud.desenhar_missao_ativa(tela, posicao=(LARGURA - 20, 10), alinhar_direita=True)
                 
@@ -3416,8 +3469,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     hud.desenhar_posicao_voltas(tela, corrida, carro1, carros, posicao=(10, 10), tipo_jogo=tipo_jogo)
 
                 # Desenhar missão ativa no canto superior direito (apenas no modo campanha)
-                # Mostrar sempre antes da corrida começar; após iniciar, manter visível apenas por alguns segundos
-                mostrar_rastreador = (not modo_arcade) and (not corrida.iniciada or tempo_missao_apos_inicio < 5.0)
+                # Mostrar sempre no modo campanha
+                mostrar_rastreador = not modo_arcade
                 if mostrar_rastreador:
                     hud.desenhar_missao_ativa(tela, posicao=(LARGURA - 20, 10), alinhar_direita=True)
 

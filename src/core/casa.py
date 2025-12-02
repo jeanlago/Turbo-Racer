@@ -250,6 +250,44 @@ def casa_loop(screen, sprite_fundo: Optional[str] = None) -> Optional[str]:
                                         if race_id == "training_01":
                                             gerenciador_progresso.ultima_corrida_campanha = "training_01"
                                             gerenciador_progresso.salvar()
+                                        # Se for mountain_test, definir flag para verificar após a corrida
+                                        elif race_id == "mountain_test":
+                                            gerenciador_progresso.ultima_corrida_campanha = "mountain_test"
+                                            gerenciador_progresso.salvar()
+                                        # Se for corrida do Circuito da Coroa, definir flag
+                                        elif race_id and race_id.startswith("crown_"):
+                                            gerenciador_progresso.ultima_corrida_campanha = race_id
+                                            gerenciador_progresso.salvar()
+                                            print(f"[CASA] Flag ultima_corrida_campanha definida para {race_id}")
+                                        
+                                        # Modo de teste: marcar corrida como concluída automaticamente
+                                        from config import MODO_TESTE_CORRIDAS
+                                        if MODO_TESTE_CORRIDAS:
+                                            print(f"[MODO TESTE] Corrida {race_id} marcada como concluída automaticamente")
+                                            from core.estatisticas import gerenciador_estatisticas
+                                            gerenciador_estatisticas.carregar()
+                                            # Registrar corrida como concluída (posição 1, tempo fictício)
+                                            gerenciador_estatisticas.registrar_corrida_completa(
+                                                corrida_info["pista"],  # numero_pista
+                                                1,  # posicao_final
+                                                60.0  # tempo_final (fictício)
+                                            )
+                                            gerenciador_estatisticas.salvar()
+                                            
+                                            # Desbloquear corrida se necessário
+                                            if not hasattr(gerenciador_progresso, 'corridas_desbloqueadas'):
+                                                gerenciador_progresso.corridas_desbloqueadas = set()
+                                            if isinstance(gerenciador_progresso.corridas_desbloqueadas, list):
+                                                gerenciador_progresso.corridas_desbloqueadas = set(gerenciador_progresso.corridas_desbloqueadas)
+                                            if race_id:
+                                                gerenciador_progresso.corridas_desbloqueadas.add(race_id)
+                                            
+                                            # Limpar flag e salvar
+                                            gerenciador_progresso.ultima_corrida_campanha = None
+                                            gerenciador_progresso.salvar()
+                                            
+                                            # Retornar para processar narrativa pós-corrida se necessário
+                                            return None
                                         
                                         principal(
                                             carro_selecionado_p1=carro_p1_idx,

@@ -1,6 +1,14 @@
 """Sistema do Fuligem (apelido Graxa) - Organizador do Cinturão Industrial"""
 import pygame
 import os
+import sys
+
+# Adicionar o diretório src ao path se necessário (para quando executado diretamente)
+if __name__ == "__main__":
+    src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if src_dir not in sys.path:
+        sys.path.insert(0, src_dir)
+
 from config import DIR_PROJETO, LARGURA, ALTURA
 from core.progresso import gerenciador_progresso
 
@@ -15,9 +23,10 @@ def _get_render_text():
     return render_text
 
 CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "fuligem")
-SPRITE_NEUTRO = os.path.join(CAMINHO_SPRITES, "neutro.png")
-SPRITE_DESPRESO = os.path.join(CAMINHO_SPRITES, "despreso.png")
-SPRITE_IRRITADO = os.path.join(CAMINHO_SPRITES, "irritado.png")
+# Tentar diferentes nomes de sprites disponíveis
+SPRITE_NEUTRO = os.path.join(CAMINHO_SPRITES, "fuligem_neutro - Copia.png")
+SPRITE_DESPRESO = os.path.join(CAMINHO_SPRITES, "fuligem_bravo.png")
+SPRITE_IRRITADO = os.path.join(CAMINHO_SPRITES, "fuligem_bravo.png")
 
 class Fuligem:
     """Fuligem (apelido Graxa) - Organizador do Cinturão Industrial"""
@@ -30,6 +39,8 @@ class Fuligem:
         self.sprite_despreso = None
         self.sprite_irritado = None
         self.sprite_fundo = None
+        self.sprite_fundo_redimensionado = None  # Cache do fundo redimensionado
+        self.sprites_redimensionados_cache = {}  # Cache de sprites redimensionados
         self.sprites_carregados = False
         
         self.ativo = False
@@ -49,22 +60,41 @@ class Fuligem:
         self.corrida_aberta = False
         self.pista_selecionada = None
         self.opcao_corrida_selecionada = 0
+        # Corridas com preços diferentes e recompensas diferentes
+        # Corrida mais cara = mais recompensa
         self.corridas_disponiveis = [
-            {"nome": "Rota da Caldeira", "pista": 4, "preco": 800, "dificuldade": "alta"},
-            {"nome": "Circuito Industrial", "pista": 5, "preco": 800, "dificuldade": "alta"},
-            {"nome": "Torneio Industrial", "pista": 6, "preco": 800, "dificuldade": "muito_alta"}
+            {"nome": "Rota da Caldeira", "pista": 4, "preco": 800, "recompensa": 2000, "dificuldade": "alta", "indice": 0},
+            {"nome": "Circuito Industrial", "pista": 5, "preco": 1200, "recompensa": 3500, "dificuldade": "alta", "indice": 1},
+            {"nome": "Torneio Industrial", "pista": 6, "preco": 2000, "recompensa": 6000, "dificuldade": "muito_alta", "indice": 2}
         ]
     
     def carregar_estado(self):
         """Carrega o estado do Fuligem do progresso.json"""
         self.nome_revelado = gerenciador_progresso.fuligem_nome_revelado if hasattr(gerenciador_progresso, 'fuligem_nome_revelado') else False
         self.primeira_aparicao_mostrada = gerenciador_progresso.fuligem_primeira_aparicao_mostrada if hasattr(gerenciador_progresso, 'fuligem_primeira_aparicao_mostrada') else False
+        
+        # Carregar corridas desbloqueadas
+        if not hasattr(gerenciador_progresso, 'fuligem_corridas_desbloqueadas'):
+            gerenciador_progresso.fuligem_corridas_desbloqueadas = [0]  # Corrida 1 (índice 0) sempre desbloqueada
+        self.corridas_desbloqueadas = set(gerenciador_progresso.fuligem_corridas_desbloqueadas) if isinstance(gerenciador_progresso.fuligem_corridas_desbloqueadas, list) else set([0])
     
     def salvar_estado(self):
         """Salva o estado do Fuligem no progresso.json"""
         gerenciador_progresso.fuligem_nome_revelado = getattr(self, 'nome_revelado', False)
         gerenciador_progresso.fuligem_primeira_aparicao_mostrada = getattr(self, 'primeira_aparicao_mostrada', False)
+        gerenciador_progresso.fuligem_corridas_desbloqueadas = list(self.corridas_desbloqueadas) if isinstance(self.corridas_desbloqueadas, set) else self.corridas_desbloqueadas
         gerenciador_progresso.salvar()
+    
+    def obter_corridas_disponiveis(self):
+        """Retorna apenas as corridas desbloqueadas"""
+        return [corrida for corrida in self.corridas_disponiveis if corrida["indice"] in self.corridas_desbloqueadas]
+    
+    def desbloquear_corrida(self, indice_corrida):
+        """Desbloqueia uma corrida específica"""
+        if indice_corrida not in self.corridas_desbloqueadas:
+            self.corridas_desbloqueadas.add(indice_corrida)
+            self.salvar_estado()
+            print(f"[FULIGEM] Corrida {indice_corrida} desbloqueada!")
     
     def carregar_sprites(self):
         """Carrega os sprites do Fuligem"""
@@ -91,19 +121,16 @@ class Fuligem:
             else:
                 print(f"[FULIGEM] ✗ Sprite irritado não encontrado: {SPRITE_IRRITADO}")
             
-            # Carregar fundo (usar fundo industrial/noite)
-            caminho_fundo = os.path.join(DIR_PROJETO, "assets", "images", "ui", "cinturao_industrial_bg.png")
+            # Carregar fundo (usar fundo cinturão noite)
+            caminho_fundo = os.path.join(DIR_PROJETO, "assets", "images", "ui", "cinturao_noite.png")
             if os.path.exists(caminho_fundo):
                 self.sprite_fundo = pygame.image.load(caminho_fundo).convert_alpha()
-                print(f"[FULIGEM] ✓ Fundo carregado")
+                # Redimensionar fundo para a resolução da tela
+                from config import LARGURA, ALTURA
+                self.sprite_fundo_redimensionado = pygame.transform.scale(self.sprite_fundo, (LARGURA, ALTURA))
+                print(f"[FULIGEM] ✓ Fundo carregado e redimensionado")
             else:
-                # Fallback para fundo genérico
-                caminho_fundo = os.path.join(DIR_PROJETO, "assets", "images", "ui", "garage_bg.png")
-                if os.path.exists(caminho_fundo):
-                    self.sprite_fundo = pygame.image.load(caminho_fundo).convert_alpha()
-                    print(f"[FULIGEM] ✓ Fundo fallback carregado")
-                else:
-                    print(f"[FULIGEM] ✗ Fundo não encontrado")
+                print(f"[FULIGEM] ✗ Fundo não encontrado: {caminho_fundo}")
             
             self.sprites_carregados = True
         except Exception as e:
@@ -179,16 +206,23 @@ class Fuligem:
                                 self.primeira_aparicao_mostrada = True
                                 self.nome_revelado = True
                                 self.salvar_estado()
+                                # Salvar progresso e missões após interação
+                                gerenciador_progresso.salvar()
+                                from core.missoes import gerenciador_missoes
+                                gerenciador_missoes.salvar()
                                 self.fechar()
                                 return "fechado"
                     elif self.fase_dialogo == "dia":
                         # Fechar mensagem de dia
+                        # Salvar progresso antes de fechar
+                        gerenciador_progresso.salvar()
                         self.fechar()
                         return "fechado"
                     elif self.fase_dialogo == "corrida":
                         # Processar seleção de corrida
-                        if self.opcao_corrida_selecionada < len(self.corridas_disponiveis):
-                            corrida = self.corridas_disponiveis[self.opcao_corrida_selecionada]
+                        corridas_disponiveis = self.obter_corridas_disponiveis()
+                        if self.opcao_corrida_selecionada < len(corridas_disponiveis):
+                            corrida = corridas_disponiveis[self.opcao_corrida_selecionada]
                             # Verificar se tem dinheiro
                             if gerenciador_progresso.tem_dinheiro(corrida["preco"]):
                                 # Remover dinheiro e iniciar corrida
@@ -196,30 +230,34 @@ class Fuligem:
                                 gerenciador_progresso.salvar()
                                 self.pista_selecionada = corrida["pista"]
                                 self.fechar()
-                                return {"corrida": True, "pista": corrida["pista"], "preco": corrida["preco"]}
+                                return {"corrida": True, "pista": corrida["pista"], "preco": corrida["preco"], "recompensa": corrida["recompensa"], "indice": corrida["indice"]}
                             else:
                                 # Não tem dinheiro suficiente
                                 self._iniciar_animacao_texto(f"Você não tem dinheiro suficiente! Precisa de ${corrida['preco']:,}")
                                 self.fase_dialogo = "sem_dinheiro"
-                        elif self.opcao_corrida_selecionada == len(self.corridas_disponiveis):
+                        elif self.opcao_corrida_selecionada == len(corridas_disponiveis):
                             # Opção "SAIR"
+                            # Salvar progresso antes de fechar
+                            gerenciador_progresso.salvar()
                             self.fechar()
                             return "fechado"
                 elif evento.key in (pygame.K_UP, pygame.K_w):
                     if self.fase_dialogo == "corrida":
-                        self.opcao_corrida_selecionada = (self.opcao_corrida_selecionada - 1) % (len(self.corridas_disponiveis) + 1)
+                        corridas_disponiveis = self.obter_corridas_disponiveis()
+                        self.opcao_corrida_selecionada = (self.opcao_corrida_selecionada - 1) % (len(corridas_disponiveis) + 1)
                 elif evento.key in (pygame.K_DOWN, pygame.K_s):
                     if self.fase_dialogo == "corrida":
-                        self.opcao_corrida_selecionada = (self.opcao_corrida_selecionada + 1) % (len(self.corridas_disponiveis) + 1)
+                        corridas_disponiveis = self.obter_corridas_disponiveis()
+                        self.opcao_corrida_selecionada = (self.opcao_corrida_selecionada + 1) % (len(corridas_disponiveis) + 1)
                 elif evento.key == pygame.K_ESCAPE:
+                    # ESC fecha o diálogo do Fuligem
                     if self.fase_dialogo == "sem_dinheiro":
                         self.fase_dialogo = "corrida"
                     else:
+                        # Salvar progresso antes de fechar
+                        gerenciador_progresso.salvar()
                         self.fechar()
                         return "fechado"
-                elif evento.key == pygame.K_ESCAPE:
-                    self.fechar()
-                    return "fechado"
         return None
     
     def atualizar(self, dt: float):
@@ -232,122 +270,236 @@ class Fuligem:
                     # Mensagem completa, aguardar ESC para voltar
                     pass
     
-    def desenhar(self, screen):
-        """Desenha o Fuligem na tela"""
+    def desenhar_dialogo(self, tela, dt):
+        """Desenha o diálogo do Fuligem no estilo visual novel (igual aos outros NPCs)"""
         if not self.ativo:
             return
         
-        # Desenhar fundo
-        if self.sprite_fundo:
-            screen.blit(self.sprite_fundo, (0, 0))
-        else:
-            screen.fill((20, 20, 30))
+        # Garantir que os sprites estão carregados
+        if not self.sprites_carregados:
+            self.carregar_sprites()
         
-        # Desenhar sprite do Fuligem
+        render_text = _get_render_text()
+        
+        # Usar fundo redimensionado em cache
+        if self.sprite_fundo_redimensionado:
+            tela.blit(self.sprite_fundo_redimensionado, (0, 0))
+        elif self.sprite_fundo:
+            # Se não tiver cache, criar uma vez (fallback)
+            from config import LARGURA, ALTURA
+            self.sprite_fundo_redimensionado = pygame.transform.scale(self.sprite_fundo, (LARGURA, ALTURA))
+            tela.blit(self.sprite_fundo_redimensionado, (0, 0))
+        else:
+            # Fallback: overlay escuro
+            from config import LARGURA, ALTURA
+            overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 200))
+            tela.blit(overlay, (0, 0))
+        
         if self.sprite_atual:
-            x_fuligem = LARGURA - self.sprite_atual.get_width() - 50
-            y_fuligem = ALTURA - self.sprite_atual.get_height() - 100
-            screen.blit(self.sprite_atual, (x_fuligem, y_fuligem))
+            # Usar cache de sprite redimensionado (igual ao Boris)
+            if self.sprite_atual not in self.sprites_redimensionados_cache:
+                sprite_original_w = self.sprite_atual.get_width()
+                sprite_original_h = self.sprite_atual.get_height()
+                # Diminuir escala para 0.60 (60%) para deixar o Fuligem bem menor que o Boris
+                sprite_novo_w = int(sprite_original_w * 0.30)
+                sprite_novo_h = int(sprite_original_h * 0.30)
+                self.sprites_redimensionados_cache[self.sprite_atual] = pygame.transform.scale(self.sprite_atual, (sprite_novo_w, sprite_novo_h))
+            
+            sprite_redimensionado = self.sprites_redimensionados_cache[self.sprite_atual]
+            sprite_novo_w, sprite_novo_h = sprite_redimensionado.get_size()
+            
+            from config import LARGURA, ALTURA
+            # Posicionar centralizado como o Boris
+            sprite_x = LARGURA // 2 - sprite_novo_w // 2
+            # Posicionar mais próximo do chão, bem acima da caixa de diálogo (igual ao Boris)
+            sprite_y = ALTURA - sprite_novo_h - 130
+            tela.blit(sprite_redimensionado, (sprite_x, sprite_y))
+        
+        # Garantir que LARGURA e ALTURA estão disponíveis
+        from config import LARGURA, ALTURA
         
         # Desenhar caixa de diálogo
         if self.fase_dialogo in ["primeira_aparicao", "dia"]:
-            caixa_y = ALTURA - 200
-            caixa_altura = 150
-            pygame.draw.rect(screen, (30, 30, 40), (20, caixa_y, LARGURA - 40, caixa_altura))
-            pygame.draw.rect(screen, (100, 100, 120), (20, caixa_y, LARGURA - 40, caixa_altura), 2)
+            caixa_largura = 1000
+            caixa_altura = 200
+            caixa_x = (LARGURA - caixa_largura) // 2
+            caixa_y = ALTURA - caixa_altura - 50
             
-            # Texto
-            render_text = _get_render_text()
-            linhas_texto = []
-            palavras = self.texto_exibido.split()
-            linha_atual = ""
-            for palavra in palavras:
-                teste = linha_atual + (" " if linha_atual else "") + palavra
-                largura_teste = render_text(teste, 24).get_width()
-                if largura_teste > LARGURA - 80:
-                    if linha_atual:
-                        linhas_texto.append(linha_atual)
-                    linha_atual = palavra
-                else:
-                    linha_atual = teste
-            if linha_atual:
-                linhas_texto.append(linha_atual)
+            # Fundo da caixa
+            overlay_caixa = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+            overlay_caixa.fill((0, 0, 0, 200))
+            tela.blit(overlay_caixa, (caixa_x, caixa_y))
             
-            y_texto = caixa_y + 20
-            for linha in linhas_texto:
-                texto_surf = render_text(linha, 24)
-                screen.blit(texto_surf, (40, y_texto))
-                y_texto += 30
+            # Borda da caixa
+            pygame.draw.rect(tela, (100, 100, 100), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
+            
+            # Nome do personagem
+            nome = "GRAXA" if self.nome_revelado else "???"
+            nome_texto = render_text(nome, 20, (255, 200, 0), bold=True, pixel_style=True)
+            tela.blit(nome_texto, (caixa_x + 20, caixa_y + 10))
+            
+            # Atualizar animação de texto
+            self._atualizar_animacao_texto(dt)
+            
+            # Texto do diálogo com quebra de linha
+            if self.texto_exibido:
+                palavras = self.texto_exibido.split(' ')
+                linhas = []
+                linha_atual = ""
+                for palavra in palavras:
+                    teste_linha = linha_atual + (" " if linha_atual else "") + palavra
+                    teste_render = render_text(teste_linha, 18, (255, 255, 255), bold=False, pixel_style=True)
+                    largura_teste = teste_render.get_width()
+                    if largura_teste <= caixa_largura - 40:
+                        linha_atual = teste_linha
+                    else:
+                        if linha_atual:
+                            linhas.append(linha_atual)
+                        linha_atual = palavra
+                if linha_atual:
+                    linhas.append(linha_atual)
+                
+                y_texto = caixa_y + 50
+                for linha in linhas:
+                    linha_render = render_text(linha, 18, (255, 255, 255), bold=False, pixel_style=True)
+                    tela.blit(linha_render, (caixa_x + 20, y_texto))
+                    y_texto += 25
+            
+            # Indicador de avanço
+            if len(self.texto_exibido) >= len(self.texto_completo):
+                indicador = render_text("Pressione ESPAÇO ou clique para continuar", 14, (150, 150, 150), bold=False, pixel_style=True)
+                tela.blit(indicador, (caixa_x + caixa_largura - 400, caixa_y + caixa_altura - 30))
         
         # Desenhar menu de corridas
         elif self.fase_dialogo == "corrida":
-            render_text = _get_render_text()
-            
-            # Texto do Fuligem
+            # Caixa de diálogo com texto do Fuligem (mesma posição das outras caixas)
             texto_fuligem = "Voltou? O cheiro de óleo te atraiu ou sua carteira tá vazia? Tenho um grid se formando na Rota da Caldeira. 800 pratas a entrada. O vencedor leva o pote. Vai encarar ou vai ficar só olhando?"
             
-            # Caixa de diálogo
-            caixa_y = ALTURA - 350
-            caixa_altura = 120
-            pygame.draw.rect(screen, (30, 30, 40), (20, caixa_y, LARGURA - 40, caixa_altura))
-            pygame.draw.rect(screen, (100, 100, 120), (20, caixa_y, LARGURA - 40, caixa_altura), 2)
+            caixa_largura = 1000
+            caixa_altura = 200  # Mesmo tamanho das outras caixas
+            caixa_x = (LARGURA - caixa_largura) // 2
+            caixa_y = ALTURA - caixa_altura - 50  # Mesma posição das outras caixas
+            
+            # Fundo da caixa
+            overlay_caixa = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+            overlay_caixa.fill((0, 0, 0, 200))
+            tela.blit(overlay_caixa, (caixa_x, caixa_y))
+            
+            # Borda da caixa
+            pygame.draw.rect(tela, (100, 100, 100), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
+            
+            # Nome do personagem
+            nome = "GRAXA" if self.nome_revelado else "???"
+            nome_texto = render_text(nome, 20, (255, 200, 0), bold=True, pixel_style=True)
+            tela.blit(nome_texto, (caixa_x + 20, caixa_y + 10))
             
             # Quebrar texto em linhas
-            linhas_texto = []
-            palavras = texto_fuligem.split()
+            palavras = texto_fuligem.split(' ')
+            linhas = []
             linha_atual = ""
             for palavra in palavras:
-                teste = linha_atual + (" " if linha_atual else "") + palavra
-                largura_teste = render_text(teste, 22).get_width()
-                if largura_teste > LARGURA - 80:
-                    if linha_atual:
-                        linhas_texto.append(linha_atual)
-                    linha_atual = palavra
+                teste_linha = linha_atual + (" " if linha_atual else "") + palavra
+                teste_render = render_text(teste_linha, 18, (255, 255, 255), bold=False, pixel_style=True)
+                largura_teste = teste_render.get_width()
+                if largura_teste <= caixa_largura - 40:
+                    linha_atual = teste_linha
                 else:
-                    linha_atual = teste
+                    if linha_atual:
+                        linhas.append(linha_atual)
+                    linha_atual = palavra
             if linha_atual:
-                linhas_texto.append(linha_atual)
+                linhas.append(linha_atual)
             
-            y_texto = caixa_y + 15
-            for linha in linhas_texto:
-                texto_surf = render_text(linha, 22)
-                screen.blit(texto_surf, (40, y_texto))
+            y_texto = caixa_y + 50
+            for linha in linhas:
+                linha_render = render_text(linha, 18, (255, 255, 255), bold=False, pixel_style=True)
+                tela.blit(linha_render, (caixa_x + 20, y_texto))
                 y_texto += 25
             
-            # Menu de corridas
-            menu_y = caixa_y + caixa_altura + 20
-            opcoes = [corrida["nome"] for corrida in self.corridas_disponiveis] + ["SAIR"]
+            # Menu de corridas (centralizado na tela, acima da caixa de diálogo)
+            corridas_disponiveis = self.obter_corridas_disponiveis()
+            opcoes = [corrida["nome"] for corrida in corridas_disponiveis] + ["SAIR"]
+            menu_largura = 600
+            menu_altura = len(opcoes) * 50 + 20
+            menu_x = (LARGURA - menu_largura) // 2  # Centralizar o menu
+            menu_y = caixa_y - menu_altura - 30  # Acima da caixa de diálogo
+            
+            # Fundo do menu de corridas
+            menu_overlay = pygame.Surface((menu_largura, menu_altura), pygame.SRCALPHA)
+            menu_overlay.fill((0, 0, 0, 180))
+            tela.blit(menu_overlay, (menu_x, menu_y))
+            pygame.draw.rect(tela, (150, 150, 150), (menu_x, menu_y, menu_largura, menu_altura), 2)
             
             for i, opcao in enumerate(opcoes):
                 cor = (255, 255, 0) if i == self.opcao_corrida_selecionada else (200, 200, 200)
-                if i < len(self.corridas_disponiveis):
-                    preco = self.corridas_disponiveis[i]["preco"]
+                if i < len(corridas_disponiveis):
+                    preco = corridas_disponiveis[i]["preco"]
                     texto_opcao = f"{opcao} - ${preco:,}"
                 else:
                     texto_opcao = opcao
                 
-                texto_surf = render_text(texto_opcao, 28, cor)
-                x_opcao = 40
-                y_opcao = menu_y + i * 50
-                screen.blit(texto_surf, (x_opcao, y_opcao))
+                texto_surf = render_text(texto_opcao, 28, cor, bold=True, pixel_style=True)
+                x_opcao = menu_x + 20
+                y_opcao = menu_y + 10 + i * 50
+                tela.blit(texto_surf, (x_opcao, y_opcao))
             
             # Dinheiro atual
             dinheiro_texto = f"Créditos: ${gerenciador_progresso.dinheiro:,}"
-            texto_dinheiro = render_text(dinheiro_texto, 24)
-            screen.blit(texto_dinheiro, (LARGURA - texto_dinheiro.get_width() - 40, 40))
+            texto_dinheiro = render_text(dinheiro_texto, 24, (255, 255, 255), bold=True, pixel_style=True)
+            tela.blit(texto_dinheiro, (LARGURA - texto_dinheiro.get_width() - 40, 40))
         
         elif self.fase_dialogo == "sem_dinheiro":
             # Mostrar mensagem de falta de dinheiro
-            caixa_y = ALTURA - 200
-            caixa_altura = 100
-            pygame.draw.rect(screen, (30, 30, 40), (20, caixa_y, LARGURA - 40, caixa_altura))
-            pygame.draw.rect(screen, (200, 50, 50), (20, caixa_y, LARGURA - 40, caixa_altura), 2)
+            caixa_largura = 1000
+            caixa_altura = 200
+            caixa_x = (LARGURA - caixa_largura) // 2
+            caixa_y = ALTURA - caixa_altura - 50
             
-            render_text = _get_render_text()
-            texto_surf = render_text(self.texto_exibido, 24, (255, 100, 100))
-            x_texto = (LARGURA - texto_surf.get_width()) // 2
-            y_texto = caixa_y + (caixa_altura - texto_surf.get_height()) // 2
-            screen.blit(texto_surf, (x_texto, y_texto))
+            # Fundo da caixa
+            overlay_caixa = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+            overlay_caixa.fill((0, 0, 0, 200))
+            tela.blit(overlay_caixa, (caixa_x, caixa_y))
+            
+            # Borda da caixa (vermelha para erro)
+            pygame.draw.rect(tela, (200, 50, 50), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
+            
+            # Nome do personagem
+            nome = "GRAXA" if self.nome_revelado else "???"
+            nome_texto = render_text(nome, 20, (255, 200, 0), bold=True, pixel_style=True)
+            tela.blit(nome_texto, (caixa_x + 20, caixa_y + 10))
+            
+            # Atualizar animação de texto
+            self._atualizar_animacao_texto(dt)
+            
+            # Texto da mensagem
+            if self.texto_exibido:
+                palavras = self.texto_exibido.split(' ')
+                linhas = []
+                linha_atual = ""
+                for palavra in palavras:
+                    teste_linha = linha_atual + (" " if linha_atual else "") + palavra
+                    teste_render = render_text(teste_linha, 18, (255, 100, 100), bold=False, pixel_style=True)
+                    largura_teste = teste_render.get_width()
+                    if largura_teste <= caixa_largura - 40:
+                        linha_atual = teste_linha
+                    else:
+                        if linha_atual:
+                            linhas.append(linha_atual)
+                        linha_atual = palavra
+                if linha_atual:
+                    linhas.append(linha_atual)
+                
+                y_texto = caixa_y + 50
+                for linha in linhas:
+                    linha_render = render_text(linha, 18, (255, 100, 100), bold=False, pixel_style=True)
+                    tela.blit(linha_render, (caixa_x + 20, y_texto))
+                    y_texto += 25
+            
+            # Indicador de avanço
+            if len(self.texto_exibido) >= len(self.texto_completo):
+                indicador = render_text("Pressione ESC para voltar", 14, (150, 150, 150), bold=False, pixel_style=True)
+                tela.blit(indicador, (caixa_x + caixa_largura - 300, caixa_y + caixa_altura - 30))
     
     def fechar(self):
         """Fecha o diálogo do Fuligem"""

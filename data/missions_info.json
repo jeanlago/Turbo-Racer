@@ -1,0 +1,63 @@
+{
+  "missions": {
+    "ch1": {
+      "find_boris": {
+        "name": "Lata Velha Ressuscitada",
+        "description": "O motor está morto. Crank disse que o único jeito de conseguir peças baratas sem fazer perguntas é com Boris, no Fosso de Ferrugem. Vá até lá e negocie a primeira peça."
+      },
+      "return_to_crank": {
+        "name": "Primeira Faísca",
+        "description": "Você conseguiu a peça com o Boris. Volte para a garagem para que Crank possa instalar e tentar dar a partida no carro."
+      },
+      "finish_training_race": {
+        "name": "Batismo de Asfalto",
+        "description": "O carro liga, mas será que anda? Crank liberou a pista de treino atrás da oficina. Complete a corrida de iniciantes para provar que merece continuar."
+      }
+    },
+    "ch2": {
+      "unlock_cinturao": {
+        "name": "O Preço da Subida",
+        "description": "As corridas de iniciante não pagam as contas. Você precisa de acesso ao Cinturão Industrial. Pague a taxa de inscrição do Boris ou convença Crank a usar seus velhos contatos para te colocar dentro."
+      },
+      "baron_debt_active": {
+        "name": "A Sombra do Agiota",
+        "description": "Você aceitou o dinheiro do Barão. Lembre-se: 30% de tudo o que você ganhar é dele. Mantenha os pagamentos em dia ou Boris virá cobrar com um pé de cabra."
+      }
+    },
+    "ch3": {
+      "meet_akira": {
+        "name": "Caminho do Santuário",
+        "description": "Crank diz que você precisa aprender a controlar o carro, não só acelerar. Viaje para as montanhas e encontre Akira, a lenda do drift que se isolou do circo da cidade."
+      },
+      "finish_mountain_test": {
+        "name": "O Teste do Fluxo",
+        "description": "Akira não aceita qualquer um. Ela preparou um teste técnico na montanha. Complete a volta no tempo limite, focando no controle e nas curvas, para ganhar o respeito dela."
+      }
+    },
+    "ch4": {
+      "meet_pixel_physical": {
+        "name": "A Voz no Rádio",
+        "description": "Pixel cansou de ser apenas uma voz no seu painel. Ela enviou coordenadas para um esconderijo. Vá encontrá-la pessoalmente para entender o que Rex realmente quer com você."
+      },
+      "increase_reputation": {
+        "name": "Chamando a Atenção",
+        "description": "Rex está te observando lá do alto. Vença corridas em todas as zonas (Fosso, Cinturão e Montanha) para aumentar sua reputação até que ele não possa mais te ignorar."
+      }
+    },
+    "ch5": {
+      "prepare_for_stage1": {
+        "name": "O Convite Dourado",
+        "description": "Chegou a hora. Você foi convidado para o Circuito da Coroa de Rex. Prepare seu carro com as melhores peças disponíveis e vá para o grid de largada da primeira etapa. O mundo todo está assistindo."
+      },
+      "complete_crown_circuit": {
+        "name": "O Circo do Rex",
+        "description": "Avance pelas etapas do Circuito da Coroa. Esteja preparado para tudo: pistas alteradas de última hora, adversários pagos e a pressão das câmeras. Sobreviva até a final."
+      },
+      "win_final_race": {
+        "name": "A Última Volta",
+        "description": "É a grande final. Não é apenas sobre velocidade, é sobre provar seu valor contra o sistema de Rex. Vença a corrida e decida o seu futuro na cidade."
+      }
+    }
+  }
+}
+

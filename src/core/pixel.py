@@ -152,17 +152,56 @@ class Pixel:
             CAMINHO_BUNKER = obter_caminho_bunker()
             if os.path.exists(CAMINHO_BUNKER):
                 self.sprite_fundo = pygame.image.load(CAMINHO_BUNKER).convert_alpha()
+                print(f"[PIXEL] Fundo carregado: {CAMINHO_BUNKER}")
             elif os.path.exists(CAMINHO_BUNKER_FALLBACK):
                 self.sprite_fundo = pygame.image.load(CAMINHO_BUNKER_FALLBACK).convert_alpha()
+                print(f"[PIXEL] Fundo carregado (fallback): {CAMINHO_BUNKER_FALLBACK}")
+            else:
+                print(f"[PIXEL] ERRO: Fundo não encontrado! Tentou: {CAMINHO_BUNKER} e {CAMINHO_BUNKER_FALLBACK}")
             
             self.sprites_carregados = True
         except Exception as e:
             print(f"Erro ao carregar sprites do Pixel: {e}")
     
+    def verificar_ganhou_todas_corridas_ouro(self):
+        """Verifica se o jogador ganhou todas as corridas do cinturão e da montanha com ouro"""
+        # Corridas do Cinturão Industrial (Fuligem): pistas 4, 5, 6
+        # Corridas da Montanha (Akira): pista 3
+        pistas_necessarias = [3, 4, 5, 6]
+        
+        for pista in pistas_necessarias:
+            trofeu = gerenciador_progresso.obter_trofeu(pista)
+            if trofeu != "ouro":
+                return False
+        
+        return True
+    
     def verificar_aparecer_primeira_vez(self):
         """Verifica se deve mostrar a primeira aparição do Pixel"""
         if self.primeira_aparicao_mostrada:
-            return False
+            # Se já mostrou a primeira aparição, verificar se deve mostrar o diálogo "explodiu nos servidores"
+            if self.verificar_ganhou_todas_corridas_ouro():
+                # Verificar se já mostrou esse diálogo
+                if not hasattr(gerenciador_progresso, 'pixel_dialogo_explodiu_mostrado'):
+                    gerenciador_progresso.pixel_dialogo_explodiu_mostrado = False
+                
+                if not gerenciador_progresso.pixel_dialogo_explodiu_mostrado:
+                    if not self.sprites_carregados:
+                        self.carregar_sprites()
+                    
+                    # Ativar diálogo "explodiu nos servidores"
+                    self.ativo = True
+                    self.fase_dialogo = "explodiu_servidores"
+                    self.parte_dialogo = 0
+                    self._iniciar_dialogo_explodiu()
+                    return True
+            # Se não ganhou todas ou já mostrou, abrir loja normalmente
+            if not self.sprites_carregados:
+                self.carregar_sprites()
+            self.ativo = True
+            self.fase_dialogo = "loja"
+            self._abrir_loja()
+            return True
         
         if not self.sprites_carregados:
             self.carregar_sprites()
@@ -236,6 +275,26 @@ class Pixel:
             self.fase_dialogo = "loja"
             self._abrir_loja()
     
+    def _iniciar_dialogo_explodiu(self):
+        """Inicia o diálogo 'explodiu nos servidores'"""
+        self.parte_dialogo = 0
+        self._avancar_dialogo_explodiu()
+    
+    def _avancar_dialogo_explodiu(self):
+        """Avança o diálogo 'explodiu nos servidores'"""
+        if self.parte_dialogo == 0:
+            self.sprite_atual = self.sprite_paranoico if self.sprite_paranoico else self.sprite_neutro
+            self._iniciar_animacao_texto("Seus dados explodiram nos servidores. Até agora, você era ruído. Agora é padrão interessante.")
+        elif self.parte_dialogo == 1:
+            self.sprite_atual = self.sprite_assustado if self.sprite_assustado else self.sprite_neutro
+            self._iniciar_animacao_texto("Isso só acontece quando o Rex pensa: 'Talvez eu possa usar isso… ou destruir.'")
+        else:
+            # Finalizar diálogo e marcar como mostrado
+            gerenciador_progresso.pixel_dialogo_explodiu_mostrado = True
+            gerenciador_progresso.salvar()
+            self.fase_dialogo = "loja"
+            self._abrir_loja()
+    
     def _abrir_loja(self):
         """Abre a loja de informações do Pixel"""
         self.loja_aberta = True
@@ -289,6 +348,9 @@ class Pixel:
                         if self.fase_dialogo == "primeira_aparicao":
                             self.parte_cutscene += 1
                             self._avancar_cutscene()
+                        elif self.fase_dialogo == "explodiu_servidores":
+                            self.parte_dialogo += 1
+                            self._avancar_dialogo_explodiu()
                         elif self.fase_dialogo == "loja":
                             # Fechar diálogo e abrir menu de loja
                             self.fechar()
@@ -303,6 +365,9 @@ class Pixel:
                         if self.fase_dialogo == "primeira_aparicao":
                             self.parte_cutscene += 1
                             self._avancar_cutscene()
+                        elif self.fase_dialogo == "explodiu_servidores":
+                            self.parte_dialogo += 1
+                            self._avancar_dialogo_explodiu()
                         elif self.fase_dialogo == "loja":
                             # Fechar diálogo e abrir menu de loja
                             self.fechar()
@@ -348,13 +413,16 @@ class Pixel:
         
         render_text = _get_render_text()
         
+        # Sempre desenhar fundo primeiro (limpar tela)
         if self.sprite_fundo:
             fundo_redimensionado = pygame.transform.scale(self.sprite_fundo, (LARGURA, ALTURA))
             tela.blit(fundo_redimensionado, (0, 0))
         else:
+            # Se não há fundo, desenhar overlay escuro
             overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
             overlay.fill((0, 20, 10, 200))
             tela.blit(overlay, (0, 0))
+            print("[PIXEL] AVISO: sprite_fundo não carregado, usando overlay")
         
         if self.sprite_atual:
             sprite_original_w = self.sprite_atual.get_width()

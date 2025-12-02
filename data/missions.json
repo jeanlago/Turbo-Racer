@@ -91,7 +91,7 @@
     {
       "id": "m12_fantasma_do_circuito",
       "nome": "Fantasma do Circuito",
-      "objetivo": "Descubra o passado de Akira com Rex, o Barão e a Iron Howl.",
+      "objetivo": "Continue conversando com Akira na montanha para descobrir seu passado com Rex, o Barão e a Iron Howl.",
       "activateOnSceneId": "ch3_3_meet_akira",
       "completeOnSceneId": "ch3_4_akira_past",
       "chapter": "ch3"

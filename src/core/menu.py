@@ -8924,6 +8924,17 @@ def run():
                     while narrative_system.active:
                         dt = clock_narrativa.tick(FPS) / 1000.0
                         
+                        # Desativar NPCs quando a narrativa está ativa para evitar sobreposição
+                        from core.pixel import pixel
+                        from core.crank import crank
+                        from core.akira import akira
+                        pixel.ativo = False
+                        crank.ativo = False
+                        # Não desativar Akira completamente pois ela pode ser usada na narrativa
+                        # Mas garantir que não está desenhando seu próprio diálogo
+                        if akira.ativo and akira.modo_dialogo not in ["pre_corrida", "fim_corrida"]:
+                            akira.ativo = False
+                        
                         # Atualizar tempo do jogo (1 minuto real = 1 hora do jogo)
                         # MAS pausar durante time-skip ou transição de cena (fade escuro) para não avançar o tempo durante transições
                         from core.tempo_jogo import gerenciador_tempo
@@ -9195,19 +9206,41 @@ def run():
                                                     gerenciador_progresso.ultima_corrida_campanha = "training_01"
                                                     gerenciador_progresso.salvar()
                                                     
-                                                    # Iniciar corrida
-                                                    import main
-                                                    main.principal(
-                                                        carro_selecionado_p1=carro_p1_idx,
-                                                        carro_selecionado_p2=0,
-                                                        mapa_selecionado=track,
-                                                        modo_jogo=ModoJogo.UM_JOGADOR,
-                                                        tipo_jogo=tipo_jogo,
-                                                        voltas=laps,
-                                                        dificuldade_ia=difficulty,
-                                                        modo_arcade=False,
-                                                        sem_bots=sem_bots
-                                                    )
+                                                    # Modo de teste: marcar corrida como concluída automaticamente
+                                                    from config import MODO_TESTE_CORRIDAS
+                                                    if MODO_TESTE_CORRIDAS:
+                                                        print(f"[MODO TESTE] Corrida training_01 marcada como concluída automaticamente")
+                                                        from core.estatisticas import gerenciador_estatisticas
+                                                        gerenciador_estatisticas.carregar()
+                                                        # Registrar corrida como concluída (posição 1, tempo fictício)
+                                                        gerenciador_estatisticas.registrar_corrida_completa(
+                                                            numero_pista=track,
+                                                            posicao_final=1,
+                                                            tempo_final=60.0  # Tempo fictício
+                                                        )
+                                                        gerenciador_estatisticas.salvar()
+                                                        
+                                                        # Limpar flag e salvar
+                                                        gerenciador_progresso.ultima_corrida_campanha = None
+                                                        gerenciador_progresso.salvar()
+                                                        
+                                                        # Iniciar narrativa pós-corrida
+                                                        _iniciar_narrativa_pos_training_01(narrative_system, gerenciador_progresso)
+                                                        return "narrativa"
+                                                    else:
+                                                        # Iniciar corrida normalmente
+                                                        import main
+                                                        main.principal(
+                                                            carro_selecionado_p1=carro_p1_idx,
+                                                            carro_selecionado_p2=0,
+                                                            mapa_selecionado=track,
+                                                            modo_jogo=ModoJogo.UM_JOGADOR,
+                                                            tipo_jogo=tipo_jogo,
+                                                            voltas=laps,
+                                                            dificuldade_ia=difficulty,
+                                                            modo_arcade=False,
+                                                            sem_bots=sem_bots
+                                                        )
                                                     
                                                     # Verificar se training_01 foi completada
                                                     foi_training_01 = (hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and 
@@ -9543,6 +9576,9 @@ def run():
                             from core.progresso import gerenciador_progresso
                             from core.mapa_locations import gerenciador_localizacoes
                             
+                            # Ativar o Boris para usar o mesmo estilo da tela da peça
+                            boris.ativar_loja_simples()
+                            
                             preco_unlock = params.get("preco", 10000)
                             opcao_selecionada = 0  # 0 = Pagar, 1 = Sair
                             mensagem_status = ""
@@ -9555,7 +9591,7 @@ def run():
                             
                             print(f"[BORIS UNLOCK] Iniciando tela de desbloqueio do Cinturão Industrial (preço: {preco_unlock})")
                             
-                            while rodando_boris and not saiu_da_loja:
+                            while rodando_boris and boris.ativo and not saiu_da_loja:
                                 dt = clock_boris.tick(FPS) / 1000.0
                                 
                                 from core.tempo_jogo import gerenciador_tempo
@@ -9573,6 +9609,7 @@ def run():
                                             if ev.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_ESCAPE):
                                                 saiu_da_loja = True
                                                 rodando_boris = False
+                                                boris.fechar()
                                                 # Iniciar cena de confirmação
                                                 narrative_system._iniciar_cena_sem_transicao("ch2_9_cinturao_unlocked")
                                                 narrative_system.active = True
@@ -9586,99 +9623,163 @@ def run():
                                             if opcao_selecionada == 0:  # Pagar
                                                 if gerenciador_progresso.tem_dinheiro(preco_unlock):
                                                     gerenciador_progresso.remover_dinheiro(preco_unlock)
-                                                    gerenciador_progresso.salvar()
                                                     
                                                     # Desbloquear o Cinturão Industrial imediatamente
-                                                    from core.mapa_locations import gerenciador_localizacoes
+                                                    gerenciador_localizacoes.processar_efeito_narrativa("unlockRaceSet:cinturao_industrial")
+                                                    
+                                                    # Atualizar objetivo da missão m10_portoes_do_cinturao
+                                                    from core.missoes import gerenciador_missoes
+                                                    if gerenciador_missoes.missao_ativa_id == "m10_portoes_do_cinturao":
+                                                        gerenciador_missoes.atualizar_objetivo_missao("m10_portoes_do_cinturao", "Corra no Cinturão Industrial")
+                                                        print(f"[BORIS UNLOCK] Objetivo da missão m10_portoes_do_cinturao atualizado para 'Corra no Cinturão Industrial'")
+                                                    
+                                                    # Salvar todos os gerenciadores
+                                                    gerenciador_progresso.salvar()
+                                                    gerenciador_localizacoes.salvar()
+                                                    gerenciador_missoes.salvar()
+                                                    
+                                                    # Forçar flush do sistema de arquivos
+                                                    import sys
+                                                    sys.stdout.flush()
+                                                    
+                                                    mensagem_status = f"Pagamento de ${preco_unlock:,} realizado!"
+                                                    compra_concluida = True
+                                                    print(f"[BORIS UNLOCK] Cinturão Industrial desbloqueado por ${preco_unlock:,}")
+                                                    print(f"[BORIS UNLOCK] Progresso salvo - Dinheiro restante: ${gerenciador_progresso.dinheiro:,}")
+                                                else:
+                                                    mensagem_status = f"Você não tem dinheiro suficiente! Precisa de ${preco_unlock:,}"
+                                                    mensagem_tempo = 0.0
+                                            else:  # Sair
+                                                saiu_da_loja = True
+                                                rodando_boris = False
+                                                boris.fechar()
+                                                return "mapa"
+                                        elif ev.key == pygame.K_ESCAPE:
+                                            saiu_da_loja = True
+                                            rodando_boris = False
+                                            boris.fechar()
+                                            return "mapa"
+                                    # Suporte a controles (gamepad)
+                                    elif ev.type in (pygame.JOYBUTTONDOWN, pygame.JOYHATMOTION, pygame.JOYAXISMOTION):
+                                        from core.gamepad_manager import gerenciador_gamepad
+                                        if gerenciador_gamepad.obter_numero_controles() > 0:
+                                            from core.menu_controles import processar_eventos_controle_menu
+                                            tempo_atual = pygame.time.get_ticks()
+                                            resultado_controle = processar_eventos_controle_menu(ev, opcao_selecionada, 2, joystick_id=0, tempo_atual=tempo_atual)
+                                            if resultado_controle:
+                                                acao = resultado_controle.get("acao")
+                                                if compra_concluida and acao in ("confirmar", "cancelar"):
+                                                    saiu_da_loja = True
+                                                    rodando_boris = False
+                                                    boris.fechar()
+                                                    narrative_system._iniciar_cena_sem_transicao("ch2_9_cinturao_unlocked")
+                                                    narrative_system.active = True
+                                                    return "narrativa"
+                                                elif acao == "cima":
+                                                    opcao_selecionada = (opcao_selecionada - 1) % 2
+                                                elif acao == "baixo":
+                                                    opcao_selecionada = (opcao_selecionada + 1) % 2
+                                                elif acao == "confirmar":
+                                                    if opcao_selecionada == 0:  # Pagar
+                                                        if gerenciador_progresso.tem_dinheiro(preco_unlock):
+                                                            gerenciador_progresso.remover_dinheiro(preco_unlock)
+                                                            gerenciador_progresso.salvar()
+                                                            gerenciador_localizacoes.processar_efeito_narrativa("unlockRaceSet:cinturao_industrial")
+                                                            gerenciador_localizacoes.salvar()
+                                                            mensagem_status = f"Pagamento de ${preco_unlock:,} realizado!"
+                                                            compra_concluida = True
+                                                            print(f"[BORIS UNLOCK] Cinturão Industrial desbloqueado por ${preco_unlock:,}")
+                                                        else:
+                                                            mensagem_status = f"Você não tem dinheiro suficiente! Precisa de ${preco_unlock:,}"
+                                                            mensagem_tempo = 0.0
+                                                    else:  # Sair
+                                                        saiu_da_loja = True
+                                                        rodando_boris = False
+                                                        boris.fechar()
+                                                        return "mapa"
+                                                elif acao == "cancelar":
+                                                    saiu_da_loja = True
+                                                    rodando_boris = False
+                                                    boris.fechar()
+                                                    return "mapa"
+                                    # Suporte a clique do mouse nos botões
+                                    elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                                        mouse_x, mouse_y = ev.pos
+                                        # Calcular retângulos dos botões com mesma lógica do desenho
+                                        caixa_largura = 500
+                                        caixa_altura = 180
+                                        caixa_x = (LARGURA - caixa_largura) // 2
+                                        caixa_y = ALTURA - caixa_altura - 260
+                                        botao_y_base = caixa_y + 105
+                                        botao_altura = 30
+                                        # Botão 0 = PAGAR
+                                        rect_pagar = pygame.Rect(caixa_x + 40, botao_y_base, caixa_largura - 80, botao_altura)
+                                        rect_sair = pygame.Rect(caixa_x + 40, botao_y_base + 30, caixa_largura - 80, botao_altura)
+                                        
+                                        if rect_pagar.collidepoint(mouse_x, mouse_y):
+                                            opcao_selecionada = 0
+                                            if not compra_concluida:
+                                                if gerenciador_progresso.tem_dinheiro(preco_unlock):
+                                                    gerenciador_progresso.remover_dinheiro(preco_unlock)
+                                                    gerenciador_progresso.salvar()
                                                     gerenciador_localizacoes.processar_efeito_narrativa("unlockRaceSet:cinturao_industrial")
                                                     gerenciador_localizacoes.salvar()
-                                                    
                                                     mensagem_status = f"Pagamento de ${preco_unlock:,} realizado!"
                                                     compra_concluida = True
                                                     print(f"[BORIS UNLOCK] Cinturão Industrial desbloqueado por ${preco_unlock:,}")
                                                 else:
                                                     mensagem_status = f"Você não tem dinheiro suficiente! Precisa de ${preco_unlock:,}"
-                                                    mensagem_tempo = 3.0
-                                            else:  # Sair
-                                                saiu_da_loja = True
-                                                rodando_boris = False
-                                                return "mapa"
-                                        elif ev.key == pygame.K_ESCAPE:
+                                                    mensagem_tempo = 0.0
+                                        elif rect_sair.collidepoint(mouse_x, mouse_y):
+                                            opcao_selecionada = 1
                                             saiu_da_loja = True
                                             rodando_boris = False
+                                            boris.fechar()
                                             return "mapa"
                                 
-                                # Desenhar tela
-                                screen.fill((20, 20, 30))
+                                boris.atualizar(dt)
                                 
-                                # Desenhar fundo da fábrica
-                                if boris.sprite_fundo_redimensionado:
-                                    screen.blit(boris.sprite_fundo_redimensionado, (0, 0))
+                                # Desenhar Boris + UI de loja (mesmo estilo da tela da peça)
+                                screen.fill((0, 0, 0))
+                                boris.desenhar_dialogo(screen, dt)
                                 
-                                # Desenhar Boris
-                                if boris.sprite_atual:
-                                    x_boris = LARGURA - boris.sprite_atual.get_width() - 50
-                                    y_boris = ALTURA - boris.sprite_atual.get_height() - 100
-                                    screen.blit(boris.sprite_atual, (x_boris, y_boris))
+                                # Overlay de opções de compra (mesmo estilo da tela da peça)
+                                caixa_largura = 500
+                                caixa_altura = 180
+                                caixa_x = (LARGURA - caixa_largura) // 2
+                                caixa_y = ALTURA - caixa_altura - 260
                                 
-                                # Caixa de diálogo
-                                caixa_y = ALTURA - 200
-                                caixa_altura = 150
-                                pygame.draw.rect(screen, (30, 30, 40), (20, caixa_y, LARGURA - 40, caixa_altura))
-                                pygame.draw.rect(screen, (100, 100, 120), (20, caixa_y, LARGURA - 40, caixa_altura), 2)
+                                overlay = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+                                overlay.fill((0, 0, 0, 220))
+                                screen.blit(overlay, (caixa_x, caixa_y))
+                                pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 2)
                                 
-                                # Texto do Boris
-                                texto_boris = "Por 10.000 créditos, eu te arranjo a inscrição no Cinturão Industrial. Interessado?"
-                                if compra_concluida:
-                                    texto_boris = "Pronto. Você está inscrito. O Cinturão Industrial está aberto pra você."
+                                titulo = render_text("OFERTA DO BORIS", 22, (255, 255, 0), bold=True, pixel_style=True)
+                                screen.blit(titulo, (caixa_x + (caixa_largura - titulo.get_width()) // 2, caixa_y + 10))
                                 
-                                linhas_texto = []
-                                palavras = texto_boris.split()
-                                linha_atual = ""
-                                for palavra in palavras:
-                                    teste = linha_atual + (" " if linha_atual else "") + palavra
-                                    largura_teste = render_text(teste, 24).get_width()
-                                    if largura_teste > LARGURA - 80:
-                                        if linha_atual:
-                                            linhas_texto.append(linha_atual)
-                                        linha_atual = palavra
-                                    else:
-                                        linha_atual = teste
-                                if linha_atual:
-                                    linhas_texto.append(linha_atual)
-                                
-                                y_texto = caixa_y + 20
-                                for linha in linhas_texto:
-                                    texto_surf = render_text(linha, 24)
-                                    screen.blit(texto_surf, (40, y_texto))
-                                    y_texto += 30
+                                desc = render_text("Acesso ao Cinturão Industrial", 18, (220, 220, 220), bold=False, pixel_style=True)
+                                preco_txt = render_text(f"Preço: ${preco_unlock:,}", 18, (180, 255, 180), bold=False, pixel_style=True)
+                                screen.blit(desc, (caixa_x + 20, caixa_y + 45))
+                                screen.blit(preco_txt, (caixa_x + 20, caixa_y + 70))
                                 
                                 # Opções
                                 if not compra_concluida:
-                                    opcoes = [
-                                        f"PAGAR ${preco_unlock:,}",
-                                        "SAIR"
-                                    ]
-                                    
-                                    y_opcoes = caixa_y + caixa_altura - 60
-                                    for i, opcao in enumerate(opcoes):
-                                        cor = (255, 255, 255) if i == opcao_selecionada else (150, 150, 150)
-                                        texto_opcao = render_text(opcao, 28)
-                                        x_opcao = 40 + i * 300
-                                        screen.blit(texto_opcao, (x_opcao, y_opcoes))
+                                    opcoes = [f"PAGAR ${preco_unlock:,}", "SAIR"]
+                                    for i, texto_opcao in enumerate(opcoes):
+                                        cor = (0, 200, 255) if i == opcao_selecionada else (200, 200, 200)
+                                        txt = render_text(texto_opcao, 20, cor, bold=True, pixel_style=True)
+                                        y = caixa_y + 105 + i * 30
+                                        screen.blit(txt, (caixa_x + 40, y))
                                 
-                                # Mensagem de status
-                                if mensagem_status and mensagem_tempo > 0:
-                                    mensagem_tempo -= dt
-                                    cor_msg = (255, 100, 100) if "não tem" in mensagem_status else (100, 255, 100)
-                                    texto_msg = render_text(mensagem_status, 20)
-                                    x_msg = (LARGURA - texto_msg.get_width()) // 2
-                                    screen.blit(texto_msg, (x_msg, caixa_y - 40))
-                                
-                                # Dinheiro atual
-                                dinheiro_texto = f"Créditos: ${gerenciador_progresso.dinheiro:,}"
-                                texto_dinheiro = render_text(dinheiro_texto, 24)
-                                screen.blit(texto_dinheiro, (LARGURA - texto_dinheiro.get_width() - 40, 40))
+                                # Mensagem de status (ex: dinheiro insuficiente)
+                                if mensagem_status:
+                                    mensagem_tempo += dt
+                                    if mensagem_tempo < 4.0:
+                                        msg_txt = render_text(mensagem_status, 16, (255, 180, 180), bold=False, pixel_style=True)
+                                        screen.blit(msg_txt, (caixa_x + 40, caixa_y + caixa_altura - 30))
+                                    else:
+                                        mensagem_status = ""
+                                        mensagem_tempo = 0.0
                                 
                                 pygame.display.flip()
                             
@@ -10308,6 +10409,24 @@ def run():
                     gerenciador_progresso.salvar()
                     capitulo_atual = "ch2"
                 
+                # Se o Capítulo 2 foi completado mas ainda está marcado como ch2, avançar para ch3
+                # Capítulo 2 está completo quando a missão m10_portoes_do_cinturao é completada
+                if capitulo_atual == "ch2" and not gerenciador_progresso.capitulo_foi_completo("ch2"):
+                    from core.missoes import gerenciador_missoes
+                    if gerenciador_missoes.esta_completa("m10_portoes_do_cinturao"):
+                        print(f"[LOOP PRINCIPAL] Capítulo 2 completo (missão m10 completada), avançando para Capítulo 3")
+                        gerenciador_progresso.marcar_capitulo_completo("ch2")
+                        gerenciador_progresso.definir_capitulo_atual("ch3")
+                        gerenciador_progresso.salvar()
+                        capitulo_atual = "ch3"
+                
+                # Se o Capítulo 2 foi completado mas ainda está marcado como ch2, avançar para ch3
+                if capitulo_atual == "ch2" and gerenciador_progresso.capitulo_foi_completo("ch2"):
+                    print(f"[LOOP PRINCIPAL] Capítulo 2 completo, avançando para Capítulo 3")
+                    gerenciador_progresso.definir_capitulo_atual("ch3")
+                    gerenciador_progresso.salvar()
+                    capitulo_atual = "ch3"
+                
                 if capitulo_atual is None:
                     # Primeira vez - iniciar Capítulo 1
                     if narrative_system.iniciar_capitulo("ch1"):
@@ -10329,6 +10448,30 @@ def run():
                         narrative_system.active = True
                         narrative_system.current_line_index = 0
                         print(f"[LOOP PRINCIPAL] Capítulo 2 iniciado: scene_id={narrative_system.current_scene_id}")
+                
+                elif capitulo_atual == "ch3" and not narrative_system.active:
+                    # Se estamos no Capítulo 3 mas a narrativa não está ativa, iniciar
+                    print(f"[LOOP PRINCIPAL] Iniciando Capítulo 3")
+                    if narrative_system.iniciar_capitulo("ch3"):
+                        narrative_system.active = True
+                        narrative_system.current_line_index = 0
+                        print(f"[LOOP PRINCIPAL] Capítulo 3 iniciado: scene_id={narrative_system.current_scene_id}")
+                
+                elif capitulo_atual == "ch4" and not narrative_system.active:
+                    # Se estamos no Capítulo 4 mas a narrativa não está ativa, iniciar
+                    print(f"[LOOP PRINCIPAL] Iniciando Capítulo 4")
+                    if narrative_system.iniciar_capitulo("ch4"):
+                        narrative_system.active = True
+                        narrative_system.current_line_index = 0
+                        print(f"[LOOP PRINCIPAL] Capítulo 4 iniciado: scene_id={narrative_system.current_scene_id}")
+                
+                elif capitulo_atual == "ch5" and not narrative_system.active:
+                    # Se estamos no Capítulo 5 mas a narrativa não está ativa, iniciar
+                    print(f"[LOOP PRINCIPAL] Iniciando Capítulo 5")
+                    if narrative_system.iniciar_capitulo("ch5"):
+                        narrative_system.active = True
+                        narrative_system.current_line_index = 0
+                        print(f"[LOOP PRINCIPAL] Capítulo 5 iniciado: scene_id={narrative_system.current_scene_id}")
                 
                 # Loop principal de campanha - alterna entre narrativa e gameplay
                 while True:
@@ -10352,6 +10495,22 @@ def run():
                                 # Forçar recarregamento do progresso para garantir dados atualizados
                                 gerenciador_progresso.carregar()
                                 
+                                # Verificar se foi corrida do cinturão
+                                if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha and gerenciador_progresso.ultima_corrida_campanha.startswith("cinturao_pista_"):
+                                    print(f"[LOOP PRINCIPAL] Detectada corrida do cinturão pendente, verificando se foi completada...")
+                                    pista_num = int(gerenciador_progresso.ultima_corrida_campanha.split("_")[-1])
+                                    
+                                    from core.estatisticas import gerenciador_estatisticas
+                                    gerenciador_estatisticas.carregar()
+                                    stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(pista_num)
+                                    melhor_tempo = stats_pista.get("melhor_tempo", None) if stats_pista else None
+                                    melhor_posicao = stats_pista.get("melhor_posicao", None) if stats_pista else None
+                                    
+                                    if melhor_tempo is not None and melhor_posicao is not None:
+                                        print(f"[LOOP PRINCIPAL] Corrida do cinturão completada! Limpando flag...")
+                                        gerenciador_progresso.ultima_corrida_campanha = None
+                                        gerenciador_progresso.salvar()
+                                
                                 if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "training_01":
                                     print(f"[LOOP PRINCIPAL] Detectada corrida training_01 pendente, verificando se foi completada...")
                                     
@@ -10373,6 +10532,108 @@ def run():
                                         continue
                                     else:
                                         print(f"[LOOP PRINCIPAL] Corrida training_01 ainda não completada. Continuando para o mapa...")
+                                
+                                # Verificar se foi mountain_test
+                                if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "mountain_test":
+                                    print(f"[LOOP PRINCIPAL] Detectada corrida mountain_test pendente, verificando se foi completada...")
+                                    
+                                    # Verificar se a corrida foi completada
+                                    from core.estatisticas import gerenciador_estatisticas
+                                    gerenciador_estatisticas.carregar()
+                                    
+                                    # Verificar estatísticas da pista 3 (montanha)
+                                    stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(3)
+                                    melhor_tempo = stats_pista.get("melhor_tempo", None) if stats_pista else None
+                                    melhor_posicao = stats_pista.get("melhor_posicao", None) if stats_pista else None
+                                    print(f"[LOOP PRINCIPAL] Estatísticas pista 3 (montanha): melhor_tempo={melhor_tempo}, melhor_posicao={melhor_posicao}")
+                                    
+                                    # Se completou a corrida, iniciar narrativa
+                                    if melhor_tempo is not None and melhor_posicao is not None:
+                                        print(f"[LOOP PRINCIPAL] Mountain test completado! Iniciando narrativa pós-teste...")
+                                        from core.missoes import gerenciador_missoes
+                                        
+                                        # Completar missão m13_teste_de_fluxo
+                                        if gerenciador_missoes.missao_ativa_id == "m13_teste_de_fluxo":
+                                            gerenciador_missoes.completar_missao("m13_teste_de_fluxo")
+                                            gerenciador_missoes.salvar()
+                                        
+                                        # Determinar resultado do teste (baseado em posição)
+                                        # mountainTest=good se posição <= 2
+                                        resultado_teste = "good" if melhor_posicao <= 2 else "bad"
+                                        narrative_system.variables["mountainTest"] = resultado_teste
+                                        
+                                        # Iniciar cena pós-teste
+                                        narrative_system._iniciar_cena_sem_transicao("ch3_6_test_result")
+                                        narrative_system.active = True
+                                        gerenciador_progresso.ultima_corrida_campanha = None
+                                        gerenciador_progresso.salvar()
+                                        continue  # Voltar para o início do loop para executar narrativa
+                                    else:
+                                        print(f"[LOOP PRINCIPAL] Mountain test ainda não completado. Continuando para o mapa...")
+                                
+                                # Verificar se foi corrida do Circuito da Coroa
+                                if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha and gerenciador_progresso.ultima_corrida_campanha.startswith("crown_"):
+                                    print(f"[LOOP PRINCIPAL] Detectada corrida do Circuito da Coroa pendente: {gerenciador_progresso.ultima_corrida_campanha}")
+                                    
+                                    # Verificar se a corrida foi completada
+                                    from core.estatisticas import gerenciador_estatisticas
+                                    gerenciador_estatisticas.carregar()
+                                    
+                                    # Mapear race_id para número da pista
+                                    race_id = gerenciador_progresso.ultima_corrida_campanha
+                                    pista_map = {
+                                        "crown_stage1": 8,  # Autódromo
+                                        "crown_stage2": 8,  # Autódromo
+                                        "crown_stage3": 8,  # Autódromo
+                                        "crown_final": 8   # Autódromo
+                                    }
+                                    
+                                    pista = pista_map.get(race_id)
+                                    if pista:
+                                        stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(pista)
+                                        melhor_tempo = stats_pista.get("melhor_tempo", None) if stats_pista else None
+                                        melhor_posicao = stats_pista.get("melhor_posicao", None) if stats_pista else None
+                                        print(f"[LOOP PRINCIPAL] Estatísticas pista {pista} ({race_id}): melhor_tempo={melhor_tempo}, melhor_posicao={melhor_posicao}")
+                                        
+                                        # Se completou a corrida, iniciar narrativa pós-corrida
+                                        if melhor_tempo is not None and melhor_posicao is not None:
+                                            print(f"[LOOP PRINCIPAL] Corrida {race_id} completada! Iniciando narrativa pós-corrida...")
+                                            
+                                            # Determinar resultado (win se posição <= 2, lose caso contrário)
+                                            resultado = "win" if melhor_posicao <= 2 else "lose"
+                                            narrative_system.variables["lastRaceResult"] = resultado
+                                            
+                                            # Determinar próxima cena baseada na corrida
+                                            cena_map = {
+                                                "crown_stage1": "ch5_5_stage1_post",
+                                                "crown_stage2": "ch5_5_stage2_post",
+                                                "crown_stage3": "ch5_5_stage3_post",
+                                                "crown_final": "ch5_7_post_final_epilogue"
+                                            }
+                                            
+                                            proxima_cena = cena_map.get(race_id)
+                                            if proxima_cena:
+                                                # Completar missões se necessário
+                                                from core.missoes import gerenciador_missoes
+                                                if race_id == "crown_stage1" and gerenciador_missoes.missao_ativa_id == "m18_circo_da_coroa":
+                                                    # Marcar progresso na missão m18 (completar etapas 1, 2 e 3)
+                                                    pass  # A missão será completada após todas as etapas
+                                                
+                                                # Iniciar cena pós-corrida
+                                                narrative_system._iniciar_cena_sem_transicao(proxima_cena)
+                                                narrative_system.active = True
+                                                gerenciador_progresso.ultima_corrida_campanha = None
+                                                gerenciador_progresso.salvar()
+                                                continue  # Voltar para o início do loop para executar narrativa
+                                    else:
+                                        print(f"[LOOP PRINCIPAL] Pista não encontrada para {race_id}. Continuando para o mapa...")
+                                
+                                # Salvar progresso antes de ir para o mapa
+                                gerenciador_progresso.salvar()
+                                from core.missoes import gerenciador_missoes
+                                from core.mapa_locations import gerenciador_localizacoes
+                                gerenciador_missoes.salvar()
+                                gerenciador_localizacoes.salvar()
                                 
                                 # Ir para o mapa
                             elif proximo_estado is None:
@@ -10400,6 +10661,34 @@ def run():
                                 print(f"[LOOP PRINCIPAL] Corrida training_01 detectada como completa após retornar do mapa. Iniciando narrativa...")
                                 _iniciar_narrativa_pos_training_01(narrative_system, gerenciador_progresso)
                                 continue  # Voltar para o início do loop para executar narrativa
+                        
+                        # Verificar mountain_test também
+                        if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "mountain_test":
+                            from core.estatisticas import gerenciador_estatisticas
+                            gerenciador_estatisticas.carregar()
+                            stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(3)
+                            melhor_tempo = stats_pista.get("melhor_tempo", None) if stats_pista else None
+                            melhor_posicao = stats_pista.get("melhor_posicao", None) if stats_pista else None
+                            
+                            if melhor_tempo is not None and melhor_posicao is not None:
+                                print(f"[LOOP PRINCIPAL] Mountain test detectado como completo após retornar do mapa. Iniciando narrativa...")
+                                from core.missoes import gerenciador_missoes
+                                
+                                # Completar missão m13_teste_de_fluxo
+                                if gerenciador_missoes.missao_ativa_id == "m13_teste_de_fluxo":
+                                    gerenciador_missoes.completar_missao("m13_teste_de_fluxo")
+                                    gerenciador_missoes.salvar()
+                                
+                                # Determinar resultado do teste
+                                resultado_teste = "good" if melhor_posicao <= 2 else "bad"
+                                narrative_system.variables["mountainTest"] = resultado_teste
+                                
+                                # Iniciar cena pós-teste
+                                narrative_system._iniciar_cena_sem_transicao("ch3_6_test_result")
+                                narrative_system.active = True
+                                gerenciador_progresso.ultima_corrida_campanha = None
+                                gerenciador_progresso.salvar()
+                                continue  # Voltar para o início do loop para executar narrativa
                     
                     # Processar território selecionado
                     if territorio_id == "oficina":
@@ -10423,6 +10712,8 @@ def run():
                                 break
                         
                         # Abrir hub da casa
+                        # Salvar antes de entrar no hub
+                        gerenciador_progresso.salvar()
                         atividade = hub_territorio_loop(
                             screen, 
                             "casa", 
@@ -10507,14 +10798,32 @@ def run():
                         
                         # Se retornou "voltar_mapa", voltar para o mapa ao invés do menu
                         if atividade == "voltar_mapa":
+                            # Salvar progresso ao voltar do hub para o mapa
+                            gerenciador_progresso.salvar()
+                            from core.missoes import gerenciador_missoes
+                            from core.mapa_locations import gerenciador_localizacoes
+                            gerenciador_missoes.salvar()
+                            gerenciador_localizacoes.salvar()
                             continue  # Voltar para o loop do mapa
                         
                         # Se retornou "menu_principal", voltar para o menu principal
                         if atividade == "menu_principal":
+                            # Salvar antes de sair
+                            gerenciador_progresso.salvar()
+                            from core.missoes import gerenciador_missoes
+                            from core.mapa_locations import gerenciador_localizacoes
+                            gerenciador_missoes.salvar()
+                            gerenciador_localizacoes.salvar()
                             break  # Sair do loop de campanha e voltar ao menu principal
                         
                         # Se retornou None, também voltar para o mapa (compatibilidade)
                         if atividade is None:
+                            # Salvar progresso ao voltar do hub para o mapa
+                            gerenciador_progresso.salvar()
+                            from core.missoes import gerenciador_missoes
+                            from core.mapa_locations import gerenciador_localizacoes
+                            gerenciador_missoes.salvar()
+                            gerenciador_localizacoes.salvar()
                             continue  # Voltar para o mapa se cancelado
                         
                         # Processar atividade selecionada
@@ -10525,6 +10834,10 @@ def run():
                             if atividade_tipo == "corrida_cinturao":
                                 pista = atividade.get("pista")
                                 if pista:
+                                    # Definir flag para verificar após a corrida
+                                    gerenciador_progresso.ultima_corrida_campanha = f"cinturao_pista_{pista}"
+                                    gerenciador_progresso.salvar()
+                                    
                                     # Obter carro atual do jogador
                                     carro_p1_idx = 0
                                     if gerenciador_progresso.carro_p1_atual:
@@ -10534,21 +10847,337 @@ def run():
                                                 carro_p1_idx = i
                                                 break
                                     
-                                    # Iniciar corrida
+                                    # Modo de teste: marcar corrida como concluída automaticamente
+                                    from config import MODO_TESTE_CORRIDAS
+                                    if MODO_TESTE_CORRIDAS:
+                                        print(f"[MODO TESTE] Corrida do Cinturão (pista {pista}) marcada como concluída automaticamente")
+                                        from core.estatisticas import gerenciador_estatisticas
+                                        gerenciador_estatisticas.carregar()
+                                        # Registrar corrida como concluída (posição 1, tempo fictício)
+                                        gerenciador_estatisticas.registrar_corrida_completa(
+                                            numero_pista=pista,
+                                            posicao_final=1,
+                                            tempo_final=60.0  # Tempo fictício
+                                        )
+                                        gerenciador_estatisticas.salvar()
+                                        
+                                        # Obter informações da corrida (recompensa, índice)
+                                        recompensa = atividade.get("recompensa", 0)
+                                        indice_corrida = atividade.get("indice", 0)
+                                        
+                                        # Dar recompensa de dinheiro
+                                        if recompensa > 0:
+                                            gerenciador_progresso.adicionar_dinheiro(recompensa)
+                                            print(f"[CINTURÃO] Recompensa de ${recompensa:,} adicionada!")
+                                        
+                                        # Desbloquear próxima corrida
+                                        from core.fuligem import fuligem
+                                        if indice_corrida == 0:  # Completou corrida 1, desbloquear corrida 2
+                                            fuligem.desbloquear_corrida(1)
+                                        elif indice_corrida == 1:  # Completou corrida 2, desbloquear corrida 3
+                                            fuligem.desbloquear_corrida(2)
+                                        
+                                        # Avançar 8 horas no jogo
+                                        from core.tempo_jogo import gerenciador_tempo
+                                        gerenciador_tempo.avancar_horas(8.0)
+                                        gerenciador_tempo.salvar()
+                                        
+                                        # Limpar flag e salvar
+                                        gerenciador_progresso.ultima_corrida_campanha = None
+                                        gerenciador_progresso.salvar()
+                                        
+                                        continue  # Voltar para o mapa após a corrida
+                                    else:
+                                        # Iniciar corrida normalmente
+                                        from main import TipoJogo, ModoJogo
+                                        import main
+                                        
+                                        # Obter informações da corrida (recompensa, índice)
+                                        recompensa = atividade.get("recompensa", 0)
+                                        indice_corrida = atividade.get("indice", 0)
+                                        
+                                        main.principal(
+                                            carro_selecionado_p1=carro_p1_idx,
+                                            carro_selecionado_p2=0,
+                                            mapa_selecionado=pista,
+                                            modo_jogo=ModoJogo.UM_JOGADOR,
+                                            tipo_jogo=TipoJogo.CORRIDA,
+                                            voltas=1,
+                                            dificuldade_ia="alta",
+                                            modo_arcade=False,
+                                            sem_bots=False  # Corridas do Cinturão têm bots
+                                        )
+                                    
+                                    # Após a corrida retornar, verificar se foi corrida do cinturão
+                                    # Garantir que o progresso está salvo
+                                    gerenciador_progresso.carregar()
+                                    if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha and gerenciador_progresso.ultima_corrida_campanha.startswith("cinturao_pista_"):
+                                        from core.estatisticas import gerenciador_estatisticas
+                                        gerenciador_estatisticas.carregar()
+                                        stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(pista)
+                                        melhor_tempo = stats_pista.get("melhor_tempo", None) if stats_pista else None
+                                        melhor_posicao = stats_pista.get("melhor_posicao", None) if stats_pista else None
+                                        
+                                        if melhor_tempo is not None and melhor_posicao is not None:
+                                            print(f"[CINTURÃO] Corrida completada na pista {pista}: posição={melhor_posicao}, tempo={melhor_tempo}")
+                                            
+                                            # Dar recompensa de dinheiro
+                                            if recompensa > 0:
+                                                gerenciador_progresso.adicionar_dinheiro(recompensa)
+                                                print(f"[CINTURÃO] Recompensa de ${recompensa:,} adicionada!")
+                                            
+                                            # Desbloquear próxima corrida
+                                            from core.fuligem import fuligem
+                                            if indice_corrida == 0:  # Completou corrida 1, desbloquear corrida 2
+                                                fuligem.desbloquear_corrida(1)
+                                            elif indice_corrida == 1:  # Completou corrida 2, desbloquear corrida 3
+                                                fuligem.desbloquear_corrida(2)
+                                            
+                                            # Avançar 8 horas no jogo
+                                            from core.tempo_jogo import gerenciador_tempo
+                                            gerenciador_tempo.avancar_horas(8.0)
+                                            gerenciador_tempo.salvar()
+                                            print(f"[CINTURÃO] 8 horas avançadas no jogo após completar corrida")
+                                            
+                                            # Limpar flag e salvar
+                                            gerenciador_progresso.ultima_corrida_campanha = None
+                                            gerenciador_progresso.salvar()
+                                            
+                            # Se houver uma cena narrativa pós-corrida, iniciá-la
+                            # Por enquanto, apenas garantir que o salvamento está correto
+                            # TODO: Adicionar cena narrativa ch2_10_post_cinturao_race quando disponível
+                                    
+                                    continue  # Voltar para o mapa após a corrida
+                            
+                            # Processar corrida do Circuito da Coroa (Autódromo)
+                            elif atividade_tipo == "corrida_circuito_coroa":
+                                parametros = atividade.get("parametros", {})
+                                pista = parametros.get("pista")
+                                voltas = parametros.get("voltas", 2)
+                                dificuldade = parametros.get("dificuldade", "dificil")
+                                race_id = parametros.get("race_id")
+                                sem_bots = parametros.get("sem_bots", False)
+                                
+                                if pista and race_id:
+                                    # Definir flag para verificar após a corrida
+                                    gerenciador_progresso.ultima_corrida_campanha = race_id
+                                    gerenciador_progresso.salvar()
+                                    print(f"[AUTÓDROMO] Iniciando corrida {race_id} na pista {pista}")
+                                    
+                                    # Obter carro atual do jogador
+                                    carro_p1_idx = 0
+                                    if gerenciador_progresso.carro_p1_atual:
+                                        from config import CARROS_DISPONIVEIS
+                                        for i, carro in enumerate(CARROS_DISPONIVEIS):
+                                            if carro.get("prefixo_cor") == gerenciador_progresso.carro_p1_atual:
+                                                carro_p1_idx = i
+                                                break
+                                    
+                                    # Modo de teste: marcar corrida como concluída automaticamente
+                                    from config import MODO_TESTE_CORRIDAS
+                                    if MODO_TESTE_CORRIDAS:
+                                        print(f"[MODO TESTE] Corrida {race_id} marcada como concluída automaticamente")
+                                        from core.estatisticas import gerenciador_estatisticas
+                                        gerenciador_estatisticas.carregar()
+                                        # Registrar corrida como concluída (posição 1, tempo fictício)
+                                        gerenciador_estatisticas.registrar_corrida_completa(
+                                            numero_pista=pista,
+                                            posicao_final=1,
+                                            tempo_final=60.0  # Tempo fictício
+                                        )
+                                        gerenciador_estatisticas.salvar()
+                                        
+                                        # Desbloquear corrida se necessário
+                                        if not hasattr(gerenciador_progresso, 'corridas_desbloqueadas'):
+                                            gerenciador_progresso.corridas_desbloqueadas = set()
+                                        if isinstance(gerenciador_progresso.corridas_desbloqueadas, list):
+                                            gerenciador_progresso.corridas_desbloqueadas = set(gerenciador_progresso.corridas_desbloqueadas)
+                                        gerenciador_progresso.corridas_desbloqueadas.add(race_id)
+                                        
+                                        # Limpar flag e salvar
+                                        gerenciador_progresso.ultima_corrida_campanha = None
+                                        gerenciador_progresso.salvar()
+                                        
+                                        # Verificar se há cena narrativa pós-corrida
+                                        cena_map = {
+                                            "crown_stage1": "ch5_5_stage1_post",
+                                            "crown_stage2": "ch5_5_stage2_post",
+                                            "crown_stage3": "ch5_5_stage3_post",
+                                            "crown_final": "ch5_7_post_final_epilogue"
+                                        }
+                                        
+                                        proxima_cena = cena_map.get(race_id)
+                                        if proxima_cena:
+                                            # Iniciar cena pós-corrida
+                                            narrative_system._iniciar_cena_sem_transicao(proxima_cena)
+                                            narrative_system.active = True
+                                            gerenciador_progresso.ultima_corrida_campanha = None
+                                            gerenciador_progresso.salvar()
+                                            continue  # Voltar para o início do loop para executar narrativa
+                                        else:
+                                            continue  # Voltar para o mapa
+                                    else:
+                                        # Iniciar corrida normalmente
+                                        from main import TipoJogo, ModoJogo
+                                        import main
+                                        
+                                        main.principal(
+                                            carro_selecionado_p1=carro_p1_idx,
+                                            carro_selecionado_p2=0,
+                                            mapa_selecionado=pista,
+                                            modo_jogo=ModoJogo.UM_JOGADOR,
+                                            tipo_jogo=TipoJogo.CORRIDA,
+                                            voltas=voltas,
+                                            dificuldade_ia=dificuldade,
+                                            modo_arcade=False,
+                                            sem_bots=sem_bots
+                                        )
+                                    
+                                    # Após a corrida retornar, verificar se foi corrida do Circuito da Coroa
+                                    gerenciador_progresso.carregar()
+                                    if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha and gerenciador_progresso.ultima_corrida_campanha.startswith("crown_"):
+                                        from core.estatisticas import gerenciador_estatisticas
+                                        gerenciador_estatisticas.carregar()
+                                        stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(pista)
+                                        melhor_tempo = stats_pista.get("melhor_tempo", None) if stats_pista else None
+                                        melhor_posicao = stats_pista.get("melhor_posicao", None) if stats_pista else None
+                                        
+                                        if melhor_tempo is not None and melhor_posicao is not None:
+                                            print(f"[AUTÓDROMO] Corrida {race_id} completada: posição={melhor_posicao}, tempo={melhor_tempo}")
+                                            
+                                            # Limpar flag e salvar
+                                            gerenciador_progresso.ultima_corrida_campanha = None
+                                            gerenciador_progresso.salvar()
+                                            
+                                            # Verificar se há cena narrativa pós-corrida
+                                            cena_map = {
+                                                "crown_stage1": "ch5_5_stage1_post",
+                                                "crown_stage2": "ch5_5_stage2_post",
+                                                "crown_stage3": "ch5_5_stage3_post",
+                                                "crown_final": "ch5_7_post_final_epilogue"
+                                            }
+                                            
+                                            proxima_cena = cena_map.get(race_id)
+                                            if proxima_cena:
+                                                # Iniciar cena pós-corrida
+                                                narrative_system._iniciar_cena_sem_transicao(proxima_cena)
+                                                narrative_system.active = True
+                                                gerenciador_progresso.ultima_corrida_campanha = None
+                                                gerenciador_progresso.salvar()
+                                                continue  # Voltar para o início do loop para executar narrativa
+                                    
+                                    continue  # Voltar para o mapa após a corrida
+                            
+                            # Processar corrida da Akira (Desafio de Montanha)
+                            if atividade_tipo == "desafio_touge":
+                                pista = atividade.get("pista", 3)
+                                race_id = atividade.get("race_id", "mountain_test")
+                                voltas = atividade.get("voltas", 1)
+                                dificuldade = atividade.get("dificuldade", "medio")
+                                sem_bots = atividade.get("sem_bots", False)
+                                
+                                # A flag já foi definida no hub_territorio, mas garantir que está salva
+                                if race_id == "mountain_test":
+                                    gerenciador_progresso.ultima_corrida_campanha = "mountain_test"
+                                    gerenciador_progresso.salvar()
+                                
+                                # Obter carro atual do jogador
+                                carro_p1_idx = 0
+                                if gerenciador_progresso.carro_p1_atual:
+                                    from config import CARROS_DISPONIVEIS
+                                    for i, carro in enumerate(CARROS_DISPONIVEIS):
+                                        if carro.get("prefixo_cor") == gerenciador_progresso.carro_p1_atual:
+                                            carro_p1_idx = i
+                                            break
+                                
+                                # Modo de teste: marcar corrida como concluída automaticamente
+                                from config import MODO_TESTE_CORRIDAS
+                                if MODO_TESTE_CORRIDAS:
+                                    print(f"[MODO TESTE] Corrida {race_id} marcada como concluída automaticamente")
+                                    from core.estatisticas import gerenciador_estatisticas
+                                    gerenciador_estatisticas.carregar()
+                                    # Registrar corrida como concluída (posição 1, tempo fictício)
+                                    gerenciador_estatisticas.registrar_corrida_completa(
+                                        numero_pista=pista,
+                                        posicao_final=1,
+                                        tempo_final=60.0  # Tempo fictício
+                                    )
+                                    gerenciador_estatisticas.salvar()
+                                    
+                                    # Limpar flag e salvar
+                                    gerenciador_progresso.ultima_corrida_campanha = None
+                                    gerenciador_progresso.salvar()
+                                    
+                                    # Verificar se há cena narrativa pós-corrida
+                                    if race_id == "mountain_test":
+                                        # Iniciar cena pós-corrida da montanha
+                                        narrative_system._iniciar_cena_sem_transicao("ch3_6_test_result")
+                                        narrative_system.active = True
+                                        gerenciador_progresso.ultima_corrida_campanha = None
+                                        gerenciador_progresso.salvar()
+                                        continue  # Voltar para o início do loop para executar narrativa
+                                    
+                                    continue  # Voltar para o mapa
+                                else:
+                                    # Iniciar corrida normalmente
                                     from main import TipoJogo, ModoJogo
                                     import main
+                                    
                                     main.principal(
                                         carro_selecionado_p1=carro_p1_idx,
                                         carro_selecionado_p2=0,
                                         mapa_selecionado=pista,
                                         modo_jogo=ModoJogo.UM_JOGADOR,
                                         tipo_jogo=TipoJogo.CORRIDA,
-                                        voltas=1,
-                                        dificuldade_ia="alta",
+                                        voltas=voltas,
+                                        dificuldade_ia=dificuldade,
                                         modo_arcade=False,
-                                        sem_bots=False  # Corridas do Cinturão têm bots
+                                        sem_bots=sem_bots
                                     )
-                                    continue  # Voltar para o mapa após a corrida
+                                
+                                # Após a corrida retornar, verificar se foi mountain_test
+                                gerenciador_progresso.carregar()
+                                if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "mountain_test":
+                                    from core.estatisticas import gerenciador_estatisticas
+                                    gerenciador_estatisticas.carregar()
+                                    stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(pista)
+                                    melhor_tempo = stats_pista.get("melhor_tempo", None) if stats_pista else None
+                                    melhor_posicao = stats_pista.get("melhor_posicao", None) if stats_pista else None
+                                    
+                                    if melhor_tempo is not None and melhor_posicao is not None:
+                                        print(f"[MONTANHA] Corrida completada na pista {pista}: posição={melhor_posicao}, tempo={melhor_tempo}")
+                                        
+                                        # Completar missão m13_teste_de_fluxo se estiver ativa
+                                        from core.missoes import gerenciador_missoes
+                                        if gerenciador_missoes.missao_ativa_id == "m13_teste_de_fluxo":
+                                            gerenciador_missoes.completar_missao("m13_teste_de_fluxo")
+                                            gerenciador_missoes.salvar()
+                                        
+                                        # Determinar resultado do teste (good se posição <= 2, bad caso contrário)
+                                        resultado_teste = "good" if melhor_posicao <= 2 else "bad"
+                                        narrative_system.variables["mountainTest"] = resultado_teste
+                                        
+                                        # Limpar flag e salvar
+                                        gerenciador_progresso.ultima_corrida_campanha = None
+                                        
+                                        # Verificar se já completou todas as cenas do capítulo 3
+                                        # Se sim, iniciar capítulo 4 após a narrativa pós-corrida
+                                        capitulo_3_completo = gerenciador_progresso.capitulo_foi_completo("ch3")
+                                        
+                                        # Iniciar narrativa pós-teste (ch3_6_test_result)
+                                        narrative_system._iniciar_cena_sem_transicao("ch3_6_test_result")
+                                        narrative_system.active = True
+                                        print(f"[MONTANHA] Narrativa ch3_6_test_result iniciada com resultado: {resultado_teste}")
+                                        
+                                        # Se o capítulo 3 já estava completo (todas as cenas foram vistas),
+                                        # marcar para iniciar o capítulo 4 após a narrativa pós-corrida
+                                        if capitulo_3_completo:
+                                            # Definir flag para iniciar capítulo 4 após narrativa
+                                            gerenciador_progresso.iniciar_capitulo_4_apos_narrativa = True
+                                        
+                                        gerenciador_progresso.salvar()
+                                
+                                continue  # Voltar para o mapa após a corrida (ou iniciar narrativa)
                             
                             # Outras atividades podem ser processadas aqui
                         

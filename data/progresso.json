@@ -1,5 +1,5 @@
 {
-  "dinheiro": 19999990900,
+  "dinheiro": 19999975504,
   "nome_jogador": "JOGADOR",
   "carros_desbloqueados": [
     "Car1"
@@ -7,14 +7,21 @@
   "recordes_corrida": {},
   "recordes_drift": {},
   "trofeus": {},
-  "upgrades": {},
+  "upgrades": {
+    "Car1": {
+      "rodas": 1
+    }
+  },
   "carro_p1_atual": null,
   "carro_p2_atual": null,
   "ultima_compra_alien": null,
   "dialogo_alien_ja_mostrado": false,
-  "upgrades_visitados": [],
-  "akira_nome_revelado": false,
+  "upgrades_visitados": [
+    "Car1"
+  ],
+  "akira_nome_revelado": true,
   "akira_dialogos_pre_corrida_mostrados": {},
+  "akira_primeira_aparicao_mostrada": true,
   "ranking_pilotos": [
     {
       "nome": "T-Rex_King",
@@ -88,10 +95,10 @@
     }
   ],
   "ranking_posicao_jogador": 10,
-  "crank_humor_atual": 0,
-  "crank_saude_carro": 1.0,
+  "crank_humor_atual": 2,
+  "crank_saude_carro": 0.0,
   "crank_tutorial_mostrado": false,
-  "crank_tutorial_upgrades_mostrado": false,
+  "crank_tutorial_upgrades_mostrado": true,
   "crank_prefixo_cor_ultimo_carro": "Car1",
   "crank_nome_revelado": false,
   "rex_primeira_aparicao_mostrada": false,
@@ -109,12 +116,19 @@
   "boris_primeira_aparicao_mostrada": true,
   "pixel_nome_revelado": true,
   "pixel_primeira_aparicao_mostrada": true,
+  "pixel_dialogo_explodiu_mostrado": false,
   "fuligem_nome_revelado": true,
   "fuligem_primeira_aparicao_mostrada": true,
-  "capitulo_atual": "ch2",
+  "fuligem_corridas_desbloqueadas": [
+    0
+  ],
+  "capitulo_atual": "ch5",
   "capitulos_completos": [
+    "ch4",
+    "ch2",
     "ch1",
-    "ch2"
+    "ch3",
+    "ch5"
   ],
   "hierarquia_desbloqueada": false,
   "oficina_desbloqueada": false,
@@ -127,65 +141,67 @@
     "carros_desbloqueados": 0,
     "corridas_sem_colisao": 0,
     "corridas_sem_erros": 0,
-    "velocidade_maxima": 162.41383785256892,
+    "velocidade_maxima": 174.99984992612215,
     "upgrades_maximizados": 0
   },
   "desafios_diarios": [
     {
-      "tipo": "estabelecer_recorde",
-      "objetivo": 1,
-      "recompensa": 791,
-      "descricao": "Estabeleça um novo recorde",
-      "id": "diario_20251129_0",
+      "tipo": "completar_corridas",
+      "objetivo": 5,
+      "recompensa": 385,
+      "descricao": "Complete 5 corridas",
+      "id": "diario_20251202_3",
+      "progresso": 0
+    },
+    {
+      "tipo": "completar_corridas",
+      "objetivo": 4,
+      "recompensa": 558,
+      "descricao": "Complete 4 corridas",
+      "id": "diario_20251202_3",
       "progresso": 0
     },
     {
       "tipo": "usar_turbo",
-      "objetivo": 96,
-      "recompensa": 280,
-      "descricao": "Use o turbo 96 vezes",
-      "id": "diario_20251129_0",
-      "progresso": 0
-    },
-    {
-      "tipo": "estabelecer_recorde",
-      "objetivo": 1,
-      "recompensa": 525,
-      "descricao": "Estabeleça um novo recorde",
-      "id": "diario_20251129_0",
+      "objetivo": 88,
+      "recompensa": 323,
+      "descricao": "Use o turbo 88 vezes",
+      "id": "diario_20251202_3",
       "progresso": 0
     }
   ],
   "desafios_semanais": [
     {
-      "tipo": "completar_corridas",
-      "objetivo": 13,
-      "recompensa": 2589,
-      "descricao": "Complete 12 corridas",
-      "id": "semanal_202547_0",
+      "tipo": "completar_voltas",
+      "objetivo": 61,
+      "recompensa": 1748,
+      "descricao": "Complete 91 voltas",
+      "id": "semanal_202548_2",
       "progresso": 0
     },
     {
-      "tipo": "vencer_corridas",
-      "objetivo": 8,
-      "recompensa": 3825,
-      "descricao": "Vença 5 corridas em 1º lugar",
-      "id": "semanal_202547_0",
+      "tipo": "estabelecer_recorde",
+      "objetivo": 3,
+      "recompensa": 3882,
+      "descricao": "Estabeleça 3 novos recordes",
+      "id": "semanal_202548_2",
       "progresso": 0
     }
   ],
   "missoes_pista": {},
-  "desafios_progresso": {},
+  "desafios_progresso": {
+    "semanal_202548_2": 17
+  },
   "desafios_completados": [],
-  "ultima_atualizacao_diaria": "2025-11-29",
-  "ultima_atualizacao_semanal": "2025-W48",
+  "ultima_atualizacao_diaria": "2025-12-02",
+  "ultima_atualizacao_semanal": "2025-W49",
   "estatisticas_gerais": {
-    "tempo_total_jogado": 79.8830000000006,
+    "tempo_total_jogado": 847.5999999995494,
     "distancia_total": 0.0,
-    "corridas_completas": 2,
-    "corridas_vencidas": 1,
-    "voltas_completas": 2,
-    "colisoes_totais": 0,
+    "corridas_completas": 22,
+    "corridas_vencidas": 13,
+    "voltas_completas": 20,
+    "colisoes_totais": 1729,
     "drifts_totais": 0,
     "turbo_usado": 0,
     "recordes_estabelecidos": 0,
@@ -202,14 +218,39 @@
       "recordes_estabelecidos": 0
     },
     "4": {
-      "corridas_completas": 1,
+      "corridas_completas": 5,
       "corridas_vencidas": 0,
-      "melhor_tempo": 36.424000000001286,
-      "melhor_posicao": 4,
-      "voltas_completas": 1,
-      "colisoes": 0,
+      "melhor_tempo": 33.00500000000097,
+      "melhor_posicao": 3,
+      "voltas_completas": 5,
+      "colisoes": 865,
+      "recordes_estabelecidos": 0
+    },
+    "3": {
+      "corridas_completas": 4,
+      "corridas_vencidas": 0,
+      "melhor_tempo": 30.940000000000595,
+      "melhor_posicao": 2,
+      "voltas_completas": 5,
+      "colisoes": 362,
+      "recordes_estabelecidos": 0
+    },
+    "8": {
+      "corridas_completas": 12,
+      "corridas_vencidas": 12,
+      "melhor_tempo": 60.0,
+      "melhor_posicao": 1,
+      "voltas_completas": 9,
+      "colisoes": 502,
       "recordes_estabelecidos": 0
     }
   },
-  "ultima_corrida_campanha": null
+  "ultima_corrida_campanha": null,
+  "iniciar_capitulo_4_apos_narrativa": false,
+  "corridas_desbloqueadas": [
+    "crown_stage1",
+    "crown_stage3",
+    "crown_stage2",
+    "crown_final"
+  ]
 }
