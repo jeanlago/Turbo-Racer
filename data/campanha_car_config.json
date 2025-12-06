@@ -1,0 +1,94 @@
+{
+  "estagios": [
+    {
+      "estagio": 0,
+      "nome_sprite": "Car1_campanha_inicial",
+      "tamanho_oficina": [
+        595,
+        730
+      ],
+      "escala": 0.9500000000000002,
+      "y_offset": -30,
+      "descricao": "Carro inicial - quebrado"
+    },
+    {
+      "estagio": 1,
+      "nome_sprite": "Car1_lataria",
+      "tamanho_oficina": [
+        595,
+        705
+      ],
+      "escala": 0.95,
+      "y_offset": -10,
+      "descricao": "Lataria reparada"
+    },
+    {
+      "estagio": 2,
+      "nome_sprite": "Car1_pneus_drift",
+      "tamanho_oficina": [
+        600,
+        690
+      ],
+      "escala": 0.95,
+      "y_offset": -10,
+      "descricao": "Pneus de drift instalados"
+    },
+    {
+      "estagio": 3,
+      "nome_sprite": "Car1_bodykit",
+      "tamanho_oficina": [
+        605,
+        685
+      ],
+      "escala": 0.95,
+      "y_offset": -10,
+      "descricao": "Bodykit completo"
+    }
+  ],
+  "cores_finais": [
+    {
+      "cor": "azul",
+      "nome_sprite": "Car1_final_azul",
+      "tamanho_oficina": [
+        600,
+        700
+      ],
+      "escala": 0.95,
+      "y_offset": -15,
+      "descricao": "Versão final azul"
+    },
+    {
+      "cor": "branco",
+      "nome_sprite": "Car1_final_branco",
+      "tamanho_oficina": [
+        600,
+        720
+      ],
+      "escala": 0.95,
+      "y_offset": -25,
+      "descricao": "Versão final branca"
+    },
+    {
+      "cor": "preto",
+      "nome_sprite": "Car1_final_preto",
+      "tamanho_oficina": [
+        600,
+        690
+      ],
+      "escala": 0.95,
+      "y_offset": -10,
+      "descricao": "Versão final preta"
+    },
+    {
+      "cor": "verde",
+      "nome_sprite": "Car1_final_verde",
+      "tamanho_oficina": [
+        600,
+        690
+      ],
+      "escala": 0.95,
+      "y_offset": -10,
+      "descricao": "Versão final verde"
+    }
+  ]
+}

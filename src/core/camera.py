@@ -1,4 +1,3 @@
-# src/core/camera.py
 import pygame
 
 class Camera:

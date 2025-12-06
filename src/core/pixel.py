@@ -14,16 +14,16 @@ def _get_render_text():
 CAMINHO_PIXEL_DATA = os.path.join(DIR_PROJETO, "data", "pixel.json")
 
 CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "pixel")
-SPRITE_DIGITANDO = os.path.join(CAMINHO_SPRITES, "digitando.png")
-SPRITE_DIGITANDO_FALLBACK = os.path.join(CAMINHO_SPRITES, "ocupado.png")
-SPRITE_ASSUSTADO = os.path.join(CAMINHO_SPRITES, "assustado.png")
-SPRITE_ASSUSTADO_FALLBACK = os.path.join(CAMINHO_SPRITES, "silêncio.png")
-SPRITE_NEUTRO = os.path.join(CAMINHO_SPRITES, "neutro.png")
-SPRITE_NEUTRO_FALLBACK = os.path.join(CAMINHO_SPRITES, "Gemini_Generated_Image_4kuc1f4kuc1f4kuc.png")
-SPRITE_PARANOICO = os.path.join(CAMINHO_SPRITES, "paranoico.png")
-SPRITE_PARANOICO_FALLBACK = os.path.join(CAMINHO_SPRITES, "silêncio.png")
-SPRITE_VENDENDO = os.path.join(CAMINHO_SPRITES, "vendendo.png")
-SPRITE_VENDENDO_FALLBACK = os.path.join(CAMINHO_SPRITES, "oferta.png")
+# Usar os sprites reais que existem
+SPRITE_NEUTRO = os.path.join(CAMINHO_SPRITES, "pixel_neutro.png")
+SPRITE_SERIO = os.path.join(CAMINHO_SPRITES, "pixel_serio.png")
+SPRITE_MALANDRO = os.path.join(CAMINHO_SPRITES, "pixel_malandro.png")
+SPRITE_SORRISO = os.path.join(CAMINHO_SPRITES, "pixel_sorriso.png")
+# Fallbacks (usar os mesmos se não existirem)
+SPRITE_DIGITANDO = SPRITE_NEUTRO  # Usar neutro como digitando
+SPRITE_ASSUSTADO = SPRITE_SERIO  # Usar sério como assustado
+SPRITE_PARANOICO = SPRITE_MALANDRO  # Usar malandro como paranoico
+SPRITE_VENDENDO = SPRITE_SORRISO  # Usar sorriso como vendendo
 
 def obter_caminho_bunker():
     from config import obter_caminho_sprite_dia_noite
@@ -61,9 +61,29 @@ class Pixel:
         
         self.loja_aberta = False
         self.informacao_selecionada = None
+        self.menu_desbloqueios_aberto = False
+        self.desbloqueio_selecionado = None
         
         self.informacoes_disponiveis = []
         self._gerar_informacoes()
+        
+        # Desbloqueios exclusivos do Pixel
+        self.desbloqueios_disponiveis = [
+            {
+                'tipo': 'upgrade_nivel_6',
+                'nome': 'Tunagem Nível 6',
+                'descricao': 'Eu hackeei o sistema de upgrades da cidade. Posso desbloquear um nível extra de tunagem que ninguém mais tem acesso. Seus upgrades podem ir até nível 6 agora.',
+                'preco': 15000,
+                'ja_desbloqueado': False
+            },
+            {
+                'tipo': 'cores_especiais',
+                'nome': 'Cores Especiais',
+                'descricao': 'Interceptei um catálogo de cores exclusivas de uma fábrica de tinta premium. Posso desbloquear opções de cor especiais para seus carros que não estão disponíveis no mercado normal.',
+                'preco': 10000,
+                'ja_desbloqueado': False
+            }
+        ]
     
     def _gerar_informacoes(self):
         """Gera lista de informações disponíveis para venda"""
@@ -122,31 +142,36 @@ class Pixel:
             return
         
         try:
-            # Carregar sprites com fallback para arquivos existentes
-            if os.path.exists(SPRITE_DIGITANDO):
-                self.sprite_digitando = pygame.image.load(SPRITE_DIGITANDO).convert_alpha()
-            elif os.path.exists(SPRITE_DIGITANDO_FALLBACK):
-                self.sprite_digitando = pygame.image.load(SPRITE_DIGITANDO_FALLBACK).convert_alpha()
-            
-            if os.path.exists(SPRITE_ASSUSTADO):
-                self.sprite_assustado = pygame.image.load(SPRITE_ASSUSTADO).convert_alpha()
-            elif os.path.exists(SPRITE_ASSUSTADO_FALLBACK):
-                self.sprite_assustado = pygame.image.load(SPRITE_ASSUSTADO_FALLBACK).convert_alpha()
-            
+            # Carregar sprites reais que existem
             if os.path.exists(SPRITE_NEUTRO):
                 self.sprite_neutro = pygame.image.load(SPRITE_NEUTRO).convert_alpha()
-            elif os.path.exists(SPRITE_NEUTRO_FALLBACK):
-                self.sprite_neutro = pygame.image.load(SPRITE_NEUTRO_FALLBACK).convert_alpha()
+                print(f"[PIXEL] Sprite neutro carregado: {SPRITE_NEUTRO}")
+            else:
+                print(f"[PIXEL] ERRO: Sprite neutro não encontrado: {SPRITE_NEUTRO}")
             
-            if os.path.exists(SPRITE_PARANOICO):
-                self.sprite_paranoico = pygame.image.load(SPRITE_PARANOICO).convert_alpha()
-            elif os.path.exists(SPRITE_PARANOICO_FALLBACK):
-                self.sprite_paranoico = pygame.image.load(SPRITE_PARANOICO_FALLBACK).convert_alpha()
+            if os.path.exists(SPRITE_SERIO):
+                self.sprite_serio = pygame.image.load(SPRITE_SERIO).convert_alpha()
+                print(f"[PIXEL] Sprite sério carregado: {SPRITE_SERIO}")
+            else:
+                print(f"[PIXEL] ERRO: Sprite sério não encontrado: {SPRITE_SERIO}")
             
-            if os.path.exists(SPRITE_VENDENDO):
-                self.sprite_vendendo = pygame.image.load(SPRITE_VENDENDO).convert_alpha()
-            elif os.path.exists(SPRITE_VENDENDO_FALLBACK):
-                self.sprite_vendendo = pygame.image.load(SPRITE_VENDENDO_FALLBACK).convert_alpha()
+            if os.path.exists(SPRITE_MALANDRO):
+                self.sprite_malandro = pygame.image.load(SPRITE_MALANDRO).convert_alpha()
+                print(f"[PIXEL] Sprite malandro carregado: {SPRITE_MALANDRO}")
+            else:
+                print(f"[PIXEL] ERRO: Sprite malandro não encontrado: {SPRITE_MALANDRO}")
+            
+            if os.path.exists(SPRITE_SORRISO):
+                self.sprite_sorriso = pygame.image.load(SPRITE_SORRISO).convert_alpha()
+                print(f"[PIXEL] Sprite sorriso carregado: {SPRITE_SORRISO}")
+            else:
+                print(f"[PIXEL] ERRO: Sprite sorriso não encontrado: {SPRITE_SORRISO}")
+            
+            # Mapear sprites antigos para os novos
+            self.sprite_digitando = self.sprite_neutro if self.sprite_neutro else None
+            self.sprite_assustado = self.sprite_serio if self.sprite_serio else self.sprite_neutro
+            self.sprite_paranoico = self.sprite_malandro if self.sprite_malandro else self.sprite_neutro
+            self.sprite_vendendo = self.sprite_sorriso if self.sprite_sorriso else self.sprite_neutro
             
             # Carregar fundo (bunker) com sistema dia/noite e fallback
             CAMINHO_BUNKER = obter_caminho_bunker()
@@ -178,6 +203,21 @@ class Pixel:
     
     def verificar_aparecer_primeira_vez(self):
         """Verifica se deve mostrar a primeira aparição do Pixel"""
+        # Carregar estado atualizado do progresso
+        self.carregar_estado()
+        
+        # Garantir que os sprites estão carregados
+        if not self.sprites_carregados:
+            self.carregar_sprites()
+        
+        # Revelar nome se ainda não foi revelado (após primeira aparição física)
+        if not self.nome_revelado:
+            # Verificar se a cena ch4_3_meet_pixel_physical foi visitada
+            from core.progresso import gerenciador_progresso
+            if hasattr(gerenciador_progresso, 'pixel_primeira_aparicao_mostrada') and gerenciador_progresso.pixel_primeira_aparicao_mostrada:
+                self.nome_revelado = True
+                self.salvar_estado()
+        
         if self.primeira_aparicao_mostrada:
             # Se já mostrou a primeira aparição, verificar se deve mostrar o diálogo "explodiu nos servidores"
             if self.verificar_ganhou_todas_corridas_ouro():
@@ -193,14 +233,25 @@ class Pixel:
                     self.ativo = True
                     self.fase_dialogo = "explodiu_servidores"
                     self.parte_dialogo = 0
+                    # Garantir que o sprite está definido
+                    if not self.sprite_atual:
+                        self.sprite_atual = self.sprite_paranoico if self.sprite_paranoico else self.sprite_neutro
+                    # Revelar nome se ainda não foi revelado
+                    if not self.nome_revelado:
+                        self.nome_revelado = True
+                        self.salvar_estado()
                     self._iniciar_dialogo_explodiu()
                     return True
-            # Se não ganhou todas ou já mostrou, abrir loja normalmente
+            # Se não ganhou todas ou já mostrou, oferecer menu de desbloqueios
             if not self.sprites_carregados:
                 self.carregar_sprites()
             self.ativo = True
-            self.fase_dialogo = "loja"
-            self._abrir_loja()
+            # Revelar nome se ainda não foi revelado
+            if not self.nome_revelado:
+                self.nome_revelado = True
+                self.salvar_estado()
+            self.fase_dialogo = "desbloqueios"
+            self.ativar_menu_desbloqueios()
             return True
         
         if not self.sprites_carregados:
@@ -272,8 +323,9 @@ class Pixel:
         else:
             self.primeira_aparicao_mostrada = True
             self.salvar_estado()
-            self.fase_dialogo = "loja"
-            self._abrir_loja()
+            # Após primeira aparição, oferecer menu de desbloqueios
+            self.fase_dialogo = "desbloqueios"
+            self.ativar_menu_desbloqueios()
     
     def _iniciar_dialogo_explodiu(self):
         """Inicia o diálogo 'explodiu nos servidores'"""
@@ -298,7 +350,17 @@ class Pixel:
     def _abrir_loja(self):
         """Abre a loja de informações do Pixel"""
         self.loja_aberta = True
-        self.sprite_atual = self.sprite_digitando if self.sprite_digitando else self.sprite_neutro
+        # Garantir que o sprite está definido
+        if not self.sprite_atual:
+            self.sprite_atual = self.sprite_digitando if self.sprite_digitando else self.sprite_neutro
+        
+        # Atualizar status dos desbloqueios
+        self._atualizar_status_desbloqueios()
+        
+        # Revelar nome se ainda não foi revelado
+        if not self.nome_revelado:
+            self.nome_revelado = True
+            self.salvar_estado()
         
         saudacoes = [
             "Você de novo? Rápido, estou no meio de uma descriptografia de nível 5. O que você quer?",
@@ -309,6 +371,34 @@ class Pixel:
         texto = random.choice(saudacoes)
         self._iniciar_animacao_texto(texto)
     
+    def _atualizar_status_desbloqueios(self):
+        """Atualiza o status dos desbloqueios baseado no progresso"""
+        for desbloqueio in self.desbloqueios_disponiveis:
+            if desbloqueio['tipo'] == 'upgrade_nivel_6':
+                desbloqueio['ja_desbloqueado'] = getattr(gerenciador_progresso, 'pixel_upgrade_nivel_6_desbloqueado', False)
+            elif desbloqueio['tipo'] == 'cores_especiais':
+                # Verificar se pelo menos uma cor especial foi desbloqueada
+                cores_desbloqueadas = getattr(gerenciador_progresso, 'pixel_cores_especiais_desbloqueadas', set())
+                desbloqueio['ja_desbloqueado'] = len(cores_desbloqueadas) > 0
+    
+    def ativar_menu_desbloqueios(self):
+        """Ativa o menu de desbloqueios exclusivos"""
+        if not self.sprites_carregados:
+            self.carregar_sprites()
+        self.ativo = True
+        self.fase_dialogo = "desbloqueios"
+        self.menu_desbloqueios_aberto = True
+        self._atualizar_status_desbloqueios()
+        # Garantir que o sprite está definido
+        if not self.sprite_atual:
+            self.sprite_atual = self.sprite_vendendo if self.sprite_vendendo else (self.sprite_neutro if self.sprite_neutro else self.sprite_digitando)
+        # Revelar nome se ainda não foi revelado
+        if not self.nome_revelado:
+            self.nome_revelado = True
+            self.salvar_estado()
+        texto = "Ah, você quer os desbloqueios exclusivos? Claro. Eu hackeei sistemas que nem o Rex sabe que existem. Mas isso tem um preço."
+        self._iniciar_animacao_texto(texto)
+    
     def _iniciar_animacao_texto(self, texto):
         """Inicia animação de texto letra por letra"""
         self.texto_completo = texto
@@ -316,10 +406,16 @@ class Pixel:
         self.tempo_animacao = 0.0
         
         texto_lower = texto.lower()
-        if "pixel" in texto_lower or "meu nome" in texto_lower or "me chamo pixel" in texto_lower:
+        # Revelar nome do Pixel na primeira aparição ou quando ele se apresenta
+        if "pixel" in texto_lower or "meu nome" in texto_lower or "me chamo pixel" in texto_lower or "sou pixel" in texto_lower:
             if not self.nome_revelado:
                 self.nome_revelado = True
                 self.salvar_estado()
+        
+        # Se já passou da primeira aparição, revelar o nome automaticamente
+        if self.primeira_aparicao_mostrada and not self.nome_revelado:
+            self.nome_revelado = True
+            self.salvar_estado()
     
     def _atualizar_animacao_texto(self, dt):
         """Atualiza animação de texto letra por letra"""
@@ -355,6 +451,17 @@ class Pixel:
                             # Fechar diálogo e abrir menu de loja
                             self.fechar()
                             return "abrir_loja"
+                        elif self.fase_dialogo == "desbloqueios":
+                            # Se o texto do diálogo inicial terminou, processar clique no menu
+                            if len(self.texto_exibido) >= len(self.texto_completo) and self.menu_desbloqueios_aberto:
+                                mouse_x, mouse_y = evento.pos
+                                self._processar_clique_desbloqueios(mouse_x, mouse_y)
+                            # Se o texto ainda não terminou, apenas pular para o final (não fazer nada mais)
+                            # O menu aparecerá automaticamente quando o texto terminar
+                        elif self.fase_dialogo == "despedida":
+                            # Após despedida, fechar completamente
+                            self.fechar()
+                            return "fechado"
             elif evento.type == pygame.KEYDOWN:
                 if evento.key == pygame.K_SPACE or evento.key == pygame.K_RETURN:
                     # Se o texto ainda está sendo animado, pular para o final
@@ -372,9 +479,50 @@ class Pixel:
                             # Fechar diálogo e abrir menu de loja
                             self.fechar()
                             return "abrir_loja"
+                        elif self.fase_dialogo == "desbloqueios":
+                            # Se o texto ainda não terminou, apenas pular para o final
+                            if len(self.texto_exibido) < len(self.texto_completo):
+                                self.texto_exibido = self.texto_completo
+                            # Se o texto do diálogo inicial terminou, processar teclas no menu
+                            elif len(self.texto_exibido) >= len(self.texto_completo) and self.menu_desbloqueios_aberto:
+                                if evento.key == pygame.K_ESCAPE:
+                                    # Fechar menu e mostrar despedida
+                                    self.menu_desbloqueios_aberto = False
+                                    self.sprite_atual = self.sprite_digitando if self.sprite_digitando else self.sprite_neutro
+                                    despedidas = [
+                                        "Tchau. Volte quando tiver mais créditos. Meus dados não esperam ninguém.",
+                                        "Até. E cuidado com quem você fala sobre isso. O Rex tem ouvidos em todo lugar.",
+                                        "Sai daqui. Tenho firewalls para quebrar e sistemas para hackear. Não me atrapalhe."
+                                    ]
+                                    import random
+                                    texto = random.choice(despedidas)
+                                    self._iniciar_animacao_texto(texto)
+                                    self.fase_dialogo = "despedida"
+                        elif self.fase_dialogo == "despedida":
+                            # Após despedida, fechar completamente
+                            self.fechar()
+                            return "fechado"
                 elif evento.key == pygame.K_ESCAPE:
-                    self.fechar()
-                    return "fechado"
+                    if self.fase_dialogo == "desbloqueios" and self.menu_desbloqueios_aberto:
+                        # Fechar menu e mostrar despedida
+                        self.menu_desbloqueios_aberto = False
+                        self.sprite_atual = self.sprite_digitando if self.sprite_digitando else self.sprite_neutro
+                        despedidas = [
+                            "Tchau. Volte quando tiver mais créditos. Meus dados não esperam ninguém.",
+                            "Até. E cuidado com quem você fala sobre isso. O Rex tem ouvidos em todo lugar.",
+                            "Sai daqui. Tenho firewalls para quebrar e sistemas para hackear. Não me atrapalhe."
+                        ]
+                        import random
+                        texto = random.choice(despedidas)
+                        self._iniciar_animacao_texto(texto)
+                        self.fase_dialogo = "despedida"
+                    elif self.fase_dialogo == "despedida":
+                        # Após despedida, fechar completamente
+                        self.fechar()
+                        return "fechado"
+                    else:
+                        self.fechar()
+                        return "fechado"
         
         return None
     
@@ -424,16 +572,48 @@ class Pixel:
             tela.blit(overlay, (0, 0))
             print("[PIXEL] AVISO: sprite_fundo não carregado, usando overlay")
         
-        if self.sprite_atual:
-            sprite_original_w = self.sprite_atual.get_width()
-            sprite_original_h = self.sprite_atual.get_height()
-            sprite_novo_w = int(sprite_original_w * 0.7)
-            sprite_novo_h = int(sprite_original_h * 0.7)
-            sprite_redimensionado = pygame.transform.scale(self.sprite_atual, (sprite_novo_w, sprite_novo_h))
-            
-            sprite_x = LARGURA // 2 - sprite_novo_w // 2
-            sprite_y = int(ALTURA * 0.6) - sprite_novo_h // 2
-            tela.blit(sprite_redimensionado, (sprite_x, sprite_y))
+        # Desenhar sprite do Pixel (sempre, mesmo quando menu está aberto)
+        # Garantir que os sprites estão carregados
+        if not self.sprites_carregados:
+            self.carregar_sprites()
+        
+        # Se sprite_atual não está definido, usar sprite padrão
+        sprite_para_desenhar = self.sprite_atual
+        if not sprite_para_desenhar:
+            sprite_para_desenhar = self.sprite_neutro if self.sprite_neutro else self.sprite_digitando
+        
+        if sprite_para_desenhar:
+            sprite_original_w = sprite_para_desenhar.get_width()
+            sprite_original_h = sprite_para_desenhar.get_height()
+            if sprite_original_w > 0 and sprite_original_h > 0:
+                # Usar mesma configuração da cutscene: altura_max 400, largura_max 350
+                sprite_altura_max = 400
+                sprite_largura_max = 350
+                
+                escala_w = sprite_largura_max / sprite_original_w if sprite_original_w > 0 else 1.0
+                escala_h = sprite_altura_max / sprite_original_h if sprite_original_h > 0 else 1.0
+                escala = min(escala_w, escala_h, 1.0)
+                
+                sprite_w = int(sprite_original_w * escala)
+                sprite_h = int(sprite_original_h * escala)
+                sprite_redimensionado = pygame.transform.scale(sprite_para_desenhar, (sprite_w, sprite_h))
+                
+                # Posicionar baseado na caixa de texto (mesma lógica da cutscene)
+                # Na cutscene: caixa_altura = 10 (apenas para cálculo), caixa_y = ALTURA - 10 - 50
+                # sprite_y_base = caixa_y - sprite_h - 20
+                # Mas a caixa real de diálogo está em ALTURA - 200 - 50
+                # Para manter a mesma posição visual, usar o mesmo cálculo da cutscene
+                caixa_altura_calc = 10  # Mesmo valor usado na cutscene para posicionar sprite
+                caixa_y_calc = ALTURA - caixa_altura_calc - 50
+                sprite_y_base = caixa_y_calc - sprite_h - 20
+                
+                sprite_x = LARGURA // 2 - sprite_w // 2
+                sprite_y = sprite_y_base
+                tela.blit(sprite_redimensionado, (sprite_x, sprite_y))
+            else:
+                print(f"[PIXEL] AVISO: Sprite tem tamanho inválido ({sprite_original_w}, {sprite_original_h})")
+        else:
+            print(f"[PIXEL] AVISO: Nenhum sprite disponível para desenhar! sprite_atual={self.sprite_atual}, sprite_neutro={self.sprite_neutro}, sprite_digitando={self.sprite_digitando}")
         
         caixa_largura = 1000
         caixa_altura = 200
@@ -445,12 +625,19 @@ class Pixel:
         overlay_caixa.fill((0, 0, 0, 200))
         tela.blit(overlay_caixa, (caixa_x, caixa_y))
         
-        # Borda da caixa (verde para tema tecnológico)
-        pygame.draw.rect(tela, (0, 255, 0), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
+        # Borda da caixa (branca como na cutscene)
+        pygame.draw.rect(tela, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
         
         # Nome do personagem
+        # Carregar estado atualizado do progresso para verificar nome
+        self.carregar_estado()
+        # Revelar nome automaticamente se já passou da primeira aparição
+        if self.primeira_aparicao_mostrada and not self.nome_revelado:
+            self.nome_revelado = True
+            self.salvar_estado()
         nome = "Pixel" if self.nome_revelado else "???"
-        nome_texto = render_text(nome, 20, (0, 255, 100), bold=True, pixel_style=True)
+        # Usar mesma cor da cutscene: (255, 255, 100)
+        nome_texto = render_text(nome, 20, (255, 255, 100), bold=True, pixel_style=True)
         tela.blit(nome_texto, (caixa_x + 20, caixa_y + 10))
         
         # Atualizar animação de texto
@@ -486,12 +673,224 @@ class Pixel:
         if len(self.texto_exibido) >= len(self.texto_completo):
             indicador = render_text("Pressione ESPAÇO ou clique para continuar", 14, (0, 200, 0), bold=False, pixel_style=True)
             tela.blit(indicador, (caixa_x + caixa_largura - 400, caixa_y + caixa_altura - 30))
+        
+        # Se o menu de desbloqueios está aberto e o texto terminou, desenhar menu
+        # Mas não desenhar se está na fase de despedida
+        if self.menu_desbloqueios_aberto and len(self.texto_exibido) >= len(self.texto_completo) and self.fase_dialogo == "desbloqueios":
+            self.desenhar_menu_desbloqueios(tela)
+        elif self.menu_desbloqueios_aberto:
+            # Debug: verificar por que o menu não está sendo desenhado
+            print(f"[PIXEL DEBUG] Menu não desenhado. menu_aberto={self.menu_desbloqueios_aberto}, texto_exibido={len(self.texto_exibido)}, texto_completo={len(self.texto_completo)}, fase={self.fase_dialogo}")
+    
+    def _desenhar_caixa_dialogo(self, tela, dt):
+        """Desenha apenas a caixa de diálogo (usado quando menu de desbloqueios está aberto)"""
+        render_text = _get_render_text()
+        
+        caixa_largura = 1000
+        caixa_altura = 150
+        caixa_x = (LARGURA - caixa_largura) // 2
+        caixa_y = ALTURA - caixa_altura - 20
+        
+        # Fundo da caixa
+        overlay_caixa = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+        overlay_caixa.fill((0, 0, 0, 220))
+        tela.blit(overlay_caixa, (caixa_x, caixa_y))
+        
+        # Borda
+        pygame.draw.rect(tela, (0, 255, 0), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
+        
+        # Nome
+        nome = "Pixel" if self.nome_revelado else "???"
+        nome_texto = render_text(nome, 18, (0, 255, 100), bold=True, pixel_style=True)
+        tela.blit(nome_texto, (caixa_x + 20, caixa_y + 10))
+        
+        # Atualizar animação
+        self._atualizar_animacao_texto(dt)
+        
+        # Texto
+        if self.texto_exibido:
+            palavras = self.texto_exibido.split(' ')
+            linhas = []
+            linha_atual = ""
+            for palavra in palavras:
+                teste_linha = linha_atual + (" " if linha_atual else "") + palavra
+                teste_render = render_text(teste_linha, 16, (200, 255, 200), bold=False, pixel_style=True)
+                if teste_render.get_width() <= caixa_largura - 40:
+                    linha_atual = teste_linha
+                else:
+                    if linha_atual:
+                        linhas.append(linha_atual)
+                    linha_atual = palavra
+            if linha_atual:
+                linhas.append(linha_atual)
+            
+            y_texto = caixa_y + 40
+            for linha in linhas:
+                linha_render = render_text(linha, 16, (200, 255, 200), bold=False, pixel_style=True)
+                tela.blit(linha_render, (caixa_x + 20, y_texto))
+                y_texto += 20
+    
+    def _processar_clique_desbloqueios(self, mouse_x, mouse_y):
+        """Processa cliques no menu de desbloqueios"""
+        # Área do menu (centro da tela)
+        menu_largura = 800
+        menu_altura = 500
+        menu_x = (LARGURA - menu_largura) // 2
+        menu_y = (ALTURA - menu_altura) // 2
+        
+        # Verificar cliques nos desbloqueios
+        y_inicio = menu_y + 150
+        altura_item = 80
+        espacamento = 10
+        
+        for i, desbloqueio in enumerate(self.desbloqueios_disponiveis):
+            item_y = y_inicio + i * (altura_item + espacamento)
+            item_rect = pygame.Rect(menu_x + 20, item_y, menu_largura - 40, altura_item)
+            
+            if item_rect.collidepoint(mouse_x, mouse_y):
+                if not desbloqueio['ja_desbloqueado']:
+                    # Tentar comprar
+                    self._comprar_desbloqueio(desbloqueio)
+                else:
+                    # Já desbloqueado
+                    self.sprite_atual = self.sprite_paranoico if self.sprite_paranoico else self.sprite_neutro
+                    texto = "Você já tem isso. Não me faça perder tempo repetindo transações."
+                    self._iniciar_animacao_texto(texto)
+                break
+        
+        # Verificar clique no botão "Voltar"
+        voltar_y = menu_y + menu_altura - 50
+        voltar_rect = pygame.Rect(menu_x + menu_largura - 150, voltar_y, 130, 35)
+        if voltar_rect.collidepoint(mouse_x, mouse_y):
+            # Fechar menu e mostrar mensagem de despedida
+            self.menu_desbloqueios_aberto = False
+            self.sprite_atual = self.sprite_digitando if self.sprite_digitando else self.sprite_neutro
+            despedidas = [
+                "Tchau. Volte quando tiver mais créditos. Meus dados não esperam ninguém.",
+                "Até. E cuidado com quem você fala sobre isso. O Rex tem ouvidos em todo lugar.",
+                "Sai daqui. Tenho firewalls para quebrar e sistemas para hackear. Não me atrapalhe."
+            ]
+            import random
+            texto = random.choice(despedidas)
+            self._iniciar_animacao_texto(texto)
+            # Após mostrar a mensagem, fechar completamente
+            # O fechamento será feito quando o jogador clicar novamente
+            self.fase_dialogo = "despedida"
+    
+    def _comprar_desbloqueio(self, desbloqueio):
+        """Processa a compra de um desbloqueio"""
+        preco = desbloqueio['preco']
+        
+        # Verificar dinheiro
+        if not gerenciador_progresso.tem_dinheiro(preco):
+            self.sprite_atual = self.sprite_paranoico if self.sprite_paranoico else self.sprite_neutro
+            texto = "404: Crédito Não Encontrado. Volte quando tiver largura de banda suficiente para pagar."
+            self._iniciar_animacao_texto(texto)
+            return False
+        
+        # Remover dinheiro
+        gerenciador_progresso.remover_dinheiro(preco)
+        
+        # Aplicar desbloqueio
+        if desbloqueio['tipo'] == 'upgrade_nivel_6':
+            gerenciador_progresso.pixel_upgrade_nivel_6_desbloqueado = True
+            self.sprite_atual = self.sprite_vendendo if self.sprite_vendendo else self.sprite_neutro
+            texto = "Pronto. Hacked. Seus upgrades agora podem ir até nível 6. Não espalhe isso, ou o Rex vai querer saber como você conseguiu."
+        elif desbloqueio['tipo'] == 'cores_especiais':
+            # Desbloquear cores especiais
+            if not hasattr(gerenciador_progresso, 'pixel_cores_especiais_desbloqueadas'):
+                gerenciador_progresso.pixel_cores_especiais_desbloqueadas = set()
+            gerenciador_progresso.pixel_cores_especiais_desbloqueadas.add("todas")
+            self.sprite_atual = self.sprite_vendendo if self.sprite_vendendo else self.sprite_neutro
+            texto = "Catálogo de cores premium desbloqueado. Agora você tem acesso a opções de cor que ninguém mais tem. Use com moderação."
+        
+        gerenciador_progresso.salvar()
+        desbloqueio['ja_desbloqueado'] = True
+        self._iniciar_animacao_texto(texto)
+        return True
+    
+    def desenhar_menu_desbloqueios(self, tela):
+        """Desenha o menu de desbloqueios exclusivos"""
+        if not self.menu_desbloqueios_aberto:
+            return
+        
+        render_text = _get_render_text()
+        
+        # Área do menu (centro da tela)
+        menu_largura = 800
+        menu_altura = 500
+        menu_x = (LARGURA - menu_largura) // 2
+        menu_y = (ALTURA - menu_altura) // 2
+        
+        # Fundo do menu
+        overlay_menu = pygame.Surface((menu_largura, menu_altura), pygame.SRCALPHA)
+        overlay_menu.fill((0, 0, 0, 240))
+        tela.blit(overlay_menu, (menu_x, menu_y))
+        
+        # Borda verde (tema tecnológico)
+        pygame.draw.rect(tela, (0, 255, 0), (menu_x, menu_y, menu_largura, menu_altura), 3)
+        
+        # Título
+        titulo = render_text("DESBLOQUEIOS EXCLUSIVOS", 28, (0, 255, 100), bold=True, pixel_style=True)
+        tela.blit(titulo, (menu_x + (menu_largura - titulo.get_width()) // 2, menu_y + 20))
+        
+        # Desenhar desbloqueios disponíveis
+        y_inicio = menu_y + 100
+        altura_item = 80
+        espacamento = 10
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        
+        for i, desbloqueio in enumerate(self.desbloqueios_disponiveis):
+            item_y = y_inicio + i * (altura_item + espacamento)
+            item_rect = pygame.Rect(menu_x + 20, item_y, menu_largura - 40, altura_item)
+            
+            # Verificar hover
+            hover = item_rect.collidepoint(mouse_x, mouse_y)
+            cor_fundo = (20, 50, 20, 200) if hover else (10, 30, 10, 200)
+            cor_borda = (0, 255, 0) if hover else (0, 200, 0)
+            
+            # Fundo do item
+            overlay_item = pygame.Surface((item_rect.width, item_rect.height), pygame.SRCALPHA)
+            overlay_item.fill(cor_fundo)
+            tela.blit(overlay_item, item_rect.topleft)
+            pygame.draw.rect(tela, cor_borda, item_rect, 2)
+            
+            # Nome do desbloqueio
+            nome = desbloqueio['nome']
+            if desbloqueio['ja_desbloqueado']:
+                nome += " [DESBLOQUEADO]"
+            nome_texto = render_text(nome, 20, (0, 255, 150) if not desbloqueio['ja_desbloqueado'] else (150, 150, 150), bold=True, pixel_style=True)
+            tela.blit(nome_texto, (item_rect.x + 10, item_rect.y + 10))
+            
+            # Descrição (truncada para caber)
+            desc_curta = desbloqueio['descricao'][:80] + "..." if len(desbloqueio['descricao']) > 80 else desbloqueio['descricao']
+            desc_texto = render_text(desc_curta, 14, (200, 255, 200), bold=False, pixel_style=True)
+            tela.blit(desc_texto, (item_rect.x + 10, item_rect.y + 35))
+            
+            # Preço
+            if not desbloqueio['ja_desbloqueado']:
+                preco_texto = render_text(f"${desbloqueio['preco']:,}", 18, (255, 255, 0), bold=True, pixel_style=True)
+                tela.blit(preco_texto, (item_rect.right - preco_texto.get_width() - 10, item_rect.y + 10))
+        
+        # Botão Voltar
+        voltar_y = menu_y + menu_altura - 50
+        voltar_rect = pygame.Rect(menu_x + menu_largura - 150, voltar_y, 130, 35)
+        hover_voltar = voltar_rect.collidepoint(mouse_x, mouse_y)
+        cor_voltar = (0, 255, 0) if hover_voltar else (0, 200, 0)
+        pygame.draw.rect(tela, (0, 0, 0), voltar_rect)
+        pygame.draw.rect(tela, cor_voltar, voltar_rect, 2)
+        voltar_texto = render_text("VOLTAR", 16, cor_voltar, bold=True, pixel_style=True)
+        tela.blit(voltar_texto, (voltar_rect.x + (voltar_rect.width - voltar_texto.get_width()) // 2, voltar_rect.y + 8))
     
     def fechar(self):
         """Fecha o diálogo do Pixel"""
         self.ativo = False
+        self.fase_dialogo = "fechado"
         self.loja_aberta = False
+        self.menu_desbloqueios_aberto = False
         self.informacao_selecionada = None
+        self.texto_completo = ""
+        self.texto_exibido = ""
 
 # Instância global
 pixel = Pixel()

@@ -22,7 +22,7 @@ SPRITE_CONVENCIDO = os.path.join(CAMINHO_SPRITES, "boris_persuasivo.png")
 
 def obter_caminho_fabrica():
     from config import obter_caminho_sprite_dia_noite
-    return obter_caminho_sprite_dia_noite("fabrica")
+    return obter_caminho_sprite_dia_noite("fosso")
 
 class Boris:
     """Boris - O Sucateiro Ciborgue que vende peças com preços variáveis"""
@@ -435,15 +435,21 @@ class Boris:
         # Remover dinheiro
         gerenciador_progresso.remover_dinheiro(preco)
         
-        # Completar missão m4_coracao_de_sucata se estiver ativa (comprar peça do Boris)
+        # Completar missão m4_coracao_de_sucata quando comprar peça do Boris
+        # IMPORTANTE: Completar sempre, não apenas se estiver ativa
         try:
             from core.missoes import gerenciador_missoes
-            if gerenciador_missoes.missao_ativa_id == "m4_coracao_de_sucata":
+            # Verificar se a missão ainda não foi completada
+            if "m4_coracao_de_sucata" not in gerenciador_missoes.missoes_completas:
                 gerenciador_missoes.completar_missao("m4_coracao_de_sucata")
                 gerenciador_missoes.salvar()
-                print("[BORIS] Missão 'Coração de Sucata' completada após compra!")
+                print("[BORIS] Missão 'Coração de Sucata' (m4_coracao_de_sucata) completada após compra!")
+            else:
+                print("[BORIS] Missão m4_coracao_de_sucata já estava completa")
         except Exception as e:
             print(f"[BORIS] Erro ao completar missão: {e}")
+            import traceback
+            traceback.print_exc()
         
         # Salvar progresso após compra
         gerenciador_progresso.salvar()

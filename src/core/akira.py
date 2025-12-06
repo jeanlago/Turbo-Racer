@@ -41,7 +41,7 @@ class Akira:
         self.ativo = False
         self.opcao_corrida_selecionada = 0
         self.corridas_disponiveis = [
-            {"nome": "Teste de Fluxo", "pista": 3, "preco": 0, "recompensa": 0, "dificuldade": "medio", "indice": 0, "race_id": "mountain_test"}
+            {"nome": "Teste de Fluxo", "pista": 3, "preco": 0, "recompensa": 0, "dificuldade": "medio", "indice": 0, "race_id": "mountain_test_run"}
         ]
         self.corridas_desbloqueadas = [0]  # Por padrão, a primeira corrida está desbloqueada
         self.sprite_atual = None
@@ -316,12 +316,11 @@ class Akira:
         if nivel_pneu < 1:
             # Não tem pneus - mostrar mensagem e fechar
             print(f"[AKIRA] Jogador não tem pneus nível 1 (nível atual: {nivel_pneu})")
-            self.ativo = True
-            self.modo_dialogo = "sem_preparo"
-            self.parte_dialogo = 0
-            self.sprite_atual = self.sprite_focada if self.sprite_focada else self.sprite_neutro
-            self._iniciar_animacao_texto("Você ainda não está pronto. Precisa ter pelo menos pneus nível 1 instalados no seu carro para correr aqui. Vá até o Boris ou o Crank para comprar melhorias.")
-            return True
+            from core.popup_musica import popup_musica
+            popup_musica.mostrar("Você precisa de pneus nível 1 para correr na montanha. Compre com Boris ou Crank.", tipo="outra")
+            # Não ativar o diálogo, apenas fechar e retornar ao mapa
+            self.ativo = False
+            return False  # Retornar False para indicar que deve voltar ao mapa
         else:
             # Tem pneus - mostrar diálogo de reconhecimento antes de oferecer corrida
             print(f"[AKIRA] Jogador tem pneus nível {nivel_pneu}, mostrando diálogo de reconhecimento")

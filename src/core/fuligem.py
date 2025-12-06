@@ -189,7 +189,64 @@ class Fuligem:
     def processar_eventos(self, eventos):
         """Processa eventos do Fuligem"""
         for evento in eventos:
-            if evento.type == pygame.KEYDOWN:
+            if evento.type == pygame.MOUSEBUTTONDOWN:
+                if evento.button == 1:  # Botão esquerdo
+                    if self.fase_dialogo == "primeira_aparicao":
+                        # Se o texto ainda está sendo animado, pular para o final
+                        if len(self.texto_exibido) < len(self.texto_completo):
+                            self.texto_exibido = self.texto_completo
+                        else:
+                            # Avançar diálogo
+                            if self.parte_dialogo == 0:
+                                self.parte_dialogo = 1
+                                self._iniciar_animacao_texto("Aqui a gente corre no meio da ferrugem e do vapor. Se seu motor não aguentar o calor, ou se você tiver medo de amassar a lataria, dê meia volta.")
+                            elif self.parte_dialogo == 1:
+                                self.parte_dialogo = 2
+                                self._iniciar_animacao_texto("Se quiser correr com os grandes da lama, a inscrição é comigo. O nome é Graxa. Não esquece.")
+                            else:
+                                # Finalizar primeira aparição
+                                self.primeira_aparicao_mostrada = True
+                                self.nome_revelado = True
+                                self.salvar_estado()
+                                # Salvar progresso e missões após interação
+                                gerenciador_progresso.salvar()
+                                from core.missoes import gerenciador_missoes
+                                gerenciador_missoes.salvar()
+                                self.fechar()
+                                return "fechado"
+                    elif self.fase_dialogo == "dia":
+                        # Fechar mensagem de dia
+                        # Salvar progresso antes de fechar
+                        gerenciador_progresso.salvar()
+                        self.fechar()
+                        return "fechado"
+                    elif self.fase_dialogo == "corrida":
+                        # Processar seleção de corrida
+                        corridas_disponiveis = self.obter_corridas_disponiveis()
+                        if self.opcao_corrida_selecionada < len(corridas_disponiveis):
+                            corrida = corridas_disponiveis[self.opcao_corrida_selecionada]
+                            # Verificar se tem dinheiro
+                            if gerenciador_progresso.tem_dinheiro(corrida["preco"]):
+                                # Remover dinheiro e iniciar corrida
+                                gerenciador_progresso.remover_dinheiro(corrida["preco"])
+                                gerenciador_progresso.salvar()
+                                self.pista_selecionada = corrida["pista"]
+                                self.fechar()
+                                return {"corrida": True, "pista": corrida["pista"], "preco": corrida["preco"], "recompensa": corrida["recompensa"], "indice": corrida["indice"]}
+                            else:
+                                # Não tem dinheiro suficiente
+                                self._iniciar_animacao_texto(f"Você não tem dinheiro suficiente! Precisa de ${corrida['preco']:,}")
+                                self.fase_dialogo = "sem_dinheiro"
+                        elif self.opcao_corrida_selecionada == len(corridas_disponiveis):
+                            # Opção "SAIR"
+                            # Salvar progresso antes de fechar
+                            gerenciador_progresso.salvar()
+                            self.fechar()
+                            return "fechado"
+                    elif self.fase_dialogo == "sem_dinheiro":
+                        # Fechar mensagem de falta de dinheiro e voltar para menu de corridas
+                        self.fase_dialogo = "corrida"
+            elif evento.type == pygame.KEYDOWN:
                 if evento.key == pygame.K_RETURN or evento.key == pygame.K_SPACE:
                     if self.fase_dialogo == "primeira_aparicao":
                         if len(self.texto_exibido) < len(self.texto_completo):
@@ -434,8 +491,18 @@ class Fuligem:
             for i, opcao in enumerate(opcoes):
                 cor = (255, 255, 0) if i == self.opcao_corrida_selecionada else (200, 200, 200)
                 if i < len(corridas_disponiveis):
-                    preco = corridas_disponiveis[i]["preco"]
-                    texto_opcao = f"{opcao} - ${preco:,}"
+                    corrida = corridas_disponiveis[i]
+                    preco = corrida["preco"]
+                    pista = corrida["pista"]
+                    
+                    # Verificar se a corrida foi completada
+                    corrida_completa = False
+                    if hasattr(gerenciador_progresso, 'corridas_cinturao_completas'):
+                        corrida_completa = pista in gerenciador_progresso.corridas_cinturao_completas
+                    
+                    # Adicionar ícone de concluído se a corrida foi completada
+                    icone_concluido = " ✓" if corrida_completa else ""
+                    texto_opcao = f"{opcao}{icone_concluido} - ${preco:,}"
                 else:
                     texto_opcao = opcao
                 

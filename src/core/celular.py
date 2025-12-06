@@ -2,9 +2,12 @@
 import pygame
 import os
 import math
+import json
 from config import DIR_PROJETO, LARGURA, ALTURA
 
 CAMINHO_SPRITE_CELULAR = os.path.join(DIR_PROJETO, "assets", "images", "hud", "celular.png")
+CAMINHO_TELA_CELULAR = os.path.join(DIR_PROJETO, "assets", "images", "ui", "tela_celular.png")
+CAMINHO_CONFIG_CELULAR = os.path.join(DIR_PROJETO, "data", "celular_config.json")
 
 class Celular:
     """Celular que aparece no canto inferior direito durante a campanha"""
@@ -44,7 +47,17 @@ class Celular:
         # Estado do menu
         self.tela_atual = "menu"  # menu, missoes, progresso, mensagens, saldo, corridas
         
+        # Botão de pagar dívida
+        self.botao_pagar_divida_rect = None
+        
+        # Background da tela do celular
+        self.tela_celular_bg = None
+        
+        # Configurações do menu
+        self.config = self.carregar_config()
+        
         self.carregar_sprite()
+        self.carregar_tela_celular()
     
     def carregar_sprite(self):
         """Carrega o sprite do celular"""
@@ -70,6 +83,106 @@ class Celular:
         except Exception as e:
             print(f"[CELULAR] Erro ao carregar sprite: {e}")
             self.carregado = False
+    
+    def carregar_config(self):
+        """Carrega as configurações do celular do arquivo JSON"""
+        config_padrao = {
+            "menu": {
+                "largura": 500,
+                "altura": 600,
+                "x": "centro",
+                "y": "centro",
+                "offset_x": 0,
+                "offset_y": 0
+            },
+            "hora": {
+                "x": 20,
+                "y": 20,
+                "tamanho_fonte": 24,
+                "cor": [255, 255, 255],
+                "negrito": True
+            },
+            "dia": {
+                "x": 20,
+                "y": 50,
+                "tamanho_fonte": 18,
+                "cor": [200, 200, 200],
+                "negrito": False
+            },
+            "status": {
+                "titulo": {
+                    "x": 20,
+                    "y_offset": 80,
+                    "tamanho_fonte": 18,
+                    "cor": [255, 200, 0],
+                    "negrito": True
+                },
+                "espacamento_linhas": 25,
+                "barra_altura": 10,
+                "barra_espacamento": 15
+            },
+            "menu_opcoes": {
+                "inicio_y_offset": 180,
+                "altura_opcao": 35,
+                "espacamento": 0,
+                "x": 40,
+                "y_padding": 8
+            },
+            "titulo": {
+                "x": 20,
+                "y": 20,
+                "tamanho_fonte": 28,
+                "cor": [255, 255, 255],
+                "negrito": True
+            },
+            "voltar": {
+                "x_offset": -150,
+                "y_offset": -30,
+                "tamanho_fonte": 16,
+                "cor": [200, 200, 200],
+                "negrito": False
+            },
+            "overlay": {
+                "opacidade": 180
+            },
+            "borda": {
+                "cor": [100, 150, 200],
+                "espessura": 3
+            }
+        }
+        
+        try:
+            if os.path.exists(CAMINHO_CONFIG_CELULAR):
+                with open(CAMINHO_CONFIG_CELULAR, 'r', encoding='utf-8') as f:
+                    config_carregada = json.load(f)
+                    # Mesclar com padrão (config carregada tem prioridade)
+                    config = config_padrao.copy()
+                    for key, value in config_carregada.items():
+                        if isinstance(value, dict) and key in config:
+                            config[key].update(value)
+                        else:
+                            config[key] = value
+                    print(f"[CELULAR] Configurações carregadas de: {CAMINHO_CONFIG_CELULAR}")
+                    return config
+            else:
+                print(f"[CELULAR] Arquivo de configuração não encontrado, usando padrões. Crie {CAMINHO_CONFIG_CELULAR} para personalizar.")
+                return config_padrao
+        except Exception as e:
+            print(f"[CELULAR] Erro ao carregar configurações: {e}")
+            return config_padrao
+    
+    def carregar_tela_celular(self):
+        """Carrega o background da tela do celular"""
+        try:
+            if os.path.exists(CAMINHO_TELA_CELULAR):
+                self.tela_celular_bg = pygame.image.load(CAMINHO_TELA_CELULAR).convert_alpha()
+                print(f"[CELULAR] Background da tela carregado: {CAMINHO_TELA_CELULAR}")
+            else:
+                print(f"[CELULAR] AVISO: Background da tela não encontrado: {CAMINHO_TELA_CELULAR}")
+                self.tela_celular_bg = None
+        except Exception as e:
+            print(f"[CELULAR] Erro ao carregar background da tela: {e}")
+            self.tela_celular_bg = None
     
     def verificar_visibilidade(self, modo_arcade=False, em_corrida=False, cutscene_ativa=False):
         """Verifica se o celular deve estar visível"""
@@ -123,10 +236,6 @@ class Celular:
         if not self.visivel or not self.carregado:
             return False
         
-        # Se o menu está aberto, processar clique no menu primeiro
-        if self.menu_aberto:
-            return self._processar_clique_menu(pos)
-        
         # Se o menu não está aberto, verificar clique no celular
         rect_celular = pygame.Rect(
             self.pos_x + self.offset_x,
@@ -136,9 +245,11 @@ class Celular:
         )
         
         if rect_celular.collidepoint(pos):
+            print(f"[CELULAR] Celular clicado! Abrindo menu...")
             self.menu_aberto = True
             self.tela_atual = "menu"
             self.opcao_selecionada = 0
+            print(f"[CELULAR] menu_aberto={self.menu_aberto}, tela_atual={self.tela_atual}, visivel={self.visivel}")
             return True
         
         return False
@@ -147,7 +258,7 @@ class Celular:
         """Processa clique dentro do menu"""
         # Se clicou fora do menu, fechar
         menu_largura = 500
-        menu_altura = 400
+        menu_altura = 600  # Aumentado para acomodar status do jogador e dívida do Barão
         menu_x = LARGURA // 2 - menu_largura // 2
         menu_y = ALTURA // 2 - menu_altura // 2
         
@@ -156,13 +267,13 @@ class Celular:
             # Clicou fora do menu, fechar
             self.menu_aberto = False
             self.tela_atual = "menu"
-            return True
+            return "fechado"
         
         # Processar clique nas opções do menu
         if self.tela_atual == "menu":
             return self._processar_clique_menu_opcoes(pos)
         
-        return False
+        return None
     
     def processar_eventos(self, eventos):
         """Processa eventos do celular"""
@@ -183,8 +294,12 @@ class Celular:
                     return self._abrir_tela_selecionada()
             elif evento.type == pygame.MOUSEBUTTONDOWN:
                 if evento.button == 1:
-                    # Verificar clique nas opções do menu
-                    resultado = self._processar_clique_menu_opcoes(evento.pos)
+                    # Verificar se clicou no botão de pagar dívida
+                    if self.botao_pagar_divida_rect and self.botao_pagar_divida_rect.collidepoint(evento.pos):
+                        return self._processar_pagamento_divida()
+                    
+                    # Verificar clique nas opções do menu ou fora do menu
+                    resultado = self._processar_clique_menu(evento.pos)
                     if resultado:
                         return resultado
         
@@ -235,31 +350,106 @@ class Celular:
         
         # Desenhar menu se aberto
         if self.menu_aberto:
+            print(f"[CELULAR] Desenhando menu... menu_aberto={self.menu_aberto}, tela_atual={self.tela_atual}")
             self._desenhar_menu(tela)
     
     def _desenhar_menu(self, tela):
         """Desenha o menu do celular"""
         from core.menu import render_text
         
+        # Obter configurações
+        config_menu = self.config.get("menu", {})
+        menu_largura = config_menu.get("largura", 500)
+        menu_altura = config_menu.get("altura", 600)
+        
+        # Calcular posição do menu
+        menu_x_config = config_menu.get("x", "centro")
+        menu_y_config = config_menu.get("y", "centro")
+        
+        if menu_x_config == "centro":
+            menu_x = LARGURA // 2 - menu_largura // 2
+        else:
+            menu_x = menu_x_config
+        
+        if menu_y_config == "centro":
+            menu_y = ALTURA // 2 - menu_altura // 2
+        else:
+            menu_y = menu_y_config
+        
+        # Aplicar offsets
+        menu_x += config_menu.get("offset_x", 0)
+        menu_y += config_menu.get("offset_y", 0)
+        
         # Fundo semi-transparente
+        overlay_opacidade = self.config.get("overlay", {}).get("opacidade", 180)
         overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 180))
+        overlay.fill((0, 0, 0, overlay_opacidade))
         tela.blit(overlay, (0, 0))
         
-        # Fundo do menu
-        menu_largura = 500
-        menu_altura = 400
-        menu_x = LARGURA // 2 - menu_largura // 2
-        menu_y = ALTURA // 2 - menu_altura // 2
+        # Desenhar background da tela do celular se disponível
+        if self.tela_celular_bg:
+            # Redimensionar o background para o tamanho do menu
+            bg_redimensionado = pygame.transform.scale(self.tela_celular_bg, (menu_largura, menu_altura))
+            tela.blit(bg_redimensionado, (menu_x, menu_y))
+        else:
+            # Fallback: fundo sólido
+            menu_bg = pygame.Surface((menu_largura, menu_altura), pygame.SRCALPHA)
+            menu_bg.fill((30, 30, 40, 240))
+            tela.blit(menu_bg, (menu_x, menu_y))
         
-        menu_bg = pygame.Surface((menu_largura, menu_altura), pygame.SRCALPHA)
-        menu_bg.fill((30, 30, 40, 240))
-        tela.blit(menu_bg, (menu_x, menu_y))
-        pygame.draw.rect(tela, (100, 150, 200), (menu_x, menu_y, menu_largura, menu_altura), 3)
+        # Borda removida conforme solicitado
         
-        # Título
-        titulo = render_text("CELULAR", 28, (255, 255, 255), bold=True, pixel_style=True)
-        tela.blit(titulo, (menu_x + 20, menu_y + 20))
+        # Obter informações de tempo
+        try:
+            from core.tempo_jogo import gerenciador_tempo
+            hora_atual = gerenciador_tempo.obter_hora_atual()
+            dia_atual = gerenciador_tempo.obter_dia_atual()
+            
+            # Formatar hora (HH:MM)
+            horas = int(hora_atual)
+            minutos = int((hora_atual - horas) * 60)
+            hora_formatada = f"{horas:02d}:{minutos:02d}"
+            
+            # Configurações de hora
+            config_hora = self.config.get("hora", {})
+            hora_x = menu_x + config_hora.get("x", 20)
+            hora_y = menu_y + config_hora.get("y", 20)
+            hora_tamanho = config_hora.get("tamanho_fonte", 24)
+            hora_cor = tuple(config_hora.get("cor", [255, 255, 255]))
+            hora_negrito = config_hora.get("negrito", True)
+            
+            # Exibir hora
+            hora_texto = render_text(hora_formatada, hora_tamanho, hora_cor, bold=hora_negrito, pixel_style=True)
+            tela.blit(hora_texto, (hora_x, hora_y))
+            
+            # Configurações de dia
+            config_dia = self.config.get("dia", {})
+            dia_x = menu_x + config_dia.get("x", 20)
+            dia_y = menu_y + config_dia.get("y", 50)
+            dia_tamanho = config_dia.get("tamanho_fonte", 18)
+            dia_cor = tuple(config_dia.get("cor", [200, 200, 200]))
+            dia_negrito = config_dia.get("negrito", False)
+            
+            # Calcular data real (05/12/1990 + dias)
+            from datetime import datetime, timedelta
+            data_inicial = datetime(1990, 12, 5)
+            data_atual = data_inicial + timedelta(days=dia_atual - 1)
+            dia_formatado = data_atual.strftime("%d/%m/%Y")
+            
+            # Exibir dia
+            dia_texto = render_text(dia_formatado, dia_tamanho, dia_cor, bold=dia_negrito, pixel_style=True)
+            tela.blit(dia_texto, (dia_x, dia_y))
+        except Exception as e:
+            print(f"[CELULAR] Erro ao obter informações de tempo: {e}")
+            # Título padrão se não conseguir obter tempo
+            config_titulo = self.config.get("titulo", {})
+            titulo_x = menu_x + config_titulo.get("x", 20)
+            titulo_y = menu_y + config_titulo.get("y", 20)
+            titulo_tamanho = config_titulo.get("tamanho_fonte", 28)
+            titulo_cor = tuple(config_titulo.get("cor", [255, 255, 255]))
+            titulo_negrito = config_titulo.get("negrito", True)
+            titulo = render_text("CELULAR", titulo_tamanho, titulo_cor, bold=titulo_negrito, pixel_style=True)
+            tela.blit(titulo, (titulo_x, titulo_y))
         
         # Desenhar tela atual
         if self.tela_atual == "menu":
@@ -276,18 +466,240 @@ class Celular:
             self._desenhar_tela_corridas(tela, menu_x, menu_y, menu_largura, menu_altura)
         
         # Botão voltar
-        voltar_texto = render_text("ESC - Voltar", 16, (200, 200, 200), bold=False, pixel_style=True)
-        tela.blit(voltar_texto, (menu_x + menu_largura - 150, menu_y + menu_altura - 30))
+        config_voltar = self.config.get("voltar", {})
+        voltar_x = menu_x + menu_largura + config_voltar.get("x_offset", -150)
+        voltar_y = menu_y + menu_altura + config_voltar.get("y_offset", -30)
+        voltar_tamanho = config_voltar.get("tamanho_fonte", 16)
+        voltar_cor = tuple(config_voltar.get("cor", [200, 200, 200]))
+        voltar_negrito = config_voltar.get("negrito", False)
+        voltar_texto = render_text("ESC - Voltar", voltar_tamanho, voltar_cor, bold=voltar_negrito, pixel_style=True)
+        tela.blit(voltar_texto, (voltar_x, voltar_y))
+    
+    def _processar_pagamento_divida(self):
+        """Processa o pagamento da dívida do Barão"""
+        from core.progresso import gerenciador_progresso
+        from core.popup_musica import popup_musica
+        
+        if not gerenciador_progresso.barao_emprestimo_ativo:
+            popup_musica.mostrar("Você não tem dívidas pendentes.", tipo="outra")
+            return None
+        
+        valor_devido = gerenciador_progresso.barao_valor_devido
+        dinheiro = gerenciador_progresso.dinheiro
+        
+        if dinheiro < valor_devido:
+            falta = valor_devido - dinheiro
+            popup_musica.mostrar(f"Você não tem dinheiro suficiente. Faltam ${falta:,}.", tipo="outra")
+            return None
+        
+        # Processar pagamento
+        gerenciador_progresso.remover_dinheiro(valor_devido)
+        gerenciador_progresso.barao_emprestimo_ativo = False
+        gerenciador_progresso.barao_valor_devido = 0
+        gerenciador_progresso.barao_corridas_restantes = 0
+        gerenciador_progresso.salvar()
+        
+        popup_musica.mostrar(f"Dívida de ${valor_devido:,} paga com sucesso! O Barão está satisfeito.", tipo="outra")
+        
+        # Limpar retângulo do botão
+        self.botao_pagar_divida_rect = None
+        
+        return None
     
     def _desenhar_menu_principal(self, tela, x, y, largura, altura):
         """Desenha o menu principal"""
         from core.menu import render_text
+        from core.progresso import gerenciador_progresso
         
-        opcao_altura = 40
-        inicio_y = y + 80
+        # Configurações de status
+        config_status = self.config.get("status", {})
+        config_titulo_status = config_status.get("titulo", {})
+        status_y = y + config_titulo_status.get("y_offset", 80)
+        status_titulo_x = x + config_titulo_status.get("x", 20)
+        status_titulo_tamanho = config_titulo_status.get("tamanho_fonte", 18)
+        status_titulo_cor = tuple(config_titulo_status.get("cor", [255, 200, 0]))
+        status_titulo_negrito = config_titulo_status.get("negrito", True)
+        
+        # Desenhar título do status
+        status_titulo = render_text("STATUS", status_titulo_tamanho, status_titulo_cor, bold=status_titulo_negrito, pixel_style=True)
+        tela.blit(status_titulo, (status_titulo_x, status_y))
+        
+        # Obter status do jogador diretamente do objeto status_jogador
+        try:
+            from core.status_jogador import status_jogador
+            popularidade = status_jogador.popularidade
+            fome = status_jogador.fome
+            sono = status_jogador.sono
+            tedio = status_jogador.tedio
+            dinheiro = gerenciador_progresso.dinheiro
+            
+            print(f"[CELULAR] Status: popularidade={popularidade}, fome={fome}, sono={sono}, tedio={tedio}, dinheiro={dinheiro}")
+            
+            # Reputação (amarelo) - mostrar valor e porcentagem
+            config_status = self.config.get("status", {})
+            barra_altura = config_status.get("barra_altura", 10)
+            barra_largura_offset = config_status.get("barra_largura_offset", 60)
+            barra_x_offset = config_status.get("barra_x_offset", 20)
+            barra_y_offset_base = config_status.get("barra_y_offset_base", 42)
+            texto_x_offset = config_status.get("texto_x_offset", 20)
+            texto_y_offset_base = config_status.get("texto_y_offset_base", 25)
+            
+            pop_porcentagem = min(100, (popularidade / 500) * 100)
+            pop_texto = render_text(f"Reputação: {popularidade:.0f}/500 ({pop_porcentagem:.1f}%)", 14, (255, 255, 0), bold=False, pixel_style=True)
+            tela.blit(pop_texto, (x + texto_x_offset, status_y + texto_y_offset_base))
+            
+            # Barra de reputação
+            pop_barra_x = x + barra_x_offset
+            pop_barra_y = status_y + barra_y_offset_base
+            pop_barra_largura = largura - barra_largura_offset
+            pop_barra_altura = barra_altura
+            pop_preenchimento = int(pop_barra_largura * (pop_porcentagem / 100))
+            pygame.draw.rect(tela, (30, 30, 30), (pop_barra_x, pop_barra_y, pop_barra_largura, pop_barra_altura))
+            pygame.draw.rect(tela, (255, 255, 0), (pop_barra_x, pop_barra_y, pop_preenchimento, pop_barra_altura))
+            pygame.draw.rect(tela, (200, 200, 200), (pop_barra_x, pop_barra_y, pop_barra_largura, pop_barra_altura), 1)
+            
+            # Fome (verde/vermelho)
+            espacamento_linhas = config_status.get("espacamento_linhas", 25)
+            cor_fome = (0, 255, 0) if fome > 50 else (255, 200, 0) if fome > 25 else (255, 0, 0)
+            fome_texto = render_text(f"Fome: {fome:.0f}%", 14, cor_fome, bold=False, pixel_style=True)
+            tela.blit(fome_texto, (x + texto_x_offset, status_y + texto_y_offset_base + espacamento_linhas))
+            
+            # Barra de fome
+            fome_barra_x = x + barra_x_offset
+            fome_barra_y = status_y + barra_y_offset_base + espacamento_linhas
+            fome_barra_largura = largura - barra_largura_offset
+            fome_barra_altura = barra_altura
+            fome_preenchimento = int(fome_barra_largura * (fome / 100))
+            pygame.draw.rect(tela, (30, 30, 30), (fome_barra_x, fome_barra_y, fome_barra_largura, fome_barra_altura))
+            pygame.draw.rect(tela, cor_fome, (fome_barra_x, fome_barra_y, fome_preenchimento, fome_barra_altura))
+            pygame.draw.rect(tela, (200, 200, 200), (fome_barra_x, fome_barra_y, fome_barra_largura, fome_barra_altura), 1)
+            
+            # Sono (azul)
+            cor_sono = (100, 150, 255) if sono > 50 else (255, 200, 0) if sono > 25 else (255, 0, 0)
+            sono_texto = render_text(f"Sono: {sono:.0f}%", 14, cor_sono, bold=False, pixel_style=True)
+            tela.blit(sono_texto, (x + texto_x_offset, status_y + texto_y_offset_base + espacamento_linhas * 2))
+            
+            # Barra de sono
+            sono_barra_x = x + barra_x_offset
+            sono_barra_y = status_y + barra_y_offset_base + espacamento_linhas * 2
+            sono_barra_largura = largura - barra_largura_offset
+            sono_barra_altura = barra_altura
+            sono_preenchimento = int(sono_barra_largura * (sono / 100))
+            pygame.draw.rect(tela, (30, 30, 30), (sono_barra_x, sono_barra_y, sono_barra_largura, sono_barra_altura))
+            pygame.draw.rect(tela, cor_sono, (sono_barra_x, sono_barra_y, sono_preenchimento, sono_barra_altura))
+            pygame.draw.rect(tela, (200, 200, 200), (sono_barra_x, sono_barra_y, sono_barra_largura, sono_barra_altura), 1)
+            
+            # Tédio (cinza)
+            tedio_texto = render_text(f"Tédio: {tedio:.0f}%", 14, (150, 150, 150), bold=False, pixel_style=True)
+            tela.blit(tedio_texto, (x + texto_x_offset, status_y + texto_y_offset_base + espacamento_linhas * 3))
+            
+            # Barra de tédio
+            tedio_barra_x = x + barra_x_offset
+            tedio_barra_y = status_y + barra_y_offset_base + espacamento_linhas * 3
+            tedio_barra_largura = largura - barra_largura_offset
+            tedio_barra_altura = barra_altura
+            tedio_preenchimento = int(tedio_barra_largura * (tedio / 100))
+            pygame.draw.rect(tela, (30, 30, 30), (tedio_barra_x, tedio_barra_y, tedio_barra_largura, tedio_barra_altura))
+            pygame.draw.rect(tela, (150, 150, 150), (tedio_barra_x, tedio_barra_y, tedio_preenchimento, tedio_barra_altura))
+            pygame.draw.rect(tela, (200, 200, 200), (tedio_barra_x, tedio_barra_y, tedio_barra_largura, tedio_barra_altura), 1)
+            
+            # Dinheiro (verde)
+            dinheiro_texto = render_text(f"Dinheiro: ${dinheiro:,}", 14, (0, 255, 0), bold=False, pixel_style=True)
+            tela.blit(dinheiro_texto, (x + 20, status_y + 157))
+            
+            # Seção de dívida do Barão (se houver)
+            divida_y = status_y + 180
+            if gerenciador_progresso.barao_emprestimo_ativo:
+                valor_devido = gerenciador_progresso.barao_valor_devido
+                corridas_restantes = gerenciador_progresso.barao_corridas_restantes
+                
+                # Título da seção de dívida
+                divida_titulo = render_text("DÍVIDA DO BARÃO", 16, (255, 100, 100), bold=True, pixel_style=True)
+                tela.blit(divida_titulo, (x + 20, divida_y))
+                
+                # Valor devido
+                valor_texto = render_text(f"Valor devido: ${valor_devido:,}", 14, (255, 200, 200), bold=False, pixel_style=True)
+                tela.blit(valor_texto, (x + 20, divida_y + 25))
+                
+                # Corridas restantes
+                if corridas_restantes > 0:
+                    corridas_texto = render_text(f"Corridas restantes: {corridas_restantes}", 14, (255, 200, 200), bold=False, pixel_style=True)
+                else:
+                    corridas_texto = render_text("PRAZO VENCIDO!", 14, (255, 0, 0), bold=True, pixel_style=True)
+                tela.blit(corridas_texto, (x + 20, divida_y + 45))
+                
+                # Botão de pagamento (se tiver dinheiro suficiente)
+                if dinheiro >= valor_devido:
+                    botao_pagar_y = divida_y + 70
+                    botao_pagar_rect = pygame.Rect(x + 20, botao_pagar_y, largura - 40, 35)
+                    
+                    # Verificar se o mouse está sobre o botão
+                    mouse_x, mouse_y = pygame.mouse.get_pos()
+                    hover = botao_pagar_rect.collidepoint(mouse_x, mouse_y)
+                    
+                    cor_botao = (100, 200, 100) if hover else (80, 180, 80)
+                    pygame.draw.rect(tela, cor_botao, botao_pagar_rect)
+                    pygame.draw.rect(tela, (200, 200, 200), botao_pagar_rect, 2)
+                    
+                    botao_texto = render_text(f"PAGAR DÍVIDA (${valor_devido:,})", 14, (255, 255, 255), bold=True, pixel_style=True)
+                    texto_x = botao_pagar_rect.centerx - botao_texto.get_width() // 2
+                    texto_y = botao_pagar_rect.centery - botao_texto.get_height() // 2
+                    tela.blit(botao_texto, (texto_x, texto_y))
+                    
+                    # Armazenar retângulo do botão para processamento de eventos
+                    self.botao_pagar_divida_rect = botao_pagar_rect
+                else:
+                    # Não tem dinheiro suficiente
+                    falta = valor_devido - dinheiro
+                    falta_texto = render_text(f"Faltam ${falta:,} para pagar", 12, (200, 100, 100), bold=False, pixel_style=True)
+                    tela.blit(falta_texto, (x + 20, divida_y + 70))
+                    self.botao_pagar_divida_rect = None
+                
+                # Ajustar início do menu de opções
+                inicio_y = divida_y + 110
+            else:
+                # Sem dívida
+                self.botao_pagar_divida_rect = None
+                inicio_y = status_y + 180  # Começar após os status
+        except Exception as e:
+            print(f"[CELULAR] Erro ao obter status do jogador: {e}")
+            import traceback
+            traceback.print_exc()
+            # Mostrar mensagem de erro
+            erro_texto = render_text("Erro ao carregar status", 14, (255, 0, 0), bold=False, pixel_style=True)
+            tela.blit(erro_texto, (x + 20, status_y + 25))
+            self.botao_pagar_divida_rect = None
+            inicio_y = status_y + 180
+        
+        # Menu de opções (abaixo dos status/dívida)
+        config_menu_opcoes = self.config.get("menu_opcoes", {})
+        opcao_altura = config_menu_opcoes.get("altura_opcao", 34)
+        espacamento = config_menu_opcoes.get("espacamento", 4)
+        opcao_x = x + config_menu_opcoes.get("x", 55)
+        opcao_y_padding = config_menu_opcoes.get("y_padding", 5)
+        # Usar inicio_y_offset apenas se não houver dívida, senão usar inicio_y diretamente
+        if gerenciador_progresso.barao_emprestimo_ativo:
+            inicio_y_opcoes = inicio_y + 20  # Pequeno espaçamento após dívida
+        else:
+            # Calcular posição inicial das opções baseado no status
+            # Garantir que não ultrapasse a altura do menu
+            inicio_y_opcoes = inicio_y + 20  # Pequeno espaçamento após status
+        
+        # Verificar se as opções cabem no menu
+        altura_total_opcoes = len(self.menu_opcoes) * (opcao_altura + espacamento)
+        altura_maxima_menu = altura - (inicio_y_opcoes - y) - 20  # Altura disponível no menu
+        
+        # Se as opções não cabem, ajustar o início
+        if altura_total_opcoes > altura_maxima_menu:
+            # Ajustar para que as opções caibam no menu
+            inicio_y_opcoes = y + altura - altura_total_opcoes - 20
         
         for i, opcao in enumerate(self.menu_opcoes):
-            opcao_y = inicio_y + (i * opcao_altura)
+            opcao_y = inicio_y_opcoes + (i * (opcao_altura + espacamento))
+            
+            # Verificar se a opção está dentro do menu
+            if opcao_y + opcao_altura > y + altura:
+                break  # Parar de desenhar se ultrapassar o menu
             
             # Destaque se selecionada
             if i == self.opcao_selecionada:
@@ -297,8 +709,8 @@ class Celular:
             
             # Texto da opção
             cor = (255, 255, 255) if i == self.opcao_selecionada else (200, 200, 200)
-            texto = render_text(opcao, 20, cor, bold=(i == self.opcao_selecionada), pixel_style=True)
-            tela.blit(texto, (x + 40, opcao_y + 10))
+            texto = render_text(opcao, 18, cor, bold=(i == self.opcao_selecionada), pixel_style=True)
+            tela.blit(texto, (opcao_x, opcao_y + opcao_y_padding))
     
     def _desenhar_tela_missoes(self, tela, x, y, largura, altura):
         """Desenha a tela de missões"""
@@ -357,9 +769,9 @@ class Celular:
         
         # Barra de progresso
         barra_x = x + 20
-        barra_y = y + 120
+        barra_y = y + 100
         barra_largura = largura - 40
-        barra_altura = 30
+        barra_altura = 25
         
         # Fundo da barra
         pygame.draw.rect(tela, (50, 50, 50), (barra_x, barra_y, barra_largura, barra_altura))
@@ -370,19 +782,103 @@ class Celular:
         pygame.draw.rect(tela, (255, 255, 255), (barra_x, barra_y, barra_largura, barra_altura), 2)
         
         # Texto de porcentagem
-        texto_progresso = render_text(f"{porcentagem:.1f}%", 20, (255, 255, 255), bold=True, pixel_style=True)
-        tela.blit(texto_progresso, (barra_x + barra_largura // 2 - texto_progresso.get_width() // 2, barra_y + 5))
+        texto_progresso = render_text(f"{porcentagem:.1f}%", 18, (255, 255, 255), bold=True, pixel_style=True)
+        tela.blit(texto_progresso, (barra_x + barra_largura // 2 - texto_progresso.get_width() // 2, barra_y + 3))
         
         # Estatísticas
-        stats_y = barra_y + barra_altura + 30
-        stats_texto = render_text(f"Missões Completas: {missoes_completas}/{total_missoes}", 16, (200, 200, 200), bold=False, pixel_style=True)
+        stats_y = barra_y + barra_altura + 20
+        stats_texto = render_text(f"Missões: {missoes_completas}/{total_missoes}", 16, (200, 200, 200), bold=False, pixel_style=True)
         tela.blit(stats_texto, (x + 20, stats_y))
         
         # Capítulo atual
         capitulo = gerenciador_progresso.obter_capitulo_atual()
         if capitulo:
             capitulo_texto = render_text(f"Capítulo: {capitulo.upper()}", 16, (200, 200, 200), bold=False, pixel_style=True)
-            tela.blit(capitulo_texto, (x + 20, stats_y + 30))
+            tela.blit(capitulo_texto, (x + 20, stats_y + 25))
+        
+        # Status do jogador
+        status_y = stats_y + 55
+        status_titulo = render_text("STATUS DO JOGADOR", 20, (255, 200, 0), bold=True, pixel_style=True)
+        tela.blit(status_titulo, (x + 20, status_y))
+        
+        # Obter status do jogador diretamente do objeto status_jogador
+        try:
+            from core.status_jogador import status_jogador
+            popularidade = status_jogador.popularidade
+            fome = status_jogador.fome
+            sono = status_jogador.sono
+            tedio = status_jogador.tedio
+            dinheiro = gerenciador_progresso.dinheiro
+            
+            # Popularidade (amarelo) - mostrar valor e porcentagem
+            pop_porcentagem = min(100, (popularidade / 500) * 100)
+            pop_texto = render_text(f"Reputação: {popularidade:.0f}/500 ({pop_porcentagem:.1f}%)", 16, (255, 255, 0), bold=False, pixel_style=True)
+            tela.blit(pop_texto, (x + 20, status_y + 30))
+            
+            # Barra de reputação
+            pop_barra_x = x + 20
+            pop_barra_y = status_y + 50
+            pop_barra_largura = largura - 40
+            pop_barra_altura = 15
+            pop_preenchimento = int(pop_barra_largura * (pop_porcentagem / 100))
+            pygame.draw.rect(tela, (30, 30, 30), (pop_barra_x, pop_barra_y, pop_barra_largura, pop_barra_altura))
+            pygame.draw.rect(tela, (255, 255, 0), (pop_barra_x, pop_barra_y, pop_preenchimento, pop_barra_altura))
+            pygame.draw.rect(tela, (200, 200, 200), (pop_barra_x, pop_barra_y, pop_barra_largura, pop_barra_altura), 1)
+            
+            # Fome (verde/vermelho)
+            cor_fome = (0, 255, 0) if fome > 50 else (255, 200, 0) if fome > 25 else (255, 0, 0)
+            fome_texto = render_text(f"Fome: {fome:.0f}%", 16, cor_fome, bold=False, pixel_style=True)
+            tela.blit(fome_texto, (x + 20, status_y + 75))
+            
+            # Barra de fome
+            fome_barra_x = x + 20
+            fome_barra_y = status_y + 95
+            fome_barra_largura = largura - 40
+            fome_barra_altura = 15
+            fome_preenchimento = int(fome_barra_largura * (fome / 100))
+            pygame.draw.rect(tela, (30, 30, 30), (fome_barra_x, fome_barra_y, fome_barra_largura, fome_barra_altura))
+            pygame.draw.rect(tela, cor_fome, (fome_barra_x, fome_barra_y, fome_preenchimento, fome_barra_altura))
+            pygame.draw.rect(tela, (200, 200, 200), (fome_barra_x, fome_barra_y, fome_barra_largura, fome_barra_altura), 1)
+            
+            # Sono (azul)
+            cor_sono = (100, 150, 255) if sono > 50 else (255, 200, 0) if sono > 25 else (255, 0, 0)
+            sono_texto = render_text(f"Sono: {sono:.0f}%", 16, cor_sono, bold=False, pixel_style=True)
+            tela.blit(sono_texto, (x + 20, status_y + 120))
+            
+            # Barra de sono
+            sono_barra_x = x + 20
+            sono_barra_y = status_y + 140
+            sono_barra_largura = largura - 40
+            sono_barra_altura = 15
+            sono_preenchimento = int(sono_barra_largura * (sono / 100))
+            pygame.draw.rect(tela, (30, 30, 30), (sono_barra_x, sono_barra_y, sono_barra_largura, sono_barra_altura))
+            pygame.draw.rect(tela, cor_sono, (sono_barra_x, sono_barra_y, sono_preenchimento, sono_barra_altura))
+            pygame.draw.rect(tela, (200, 200, 200), (sono_barra_x, sono_barra_y, sono_barra_largura, sono_barra_altura), 1)
+            
+            # Tédio (cinza)
+            tedio_texto = render_text(f"Tédio: {tedio:.0f}%", 16, (150, 150, 150), bold=False, pixel_style=True)
+            tela.blit(tedio_texto, (x + 20, status_y + 165))
+            
+            # Barra de tédio
+            tedio_barra_x = x + 20
+            tedio_barra_y = status_y + 185
+            tedio_barra_largura = largura - 40
+            tedio_barra_altura = 15
+            tedio_preenchimento = int(tedio_barra_largura * (tedio / 100))
+            pygame.draw.rect(tela, (30, 30, 30), (tedio_barra_x, tedio_barra_y, tedio_barra_largura, tedio_barra_altura))
+            pygame.draw.rect(tela, (150, 150, 150), (tedio_barra_x, tedio_barra_y, tedio_preenchimento, tedio_barra_altura))
+            pygame.draw.rect(tela, (200, 200, 200), (tedio_barra_x, tedio_barra_y, tedio_barra_largura, tedio_barra_altura), 1)
+            
+            # Dinheiro (verde)
+            dinheiro_texto = render_text(f"Dinheiro: ${dinheiro:,}", 16, (0, 255, 0), bold=False, pixel_style=True)
+            tela.blit(dinheiro_texto, (x + 20, status_y + 210))
+        except Exception as e:
+            print(f"[CELULAR] Erro ao obter status do jogador na tela de progresso: {e}")
+            import traceback
+            traceback.print_exc()
+            # Mostrar mensagem de erro
+            erro_texto = render_text("Erro ao carregar status", 16, (255, 0, 0), bold=False, pixel_style=True)
+            tela.blit(erro_texto, (x + 20, status_y + 30))
     
     def _desenhar_tela_mensagens(self, tela, x, y, largura, altura):
         """Desenha a tela de mensagens"""

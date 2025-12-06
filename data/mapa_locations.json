@@ -10,14 +10,14 @@
     {
       "id": "fosso_ferrugem",
       "nome": "Fosso de Ferrugem",
-      "state": "unlocked",
-      "lockedThought": null,
+      "state": "locked_hidden",
+      "lockedThought": "Ainda não tenho motivo pra ir até lá...",
       "unlockFlags": []
     },
     {
       "id": "cinturao_industrial",
       "nome": "Cinturão Industrial",
-      "state": "unlocked",
+      "state": "locked_visible",
       "lockedThought": "Ouvi falar que aqui só entra quem tem inscrição paga… e eu não tô nessa lista ainda.",
       "unlockFlags": [
         "unlockRaceSet:cinturao_industrial"
@@ -26,7 +26,7 @@
     {
       "id": "montanha",
       "nome": "Montanha da Akira",
-      "state": "unlocked",
+      "state": "locked_hidden",
       "lockedThought": "Dizem que uma piloto fantasma domina essa montanha. Ainda não fui convidado pra esse velório.",
       "unlockFlags": [
         "unlockLocation:montanha"
@@ -35,8 +35,8 @@
     {
       "id": "torres_rex",
       "nome": "Torres do Rex",
-      "state": "locked_visible",
-      "lockedThought": "Esse é outro mundo. Por enquanto, só posso olhar de longe.",
+      "state": "unlocked",
+      "lockedThought": null,
       "unlockFlags": []
     },
     {
@@ -51,18 +51,38 @@
     {
       "id": "autódromo",
       "nome": "Autódromo",
-      "state": "unlocked",
-      "lockedThought": null,
-      "unlockFlags": []
+      "state": "locked_hidden",
+      "lockedThought": "Ainda não tenho motivo pra ir até lá...",
+      "unlockFlags": [
+        "m18_circo_da_coroa_active",
+        "crownCircuitActive"
+      ]
     },
     {
       "id": "iate_barao",
       "nome": "Iate do Barão",
-      "state": "locked_visible",
+      "state": "locked_hidden",
       "lockedThought": "O Barão tem um iate? Claro que tem. Mas ele só recebe quem ele quer.",
       "unlockFlags": [
-        "hasDebt=true",
-        "ch2_completed"
+        "unlockLocation:iate_barao"
+      ]
+    },
+    {
+      "id": "esconderijo_pixel",
+      "nome": "Esconderijo da Pixel",
+      "state": "locked_hidden",
+      "lockedThought": "Ainda não sei onde fica o esconderijo da Pixel...",
+      "unlockFlags": [
+        "unlockLocation:esconderijo_pixel"
+      ]
+    },
+    {
+      "id": "beco_neon",
+      "nome": "Beco Neon",
+      "state": "locked_hidden",
+      "lockedThought": "Ainda não tenho motivo pra ir até lá...",
+      "unlockFlags": [
+        "unlockLocation:beco_neon"
       ]
     }
   ]

@@ -12,7 +12,7 @@
       "id": "m2_teste_de_sobrevivencia",
       "nome": "Teste de Sobrevivência",
       "objetivo": "Complete a corrida de teste da garagem do Crank.",
-      "activateOnSceneId": "ch1_1b_crank_test_briefing",
+      "activateOnSceneId": "ch1_4b_housing_offer",
       "completeOnSceneId": "ch1_1c_crank_test_result",
       "chapter": "ch1"
     },
@@ -59,13 +59,13 @@
     {
       "id": "m8_oferta_envenenada",
       "nome": "Oferta Envenenada",
-      "objetivo": "Decida se aceita ou não o empréstimo do Barão.",
-      "activateOnSceneId": "ch2_2_barao_appears",
-      "completeOnSceneId": "ch2_6_pixel_reacts",
+      "objetivo": "Vá até a garagem falar com o Crank.",
+      "activateOnSceneId": "ch2_1_barao_intro",
+      "completeOnSceneId": "ch2_2_barao_offer",
       "chapter": "ch2"
     },
     {
-      "id": "m9_peso_da_divida",
+      "id": "m9a_peso_da_divida",
       "nome": "Peso da Dívida",
       "objetivo": "Use o crédito do Barão para melhorar seu carro sem deixar a dívida te engolir.",
       "activateOnSceneId": "ch2_4_loan_accepted",
@@ -81,10 +81,26 @@
       "chapter": "ch2"
     },
     {
+      "id": "m10b_corridas_cinturao",
+      "nome": "Prova de Fogo",
+      "objetivo": "Complete 3 corridas no Cinturão Industrial para provar seu valor.",
+      "activateOnSceneId": null,
+      "completeOnSceneId": null,
+      "chapter": "ch2"
+    },
+    {
+      "id": "m10c_voltar_oficina_crank",
+      "nome": "Conversa com Crank",
+      "objetivo": "Vá até a oficina falar com Crank.",
+      "activateOnSceneId": null,
+      "completeOnSceneId": "ch3_1_crank_briefing",
+      "chapter": "ch2"
+    },
+    {
       "id": "m11_chamado_da_montanha",
-      "nome": "Chamado da Montanha",
+      "nome": "Caminho do Santuário",
       "objetivo": "Suba até a montanha e encontre Akira.",
-      "activateOnSceneId": "ch3_1_crank_to_mountain",
+      "activateOnSceneId": "ch3_2_pixel_route",
       "completeOnSceneId": "ch3_3_meet_akira",
       "chapter": "ch3"
     },
@@ -100,46 +116,70 @@
       "id": "m13_teste_de_fluxo",
       "nome": "Teste de Fluxo",
       "objetivo": "Complete o Teste de Fluxo na montanha sob supervisão de Akira.",
-      "activateOnSceneId": "ch3_5_test_briefing",
-      "completeOnSceneId": "ch3_6_test_result",
+      "activateOnSceneId": "ch3_3_meet_akira",
+      "completeOnSceneId": "ch3_4_test_result",
       "chapter": "ch3"
     },
     {
       "id": "m14_tres_mundos",
       "nome": "Três Mundos",
-      "objetivo": "Corra na Ferrugem, no Cinturão e na Montanha para aumentar sua reputação.",
+      "objetivo": "Corra na Ferrugem, no Cinturão e na Montanha para aumentar sua reputação até 500.",
       "activateOnSceneId": "ch3_8_pixel_wrap",
       "completeOnSceneId": null,
       "chapter": "ch3"
     },
     {
+      "id": "m14b_voltar_oficina_pixel",
+      "nome": "Conversa com Crank",
+      "objetivo": "Vá até a oficina falar com Crank. Pixel tem algo importante para dizer.",
+      "activateOnSceneId": null,
+      "completeOnSceneId": "ch4_2_pixel_invitation",
+      "chapter": "ch3"
+    },
+    {
       "id": "m15_ruido_nos_servidores",
       "nome": "Ruído nos Servidores",
-      "objetivo": "Descubra por que o Rex começou a prestar atenção em você.",
-      "activateOnSceneId": "ch4_1_pixel_rex_watch",
-      "completeOnSceneId": "ch4_2_rex_observes",
+      "objetivo": "Vá até o esconderijo da Pixel no mapa para descobrir por que o Rex começou a prestar atenção em você.",
+      "activateOnSceneId": "ch4_2_pixel_invitation",
+      "completeOnSceneId": "ch4_3_meet_pixel_physical",
       "chapter": "ch4"
     },
     {
-      "id": "m16_contatos_estranhos",
-      "nome": "Contatos Estranhos",
-      "objetivo": "Conheça Slick e Glub e desbloqueie novos tipos de upgrades.",
-      "activateOnSceneId": "ch4_4_meet_slick",
-      "completeOnSceneId": "ch4_5_meet_glub",
+      "id": "m16_conhecer_glub",
+      "nome": "investigue sobre o 'Glub'",
+      "objetivo": "Vá até a fábrica do Boris e encontre Glub para vender peças antigas.",
+      "activateOnSceneId": "ch4_3_meet_pixel_physical",
+      "completeOnSceneId": "ch4_4_meet_glub",
+      "chapter": "ch4"
+    },
+    {
+      "id": "m16b_voltar_pixel",
+      "nome": "Conversa com Pixel",
+      "objetivo": "Vá até o esconderijo do Pixel. Ele tem algo importante para te dizer.",
+      "activateOnSceneId": "ch4_4_meet_glub",
+      "completeOnSceneId": "ch4_4b_pixel_slick_hint",
+      "chapter": "ch4"
+    },
+    {
+      "id": "m17_conhecer_slick",
+      "nome": "Mistério do Beco Neon",
+      "objetivo": "Vá até o Beco Neon e descubra o mistério que está acontecendo lá.",
+      "activateOnSceneId": "ch4_4b_pixel_slick_hint",
+      "completeOnSceneId": "ch4_5b_contar_pixel",
       "chapter": "ch4"
     },
     {
       "id": "m17_convite_da_coroa",
       "nome": "Convite da Coroa",
       "objetivo": "Aceite o Convite para o Circuito da Coroa enviado por Rex.",
-      "activateOnSceneId": "ch5_1_rex_invite_circuit",
+      "activateOnSceneId": "ch5_0b_transicao_tunagens",
       "completeOnSceneId": "ch5_3_akira_reacts",
       "chapter": "ch5"
     },
     {
       "id": "m18_circo_da_coroa",
       "nome": "Circo da Coroa",
-      "objetivo": "Complete as etapas 1, 2 e 3 do Circuito da Coroa.",
+      "objetivo": "Complete as etapas 1, 2 e 3 do Circuito da Coroa no autódromo.",
       "activateOnSceneId": "ch5_5_stage1_intro",
       "completeOnSceneId": "ch5_5_stage3_post",
       "chapter": "ch5"
@@ -148,7 +188,7 @@
       "id": "m19_jogo_do_rei",
       "nome": "Jogo do Rei",
       "objetivo": "Encare a corrida final do Circuito da Coroa sob o olhar de Rex.",
-      "activateOnSceneId": "ch5_6_pre_final_rex",
+      "activateOnSceneId": null,
       "completeOnSceneId": "ch5_7_post_final_epilogue",
       "chapter": "ch5"
     },
@@ -157,7 +197,7 @@
       "nome": "Tabuleiro Virado",
       "objetivo": "Decida que tipo de piloto você se tornou após o Circuito da Coroa.",
       "activateOnSceneId": "ch5_7_post_final_epilogue",
-      "completeOnSceneId": "ch5_8_rex_close",
+      "completeOnSceneId": "ch5_9_rex_final_words",
       "chapter": "ch5"
     }
   ]

@@ -30,6 +30,15 @@
       "description": "Teste de dirigibilidade na montanha sob supervisão de Akira."
     },
     {
+      "id": "mountain_test_run",
+      "nome": "Teste de Fluxo",
+      "track": 3,
+      "laps": 1,
+      "difficulty": "medio",
+      "tipo": "corrida",
+      "description": "Teste de dirigibilidade na montanha sob supervisão de Akira."
+    },
+    {
       "id": "crown_stage1",
       "nome": "Circuito da Coroa - Etapa 1",
       "track": 8,

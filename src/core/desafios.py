@@ -1,7 +1,3 @@
-# src/core/desafios.py
-"""
-Sistema de Desafios/Missões
-"""
 import json
 import os
 import random

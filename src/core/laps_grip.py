@@ -120,6 +120,9 @@ def carregar_checkpoints_grip(numero_pista, superficie_pista=None):
         import json
         arquivo = os.path.join(DIR_DATA, f"checkpoints_pista_{numero_pista}.json")
         
+        print(f"[CHECKPOINTS] Tentando carregar checkpoints da pista {numero_pista} de: {arquivo}")
+        print(f"[CHECKPOINTS] Arquivo existe? {os.path.exists(arquivo)}")
+        
         if os.path.exists(arquivo):
             with open(arquivo, 'r', encoding='utf-8') as f:
                 dados = json.load(f)
@@ -135,9 +138,18 @@ def carregar_checkpoints_grip(numero_pista, superficie_pista=None):
                         checkpoints.append((float(cp[0]), float(cp[1]), 0))
                 
                 if checkpoints:
+                    print(f"[CHECKPOINTS] Carregados {len(checkpoints)} checkpoints do JSON para pista {numero_pista}")
                     return checkpoints
+                else:
+                    print(f"[CHECKPOINTS] Arquivo JSON existe mas não contém checkpoints válidos")
+            else:
+                print(f"[CHECKPOINTS] Arquivo JSON existe mas checkpoints_json está vazio")
+        else:
+            print(f"[CHECKPOINTS] Arquivo JSON não encontrado, usando checkpoints hardcoded")
     except Exception as e:
-        print(f"Erro ao carregar checkpoints do JSON: {e}")
+        print(f"[CHECKPOINTS] Erro ao carregar checkpoints do JSON: {e}")
+        import traceback
+        traceback.print_exc()
     
     if numero_pista == 1:
         checkpoint_1 = (centro_x + -244, centro_y + 42, 90)  # Ângulo: 90°
@@ -181,36 +193,6 @@ def carregar_checkpoints_grip(numero_pista, superficie_pista=None):
             tuple(checkpoint_18),
             tuple(checkpoint_19),
         ]
-    elif numero_pista == 4:
-        finish_line = (centro_x + 50, centro_y + 50)
-        section1 = (centro_x + 3150, centro_y + 600)
-        section2 = (centro_x + 850, centro_y + 900)
-        checkpoints = [tuple(finish_line), tuple(section1), tuple(section2)]
-    elif numero_pista == 5:
-        finish_line = (centro_x + 50, centro_y + 50)
-        section1 = (centro_x + 1500, centro_y + 1150)
-        section2 = (centro_x - 500, centro_y + 2150)
-        checkpoints = [tuple(finish_line), tuple(section1), tuple(section2)]
-    elif numero_pista == 6:
-        finish_line = (centro_x + 50, centro_y + 50)
-        section1 = (centro_x + 700, centro_y + 2750)
-        section2 = (centro_x - 1000, centro_y + 950)
-        checkpoints = [tuple(finish_line), tuple(section1), tuple(section2)]
-    elif numero_pista == 7:
-        finish_line = (centro_x + 50, centro_y + 50)
-        section1 = (centro_x + 400, centro_y + 1350)
-        section2 = (centro_x + 700, centro_y - 450)
-        checkpoints = [tuple(finish_line), tuple(section1), tuple(section2)]
-    elif numero_pista == 8:
-        finish_line = (centro_x + 50, centro_y + 50)
-        section1 = (centro_x + 950, centro_y + 700)
-        section2 = (centro_x + 1700, centro_y + 1950)
-        checkpoints = [tuple(finish_line), tuple(section1), tuple(section2)]
-    elif numero_pista == 9:
-        finish_line = (centro_x + 50, centro_y + 50)
-        section1 = (centro_x + 1550, centro_y + 200)
-        section2 = (centro_x + 1450, centro_y + 2600)
-        checkpoints = [tuple(finish_line), tuple(section1), tuple(section2)]
     else:
         checkpoints = [(centro_x + 50, centro_y - 100)]
     

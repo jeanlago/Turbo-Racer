@@ -1,0 +1,93 @@
+{
+  "menu": {
+    "largura": 352,
+    "altura": 584,
+    "x": "centro",
+    "y": "centro",
+    "offset_x": 0,
+    "offset_y": 0
+  },
+  "hora": {
+    "x": 150,
+    "y": 91,
+    "tamanho_fonte": 24,
+    "cor": [
+      255,
+      255,
+      255
+    ],
+    "negrito": true
+  },
+  "dia": {
+    "x": 45,
+    "y": 91,
+    "tamanho_fonte": 18,
+    "cor": [
+      200,
+      200,
+      200
+    ],
+    "negrito": true
+  },
+  "status": {
+    "titulo": {
+      "x": 150,
+      "y_offset": 115,
+      "tamanho_fonte": 18,
+      "cor": [
+        255,
+        200,
+        0
+      ],
+      "negrito": true
+    },
+    "espacamento_linhas": 33,
+    "barra_altura": 13,
+    "barra_largura_offset": 100,
+    "barra_espacamento": 15,
+    "barra_x_offset": 54,
+    "barra_y_offset_base": 40,
+    "texto_x_offset": 60,
+    "texto_y_offset_base": 25
+  },
+  "menu_opcoes": {
+    "inicio_y_offset": 288,
+    "altura_opcao": 34,
+    "espacamento": 4,
+    "x": 55,
+    "y_padding": 5
+  },
+  "titulo": {
+    "x": 20,
+    "y": 20,
+    "tamanho_fonte": 28,
+    "cor": [
+      255,
+      255,
+      255
+    ],
+    "negrito": true
+  },
+  "voltar": {
+    "x_offset": -150,
+    "y_offset": -30,
+    "tamanho_fonte": 16,
+    "cor": [
+      200,
+      200,
+      200
+    ],
+    "negrito": false
+  },
+  "overlay": {
+    "opacidade": 145
+  },
+  "borda": {
+    "cor": [
+      100,
+      150,
+      200
+    ],
+    "espessura": 3
+  }
+}

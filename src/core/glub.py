@@ -174,6 +174,62 @@ class Glub:
         gerenciador_progresso.glub_nome_revelado = getattr(self, 'nome_revelado', False)
         gerenciador_progresso.salvar()
     
+    def verificar_aparecer_primeira_vez(self):
+        """Verifica se deve mostrar a primeira aparição do Glub na loja"""
+        if not self.sprites_carregados:
+            self.carregar_sprites()
+        
+        # Verificar cooldown de 4 dias
+        from core.tempo_jogo import gerenciador_tempo
+        from core.progresso import gerenciador_progresso
+        
+        data_atual = gerenciador_tempo.obter_data_atual()
+        ultima_aparicao_data = getattr(gerenciador_progresso, 'glub_ultima_aparicao_data', None)
+        
+        # Calcular dias desde última aparição
+        dias_desde_ultima_aparicao = 999  # Valor alto se nunca apareceu
+        if ultima_aparicao_data:
+            from datetime import datetime
+            ultima_aparicao = datetime.strptime(ultima_aparicao_data, "%Y-%m-%d").date()
+            dias_desde_ultima_aparicao = (data_atual - ultima_aparicao).days
+        
+        # Se não é a primeira vez e não passaram 4 dias, não aparecer
+        if self.primeira_aparicao_feita and dias_desde_ultima_aparicao < 4:
+            print(f"[GLUB] Cooldown ativo: {dias_desde_ultima_aparicao}/4 dias passados")
+            return False
+        
+        if not self.primeira_aparicao_feita:
+            # Primeira aparição - mostrar apresentação
+            self.ativo = True
+            self.fase_dialogo = "apresentacao"
+            self.sprite_atual = self.sprite_encontro if self.sprite_encontro else self.sprite_curioso
+            texto = "Olá! Eu sou o Glub. Compro peças antigas por um bom preço. Se você tiver alguma peça usada que não precisa mais, eu posso comprar dela por 2.5x o valor que você pagou!"
+            self._iniciar_animacao_texto(texto)
+            # Atualizar última aparição
+            gerenciador_progresso.glub_ultima_aparicao_data = data_atual.strftime("%Y-%m-%d")
+            gerenciador_progresso.salvar()
+            return True
+        else:
+            # Já foi apresentado - verificar se pode aparecer (cooldown de 4 dias)
+            if dias_desde_ultima_aparicao >= 4:
+                # Atualizar última aparição
+                gerenciador_progresso.glub_ultima_aparicao_data = data_atual.strftime("%Y-%m-%d")
+                gerenciador_progresso.salvar()
+                # Abrir loja diretamente
+                self.ativo = True
+                self.fase_dialogo = "loja"
+                return True
+            else:
+                return False
+    
+    def ativar_loja(self):
+        """Ativa a loja do Glub diretamente (sem verificar cooldown)"""
+        if not self.sprites_carregados:
+            self.carregar_sprites()
+        self.ativo = True
+        self.fase_dialogo = "loja"
+        return True
+    
     def verificar_aparecer(self, tipo_upgrade, nivel_antigo, prefixo_cor):
         """
         Verifica se o Glub deve aparecer após um upgrade ser comprado
@@ -265,6 +321,11 @@ class Glub:
             if "glub" in texto_lower or "eu sou" in texto_lower or "meu nome" in texto_lower:
                 self.nome_revelado = True
                 self.salvar_estado()
+    
+    def atualizar(self, dt):
+        """Atualiza animações do Glub (texto, etc)"""
+        if self.ativo:
+            self._atualizar_animacao_texto(dt)
     
     def _atualizar_animacao_texto(self, dt):
         """Atualiza animação de texto letra por letra"""
@@ -590,6 +651,9 @@ class Glub:
     
     def desenhar_dialogo(self, tela, dt):
         """Desenha o diálogo do Glub na tela no estilo visual novel"""
+        # Atualizar animação do texto
+        self._atualizar_animacao_texto(dt)
+        
         # Atualizar animações de dinheiro
         self._atualizar_animacoes_dinheiro(dt)
         

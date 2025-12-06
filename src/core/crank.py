@@ -236,12 +236,13 @@ class Crank:
     
     def carregar_estado(self):
         """Carrega o estado do Crank do progresso.json"""
-        self.humor_atual = gerenciador_progresso.crank_humor_atual
-        self.saude_carro = gerenciador_progresso.crank_saude_carro
-        self.tutorial_mostrado = gerenciador_progresso.crank_tutorial_mostrado
-        self.tutorial_upgrades_mostrado = gerenciador_progresso.crank_tutorial_upgrades_mostrado
-        self.prefixo_cor_ultimo_carro = gerenciador_progresso.crank_prefixo_cor_ultimo_carro
-        self.nome_revelado = gerenciador_progresso.crank_nome_revelado
+        # Garantir que os valores padrão são usados se não existirem no progresso
+        self.humor_atual = getattr(gerenciador_progresso, 'crank_humor_atual', 0)
+        self.saude_carro = getattr(gerenciador_progresso, 'crank_saude_carro', 1.0)
+        self.tutorial_mostrado = getattr(gerenciador_progresso, 'crank_tutorial_mostrado', False)
+        self.tutorial_upgrades_mostrado = getattr(gerenciador_progresso, 'crank_tutorial_upgrades_mostrado', False)
+        self.prefixo_cor_ultimo_carro = getattr(gerenciador_progresso, 'crank_prefixo_cor_ultimo_carro', None)
+        self.nome_revelado = getattr(gerenciador_progresso, 'crank_nome_revelado', False)
     
     def salvar_estado(self):
         """Salva o estado do Crank no progresso.json"""
@@ -1203,10 +1204,7 @@ class Crank:
             self.fechar()
     
     def mostrar_confirmacao_upgrade(self, tipo_upgrade, preco, nivel, prefixo_cor):
-        """Mostra diálogo de confirmação para compra de upgrade"""
-        if not self.sprites_carregados:
-            self.carregar_sprites()
-        
+        """Mostra diálogo de confirmação para compra de upgrade (sem sprite, apenas caixa simples)"""
         self.ativo = True
         self.fase_dialogo = "confirmar_upgrade"
         self.upgrade_pendente = {
@@ -1216,21 +1214,57 @@ class Crank:
             'prefixo_cor': prefixo_cor
         }
         self.confirmacao_resposta = None
-        
-        # Usar sprite normal ou convencido
-        if self.sprite_normal:
-            self.sprite_atual = self.sprite_normal
-        elif self.sprite_convencido:
-            self.sprite_atual = self.sprite_convencido
-        else:
-            self.sprite_atual = self.sprite_estressado if self.sprite_estressado else None
-        
-        from core.i18n import t
-        nome_upgrade = t(f"menu.upgrades.{tipo_upgrade}")
-        texto_completo = f"Quer mesmo melhorar o {nome_upgrade} para o nível {nivel + 1}? Vai custar ${preco:,}. Confirma aí."
-        self._iniciar_animacao_texto(texto_completo)
+        self.sprite_atual = None  # Não usar sprite na confirmação
+        self.opcao_confirmacao_selecionada = 0  # Inicializar opção selecionada
         
         return True
+    
+    def _desenhar_confirmacao_upgrade_simples(self, tela, dt):
+        """Desenha caixa de confirmação idêntica ao estilo do Boris"""
+        render_text = _get_render_text()
+        from core.i18n import t
+        
+        # Obter informações do upgrade pendente
+        if not hasattr(self, 'upgrade_pendente') or self.upgrade_pendente is None:
+            return
+        
+        tipo_upgrade = self.upgrade_pendente.get('tipo', '')
+        preco = self.upgrade_pendente.get('preco', 0)
+        nivel = self.upgrade_pendente.get('nivel', 0)
+        
+        # Nome do upgrade traduzido
+        nome_upgrade = t(f"menu.upgrades.{tipo_upgrade}")
+        
+        # Inicializar opção selecionada se não existir
+        if not hasattr(self, 'opcao_confirmacao_selecionada'):
+            self.opcao_confirmacao_selecionada = 0
+        
+        # Desenhar caixa de confirmação (idêntica ao Boris)
+        caixa_largura = 500
+        caixa_altura = 180
+        caixa_x = (LARGURA - caixa_largura) // 2
+        caixa_y = ALTURA - caixa_altura - 260
+        
+        overlay = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 220))
+        tela.blit(overlay, (caixa_x, caixa_y))
+        pygame.draw.rect(tela, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 2)
+        
+        titulo = render_text("CONFIRMAÇÃO DE COMPRA", 22, (255, 255, 0), bold=True, pixel_style=True)
+        tela.blit(titulo, (caixa_x + (caixa_largura - titulo.get_width()) // 2, caixa_y + 10))
+        
+        desc = render_text(f"{nome_upgrade.upper()} nível {nivel + 1}", 18, (220, 220, 220), bold=False, pixel_style=True)
+        preco_txt = render_text(f"Preço: ${preco:,}", 18, (180, 255, 180), bold=False, pixel_style=True)
+        tela.blit(desc, (caixa_x + 20, caixa_y + 45))
+        tela.blit(preco_txt, (caixa_x + 20, caixa_y + 70))
+        
+        # Opções (idênticas ao Boris)
+        opcoes = ["COMPRAR PEÇA", "SAIR"]
+        for i, texto_opcao in enumerate(opcoes):
+            cor = (0, 200, 255) if i == self.opcao_confirmacao_selecionada else (200, 200, 200)
+            txt = render_text(texto_opcao, 20, cor, bold=True, pixel_style=True)
+            y = caixa_y + 105 + i * 30
+            tela.blit(txt, (caixa_x + 40, y))
     
     def calcular_preco_com_humor(self, preco_base):
         """Calcula o preço final baseado no humor do Crank"""
@@ -1487,38 +1521,33 @@ class Crank:
                         return "processado"
                 
                 elif self.fase_dialogo == "confirmar_upgrade":
-                    if len(self.texto_exibido) < len(self.texto_completo):
-                        self._completar_animacao_texto()
-                        # Não fazer mais nada neste pressionamento
-                    else:
-                        # Navegar entre opções ou confirmar/cancelar
-                        from core.i18n import t
-                        opcoes = [t("menu.confirmar"), t("menu.cancelar")]
-                        
-                        if not hasattr(self, 'opcao_confirmacao_selecionada'):
-                            self.opcao_confirmacao_selecionada = 0
-                        
-                        if ev.key in (pygame.K_UP, pygame.K_w):
-                            self.opcao_confirmacao_selecionada = (self.opcao_confirmacao_selecionada - 1) % len(opcoes)
-                        elif ev.key in (pygame.K_DOWN, pygame.K_s):
-                            self.opcao_confirmacao_selecionada = (self.opcao_confirmacao_selecionada + 1) % len(opcoes)
-                        elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
-                            # Confirmar seleção
-                            if self.opcao_confirmacao_selecionada == 0:  # Confirmar
-                                self.confirmacao_resposta = True
-                                self.fechar()
-                                return "confirmado"
-                            else:  # Cancelar
-                                self.confirmacao_resposta = False
-                                self.upgrade_pendente = None
-                                self.fechar()
-                                return "cancelado"
-                        elif ev.key == pygame.K_ESCAPE:
-                            # Cancelar upgrade
+                    # Navegar entre opções ou confirmar/cancelar (estilo Boris)
+                    opcoes = ["COMPRAR PEÇA", "SAIR"]
+                    
+                    if not hasattr(self, 'opcao_confirmacao_selecionada'):
+                        self.opcao_confirmacao_selecionada = 0
+                    
+                    if ev.key in (pygame.K_UP, pygame.K_w):
+                        self.opcao_confirmacao_selecionada = (self.opcao_confirmacao_selecionada - 1) % len(opcoes)
+                    elif ev.key in (pygame.K_DOWN, pygame.K_s):
+                        self.opcao_confirmacao_selecionada = (self.opcao_confirmacao_selecionada + 1) % len(opcoes)
+                    elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
+                        # Confirmar seleção
+                        if self.opcao_confirmacao_selecionada == 0:  # COMPRAR PEÇA
+                            self.confirmacao_resposta = True
+                            self.fechar()
+                            return "confirmado"
+                        else:  # SAIR
                             self.confirmacao_resposta = False
                             self.upgrade_pendente = None
                             self.fechar()
                             return "cancelado"
+                    elif ev.key == pygame.K_ESCAPE:
+                        # Cancelar upgrade
+                        self.confirmacao_resposta = False
+                        self.upgrade_pendente = None
+                        self.fechar()
+                        return "cancelado"
             
             elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                 mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -1707,41 +1736,33 @@ class Crank:
                             return "processado"  # Marcar que o evento foi processado
                 
                 elif self.fase_dialogo == "confirmar_upgrade":
-                    if len(self.texto_exibido) < len(self.texto_completo):
-                        self._completar_animacao_texto()
-                    else:
-                        from core.i18n import t
-                        render_text = _get_render_text()
-                        opcoes = [t("menu.confirmar"), t("menu.cancelar")]
-                        espacamento = 25
-                        botao_largura = int(LARGURA * 0.45)
-                        botao_x = (LARGURA - botao_largura) // 2
-                        
-                        altura_total = len(opcoes) * 40 + (len(opcoes) - 1) * espacamento
-                        inicio_y = (ALTURA - altura_total) // 2
-                        
-                        # Calcular hitboxes
-                        hitboxes = []
-                        y_calc = inicio_y
-                        for opcao_nome in opcoes:
-                            texto_opcao_temp = render_text(opcao_nome, 24, (255, 255, 255), bold=False, pixel_style=False)
-                            texto_y_calc = y_calc
-                            linha_y_calc = texto_y_calc + texto_opcao_temp.get_height() + 5
-                            altura_opcao = linha_y_calc - texto_y_calc + 10
-                            hitboxes.append(pygame.Rect(botao_x, texto_y_calc, botao_largura, altura_opcao))
-                            y_calc = linha_y_calc + espacamento
-                        
-                        for i, rect in enumerate(hitboxes):
-                            if rect.collidepoint(mouse_x, mouse_y):
-                                if i == 0:  # Confirmar
-                                    self.confirmacao_resposta = True
-                                    self.fechar()
-                                    return "confirmado"
-                                elif i == 1:  # Cancelar
-                                    self.confirmacao_resposta = False
-                                    self.upgrade_pendente = None
-                                    self.fechar()
-                                    return "cancelado"
+                    # Calcular retângulos dos botões (idêntico ao Boris)
+                    if not hasattr(self, 'upgrade_pendente') or self.upgrade_pendente is None:
+                        return None
+                    
+                    caixa_largura = 500
+                    caixa_altura = 180
+                    caixa_x = (LARGURA - caixa_largura) // 2
+                    caixa_y = ALTURA - caixa_altura - 260
+                    botao_y_base = caixa_y + 105
+                    botao_altura = 30
+                    
+                    # Botão 0 = COMPRAR PEÇA
+                    rect_comprar = pygame.Rect(caixa_x + 40, botao_y_base, caixa_largura - 80, botao_altura)
+                    # Botão 1 = SAIR
+                    rect_sair = pygame.Rect(caixa_x + 40, botao_y_base + 30, caixa_largura - 80, botao_altura)
+                    
+                    if rect_comprar.collidepoint(mouse_x, mouse_y):
+                        # Confirmar compra
+                        self.confirmacao_resposta = True
+                        self.fechar()
+                        return "confirmado"
+                    elif rect_sair.collidepoint(mouse_x, mouse_y):
+                        # Cancelar
+                        self.confirmacao_resposta = False
+                        self.upgrade_pendente = None
+                        self.fechar()
+                        return "cancelado"
         
         return None
     
@@ -1765,7 +1786,12 @@ class Crank:
         if not self.ativo:
             return
         
-        # Garantir que os sprites estão carregados
+        # Se estiver em confirmação de upgrade, usar caixa simples sem sprite
+        if self.fase_dialogo == "confirmar_upgrade":
+            self._desenhar_confirmacao_upgrade_simples(tela, dt)
+            return
+        
+        # Garantir que os sprites estão carregados (apenas para outros diálogos)
         if not self.sprites_carregados:
             self.carregar_sprites()
         
@@ -2090,76 +2116,6 @@ class Crank:
                 linha_largura = botao_largura - 80
                 linha_x = botao_x + (botao_largura - linha_largura) // 2
                 linha_y = y_atual + texto_opcao.get_height() + 5
-                pygame.draw.line(tela, cor_linha, (linha_x, linha_y), (linha_x + linha_largura, linha_y), 1)
-                
-                y_atual = linha_y + espacamento
-        
-        # Desenhar opções de confirmação de upgrade (se estiver na fase de confirmar_upgrade e texto completo)
-        if self.fase_dialogo == "confirmar_upgrade" and len(self.texto_exibido) >= len(self.texto_completo):
-            from core.i18n import t
-            opcoes = [t("menu.confirmar"), t("menu.cancelar")]
-            espacamento = 25
-            botao_largura = int(LARGURA * 0.45)
-            botao_x = (LARGURA - botao_largura) // 2
-            
-            # Calcular posição Y para centralizar verticalmente
-            altura_total = len(opcoes) * 40 + (len(opcoes) - 1) * espacamento
-            inicio_y = (ALTURA - altura_total) // 2
-            y_atual = inicio_y
-            
-            # Obter posição do mouse para hover
-            mouse_x, mouse_y = pygame.mouse.get_pos()
-            
-            # Calcular hitboxes
-            hitboxes = []
-            y_calc = inicio_y
-            for opcao_nome in opcoes:
-                texto_opcao_temp = render_text(opcao_nome, 24, (255, 255, 255), bold=False, pixel_style=False)
-                texto_y_calc = y_calc
-                linha_y_calc = texto_y_calc + texto_opcao_temp.get_height() + 5
-                altura_opcao = linha_y_calc - texto_y_calc + 10
-                hitboxes.append(pygame.Rect(botao_x, texto_y_calc, botao_largura, altura_opcao))
-                y_calc = linha_y_calc + espacamento
-            
-            # Determinar qual opção está sob o mouse
-            opcao_hover = None
-            for i, rect in enumerate(hitboxes):
-                if rect.collidepoint(mouse_x, mouse_y):
-                    opcao_hover = i
-                    break
-            
-            mouse_sobre_qualquer_opcao = opcao_hover is not None
-            
-            # Inicializar opção selecionada se não existir
-            if not hasattr(self, 'opcao_confirmacao_selecionada'):
-                self.opcao_confirmacao_selecionada = 0
-            
-            # Desenhar opções
-            y_atual = inicio_y
-            for i, opcao_nome in enumerate(opcoes):
-                texto_opcao_temp = render_text(opcao_nome, 24, (255, 255, 255), bold=False, pixel_style=False)
-                texto_opcao_y = y_atual
-                linha_y = texto_opcao_y + texto_opcao_temp.get_height() + 5
-                
-                # Cor do texto: hover tem prioridade, senão mostrar seleção por teclado (mas só se não houver mouse sobre opções)
-                if i == opcao_hover:
-                    cor_texto = (255, 255, 255)  # Branco quando hover
-                    cor_linha = (220, 220, 220)  # Cinza mais claro no hover
-                elif i == self.opcao_confirmacao_selecionada and not mouse_sobre_qualquer_opcao:
-                    cor_texto = (255, 255, 255)  # Branco quando selecionado por teclado (sem mouse)
-                    cor_linha = (200, 200, 200)  # Cinza claro
-                else:
-                    cor_texto = (180, 180, 180)  # Cinza quando não selecionado
-                    cor_linha = (100, 100, 100)  # Cinza escuro
-                
-                # Desenhar texto da opção (centralizado)
-                texto_opcao = render_text(opcao_nome, 24, cor_texto, bold=False, pixel_style=False)
-                texto_opcao_x = botao_x + (botao_largura - texto_opcao.get_width()) // 2
-                tela.blit(texto_opcao, (texto_opcao_x, texto_opcao_y))
-                
-                # Desenhar linha embaixo do texto
-                linha_largura = botao_largura - 80
-                linha_x = botao_x + (botao_largura - linha_largura) // 2
                 pygame.draw.line(tela, cor_linha, (linha_x, linha_y), (linha_x + linha_largura, linha_y), 1)
                 
                 y_atual = linha_y + espacamento

@@ -510,53 +510,36 @@ def autodromo_corridas_loop(screen) -> Optional[dict]:
         {"id": "crown_final", "nome": "Corrida Final do Circuito da Coroa", "track": 8, "laps": 3, "difficulty": "dificil"}
     ]
     
-    # Verificar quais corridas estão desbloqueadas
+    # Verificar quais corridas estão desbloqueadas (sequencialmente)
     corridas_desbloqueadas = []
     if not hasattr(gerenciador_progresso, 'corridas_desbloqueadas'):
         gerenciador_progresso.corridas_desbloqueadas = set()
+    if isinstance(gerenciador_progresso.corridas_desbloqueadas, list):
+        gerenciador_progresso.corridas_desbloqueadas = set(gerenciador_progresso.corridas_desbloqueadas)
     
-    for corrida in corridas_coroa:
-        race_id = corrida["id"]
+    # Desbloquear etapa 1 se o circuito estiver ativo
+    crown_circuit_active = getattr(gerenciador_progresso, 'crownCircuitActive', False)
+    if crown_circuit_active and "crown_stage1" not in gerenciador_progresso.corridas_desbloqueadas:
+        gerenciador_progresso.corridas_desbloqueadas.add("crown_stage1")
+        gerenciador_progresso.salvar()
+    
+    # Verificar quais corridas estão desbloqueadas na ordem correta
+    ordem_corridas = ["crown_stage1", "crown_stage2", "crown_stage3", "crown_final"]
+    for race_id in ordem_corridas:
         if race_id in gerenciador_progresso.corridas_desbloqueadas:
-            corridas_desbloqueadas.append(corrida)
-    
-    if not corridas_desbloqueadas:
-        # Nenhuma corrida desbloqueada - mostrar mensagem
-        bg = pygame.Surface((LARGURA, ALTURA))
-        bg.fill((20, 20, 30))
-        screen.blit(bg, (0, 0))
-        
-        mensagem = render_text("Nenhuma corrida do Circuito da Coroa disponível ainda.", 32, (255, 255, 255), bold=True, pixel_style=True)
-        mensagem_x = (LARGURA - mensagem.get_width()) // 2
-        mensagem_y = ALTURA // 2 - 50
-        screen.blit(mensagem, (mensagem_x, mensagem_y))
-        
-        instrucao = render_text("Pressione ESC para voltar", 20, (150, 150, 150), bold=False, pixel_style=True)
-        instrucao_x = (LARGURA - instrucao.get_width()) // 2
-        instrucao_y = mensagem_y + 80
-        screen.blit(instrucao, (instrucao_x, instrucao_y))
-        
-        pygame.display.flip()
-        
-        aguardando = True
-        while aguardando:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    return None
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        return None
-            clock.tick(FPS)
-        
-        return None
+            # Encontrar a corrida correspondente
+            for corrida in corridas_coroa:
+                if corrida["id"] == race_id:
+                    corridas_desbloqueadas.append(corrida)
+                    break
     
     corrida_selecionada_idx = 0
     
-    # Fundo
+    # Fundo - usar autodromo_fora_dia.png
     from config import DIR_UI
-    caminho_tela_pc = os.path.join(DIR_UI, "tela_pc.png")
-    if os.path.exists(caminho_tela_pc):
-        bg_raw = pygame.image.load(caminho_tela_pc).convert_alpha()
+    caminho_bg = os.path.join(DIR_UI, "autodromo_fora_dia.png")
+    if os.path.exists(caminho_bg):
+        bg_raw = pygame.image.load(caminho_bg).convert_alpha()
         bg = pygame.transform.scale(bg_raw, (LARGURA, ALTURA))
     else:
         bg = pygame.Surface((LARGURA, ALTURA))
@@ -591,35 +574,64 @@ def autodromo_corridas_loop(screen) -> Optional[dict]:
         
         screen.blit(bg, (0, 0))
         
-        # Título
-        titulo = render_text("CIRCUITO DA COROA - AUTÓDROMO", 48, (255, 215, 0), bold=True, pixel_style=True)
-        titulo_x = (LARGURA - titulo.get_width()) // 2
-        screen.blit(titulo, (titulo_x, 30))
+        # Overlay escuro (como nas outras telas)
+        overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180))
+        screen.blit(overlay, (0, 0))
         
-        # Lista de corridas
-        lista_y = 150
-        espacamento = 80
-        
-        for i, corrida in enumerate(corridas_desbloqueadas):
-            y_pos = lista_y + i * espacamento
+        # Menu centralizado (estilo similar à Akira)
+        if corridas_desbloqueadas:
+            menu_largura = 800
+            menu_altura = len(corridas_desbloqueadas) * 90 + 60
+            menu_x = (LARGURA - menu_largura) // 2
+            menu_y = (ALTURA - menu_altura) // 2
             
-            # Destaque para corrida selecionada
-            if i == corrida_selecionada_idx:
-                highlight = pygame.Surface((LARGURA - 200, 60), pygame.SRCALPHA)
-                highlight.fill((255, 215, 0, 50))
-                screen.blit(highlight, (100, y_pos - 10))
-                pygame.draw.rect(screen, (255, 215, 0), (100, y_pos - 10, LARGURA - 200, 60), 3)
+            # Fundo do menu
+            menu_overlay = pygame.Surface((menu_largura, menu_altura), pygame.SRCALPHA)
+            menu_overlay.fill((0, 0, 0, 200))
+            screen.blit(menu_overlay, (menu_x, menu_y))
+            pygame.draw.rect(screen, (150, 150, 150), (menu_x, menu_y, menu_largura, menu_altura), 2)
             
-            # Nome da corrida
-            nome_cor = (255, 255, 255) if i == corrida_selecionada_idx else (200, 200, 200)
-            nome_texto = render_text(corrida["nome"], 28, nome_cor, bold=(i == corrida_selecionada_idx), pixel_style=True)
-            screen.blit(nome_texto, (120, y_pos))
+            # Título
+            titulo = render_text("CIRCUITO DA COROA", 40, (255, 215, 0), bold=True, pixel_style=True)
+            titulo_x = menu_x + (menu_largura - titulo.get_width()) // 2
+            screen.blit(titulo, (titulo_x, menu_y + 15))
             
-            # Informações
-            info_texto = f"Pista {corrida['track']} | {corrida['laps']} voltas | Dificuldade: {corrida['difficulty']}"
-            info_cor = (180, 180, 180) if i == corrida_selecionada_idx else (120, 120, 120)
-            info = render_text(info_texto, 18, info_cor, bold=False, pixel_style=True)
-            screen.blit(info, (120, y_pos + 35))
+            # Lista de corridas
+            lista_y = menu_y + 70
+            espacamento = 90
+            
+            for i, corrida in enumerate(corridas_desbloqueadas):
+                y_pos = lista_y + i * espacamento
+                
+                # Destaque para corrida selecionada
+                if i == corrida_selecionada_idx:
+                    highlight = pygame.Surface((menu_largura - 20, 75), pygame.SRCALPHA)
+                    highlight.fill((255, 215, 0, 80))
+                    screen.blit(highlight, (menu_x + 10, y_pos - 5))
+                    pygame.draw.rect(screen, (255, 215, 0), (menu_x + 10, y_pos - 5, menu_largura - 20, 75), 2)
+                
+                # Nome da corrida
+                nome_cor = (255, 200, 100) if i == corrida_selecionada_idx else (200, 200, 200)
+                nome_texto = render_text(corrida["nome"], 30, nome_cor, bold=(i == corrida_selecionada_idx), pixel_style=True)
+                screen.blit(nome_texto, (menu_x + 30, y_pos + 5))
+                
+                # Informações
+                info_texto = f"{corrida['laps']} voltas | Dificuldade: {corrida['difficulty']}"
+                info_cor = (180, 180, 180) if i == corrida_selecionada_idx else (120, 120, 120)
+                info = render_text(info_texto, 20, info_cor, bold=False, pixel_style=True)
+                screen.blit(info, (menu_x + 30, y_pos + 45))
+        else:
+            # Nenhuma corrida desbloqueada - mostrar mensagem
+            mensagem = render_text("Nenhuma corrida do Circuito da Coroa disponível ainda.", 32, (255, 255, 255), bold=True, pixel_style=True)
+            mensagem_x = (LARGURA - mensagem.get_width()) // 2
+            mensagem_y = ALTURA // 2 - 50
+            screen.blit(mensagem, (mensagem_x, mensagem_y))
+            
+            instrucao = render_text("Pressione ESC para voltar", 20, (150, 150, 150), bold=False, pixel_style=True)
+            instrucao_x = (LARGURA - instrucao.get_width()) // 2
+            instrucao_y = mensagem_y + 80
+            screen.blit(instrucao, (instrucao_x, instrucao_y))
         
         # Instruções
         instrucoes = render_text("↑↓ navegar | ENTER iniciar | ESC voltar", 16, (150, 150, 150), bold=False, pixel_style=True)

@@ -61,7 +61,7 @@ from core.ranking import gerenciador_ranking
 from config import CAMINHO_MENU
 
 NOMES_BOTS = [
-    "SPEED DEMON", "NITRO RIDER", "TURBO BLAZE", "VELOCITY", "THUNDER",
+    "SPEED DEMON", "NITRO RIDER", "TURBO BLAZE", "RAPHEIZE", "THUNDER",
     "SHADOW RACER", "PHANTOM", "NIGHT RIDER", "STORM", "LIGHTNING",
     "FIREBALL", "BLAZE RUNNER", "SKY ROCKET", "WIND RIDER", "FLASH",
     "RAPID FIRE", "QUICK SILVER", "SONIC", "BOLT", "JET STREAM",
@@ -110,7 +110,7 @@ CARROS_DISPONIVEIS = [
 
 carregar_configuracoes_garagem()
 
-def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=None, modo_jogo=ModoJogo.UM_JOGADOR, tipo_jogo=TipoJogo.CORRIDA, voltas=1, dificuldade_ia="medio", modo_arcade=False, sem_bots=False):  # pyright: ignore[reportGeneralTypeIssues]
+def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=None, modo_jogo=ModoJogo.UM_JOGADOR, tipo_jogo=TipoJogo.CORRIDA, voltas=1, dificuldade_ia="medio", modo_arcade=False, sem_bots=False, race_id=None):  # pyright: ignore[reportGeneralTypeIssues]
     """
     Função principal do jogo - contém o loop principal do jogo.
     Complexidade intencional devido à natureza do loop de jogo que integra múltiplos sistemas.
@@ -169,6 +169,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
     from core.pista_tiles import PistaTiles
     numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
+    print(f"[MAIN] principal chamado: mapa_selecionado={mapa_selecionado}, numero_pista={numero_pista}, modo_arcade={modo_arcade}")
     
     pista_tiles = PistaTiles(largura=5000, altura=5000)
     superficie_pista_renderizada = pista_tiles.construir_pista(numero_pista, posicao_centro=(2500, 2500))
@@ -1037,7 +1038,15 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         else:
             num_ias = 3
         
+        # Para corridas do Circuito da Coroa, usar apenas os 3 carros mais rápidos
         carros_disponiveis_ia = CARROS_DISPONIVEIS.copy()
+        if race_id and race_id.startswith("crown_"):
+            # Ordenar carros por multiplicador_base (mais rápido = maior multiplicador)
+            carros_ordenados = sorted(carros_disponiveis_ia, key=lambda x: x.get("multiplicador_base", 1.0), reverse=True)
+            # Pegar os 3 mais rápidos
+            carros_disponiveis_ia = carros_ordenados[:3]
+            print(f"[CROWN CIRCUIT] Usando apenas os 3 carros mais rápidos: {[c['nome'] for c in carros_disponiveis_ia]}")
+        
         if carro_p1 in carros_disponiveis_ia:
             carros_disponiveis_ia.remove(carro_p1)
         if modo_jogo == ModoJogo.DOIS_JOGADORES and carro_p2 in carros_disponiveis_ia:
@@ -1695,6 +1704,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             elif i == 1:
                                 return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                             elif i == 2:
+                                # IMPORTANTE: Se o jogador desistir da corrida (menu de pausa -> menu), limpar a flag de corrida da campanha
+                                if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
+                                    # Usar a importação global de gerenciador_progresso (não importar localmente)
+                                    if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha:
+                                        print(f"[MAIN] Jogador desistiu da corrida (menu de pausa -> menu), limpando flag ultima_corrida_campanha")
+                                        gerenciador_progresso.ultima_corrida_campanha = None
+                                        gerenciador_progresso.salvar()
                                 gerenciador_estatisticas.finalizar_sessao()
                                 return
                             break
@@ -1727,6 +1743,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             elif chave == "reiniciar":
                                 return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                             elif chave == "menu":
+                                # IMPORTANTE: Se o jogador desistir da corrida (menu de pausa -> menu), limpar a flag de corrida da campanha
+                                if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
+                                    from core.progresso import gerenciador_progresso
+                                    if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha:
+                                        print(f"[MAIN] Jogador desistiu da corrida (menu de pausa -> menu), limpando flag ultima_corrida_campanha")
+                                        gerenciador_progresso.ultima_corrida_campanha = None
+                                        gerenciador_progresso.salvar()
                                 gerenciador_estatisticas.finalizar_sessao()
                                 return
                         elif acao == "cancelar":
@@ -2004,7 +2027,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         trofeu_drift_p2 = obter_trofeu_por_pontuacao(pontuacao_final_p2, pontuacoes_alvo)
                         
                         if not hasattr(principal, '_recompensa_drift_p2_calculada'):
-                            # Recompensas de drift baseadas na dificuldade (como Need for Speed)
+                            # Recompensas de drift baseadas na dificuldade
                             if dificuldade_ia == "facil":
                                 recompensa_drift_p2 = int(pontuacao_final_p2 / 150)
                             elif dificuldade_ia == "medio":
@@ -2038,7 +2061,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         trofeu_drift_p2 = obter_trofeu_por_pontuacao(pontuacao_final_p2, pontuacoes_alvo)
                         
                         if not hasattr(principal, '_recompensa_drift_p2_calculada'):
-                            # Recompensas de drift baseadas na dificuldade (como Need for Speed)
+                            # Recompensas de drift baseadas na dificuldade
                             if dificuldade_ia == "facil":
                                 recompensa_drift_p2 = int(pontuacao_final_p2 / 150)
                             elif dificuldade_ia == "medio":
@@ -2062,7 +2085,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             pontuacao_final_p2,
                             recompensa_drift_p2,
                             0,
-                            [0.0, 0.0, 0.0, 0.0]  # 4 opções possíveis (incluindo "ASSISTIR JOGADOR")
+                            [0.0, 0.0, 0.0, 0.0]
                         ]
             
             if modo_jogo != ModoJogo.DOIS_JOGADORES:
@@ -2083,27 +2106,27 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     if posicao_jogador_p1 == 1:
                         vencedor_p1 = "JOGADOR 1 VENCEU!"
                         if dificuldade_ia == "facil":
-                            recompensa_dinheiro_p1 = 600
+                            recompensa_dinheiro_p1 = 2300
                         elif dificuldade_ia == "medio":
-                            recompensa_dinheiro_p1 = 1500
+                            recompensa_dinheiro_p1 = 4500
                         else:  # dificil
-                            recompensa_dinheiro_p1 = 3000
+                            recompensa_dinheiro_p1 = 9000
                     elif posicao_jogador_p1 == 2:
                         vencedor_p1 = "CORRIDA FINALIZADA!"
                         if dificuldade_ia == "facil":
-                            recompensa_dinheiro_p1 = 300
+                            recompensa_dinheiro_p1 = 900
                         elif dificuldade_ia == "medio":
-                            recompensa_dinheiro_p1 = 750
+                            recompensa_dinheiro_p1 = 1700
                         else:  # dificil
-                            recompensa_dinheiro_p1 = 1500
+                            recompensa_dinheiro_p1 = 3000
                     elif posicao_jogador_p1 == 3:
                         vencedor_p1 = "CORRIDA FINALIZADA!"
                         if dificuldade_ia == "facil":
-                            recompensa_dinheiro_p1 = 150
+                            recompensa_dinheiro_p1 = 500
                         elif dificuldade_ia == "medio":
-                            recompensa_dinheiro_p1 = 400
+                            recompensa_dinheiro_p1 = 1000
                         else:  # dificil
-                            recompensa_dinheiro_p1 = 800
+                            recompensa_dinheiro_p1 = 2000
                     else:
                         vencedor_p1 = "CORRIDA FINALIZADA!"
                         if dificuldade_ia == "facil":
@@ -2174,6 +2197,14 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             
                             numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                             gerenciador_estatisticas.registrar_corrida_completa(numero_pista, posicao_jogador_p1, tempo_final_p1)
+                            
+                            # IMPORTANTE: Limpar flag de corrida da campanha após completar a corrida
+                            # Isso permite que o sistema detecte se o jogador desistiu (flag ainda definida) vs completou (flag limpa)
+                            if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
+                                if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha:
+                                    print(f"[MAIN] Corrida da campanha completada, limpando flag ultima_corrida_campanha")
+                                    gerenciador_progresso.ultima_corrida_campanha = None
+                                    gerenciador_progresso.salvar()
                             
                             # Registrar no ranking
                             if posicao_jogador_p1 == 1:
@@ -2614,13 +2645,20 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 if numero_pista in [4, 5, 6]:
                                     print(f"[MAIN] Corrida do Cinturão Industrial completada na pista {numero_pista}")
                                     
-                                    # Verificar se é corrida da campanha (flag definida)
+                                    # Verificar se é corrida da campanha (flag definida) OU se o Cinturão está desbloqueado
                                     is_corrida_campanha = (hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and 
                                                           gerenciador_progresso.ultima_corrida_campanha and 
                                                           gerenciador_progresso.ultima_corrida_campanha.startswith("cinturao_pista_"))
                                     
-                                    if is_corrida_campanha:
-                                        print(f"[MAIN] Flag de corrida do cinturão detectada: {gerenciador_progresso.ultima_corrida_campanha}")
+                                    # Verificar se o Cinturão está desbloqueado (mesmo sem flag, se o Cinturão está desbloqueado, conta como corrida do Cinturão)
+                                    cinturao_desbloqueado = (getattr(gerenciador_progresso, 'cinturaoUnlocked', False) or 
+                                                             getattr(gerenciador_progresso, 'locations_unlocked_by_narrative', {}).get("cinturao_industrial", False))
+                                    
+                                    if is_corrida_campanha or cinturao_desbloqueado:
+                                        if is_corrida_campanha:
+                                            print(f"[MAIN] Flag de corrida do cinturão detectada: {gerenciador_progresso.ultima_corrida_campanha}")
+                                        else:
+                                            print(f"[MAIN] Cinturão desbloqueado detectado, registrando corrida mesmo sem flag")
                                         
                                         # Completar missão se estiver ativa
                                         from core.missoes import gerenciador_missoes
@@ -2629,6 +2667,38 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                             gerenciador_missoes.salvar()
                                             print(f"[MAIN] Missão m10_portoes_do_cinturao completada após corrida na pista {numero_pista}")
                                         
+                                        # Rastrear corridas completadas no Cinturão para m10b_corridas_cinturao
+                                        if not hasattr(gerenciador_progresso, 'corridas_cinturao_completas'):
+                                            gerenciador_progresso.corridas_cinturao_completas = set()
+                                        if isinstance(gerenciador_progresso.corridas_cinturao_completas, list):
+                                            gerenciador_progresso.corridas_cinturao_completas = set(gerenciador_progresso.corridas_cinturao_completas)
+                                        
+                                        # Adicionar esta pista às corridas completas (só se ainda não foi adicionada)
+                                        if numero_pista not in gerenciador_progresso.corridas_cinturao_completas:
+                                            gerenciador_progresso.corridas_cinturao_completas.add(numero_pista)
+                                            print(f"[MAIN] Corrida do Cinturão na pista {numero_pista} registrada. Total: {len(gerenciador_progresso.corridas_cinturao_completas)}/3")
+                                        else:
+                                            print(f"[MAIN] Corrida do Cinturão na pista {numero_pista} já estava registrada. Total: {len(gerenciador_progresso.corridas_cinturao_completas)}/3")
+                                        
+                                        # Verificar se completou 3 corridas
+                                        if len(gerenciador_progresso.corridas_cinturao_completas) >= 3:
+                                            if "m10b_corridas_cinturao" not in gerenciador_missoes.missoes_completas:
+                                                gerenciador_missoes.completar_missao("m10b_corridas_cinturao")
+                                                gerenciador_missoes.salvar()
+                                                print(f"[MAIN] Missão m10b_corridas_cinturao completada após completar 3 corridas no Cinturão!")
+                                                
+                                                # Atualizar capítulo para ch3 e narrative_system.current_chapter_id
+                                                capitulo_atual = gerenciador_progresso.obter_capitulo_atual()
+                                                if capitulo_atual != "ch3":
+                                                    print(f"[MAIN] Atualizando capítulo de {capitulo_atual} para ch3 após completar m10b_corridas_cinturao")
+                                                    gerenciador_progresso.definir_capitulo_atual("ch3")
+                                                    gerenciador_progresso.salvar()
+                                                
+                                                # Atualizar current_chapter_id do narrative_system
+                                                from core.narrative_system import narrative_system
+                                                narrative_system.current_chapter_id = "ch3"
+                                                print(f"[MAIN] narrative_system.current_chapter_id atualizado para ch3")
+                                        
                                         # Garantir que o progresso está salvo (IMPORTANTE: salvar ANTES de limpar a flag)
                                         gerenciador_progresso.salvar()
                                         print(f"[MAIN] Progresso salvo após corrida no Cinturão Industrial (pista {numero_pista})")
@@ -2636,7 +2706,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                         # NÃO limpar a flag aqui - deixar o menu.py fazer isso após verificar
                                         # A flag será limpa no menu.py quando voltar ao mapa
                                     else:
-                                        print(f"[MAIN] AVISO: Corrida do cinturão completada mas flag não encontrada. Pode não ser corrida da campanha.")
+                                        print(f"[MAIN] AVISO: Corrida do cinturão completada mas flag não encontrada e Cinturão não está desbloqueado. Pode não ser corrida da campanha.")
                         else:
                             print(f"[MAIN] ERRO: tempo_final_p1 é None! Não foi possível registrar a corrida.")
                     else:
@@ -3562,12 +3632,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             mercador_alien.desenhar_dialogo(tela, dt)
 
         if modo_jogo != ModoJogo.DOIS_JOGADORES and tipo_jogo != TipoJogo.DRIFT and not tela_fim_mostrada:
-            # Verificar se todos os carros terminaram (incluindo bots) antes de coletar resultados
-            todos_carros_finalizaram = corrida.todos_finalizados()
+            # Verificar se o jogador terminou
             carro1_finalizou = corrida.finalizou.get(carro1, False)
-            # Se todos finalizaram, coletar/atualizar resultados (mesmo se já existirem)
-            # No modo sem_bots, não precisa esperar todos finalizarem
-            if carro1_finalizou and (todos_carros_finalizaram or sem_bots):
+            todos_carros_finalizaram = corrida.todos_finalizados()
+            
+            # Se o jogador terminou, mostrar tela de resultados imediatamente (não esperar bots)
+            # A tela será atualizada em tempo real conforme os bots terminam
+            if carro1_finalizou:
                 vencedor = None
                 recompensa_dinheiro = 0
                 posicao_jogador = None
@@ -3633,6 +3704,15 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             status_jogador.perder_popularidade(8.0)
                     
                     status_jogador.salvar()
+                    
+                    # Verificar se a missão m14_tres_mundos deve ser completada (reputação >= 500)
+                    if status_jogador.popularidade >= 500.0:
+                        from core.missoes import gerenciador_missoes
+                        if gerenciador_missoes.missao_ativa_id == "m14_tres_mundos":
+                            if "m14_tres_mundos" not in gerenciador_missoes.missoes_completas:
+                                print(f"[MAIN] Reputação chegou a 500! Completando missão m14_tres_mundos...")
+                                gerenciador_missoes.completar_missao("m14_tres_mundos")
+                                gerenciador_missoes.salvar()
                 except Exception as e:
                     print(f"Erro ao atualizar status do jogador: {e}")
                 
@@ -3776,11 +3856,20 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             nome_traduzido = t(f"achievements.{ach['id']}")
                             popup_achievement.mostrar(nome_traduzido, ach['recompensa'])
 
+                # Coletar resultados de todos os carros (incluindo os que ainda não terminaram)
+                todos_carros = [c for c in carros if c is not None]
                 resultados = []
 
                 for carro in todos_carros:
-                    posicao = obter_posicao_jogador(carro, todos_carros)
-                    tempo = corrida.tempo_final.get(carro)
+                    # Se o carro terminou, obter posição e tempo
+                    if corrida.finalizou.get(carro, False):
+                        posicao = obter_posicao_jogador(carro, todos_carros)
+                        tempo = corrida.tempo_final.get(carro)
+                    else:
+                        # Carro ainda não terminou - calcular posição temporária baseada no progresso
+                        posicao = obter_posicao_jogador(carro, todos_carros)
+                        tempo = None  # Ainda não tem tempo final
+                    
                     recompensa = 0
                     trofeu_carro = None
 
@@ -3790,15 +3879,20 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         trofeu_carro = trofeu
                     else:
                         nome = carro.nome if hasattr(carro, 'nome') else "IA"
-                        if posicao == 1:
-                            recompensa = 600 if dificuldade_ia == "facil" else 1500 if dificuldade_ia == "medio" else 3000
-                        elif posicao == 2:
-                            recompensa = 300 if dificuldade_ia == "facil" else 750 if dificuldade_ia == "medio" else 1500
-                        elif posicao == 3:
-                            recompensa = 150 if dificuldade_ia == "facil" else 400 if dificuldade_ia == "medio" else 800
+                        # Calcular recompensa apenas se o carro terminou
+                        if corrida.finalizou.get(carro, False) and posicao:
+                            if posicao == 1:
+                                recompensa = 600 if dificuldade_ia == "facil" else 1500 if dificuldade_ia == "medio" else 3000
+                            elif posicao == 2:
+                                recompensa = 300 if dificuldade_ia == "facil" else 750 if dificuldade_ia == "medio" else 1500
+                            elif posicao == 3:
+                                recompensa = 150 if dificuldade_ia == "facil" else 400 if dificuldade_ia == "medio" else 800
+                            else:
+                                recompensa = 100 if dificuldade_ia == "facil" else 200 if dificuldade_ia == "medio" else 400
+                            trofeu_carro = obter_trofeu_por_posicao(posicao) if posicao else trofeu_vazio
                         else:
-                            recompensa = 100 if dificuldade_ia == "facil" else 200 if dificuldade_ia == "medio" else 400
-                        trofeu_carro = obter_trofeu_por_posicao(posicao) if posicao else trofeu_vazio
+                            # Carro ainda não terminou - não mostrar recompensa ainda
+                            trofeu_carro = trofeu_vazio
 
                     resultados.append({
                         "posicao": posicao,
@@ -3808,15 +3902,15 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         "dinheiro": recompensa
                     })
 
-                # Ordenar por posição
-                resultados.sort(key=lambda x: x["posicao"] if x["posicao"] else 999)
+                # Ordenar por posição (carros que não terminaram ficam no final)
+                resultados.sort(key=lambda x: (x["posicao"] if x["posicao"] else 999, x["tempo"] if x["tempo"] is not None else float('inf')))
                 
                 # Se já existem resultados finais, atualizar; senão, criar
                 if estado_resultados_finais is not None:
-                    # Atualizar resultados existentes
+                    # Atualizar resultados existentes (atualização em tempo real)
                     estado_resultados_finais["resultados"] = resultados
                 else:
-                    # Criar novos resultados finais
+                    # Criar novos resultados finais assim que o jogador terminar
                     # No modo campanha, adicionar opção "Continuar" para seguir a história
                     opcoes_resultado = []
                     if not modo_arcade and modo_jogo == ModoJogo.UM_JOGADOR:
@@ -3831,8 +3925,66 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         "opcoes": opcoes_resultado,
                         "opcao_atual": 0
                     }
+                    print(f"[RESULTADOS] Tela de resultados criada assim que jogador terminou. Bots ainda correndo: {not todos_carros_finalizaram}")
                 # Limpar estado de fim de jogo individual para evitar sobreposição
                 estado_fim_jogo = None
+            elif estado_resultados_finais is not None and not todos_carros_finalizaram:
+                # Atualizar resultados em tempo real enquanto bots ainda estão correndo
+                todos_carros = [c for c in carros if c is not None]
+                resultados = []
+
+                for carro in todos_carros:
+                    # Se o carro terminou, obter posição e tempo
+                    if corrida.finalizou.get(carro, False):
+                        posicao = obter_posicao_jogador(carro, todos_carros)
+                        tempo = corrida.tempo_final.get(carro)
+                    else:
+                        # Carro ainda não terminou - calcular posição temporária baseada no progresso
+                        posicao = obter_posicao_jogador(carro, todos_carros)
+                        tempo = None  # Ainda não tem tempo final
+                    
+                    recompensa = 0
+                    trofeu_carro = None
+
+                    if carro == carro1:
+                        nome = "JOGADOR"
+                        # Buscar recompensa do jogador dos resultados existentes
+                        resultados_existentes = estado_resultados_finais.get("resultados", [])
+                        for r in resultados_existentes:
+                            if r.get("nome") == "JOGADOR":
+                                recompensa = r.get("dinheiro", 0)
+                                trofeu_carro = r.get("trofeu", trofeu_vazio)
+                                break
+                    else:
+                        nome = carro.nome if hasattr(carro, 'nome') else "IA"
+                        # Calcular recompensa apenas se o carro terminou
+                        if corrida.finalizou.get(carro, False) and posicao:
+                            if posicao == 1:
+                                recompensa = 600 if dificuldade_ia == "facil" else 1500 if dificuldade_ia == "medio" else 3000
+                            elif posicao == 2:
+                                recompensa = 300 if dificuldade_ia == "facil" else 750 if dificuldade_ia == "medio" else 1500
+                            elif posicao == 3:
+                                recompensa = 150 if dificuldade_ia == "facil" else 400 if dificuldade_ia == "medio" else 800
+                            else:
+                                recompensa = 100 if dificuldade_ia == "facil" else 200 if dificuldade_ia == "medio" else 400
+                            trofeu_carro = obter_trofeu_por_posicao(posicao) if posicao else trofeu_vazio
+                        else:
+                            # Carro ainda não terminou - não mostrar recompensa ainda
+                            trofeu_carro = trofeu_vazio
+
+                    resultados.append({
+                        "posicao": posicao,
+                        "nome": nome,
+                        "tempo": tempo,
+                        "trofeu": trofeu_carro,
+                        "dinheiro": recompensa
+                    })
+
+                # Ordenar por posição (carros que não terminaram ficam no final)
+                resultados.sort(key=lambda x: (x["posicao"] if x["posicao"] else 999, x["tempo"] if x["tempo"] is not None else float('inf')))
+                
+                # Atualizar resultados existentes (atualização em tempo real)
+                estado_resultados_finais["resultados"] = resultados
 
         if jogo_pausado:
             from core.menu import render_text

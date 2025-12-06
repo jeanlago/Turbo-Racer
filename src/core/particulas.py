@@ -1,4 +1,3 @@
-# src/core/particulas.py
 import math, random, pygame, os
 from config import DIR_EFFECTS
 

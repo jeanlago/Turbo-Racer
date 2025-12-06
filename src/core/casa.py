@@ -20,6 +20,72 @@ def _get_render_text():
 CAMINHO_HITBOXES = os.path.join(DIR_PROJETO, "data", "scenario_hitboxes.json")
 CAMINHO_HOVER = os.path.join(DIR_PROJETO, "assets", "images", "hover")
 
+def _mostrar_animacao_tempo(screen, horas: float, bg_atual):
+    """
+    Mostra animação de escurecimento com texto "Avançando X horas..."
+    
+    Args:
+        screen: Superfície da tela
+        horas: Quantidade de horas sendo avançadas
+        bg_atual: Background atual para desenhar por trás do overlay
+    """
+    from config import FPS
+    clock = pygame.time.Clock()
+    render_text = _get_render_text()
+    
+    duracao_total = 2.0  # Duração total da animação em segundos
+    tempo_decorrido = 0.0
+    
+    # Texto a ser exibido
+    texto = f"Avançando {int(horas)} horas..."
+    
+    while tempo_decorrido < duracao_total:
+        dt = clock.tick(FPS) / 1000.0
+        tempo_decorrido += dt
+        
+        # Calcular alpha do overlay (0.0 -> 1.0 -> 0.0)
+        progresso = tempo_decorrido / duracao_total
+        if progresso < 0.5:
+            # Primeira metade: escurecendo (0.0 -> 1.0)
+            alpha = progresso * 2.0
+        else:
+            # Segunda metade: clareando (1.0 -> 0.0)
+            alpha = 2.0 - (progresso * 2.0)
+        
+        alpha = max(0.0, min(1.0, alpha))
+        
+        # Desenhar background atual
+        screen.blit(bg_atual, (0, 0))
+        
+        # Desenhar overlay escuro
+        overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+        overlay_alpha = int(alpha * 220)  # Máximo de 220 de alpha
+        overlay.fill((0, 0, 0, overlay_alpha))
+        screen.blit(overlay, (0, 0))
+        
+        # Desenhar texto (mais visível quando está escuro)
+        if alpha > 0.3:  # Só mostrar texto quando estiver escuro o suficiente
+            texto_alpha = int((alpha - 0.3) / 0.7 * 255)  # 0.3 -> 1.0 mapeia para 0 -> 255
+            texto_alpha = max(0, min(255, texto_alpha))
+            
+            texto_surf = render_text(texto, 32, (255, 255, 255), bold=True, pixel_style=True)
+            texto_x = (LARGURA - texto_surf.get_width()) // 2
+            texto_y = ALTURA // 2
+            
+            # Criar superfície com alpha para o texto
+            texto_com_alpha = pygame.Surface(texto_surf.get_size(), pygame.SRCALPHA)
+            texto_com_alpha.fill((255, 255, 255, texto_alpha))
+            texto_surf.set_alpha(texto_alpha)
+            
+            screen.blit(texto_surf, (texto_x, texto_y))
+        
+        pygame.display.flip()
+        
+        # Processar eventos para não travar
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return
+
 def casa_loop(screen, sprite_fundo: Optional[str] = None) -> Optional[str]:
     """
     Loop principal da casa (point and click)
@@ -180,6 +246,18 @@ def casa_loop(screen, sprite_fundo: Optional[str] = None) -> Optional[str]:
                 if event.button == 1:  # Botão esquerdo
                     mouse_x, mouse_y = event.pos
                     
+                    # Verificar clique no botão voltar
+                    voltar_rect = pygame.Rect(20, 20, 200, 40)
+                    if voltar_rect.collidepoint(mouse_x, mouse_y):
+                        from core.tempo_jogo import gerenciador_tempo
+                        status_jogador.salvar()
+                        gerenciador_tempo.salvar()
+                        return "voltar_mapa"
+                    
+                    # Verificar clique em hitbox
+                if event.button == 1:  # Botão esquerdo
+                    mouse_x, mouse_y = event.pos
+                    
                     # Verificar clique em hitbox
                     for hb in hitboxes:
                         rect = pygame.Rect(hb["x"], hb["y"], hb["largura"], hb["altura"])
@@ -194,18 +272,46 @@ def casa_loop(screen, sprite_fundo: Optional[str] = None) -> Optional[str]:
                             
                             elif "cama" in hitbox_id:
                                 from core.tempo_jogo import gerenciador_tempo
+                                horas_avancadas = 8.0
+                                
+                                # Mostrar animação de escurecimento
+                                _mostrar_animacao_tempo(screen, horas_avancadas, bg)
+                                
+                                # Avançar tempo e atualizar status
                                 status_jogador.dormir("cama", 100.0)
-                                gerenciador_tempo.avancar_horas(8.0)  # Avançar 8 horas
+                                gerenciador_tempo.avancar_horas(horas_avancadas)
                                 gerenciador_tempo.salvar()
+                                
+                                # Recarregar background da casa (pode ter mudado para noite)
+                                from config import obter_caminho_sprite_dia_noite
+                                caminho_casa = obter_caminho_sprite_dia_noite("casa")
+                                if os.path.exists(caminho_casa):
+                                    bg_raw = pygame.image.load(caminho_casa).convert_alpha()
+                                    bg = pygame.transform.scale(bg_raw, (LARGURA, ALTURA))
+                                
                                 hora_atual = gerenciador_tempo.obter_hora_formatada()
                                 mensagem_temporaria = f"Você dormiu na cama. Sono restaurado completamente! Agora são {hora_atual}."
                                 tempo_mensagem = 0.0
                             
                             elif "sofa" in hitbox_id:
                                 from core.tempo_jogo import gerenciador_tempo
+                                horas_avancadas = 3.0
+                                
+                                # Mostrar animação de escurecimento
+                                _mostrar_animacao_tempo(screen, horas_avancadas, bg)
+                                
+                                # Avançar tempo e atualizar status
                                 status_jogador.dormir("sofa", 50.0)
-                                gerenciador_tempo.avancar_horas(3.0)  # Avançar 3 horas
+                                gerenciador_tempo.avancar_horas(horas_avancadas)
                                 gerenciador_tempo.salvar()
+                                
+                                # Recarregar background da casa (pode ter mudado para noite)
+                                from config import obter_caminho_sprite_dia_noite
+                                caminho_casa = obter_caminho_sprite_dia_noite("casa")
+                                if os.path.exists(caminho_casa):
+                                    bg_raw = pygame.image.load(caminho_casa).convert_alpha()
+                                    bg = pygame.transform.scale(bg_raw, (LARGURA, ALTURA))
+                                
                                 hora_atual = gerenciador_tempo.obter_hora_formatada()
                                 mensagem_temporaria = f"Você descansou no sofá. Sono parcialmente restaurado. Agora são {hora_atual}."
                                 tempo_mensagem = 0.0
@@ -403,6 +509,28 @@ def casa_loop(screen, sprite_fundo: Optional[str] = None) -> Optional[str]:
         # Instruções
         instrucoes = render_text("Clique nos objetos | ESC para voltar", 14, (150, 150, 150), bold=False, pixel_style=True)
         screen.blit(instrucoes, (10, ALTURA - 30))
+        
+        # Botão voltar (similar ao da oficina)
+        voltar_largura = 200
+        voltar_altura = 40
+        voltar_x = 20
+        voltar_y = 20
+        voltar_rect = pygame.Rect(voltar_x, voltar_y, voltar_largura, voltar_altura)
+        
+        # Verificar hover
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        voltar_hover = voltar_rect.collidepoint(mouse_x, mouse_y)
+        
+        # Desenhar botão
+        cor_botao = (100, 150, 200) if voltar_hover else (80, 120, 160)
+        pygame.draw.rect(screen, cor_botao, voltar_rect)
+        pygame.draw.rect(screen, (200, 200, 200), voltar_rect, 2)
+        
+        # Texto do botão
+        voltar_texto = render_text("ESC - Voltar", 18, (255, 255, 255), bold=True, pixel_style=True)
+        texto_x = voltar_rect.centerx - voltar_texto.get_width() // 2
+        texto_y = voltar_rect.centery - voltar_texto.get_height() // 2
+        screen.blit(voltar_texto, (texto_x, texto_y))
         
         pygame.display.flip()
     

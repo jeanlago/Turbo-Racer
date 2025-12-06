@@ -69,6 +69,9 @@ class IA:
         self.ultima_posicao = None
         self.tentativas_recuperacao = 0
         self.max_tentativas_recuperacao = 2
+        self.tempo_no_mesmo_checkpoint = 0.0
+        self.max_tempo_no_mesmo_checkpoint = 2.0  # Máximo de 2 segundos no mesmo checkpoint
+        self.ultimo_checkpoint_idx = -1
         
         self.tempo_batido = 0.0
         self.max_tempo_batido = 1.0
@@ -480,6 +483,16 @@ class IA:
     def controlar(self, carro, superficie_mascara, is_on_track, dt, superficie_pista_renderizada=None, corrida_iniciada=True, outros_carros=None):
         """Controla o carro com sistema inteligente"""
         
+        # Armazenar dt para uso na verificação de contra mão
+        self.dt = dt
+        
+        # Rastrear tempo no mesmo checkpoint
+        if self.ultimo_checkpoint_idx != self.checkpoint_atual:
+            self.tempo_no_mesmo_checkpoint = 0.0
+            self.ultimo_checkpoint_idx = self.checkpoint_atual
+        else:
+            self.tempo_no_mesmo_checkpoint += dt
+        
         # Garantir que atributos essenciais existam (segurança)
         if not hasattr(self, 'lookahead_points'):
             if hasattr(self, 'lookahead_multiplier'):
@@ -623,20 +636,143 @@ class IA:
             # Verificar se passou pelo checkpoint de duas formas:
             # 1. Dentro do retângulo expandido (checkpoint original)
             # 2. Proximidade ao checkpoint original (para IAs com offset)
-            passou_checkpoint = False
+            passou_checkpoint_posicao = False
+            distancia_ao_checkpoint = math.sqrt((carro.x - cx)**2 + (carro.y - cy)**2)
             if checkpoint_rect.collidepoint(carro.x, carro.y):
-                passou_checkpoint = True
+                passou_checkpoint_posicao = True
             else:
-                # Verificar distância ao checkpoint original (para IAs que passam com offset)
-                distancia_ao_checkpoint = math.sqrt((carro.x - cx)**2 + (carro.y - cy)**2)
                 # Se está a menos de 80px do checkpoint original, considera que passou
                 if distancia_ao_checkpoint < 80.0:
-                    passou_checkpoint = True
+                    passou_checkpoint_posicao = True
             
-            if passou_checkpoint:
+            # Verificar direção do movimento ANTES de marcar checkpoint como passado
+            # Isso evita que bots passem pelo lado errado e fiquem presos
+            contra_mao = False
+            passou_checkpoint = False
+            
+            if passou_checkpoint_posicao:
+                # Verificar se o carro está se movendo na direção correta
+                if hasattr(carro, 'vx') and hasattr(carro, 'vy'):
+                    velocidade = math.sqrt(carro.vx*carro.vx + carro.vy*carro.vy)
+                    if velocidade > 0.1:  # Se estiver se movendo
+                        # Calcular direção do movimento
+                        direcao_movimento = (carro.vx, carro.vy)
+                        
+                        # Calcular direção esperada (do checkpoint atual para o próximo)
+                        if checkpoint_idx < len(self.checkpoints) - 1:
+                            proximo_cp = self.checkpoints[checkpoint_idx + 1]
+                            proximo_cx, proximo_cy = proximo_cp[0], proximo_cp[1]
+                        else:
+                            # Se for o último checkpoint, direção para o primeiro
+                            proximo_cp = self.checkpoints[0]
+                            proximo_cx, proximo_cy = proximo_cp[0], proximo_cp[1]
+                        
+                        direcao_esperada = (proximo_cx - cx, proximo_cy - cy)
+                        
+                        # Normalizar vetores
+                        norm_mov = math.sqrt(direcao_movimento[0]**2 + direcao_movimento[1]**2)
+                        norm_esperada = math.sqrt(direcao_esperada[0]**2 + direcao_esperada[1]**2)
+                        
+                        if norm_mov > 0.1 and norm_esperada > 0.1:
+                            # Calcular produto escalar para determinar direção
+                            produto_escalar = (direcao_movimento[0] * direcao_esperada[0] + 
+                                              direcao_movimento[1] * direcao_esperada[1]) / (norm_mov * norm_esperada)
+                            
+                            # Verificar também se o bot passou muito além do checkpoint na direção errada
+                            # Calcular distância projetada na direção do movimento
+                            vetor_checkpoint = (carro.x - cx, carro.y - cy)
+                            projecao_na_direcao_esperada = (vetor_checkpoint[0] * direcao_esperada[0] + 
+                                                           vetor_checkpoint[1] * direcao_esperada[1]) / norm_esperada
+                            
+                            # Se produto escalar negativo significativo, está indo na direção errada
+                            # Threshold de -0.2 para detectar contramão mais cedo
+                            # OU se passou muito além do checkpoint na direção errada (projeção negativa grande)
+                            if produto_escalar < -0.2 or (projecao_na_direcao_esperada < -100 and distancia_ao_checkpoint > 50):
+                                contra_mao = True
+                                # Não passar checkpoint se estiver indo contra mão
+                                passou_checkpoint = False
+                                # Incrementar timer de contra mão
+                                if not hasattr(self, 'tempo_contra_mao'):
+                                    self.tempo_contra_mao = 0.0
+                                self.tempo_contra_mao += self.dt if hasattr(self, 'dt') else 0.016
+                                
+                                # Se está travado há muito tempo contra mão, forçar passagem
+                                # Reduzido para 0.8 segundos para resposta mais rápida
+                                if self.tempo_contra_mao > 0.8:
+                                    print(f"AVISO: IA {self.nome} travada contra mão há {self.tempo_contra_mao:.1f}s no checkpoint {checkpoint_idx + 1}, forçando passagem")
+                                    passou_checkpoint = True
+                                    contra_mao = False
+                                    self.tempo_contra_mao = 0.0
+                                    
+                                    # Se ainda está preso após forçar, tentar recuperação imediata
+                                    if self.tempo_travado > 0.3:
+                                        print(f"AVISO: IA {self.nome} ainda presa após forçar checkpoint, avançando checkpoint imediatamente...")
+                                        # Avançar para próximo checkpoint para quebrar o loop
+                                        self.checkpoint_atual = (self.checkpoint_atual + 1) % len(self.checkpoints)
+                                        self.tempo_travado = 0.0
+                                        self.tentativas_recuperacao = 0
+                                        self.tempo_no_mesmo_checkpoint = 0.0
+                            else:
+                                # Direção correta, marcar como passou
+                                passou_checkpoint = True
+                                # Limpar timer de contra mão
+                                if hasattr(self, 'tempo_contra_mao'):
+                                    self.tempo_contra_mao = 0.0
+                        else:
+                            # Velocidade muito baixa ou direção não calculável, permitir passagem se estiver muito próximo
+                            if distancia_ao_checkpoint < 50.0:
+                                passou_checkpoint = True
+                    else:
+                        # Velocidade muito baixa, mas está na posição do checkpoint
+                        # Verificar se está muito próximo e permitir passagem
+                        if distancia_ao_checkpoint < 50.0:
+                            passou_checkpoint = True
+                else:
+                    # Não tem velocidade, mas está na posição do checkpoint
+                    # Permitir passagem se estiver muito próximo
+                    if distancia_ao_checkpoint < 50.0:
+                        passou_checkpoint = True
+            
+            # Se passou pelo checkpoint na direção correta, avançar
+            if passou_checkpoint and not contra_mao:
                 self.checkpoint_atual = (self.checkpoint_atual + 1) % len(self.checkpoints)
                 self.tempo_travado = 0.0
                 self.tentativas_recuperacao = 0
+                self.tempo_no_mesmo_checkpoint = 0.0
+                if hasattr(self, 'tempo_contra_mao'):
+                    self.tempo_contra_mao = 0.0
+            elif contra_mao and self.tempo_contra_mao > 0.8:
+                # Se está contra mão há mais de 0.8 segundos, incrementar tempo travado para forçar recuperação
+                self.tempo_travado += self.dt if hasattr(self, 'dt') else 0.016
+            # NOVA VERIFICAÇÃO: Se está no mesmo checkpoint há muito tempo E está travado, forçar avanço
+            # Só forçar se estiver realmente travado (velocidade muito baixa E tempo travado alto)
+            # Se for o último checkpoint, forçar passagem para permitir finalização (mesmo travado)
+            elif (self.tempo_no_mesmo_checkpoint > self.max_tempo_no_mesmo_checkpoint and 
+                  velocidade_atual < 0.5 and 
+                  self.tempo_travado > 1.0):
+                # Se for o último checkpoint, forçar passagem mesmo travado (para permitir finalização)
+                if checkpoint_idx == len(self.checkpoints) - 1:
+                    # Verificar se está próximo do último checkpoint (dentro de 150px)
+                    if distancia_ao_checkpoint < 150.0:
+                        print(f"AVISO: IA {self.nome} travada no ÚLTIMO checkpoint há {self.tempo_no_mesmo_checkpoint:.1f}s, forçando passagem para finalizar corrida...")
+                        passou_checkpoint = True
+                        contra_mao = False
+                        # Avançar checkpoint (vai para o primeiro, completando a volta/corrida)
+                        self.checkpoint_atual = (self.checkpoint_atual + 1) % len(self.checkpoints)
+                        self.tempo_travado = 0.0
+                        self.tentativas_recuperacao = 0
+                        self.tempo_no_mesmo_checkpoint = 0.0
+                        if hasattr(self, 'tempo_contra_mao'):
+                            self.tempo_contra_mao = 0.0
+                # Se não for o último checkpoint, forçar avanço normalmente
+                elif checkpoint_idx < len(self.checkpoints) - 1:
+                    print(f"AVISO: IA {self.nome} está no checkpoint {checkpoint_idx + 1} há {self.tempo_no_mesmo_checkpoint:.1f}s e travado, forçando avanço...")
+                    self.checkpoint_atual = (self.checkpoint_atual + 1) % len(self.checkpoints)
+                    self.tempo_travado = 0.0
+                    self.tentativas_recuperacao = 0
+                    self.tempo_no_mesmo_checkpoint = 0.0
+                    if hasattr(self, 'tempo_contra_mao'):
+                        self.tempo_contra_mao = 0.0
         
         checkpoint_idx = self.checkpoint_atual % len(self.checkpoints)
         cp = self.checkpoints[checkpoint_idx]
@@ -692,12 +828,73 @@ class IA:
         
         self.curvatura_futura = curvatura_futura_max
         
-        realmente_travado = self.tempo_travado > self.max_tempo_travado and velocidade_atual < 0.3
+        # Verificar se está preso indo contra mão (reduzido para 0.8 segundos)
+        preso_contra_mao = (hasattr(self, 'tempo_contra_mao') and 
+                           self.tempo_contra_mao > 0.8 and 
+                           velocidade_atual < 0.5)
+        
+        # Verificar se está no mesmo checkpoint há muito tempo E está travado (nova verificação)
+        # Só forçar se estiver realmente travado (velocidade muito baixa E tempo travado alto)
+        # Se for o último checkpoint, forçar passagem para permitir finalização (mesmo travado)
+        checkpoint_idx_antes = self.checkpoint_atual % len(self.checkpoints)
+        if (self.tempo_no_mesmo_checkpoint > self.max_tempo_no_mesmo_checkpoint and 
+            velocidade_atual < 0.5 and 
+            self.tempo_travado > 1.0):
+            # Se for o último checkpoint, forçar passagem mesmo travado (para permitir finalização)
+            if checkpoint_idx_antes == len(self.checkpoints) - 1:
+                # Verificar distância ao último checkpoint
+                cp_ultimo = self.checkpoints[checkpoint_idx_antes]
+                cx_ultimo, cy_ultimo = cp_ultimo[0], cp_ultimo[1]
+                distancia_ultimo = math.sqrt((carro.x - cx_ultimo)**2 + (carro.y - cy_ultimo)**2)
+                # Se está próximo do último checkpoint (dentro de 150px), forçar finalização
+                if distancia_ultimo < 150.0:
+                    print(f"AVISO: IA {self.nome} travada no ÚLTIMO checkpoint há {self.tempo_no_mesmo_checkpoint:.1f}s, forçando passagem para finalizar corrida...")
+                    self.checkpoint_atual = (self.checkpoint_atual + 1) % len(self.checkpoints)
+                    self.tempo_travado = 0.0
+                    self.tentativas_recuperacao = 0
+                    self.tempo_no_mesmo_checkpoint = 0.0
+                    if hasattr(self, 'tempo_contra_mao'):
+                        self.tempo_contra_mao = 0.0
+                    # Marcar como chegou para indicar que completou
+                    self.chegou = True
+                    # Atualizar checkpoint_idx para o novo checkpoint
+                    checkpoint_idx = self.checkpoint_atual % len(self.checkpoints)
+                    cp = self.checkpoints[checkpoint_idx]
+                    cx, cy = cp[0], cp[1]
+                    offset_lateral = self._calcular_offset_lateral(carro, checkpoint_idx)
+                    self.alvo_x, self.alvo_y = self._aplicar_offset_checkpoint(cx, cy, checkpoint_idx, offset_lateral)
+            # Se não for o último checkpoint, forçar avanço normalmente
+            elif checkpoint_idx_antes < len(self.checkpoints) - 1:
+                print(f"AVISO: IA {self.nome} está no checkpoint {checkpoint_idx_antes + 1} há {self.tempo_no_mesmo_checkpoint:.1f}s e travado, forçando avanço...")
+                self.checkpoint_atual = (self.checkpoint_atual + 1) % len(self.checkpoints)
+                self.tempo_travado = 0.0
+                self.tentativas_recuperacao = 0
+                self.tempo_no_mesmo_checkpoint = 0.0
+                if hasattr(self, 'tempo_contra_mao'):
+                    self.tempo_contra_mao = 0.0
+                # Atualizar checkpoint_idx para o novo checkpoint
+                checkpoint_idx = self.checkpoint_atual % len(self.checkpoints)
+                cp = self.checkpoints[checkpoint_idx]
+                cx, cy = cp[0], cp[1]
+                offset_lateral = self._calcular_offset_lateral(carro, checkpoint_idx)
+                self.alvo_x, self.alvo_y = self._aplicar_offset_checkpoint(cx, cy, checkpoint_idx, offset_lateral)
+        
+        realmente_travado = (self.tempo_travado > self.max_tempo_travado and velocidade_atual < 0.3) or preso_contra_mao
         
         if self.tempo_travado > 2.0 and self.debug:
             print(f"IA {self.nome}: Quase travado - tempo: {self.tempo_travado:.1f}s, velocidade: {velocidade_atual:.2f}, na_grama: {na_grama}, checkpoint: {self.checkpoint_atual + 1}")
         
-        if realmente_travado:
+        if preso_contra_mao:
+            print(f"AVISO: IA {self.nome} presa indo contra mão há {self.tempo_contra_mao:.1f}s, forçando recuperação...")
+            # Forçar avanço do checkpoint para quebrar o loop
+            self.checkpoint_atual = (self.checkpoint_atual + 1) % len(self.checkpoints)
+            self.tempo_travado = 0.0
+            self.tentativas_recuperacao = 0
+            if hasattr(self, 'tempo_contra_mao'):
+                self.tempo_contra_mao = 0.0
+            print(f"IA {self.nome}: Checkpoint avançado para {self.checkpoint_atual + 1} devido a contramão")
+        
+        if realmente_travado and not preso_contra_mao:
             print(f"IA {self.nome}: TRAVADO detectado - tempo: {self.tempo_travado:.1f}s, velocidade: {velocidade_atual:.2f}, checkpoint atual: {self.checkpoint_atual + 1}, tentativas: {self.tentativas_recuperacao}")
             if self.tentativas_recuperacao < self.max_tentativas_recuperacao:
                 self.tentativas_recuperacao += 1

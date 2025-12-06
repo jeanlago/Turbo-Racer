@@ -1,6 +1,7 @@
 # src/core/progresso.py
 import json
 import os
+import time
 from config import DIR_PROJETO
 
 CAMINHO_PROGRESSO = os.path.join(DIR_PROJETO, "data", "progresso.json")
@@ -41,6 +42,10 @@ class GerenciadorProgresso:
         
         self.glub_primeira_aparicao_feita = False
         self.glub_nome_revelado = False
+        self.glub_ultima_aparicao_data = None  # Data (YYYY-MM-DD) em que o Glub apareceu pela última vez
+        
+        self.slick_ultima_aparicao_data = None  # Data (YYYY-MM-DD) em que o Slick apareceu pela última vez
+        self.slick_primeira_aparicao_mostrada = False  # Flag para indicar se o Slick já apareceu no território após a cena narrativa
         
         self.mercador_ultima_aparicao = 0
         self.mercador_contador_eventos = 0
@@ -67,6 +72,23 @@ class GerenciadorProgresso:
         
         self.hierarquia_desbloqueada = False
         self.oficina_desbloqueada = False
+        self.housingActive = False  # Flag para habilitar opção de casa para dormir
+        self.locations_unlocked_by_narrative = {}  # Rastreia localizações desbloqueadas pela narrativa
+        self.cinturaoUnlocked = False  # Flag para indicar que o Cinturão Industrial foi desbloqueado
+        self.corridas_cinturao_completas = set()  # Rastreia quais corridas do Cinturão foram completadas (pistas 4, 5, 6)
+        self.crownCircuitActive = False  # Flag para indicar que o Circuito da Coroa está ativo
+        self.crown_stages_won = set()  # Rastreia quais etapas do Circuito da Coroa foram vencidas (posição 1)
+        
+        # Sistema de melhoria de carro (campanha)
+        self.carro_campanha_estagio = 0  # 0=inicial, 1=lataria, 2=pneus_drift, 3=bodykit
+        self.carro_campanha_cor_final = None  # None ou "azul", "branco", "preto", "verde"
+        
+        # Desbloqueios do Pixel
+        self.pixel_upgrade_nivel_6_desbloqueado = False  # Permite upgrades até nível 6
+        self.pixel_cores_especiais_desbloqueadas = set()  # Cores especiais desbloqueadas pelo Pixel
+        
+        # Upgrades comprados do Slick
+        self.slick_upgrades_comprados = []  # Lista de IDs de upgrades comprados do Slick
         
         self.achievements_desbloqueados = set()
         self.achievements_visualizados = set()
@@ -157,6 +179,32 @@ class GerenciadorProgresso:
                     
                     self.glub_primeira_aparicao_feita = data.get('glub_primeira_aparicao_feita', False)
                     self.glub_nome_revelado = data.get('glub_nome_revelado', False)
+                    # Carregar datas de última aparição (compatibilidade com sistema antigo)
+                    glub_ultima_aparicao_dia_antigo = data.get('glub_ultima_aparicao_dia', 0)
+                    slick_ultima_aparicao_dia_antigo = data.get('slick_ultima_aparicao_dia', 0)
+                    
+                    # Se houver data nova, usar ela; senão, converter do sistema antigo
+                    if 'glub_ultima_aparicao_data' in data:
+                        self.glub_ultima_aparicao_data = data.get('glub_ultima_aparicao_data')
+                    elif glub_ultima_aparicao_dia_antigo > 0:
+                        # Converter do sistema antigo (número do dia) para data
+                        from datetime import date, timedelta
+                        data_base = date(1990, 12, 5)
+                        self.glub_ultima_aparicao_data = (data_base + timedelta(days=glub_ultima_aparicao_dia_antigo - 1)).strftime("%Y-%m-%d")
+                    else:
+                        self.glub_ultima_aparicao_data = None
+                    
+                    if 'slick_ultima_aparicao_data' in data:
+                        self.slick_ultima_aparicao_data = data.get('slick_ultima_aparicao_data')
+                    elif slick_ultima_aparicao_dia_antigo > 0:
+                        # Converter do sistema antigo (número do dia) para data
+                        from datetime import date, timedelta
+                        data_base = date(1990, 12, 5)
+                        self.slick_ultima_aparicao_data = (data_base + timedelta(days=slick_ultima_aparicao_dia_antigo - 1)).strftime("%Y-%m-%d")
+                    else:
+                        self.slick_ultima_aparicao_data = None
+                    
+                    self.slick_primeira_aparicao_mostrada = data.get('slick_primeira_aparicao_mostrada', False)
                     
                     self.mercador_ultima_aparicao = data.get('mercador_ultima_aparicao', 0)
                     self.mercador_contador_eventos = data.get('mercador_contador_eventos', 0)
@@ -183,6 +231,13 @@ class GerenciadorProgresso:
                     
                     self.hierarquia_desbloqueada = data.get('hierarquia_desbloqueada', False)
                     self.oficina_desbloqueada = data.get('oficina_desbloqueada', False)
+                    self.housingActive = data.get('housingActive', False)
+                    self.locations_unlocked_by_narrative = data.get('locations_unlocked_by_narrative', {})
+                    self.cinturaoUnlocked = data.get('cinturaoUnlocked', False)
+                    corridas_cinturao_data = data.get('corridas_cinturao_completas', [])
+                    self.corridas_cinturao_completas = set(corridas_cinturao_data) if isinstance(corridas_cinturao_data, list) else set()
+                    crown_stages_won_data = data.get('crown_stages_won', [])
+                    self.crown_stages_won = set(crown_stages_won_data) if isinstance(crown_stages_won_data, list) else set()
                     
                     self.achievements_desbloqueados = set(data.get('achievements_desbloqueados', []))
                     self.achievements_visualizados = set(data.get('achievements_visualizados', []))
@@ -224,6 +279,23 @@ class GerenciadorProgresso:
                     self.iniciar_capitulo_4_apos_narrativa = data.get('iniciar_capitulo_4_apos_narrativa', False)
                     corridas_desbloqueadas_data = data.get('corridas_desbloqueadas', [])
                     self.corridas_desbloqueadas = set(corridas_desbloqueadas_data) if isinstance(corridas_desbloqueadas_data, list) else set()
+                    
+                    # Carregar desbloqueios do Pixel
+                    self.pixel_upgrade_nivel_6_desbloqueado = data.get('pixel_upgrade_nivel_6_desbloqueado', False)
+                    self.pixel_cores_especiais_desbloqueadas = set(data.get('pixel_cores_especiais_desbloqueadas', []))
+                    
+                    # Upgrades comprados do Slick
+                    self.slick_upgrades_comprados = data.get('slick_upgrades_comprados', [])
+                    
+                    # Sistema de melhoria de carro (campanha)
+                    self.carro_campanha_estagio = data.get('carro_campanha_estagio', 0)
+                    self.carro_campanha_cor_final = data.get('carro_campanha_cor_final', None)
+                    
+                    # Carregar flags do sistema narrativo
+                    self.crownCircuitActive = data.get('crownCircuitActive', False)
+                    
+                    # Carregar dados de outros sistemas do progresso.json
+                    self._carregar_dados_outros_sistemas(data)
                     
                     self._migrar_dados_antigos()
                     
@@ -283,14 +355,35 @@ class GerenciadorProgresso:
                 self.carro_p1_atual = None
                 self.carro_p2_atual = None
         else:
+            # Progresso.json não existe - resetar tudo para valores padrão
             self.dinheiro = 5000  # Dinheiro inicial aumentado para permitir compra de carros iniciais
             self.carros_desbloqueados = {'Car1'}
+            # Resetar humor do Crank para 0 (normal)
+            self.crank_humor_atual = 0
+            self.crank_saude_carro = 1.0
+            self.crank_tutorial_mostrado = False
+            self.crank_tutorial_upgrades_mostrado = False
+            self.crank_prefixo_cor_ultimo_carro = None
+            self.crank_nome_revelado = False
+            
+            # Resetar missões para valores padrão (será feito quando gerenciador_missoes for inicializado)
+            # Não importar aqui para evitar import circular - será resetado no _carregar_missoes_completas
+            
             self.salvar()
     
     def salvar(self):
-        """Salva o progresso no arquivo"""
+        """Salva o progresso no arquivo (incluindo todos os dados do jogo)"""
         try:
             os.makedirs(os.path.dirname(CAMINHO_PROGRESSO), exist_ok=True)
+            
+            # Carregar dados de outros sistemas para salvar tudo junto
+            from core.missoes import gerenciador_missoes
+            from core.mapa_locations import gerenciador_localizacoes
+            from core.tempo_jogo import gerenciador_tempo
+            from core.status_jogador import status_jogador
+            from core.ghost import gerenciador_ghosts
+            from core.narrative_system import narrative_system
+            
             data = {
                 'dinheiro': self.dinheiro,
                 'nome_jogador': self.nome_jogador,
@@ -304,6 +397,50 @@ class GerenciadorProgresso:
                 'ultima_compra_alien': self.ultima_compra_alien,
                 'dialogo_alien_ja_mostrado': self.dialogo_alien_ja_mostrado,
                 'upgrades_visitados': list(self.upgrades_visitados),
+                
+                # Dados de missões
+                'missoes_completas': list(gerenciador_missoes.missoes_completas),
+                'missao_ativa_id': gerenciador_missoes.missao_ativa_id,
+                
+                # Dados de localizações
+                'mapa_locations': {
+                    loc_id: {
+                        "nome": loc_data["nome"],
+                        "state": loc_data["state"],
+                        "lockedThought": loc_data.get("lockedThought"),
+                        "unlockFlags": loc_data.get("unlockFlags", [])
+                    }
+                    for loc_id, loc_data in gerenciador_localizacoes.locations.items()
+                },
+                
+                # Dados de tempo
+                'tempo_jogo': {
+                    'hora_jogo': gerenciador_tempo.hora_jogo,
+                    'dia_jogo': gerenciador_tempo.dia_jogo,
+                    'ultima_atualizacao_timestamp': gerenciador_tempo.ultima_atualizacao_timestamp,
+                    'data_inicial': gerenciador_tempo.data_inicial.strftime("%Y-%m-%d") if hasattr(gerenciador_tempo, 'data_inicial') else None
+                },
+                
+                # Dados de status do jogador
+                'status_jogador': {
+                    'popularidade': status_jogador.popularidade,
+                    'fome': status_jogador.fome,
+                    'sono': status_jogador.sono,
+                    'tedio': status_jogador.tedio
+                },
+                
+                # Dados de ghosts
+                'ghosts': gerenciador_ghosts.ghosts,
+                
+                # Dados do sistema narrativo
+                'narrative_system': {
+                    'current_chapter_id': narrative_system.current_chapter_id,
+                    'current_scene_id': narrative_system.current_scene_id,
+                    'scenes_visited': list(narrative_system.scenes_visited),
+                    'flags': narrative_system.flags,
+                    'variables': narrative_system.variables,
+                    'chapter_start_time': narrative_system.chapter_start_time
+                },
                 
                 'akira_nome_revelado': self.akira_nome_revelado,
                 'akira_dialogos_pre_corrida_mostrados': self.akira_dialogos_pre_corrida_mostrados,
@@ -324,6 +461,10 @@ class GerenciadorProgresso:
                 
                 'glub_primeira_aparicao_feita': self.glub_primeira_aparicao_feita,
                 'glub_nome_revelado': self.glub_nome_revelado,
+                'glub_ultima_aparicao_data': getattr(self, 'glub_ultima_aparicao_data', None),
+                
+                'slick_ultima_aparicao_data': getattr(self, 'slick_ultima_aparicao_data', None),
+                'slick_primeira_aparicao_mostrada': getattr(self, 'slick_primeira_aparicao_mostrada', False),
                 
                 'mercador_ultima_aparicao': self.mercador_ultima_aparicao,
                 'mercador_contador_eventos': self.mercador_contador_eventos,
@@ -350,6 +491,11 @@ class GerenciadorProgresso:
                 
                 'hierarquia_desbloqueada': self.hierarquia_desbloqueada,
                 'oficina_desbloqueada': self.oficina_desbloqueada,
+                'housingActive': self.housingActive,
+                'locations_unlocked_by_narrative': self.locations_unlocked_by_narrative,
+                'cinturaoUnlocked': self.cinturaoUnlocked,
+                'corridas_cinturao_completas': list(self.corridas_cinturao_completas) if isinstance(self.corridas_cinturao_completas, set) else self.corridas_cinturao_completas,
+                'crown_stages_won': list(self.crown_stages_won) if isinstance(self.crown_stages_won, set) else self.crown_stages_won,
                 
                 'achievements_desbloqueados': list(self.achievements_desbloqueados),
                 'achievements_visualizados': list(self.achievements_visualizados),
@@ -368,11 +514,26 @@ class GerenciadorProgresso:
                 
                 'ultima_corrida_campanha': self.ultima_corrida_campanha,
                 'iniciar_capitulo_4_apos_narrativa': self.iniciar_capitulo_4_apos_narrativa,
-                'corridas_desbloqueadas': list(self.corridas_desbloqueadas) if isinstance(self.corridas_desbloqueadas, set) else self.corridas_desbloqueadas
+                'corridas_desbloqueadas': list(self.corridas_desbloqueadas) if isinstance(self.corridas_desbloqueadas, set) else self.corridas_desbloqueadas,
+                
+                # Desbloqueios do Pixel
+                'pixel_upgrade_nivel_6_desbloqueado': getattr(self, 'pixel_upgrade_nivel_6_desbloqueado', False),
+                'pixel_cores_especiais_desbloqueadas': list(getattr(self, 'pixel_cores_especiais_desbloqueadas', set())),
+                'slick_upgrades_comprados': getattr(self, 'slick_upgrades_comprados', []),
+                
+                # Sistema de melhoria de carro (campanha)
+                'carro_campanha_estagio': getattr(self, 'carro_campanha_estagio', 0),
+                'carro_campanha_cor_final': getattr(self, 'carro_campanha_cor_final', None),
+                
+                # Flags do sistema narrativo (salvas no progresso para persistência)
+                'crownCircuitActive': getattr(self, 'crownCircuitActive', False)
             }
             
             with open(CAMINHO_PROGRESSO, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
+            
+            # Após salvar no progresso.json, restaurar dados nos outros sistemas
+            self._restaurar_dados_outros_sistemas()
         except Exception as e:
             print(f"Erro ao salvar progresso: {e}")
             import traceback
@@ -484,13 +645,19 @@ class GerenciadorProgresso:
             self.upgrades[prefixo_cor] = {}
         
         nivel_atual = self.obter_upgrade(prefixo_cor, tipo_upgrade)
-        if nivel_atual < 5:  # Máximo de 5 níveis
+        # Máximo de 5 níveis normalmente, 6 se Pixel desbloqueou
+        nivel_maximo = 6 if getattr(self, 'pixel_upgrade_nivel_6_desbloqueado', False) else 5
+        if nivel_atual < nivel_maximo:
             if self.tem_dinheiro(preco):
                 self.remover_dinheiro(preco)
                 self.upgrades[prefixo_cor][tipo_upgrade] = nivel_atual + 1
                 self.salvar()
                 return True
         return False
+    
+    def obter_nivel_maximo_upgrade(self):
+        """Retorna o nível máximo de upgrades disponível (5 ou 6 se Pixel desbloqueou)"""
+        return 6 if getattr(self, 'pixel_upgrade_nivel_6_desbloqueado', False) else 5
     
     def marcar_upgrades_visitado(self, prefixo_cor):
         """Marca que um carro visitou a tela de upgrades"""
@@ -537,6 +704,123 @@ class GerenciadorProgresso:
     def capitulo_foi_completo(self, chapter_id):
         """Verifica se um capítulo foi completado"""
         return chapter_id in self.capitulos_completos
+    
+    def _carregar_dados_outros_sistemas(self, data: dict):
+        """Carrega dados de outros sistemas do progresso.json e restaura nos sistemas"""
+        try:
+            # Carregar dados de missões
+            if 'missoes_completas' in data or 'missao_ativa_id' in data:
+                from core.missoes import gerenciador_missoes
+                gerenciador_missoes.missoes_completas = set(data.get('missoes_completas', []))
+                gerenciador_missoes.missao_ativa_id = data.get('missao_ativa_id', None)
+            
+            # Carregar dados de localizações
+            if 'mapa_locations' in data:
+                from core.mapa_locations import gerenciador_localizacoes
+                gerenciador_localizacoes.locations = data.get('mapa_locations', {})
+            
+            # Carregar dados de tempo
+            if 'tempo_jogo' in data:
+                from core.tempo_jogo import gerenciador_tempo
+                tempo_data = data.get('tempo_jogo', {})
+                gerenciador_tempo.hora_jogo = tempo_data.get('hora_jogo', 12)
+                gerenciador_tempo.ultima_atualizacao_timestamp = tempo_data.get('ultima_atualizacao_timestamp', time.time())
+            
+            # Carregar dados de status do jogador
+            if 'status_jogador' in data:
+                from core.status_jogador import status_jogador
+                status_data = data.get('status_jogador', {})
+                status_jogador.popularidade = status_data.get('popularidade', 0)
+                status_jogador.fome = status_data.get('fome', 100)
+                status_jogador.sono = status_data.get('sono', 100)
+                status_jogador.tedio = status_data.get('tedio', 0)
+            
+            # Carregar dados de ghosts
+            if 'ghosts' in data:
+                from core.ghost import gerenciador_ghosts
+                gerenciador_ghosts.ghosts = data.get('ghosts', {})
+            
+            # Carregar dados do sistema narrativo
+            if 'narrative_system' in data:
+                from core.narrative_system import narrative_system
+                narrative_data = data.get('narrative_system', {})
+                narrative_system.current_chapter_id = narrative_data.get('current_chapter_id', None)
+                narrative_system.current_scene_id = narrative_data.get('current_scene_id', None)
+                narrative_system.scenes_visited = set(narrative_data.get('scenes_visited', []))
+                narrative_system.flags = narrative_data.get('flags', {})
+                narrative_system.variables = narrative_data.get('variables', {})
+                narrative_system.chapter_start_time = narrative_data.get('chapter_start_time', {})
+                
+                # Validar se o capítulo atual está correto baseado no progresso real
+                from core.missoes import gerenciador_missoes
+                gerenciador_missoes.carregar()
+                
+                # Determinar qual capítulo o jogador deveria estar baseado nas missões completas
+                missoes_ch1 = ["m1_primeira_faisca", "m2_teste_de_sobrevivencia", "m3_rota_da_ferrugem", 
+                               "m4_coracao_de_sucata", "m5_cirurgia_na_garagem", "m6_batismo_de_pista", "m7_olhos_no_painel"]
+                missoes_ch2 = ["m8_oferta_envenenada", "m9a_peso_da_divida", "m10_portoes_do_cinturao", "m10b_corridas_cinturao"]
+                missoes_ch3 = ["m11_chamado_da_montanha", "m12_fantasma_do_circuito", "m13_teste_de_fluxo", "m14_tres_mundos"]
+                
+                ch1_completas = sum(1 for m in missoes_ch1 if m in gerenciador_missoes.missoes_completas)
+                ch2_completas = sum(1 for m in missoes_ch2 if m in gerenciador_missoes.missoes_completas)
+                ch3_completas = sum(1 for m in missoes_ch3 if m in gerenciador_missoes.missoes_completas)
+                
+                # Determinar capítulo esperado baseado no progresso
+                if ch1_completas < len(missoes_ch1):
+                    capitulo_esperado = "ch1"
+                elif ch2_completas < len(missoes_ch2):
+                    capitulo_esperado = "ch2"
+                elif ch3_completas < len(missoes_ch3):
+                    capitulo_esperado = "ch3"
+                else:
+                    capitulo_esperado = "ch4"
+                
+                # Se o capítulo atual está muito mais avançado que o esperado, corrigir
+                if narrative_system.current_chapter_id:
+                    capitulo_atual_num = int(narrative_system.current_chapter_id.replace("ch", "")) if narrative_system.current_chapter_id.startswith("ch") else 0
+                    capitulo_esperado_num = int(capitulo_esperado.replace("ch", "")) if capitulo_esperado.startswith("ch") else 0
+                    
+                    if capitulo_atual_num > capitulo_esperado_num + 1:
+                        print(f"[PROGRESSO] Capítulo atual ({narrative_system.current_chapter_id}) está muito mais avançado que o esperado ({capitulo_esperado}) baseado no progresso. Corrigindo...")
+                        narrative_system.current_chapter_id = capitulo_esperado
+                        narrative_system.current_scene_id = None
+                        narrative_system.active = False
+                        self.capitulo_atual = capitulo_esperado
+                        print(f"[PROGRESSO] Capítulo corrigido para {capitulo_esperado} baseado no progresso real")
+                
+                # Verificar se a cena salva já foi visitada - se sim, limpar para evitar continuar de uma cena já completada
+                # EXCEÇÃO: Se ch5_9_rex_final_words foi visitada, avançar automaticamente para ch5_10_creditos
+                if "ch5_9_rex_final_words" in narrative_system.scenes_visited and "ch5_10_creditos" not in narrative_system.scenes_visited:
+                    print(f"[PROGRESSO] ch5_9_rex_final_words foi visitada mas ch5_10_creditos não. Iniciando créditos...")
+                    narrative_system.current_chapter_id = "ch5"
+                    narrative_system.current_scene_id = "ch5_10_creditos"
+                    narrative_system.current_line_index = 0
+                    narrative_system.active = True
+                    # Remover ch5_10_creditos da lista de visitadas se estiver lá (para permitir reativação)
+                    narrative_system.scenes_visited.discard("ch5_10_creditos")
+                    print(f"[PROGRESSO] Créditos iniciados automaticamente após carregar save")
+                elif narrative_system.current_scene_id and narrative_system.current_scene_id in narrative_system.scenes_visited:
+                    print(f"[PROGRESSO] Cena salva {narrative_system.current_scene_id} já foi visitada. Limpando current_scene_id para evitar continuar de cena já completada.")
+                    narrative_system.current_scene_id = None
+                    narrative_system.active = False
+                    # Salvar o progresso após limpar a cena
+                    try:
+                        self.salvar()
+                    except Exception as e:
+                        print(f"[PROGRESSO] Erro ao salvar após limpar cena visitada: {e}")
+        except Exception as e:
+            print(f"[PROGRESSO] Erro ao carregar dados de outros sistemas: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    def _restaurar_dados_outros_sistemas(self):
+        """Restaura dados nos outros sistemas após salvar no progresso.json"""
+        try:
+            # Não precisamos fazer nada aqui, pois os sistemas já estão atualizados
+            # Este método existe para compatibilidade futura se necessário
+            pass
+        except Exception as e:
+            print(f"[PROGRESSO] Erro ao restaurar dados de outros sistemas: {e}")
     
     def _migrar_dados_antigos(self):
         """Migra dados de arquivos antigos para o progresso.json"""

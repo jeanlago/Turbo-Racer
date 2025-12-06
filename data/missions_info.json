@@ -19,9 +19,17 @@
         "name": "O Preço da Subida",
         "description": "As corridas de iniciante não pagam as contas. Você precisa de acesso ao Cinturão Industrial. Pague a taxa de inscrição do Boris ou convença Crank a usar seus velhos contatos para te colocar dentro."
       },
+      "corridas_cinturao": {
+        "name": "Prova de Fogo",
+        "description": "Complete 3 corridas no Cinturão Industrial para provar seu valor e ganhar o respeito dos pilotos profissionais."
+      },
+      "voltar_oficina_crank": {
+        "name": "Conversa com Crank",
+        "description": "Você completou as corridas do Cinturão. Volte à oficina para conversar com Crank sobre os próximos passos."
+      },
       "baron_debt_active": {
-        "name": "A Sombra do Agiota",
-        "description": "Você aceitou o dinheiro do Barão. Lembre-se: 30% de tudo o que você ganhar é dele. Mantenha os pagamentos em dia ou Boris virá cobrar com um pé de cabra."
+        "name": "Oferta Envenenada",
+        "description": "Decida se aceita ou não o empréstimo do Barão."
       }
     },
     "ch3": {
@@ -39,9 +47,21 @@
         "name": "A Voz no Rádio",
         "description": "Pixel cansou de ser apenas uma voz no seu painel. Ela enviou coordenadas para um esconderijo. Vá encontrá-la pessoalmente para entender o que Rex realmente quer com você."
       },
+      "ruido_nos_servidores": {
+        "name": "Ruído nos Servidores",
+        "description": "Pixel te enviou as coordenadas do esconderijo dela. Vá até o esconderijo da Pixel no mapa (aparecerá como uma nova localização) para descobrir por que Rex começou a prestar atenção em você."
+      },
       "increase_reputation": {
         "name": "Chamando a Atenção",
-        "description": "Rex está te observando lá do alto. Vença corridas em todas as zonas (Fosso, Cinturão e Montanha) para aumentar sua reputação até que ele não possa mais te ignorar."
+        "description": "Rex está te observando lá do alto. Vença corridas em todas as zonas (Fosso, Cinturão e Montanha) para aumentar sua reputação até 500 para que ele não possa mais te ignorar."
+      },
+      "tres_mundos": {
+        "name": "Três Mundos",
+        "description": "Corra na Ferrugem, no Cinturão e na Montanha para aumentar sua reputação até 500."
+      },
+      "voltar_oficina_pixel": {
+        "name": "Conversa com Crank",
+        "description": "Vá até a oficina falar com Crank. Pixel tem algo importante para dizer."
       }
     },
     "ch5": {
@@ -60,4 +80,6 @@
     }
   }
 }
+
+
 

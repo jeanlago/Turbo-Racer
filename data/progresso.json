@@ -1,5 +1,5 @@
 {
-  "dinheiro": 19999975504,
+  "dinheiro": 5000,
   "nome_jogador": "JOGADOR",
   "carros_desbloqueados": [
     "Car1"
@@ -7,21 +7,122 @@
   "recordes_corrida": {},
   "recordes_drift": {},
   "trofeus": {},
-  "upgrades": {
-    "Car1": {
-      "rodas": 1
-    }
-  },
+  "upgrades": {},
   "carro_p1_atual": null,
   "carro_p2_atual": null,
   "ultima_compra_alien": null,
   "dialogo_alien_ja_mostrado": false,
-  "upgrades_visitados": [
-    "Car1"
+  "upgrades_visitados": [],
+  "missoes_completas": [
+    "m1_primeira_faisca"
   ],
-  "akira_nome_revelado": true,
+  "missao_ativa_id": "m2_teste_de_sobrevivencia",
+  "mapa_locations": {
+    "oficina": {
+      "nome": "Oficina do Crank",
+      "state": "unlocked",
+      "lockedThought": null,
+      "unlockFlags": []
+    },
+    "fosso_ferrugem": {
+      "nome": "Fosso de Ferrugem",
+      "state": "locked_hidden",
+      "lockedThought": "Ainda não tenho motivo pra ir até lá...",
+      "unlockFlags": []
+    },
+    "cinturao_industrial": {
+      "nome": "Cinturão Industrial",
+      "state": "locked_visible",
+      "lockedThought": "Ouvi falar que aqui só entra quem tem inscrição paga… e eu não tô nessa lista ainda.",
+      "unlockFlags": [
+        "unlockRaceSet:cinturao_industrial"
+      ]
+    },
+    "montanha": {
+      "nome": "Montanha da Akira",
+      "state": "locked_hidden",
+      "lockedThought": "Dizem que uma piloto fantasma domina essa montanha. Ainda não fui convidado pra esse velório.",
+      "unlockFlags": [
+        "unlockLocation:montanha"
+      ]
+    },
+    "torres_rex": {
+      "nome": "Torres do Rex",
+      "state": "unlocked",
+      "lockedThought": null,
+      "unlockFlags": []
+    },
+    "circuito_coroa": {
+      "nome": "Circuito da Coroa",
+      "state": "locked_hidden",
+      "lockedThought": "Ainda não tenho motivo pra ir até lá...",
+      "unlockFlags": [
+        "ch5_started"
+      ]
+    },
+    "autódromo": {
+      "nome": "Autódromo",
+      "state": "locked_hidden",
+      "lockedThought": "Ainda não tenho motivo pra ir até lá...",
+      "unlockFlags": [
+        "m18_circo_da_coroa_active",
+        "crownCircuitActive"
+      ]
+    },
+    "iate_barao": {
+      "nome": "Iate do Barão",
+      "state": "locked_hidden",
+      "lockedThought": "O Barão tem um iate? Claro que tem. Mas ele só recebe quem ele quer.",
+      "unlockFlags": [
+        "unlockLocation:iate_barao"
+      ]
+    },
+    "esconderijo_pixel": {
+      "nome": "Esconderijo da Pixel",
+      "state": "locked_hidden",
+      "lockedThought": "Ainda não sei onde fica o esconderijo da Pixel...",
+      "unlockFlags": [
+        "unlockLocation:esconderijo_pixel"
+      ]
+    },
+    "beco_neon": {
+      "nome": "Beco Neon",
+      "state": "locked_hidden",
+      "lockedThought": "Ainda não tenho motivo pra ir até lá...",
+      "unlockFlags": [
+        "unlockLocation:beco_neon"
+      ]
+    }
+  },
+  "tempo_jogo": {
+    "hora_jogo": 12.070900000000012,
+    "dia_jogo": 1,
+    "ultima_atualizacao_timestamp": 1765060904.6664338,
+    "data_inicial": "1990-12-05"
+  },
+  "status_jogador": {
+    "popularidade": 0.0,
+    "fome": 100.0,
+    "sono": 100.0,
+    "tedio": 0.0
+  },
+  "ghosts": {},
+  "narrative_system": {
+    "current_chapter_id": "ch1",
+    "current_scene_id": null,
+    "scenes_visited": [
+      "ch1_1_crank_garage_intro",
+      "ch1_0_prologue"
+    ],
+    "flags": {},
+    "variables": {},
+    "chapter_start_time": {
+      "ch1": 1765060907.3543286
+    }
+  },
+  "akira_nome_revelado": false,
   "akira_dialogos_pre_corrida_mostrados": {},
-  "akira_primeira_aparicao_mostrada": true,
+  "akira_primeira_aparicao_mostrada": false,
   "ranking_pilotos": [
     {
       "nome": "T-Rex_King",
@@ -95,43 +196,47 @@
     }
   ],
   "ranking_posicao_jogador": 10,
-  "crank_humor_atual": 2,
-  "crank_saude_carro": 0.0,
-  "crank_tutorial_mostrado": false,
-  "crank_tutorial_upgrades_mostrado": true,
-  "crank_prefixo_cor_ultimo_carro": "Car1",
+  "crank_humor_atual": 0,
+  "crank_saude_carro": 1.0,
+  "crank_tutorial_mostrado": true,
+  "crank_tutorial_upgrades_mostrado": false,
+  "crank_prefixo_cor_ultimo_carro": null,
   "crank_nome_revelado": false,
   "rex_primeira_aparicao_mostrada": false,
   "rex_nome_revelado": false,
   "glub_primeira_aparicao_feita": false,
   "glub_nome_revelado": false,
+  "glub_ultima_aparicao_data": null,
+  "slick_ultima_aparicao_data": null,
+  "slick_primeira_aparicao_mostrada": false,
   "mercador_ultima_aparicao": 0,
   "mercador_contador_eventos": 0,
   "mercador_nome_revelado": false,
-  "barao_nome_revelado": true,
+  "barao_nome_revelado": false,
   "barao_emprestimo_ativo": false,
   "barao_valor_devido": 0,
   "barao_corridas_restantes": 0,
   "boris_nome_revelado": false,
-  "boris_primeira_aparicao_mostrada": true,
-  "pixel_nome_revelado": true,
-  "pixel_primeira_aparicao_mostrada": true,
+  "boris_primeira_aparicao_mostrada": false,
+  "pixel_nome_revelado": false,
+  "pixel_primeira_aparicao_mostrada": false,
   "pixel_dialogo_explodiu_mostrado": false,
-  "fuligem_nome_revelado": true,
-  "fuligem_primeira_aparicao_mostrada": true,
+  "fuligem_nome_revelado": false,
+  "fuligem_primeira_aparicao_mostrada": false,
   "fuligem_corridas_desbloqueadas": [
     0
   ],
-  "capitulo_atual": "ch5",
+  "capitulo_atual": "ch1",
   "capitulos_completos": [
-    "ch4",
-    "ch2",
-    "ch1",
-    "ch3",
-    "ch5"
+    "ch1"
   ],
   "hierarquia_desbloqueada": false,
   "oficina_desbloqueada": false,
+  "housingActive": false,
+  "locations_unlocked_by_narrative": {},
+  "cinturaoUnlocked": false,
+  "corridas_cinturao_completas": [],
+  "crown_stages_won": [],
   "achievements_desbloqueados": [],
   "achievements_visualizados": [],
   "achievements_estatisticas": {
@@ -141,67 +246,65 @@
     "carros_desbloqueados": 0,
     "corridas_sem_colisao": 0,
     "corridas_sem_erros": 0,
-    "velocidade_maxima": 174.99984992612215,
+    "velocidade_maxima": 0.0,
     "upgrades_maximizados": 0
   },
   "desafios_diarios": [
     {
-      "tipo": "completar_corridas",
-      "objetivo": 5,
-      "recompensa": 385,
-      "descricao": "Complete 5 corridas",
-      "id": "diario_20251202_3",
+      "tipo": "estabelecer_recorde",
+      "objetivo": 1,
+      "recompensa": 750,
+      "descricao": "Estabeleça um novo recorde",
+      "id": "diario_20251206_0",
       "progresso": 0
     },
     {
-      "tipo": "completar_corridas",
-      "objetivo": 4,
-      "recompensa": 558,
-      "descricao": "Complete 4 corridas",
-      "id": "diario_20251202_3",
+      "tipo": "vencer_corridas",
+      "objetivo": 2,
+      "recompensa": 604,
+      "descricao": "Vença 2 corridas em 1º lugar",
+      "id": "diario_20251206_0",
       "progresso": 0
     },
     {
-      "tipo": "usar_turbo",
-      "objetivo": 88,
-      "recompensa": 323,
-      "descricao": "Use o turbo 88 vezes",
-      "id": "diario_20251202_3",
+      "tipo": "vencer_corridas",
+      "objetivo": 2,
+      "recompensa": 543,
+      "descricao": "Vença 2 corridas em 1º lugar",
+      "id": "diario_20251206_0",
       "progresso": 0
     }
   ],
   "desafios_semanais": [
     {
-      "tipo": "completar_voltas",
-      "objetivo": 61,
-      "recompensa": 1748,
-      "descricao": "Complete 91 voltas",
-      "id": "semanal_202548_2",
+      "tipo": "estabelecer_recorde",
+      "objetivo": 5,
+      "recompensa": 3946,
+      "descricao": "Estabeleça 5 novos recordes",
+      "id": "semanal_202548_0",
       "progresso": 0
     },
     {
-      "tipo": "estabelecer_recorde",
-      "objetivo": 3,
-      "recompensa": 3882,
-      "descricao": "Estabeleça 3 novos recordes",
-      "id": "semanal_202548_2",
+      "tipo": "completar_corridas",
+      "objetivo": 15,
+      "recompensa": 2380,
+      "descricao": "Complete 10 corridas",
+      "id": "semanal_202548_0",
       "progresso": 0
     }
   ],
   "missoes_pista": {},
-  "desafios_progresso": {
-    "semanal_202548_2": 17
-  },
+  "desafios_progresso": {},
   "desafios_completados": [],
-  "ultima_atualizacao_diaria": "2025-12-02",
+  "ultima_atualizacao_diaria": "2025-12-06",
   "ultima_atualizacao_semanal": "2025-W49",
   "estatisticas_gerais": {
-    "tempo_total_jogado": 847.5999999995494,
+    "tempo_total_jogado": 0.0,
     "distancia_total": 0.0,
-    "corridas_completas": 22,
-    "corridas_vencidas": 13,
-    "voltas_completas": 20,
-    "colisoes_totais": 1729,
+    "corridas_completas": 0,
+    "corridas_vencidas": 0,
+    "voltas_completas": 0,
+    "colisoes_totais": 0,
     "drifts_totais": 0,
     "turbo_usado": 0,
     "recordes_estabelecidos": 0,
@@ -209,48 +312,22 @@
   },
   "estatisticas_por_pista": {
     "1": {
-      "corridas_completas": 1,
-      "corridas_vencidas": 1,
-      "melhor_tempo": 37.36600000000029,
-      "melhor_posicao": 1,
-      "voltas_completas": 1,
+      "corridas_completas": 0,
+      "corridas_vencidas": 0,
+      "melhor_tempo": null,
+      "melhor_posicao": null,
+      "voltas_completas": 0,
       "colisoes": 0,
-      "recordes_estabelecidos": 0
-    },
-    "4": {
-      "corridas_completas": 5,
-      "corridas_vencidas": 0,
-      "melhor_tempo": 33.00500000000097,
-      "melhor_posicao": 3,
-      "voltas_completas": 5,
-      "colisoes": 865,
-      "recordes_estabelecidos": 0
-    },
-    "3": {
-      "corridas_completas": 4,
-      "corridas_vencidas": 0,
-      "melhor_tempo": 30.940000000000595,
-      "melhor_posicao": 2,
-      "voltas_completas": 5,
-      "colisoes": 362,
-      "recordes_estabelecidos": 0
-    },
-    "8": {
-      "corridas_completas": 12,
-      "corridas_vencidas": 12,
-      "melhor_tempo": 60.0,
-      "melhor_posicao": 1,
-      "voltas_completas": 9,
-      "colisoes": 502,
       "recordes_estabelecidos": 0
     }
   },
   "ultima_corrida_campanha": null,
   "iniciar_capitulo_4_apos_narrativa": false,
-  "corridas_desbloqueadas": [
-    "crown_stage1",
-    "crown_stage3",
-    "crown_stage2",
-    "crown_final"
-  ]
+  "corridas_desbloqueadas": [],
+  "pixel_upgrade_nivel_6_desbloqueado": false,
+  "pixel_cores_especiais_desbloqueadas": [],
+  "slick_upgrades_comprados": [],
+  "carro_campanha_estagio": 0,
+  "carro_campanha_cor_final": null,
+  "crownCircuitActive": false
 }

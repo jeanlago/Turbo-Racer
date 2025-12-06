@@ -1,5 +1,4 @@
 # src/core/ranking.py
-"""Sistema de Ranking de Pilotos"""
 import json
 import os
 from config import DIR_PROJETO

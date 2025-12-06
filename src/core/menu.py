@@ -1,6 +1,7 @@
 import os
 import sys
 import math
+import json
 import pygame
 from enum import Enum
 
@@ -1945,6 +1946,15 @@ def calcular_especificacoes_carro(carro_info, upgrades):
     nivel_rodas = upgrades.get('rodas', 0)
     nivel_suspensao = upgrades.get('suspensao', 0)
     
+    # Verificar upgrades especiais do Slick
+    slick_upgrades = getattr(gerenciador_progresso, 'slick_upgrades_comprados', [])
+    tem_slick_motor = any('slick_motor' in uid for uid in slick_upgrades)
+    tem_slick_filtro = any('slick_filtro_ar' in uid for uid in slick_upgrades)
+    tem_slick_ecu = any('slick_ecu' in uid for uid in slick_upgrades)
+    tem_slick_trans = any('slick_transmissao' in uid for uid in slick_upgrades)
+    tem_slick_rodas = any('slick_rodas' in uid for uid in slick_upgrades)
+    tem_slick_susp = any('slick_suspensao' in uid for uid in slick_upgrades)
+    
     # Calcular valores base (simulando CarroFisica)
     # Velocidade máxima base: o multiplicador_base não escala linearmente a velocidade real
     # devido ao atrito e arrasto. Vamos usar uma escala muito mais conservadora.
@@ -1954,28 +1964,48 @@ def calcular_especificacoes_carro(carro_info, upgrades):
     V_TOP_base = 400.0 * (1.0 + (multiplicador_base - 1.0) * 0.08)  # Escala muito reduzida
     # Aplicar upgrades de motor e transmissão (mesma lógica de aplicar_upgrades)
     # Motor aumenta V_TOP em +10% por nível (reduzido)
-    V_TOP = V_TOP_base * (1.0 + nivel_motor * 0.10)
+    v_top_motor = 1.0 + nivel_motor * 0.10
+    if tem_slick_motor:
+        v_top_motor *= 1.3  # +30% velocidade
+    V_TOP = V_TOP_base * v_top_motor
     # Transmissão aumenta V_TOP em +6% por nível (reduzido, multiplicativo)
-    V_TOP *= (1.0 + nivel_transmissao * 0.06)
+    v_top_trans = 1.0 + nivel_transmissao * 0.06
+    if tem_slick_trans:
+        v_top_trans *= 1.3  # +30% velocidade
+    V_TOP *= v_top_trans
     
     # Força do motor base
     engine_force_base = 80000.0 * multiplicador_base
     # Aplicar upgrades
     mult_motor = 1.0 + (nivel_motor * 0.25)
+    if tem_slick_motor:
+        mult_motor *= 1.5  # +50% força
     mult_filtro = 1.0 + (nivel_filtro_ar * 0.12)
+    if tem_slick_filtro:
+        mult_filtro *= 1.4  # +40% força
     mult_ecu = 1.0 + (nivel_ecu * 0.10)
+    if tem_slick_ecu:
+        mult_ecu *= 1.35  # +35% aceleração
     mult_trans = 1.0 + (nivel_transmissao * 0.08)
+    if tem_slick_trans:
+        mult_trans *= 1.25  # +25% força
     engine_force = engine_force_base * mult_motor * mult_filtro * mult_ecu * mult_trans
     
     # Grip base
     Cf_base = (35000.0 if tipo_tracao != "rear" else 34000.0) * multiplicador_base
     mult_rodas = 1.0 + (nivel_rodas * 0.18)
+    if tem_slick_rodas:
+        mult_rodas *= 1.5  # +50% grip
     Cf = Cf_base * mult_rodas
     
     # Estabilidade base
     stability_k_base = 0.043
     mult_rodas_stab = 1.0 + (nivel_rodas * 0.10)
+    if tem_slick_rodas:
+        mult_rodas_stab *= 1.3  # +30% estabilidade
     mult_susp_stab = 1.0 + (nivel_suspensao * 0.12)
+    if tem_slick_susp:
+        mult_susp_stab *= 1.4  # +40% estabilidade
     stability_k = stability_k_base * mult_rodas_stab * mult_susp_stab
     
     # Frenagem base
@@ -2076,9 +2106,10 @@ def verificar_dinheiro_suficiente():
         prefixo_cor = carro['prefixo_cor']
         if prefixo_cor == "Car1" or gerenciador_progresso.esta_desbloqueado(prefixo_cor):
             upgrades_tipos = ['motor', 'filtro_ar', 'ecu', 'transmissao', 'rodas', 'suspensao', 'nitro']
+            nivel_maximo = gerenciador_progresso.obter_nivel_maximo_upgrade()
             for tipo_upgrade in upgrades_tipos:
                 nivel_atual = gerenciador_progresso.obter_upgrade(prefixo_cor, tipo_upgrade)
-                if nivel_atual < 5:
+                if nivel_atual < nivel_maximo:
                     preco = gerenciador_progresso.calcular_preco_upgrade(tipo_upgrade, nivel_atual)
                     if gerenciador_progresso.tem_dinheiro(preco):
                         return True
@@ -2095,14 +2126,366 @@ def verificar_upgrades_disponiveis(prefixo_cor):
     
     # Verificar se há algum upgrade disponível E se o jogador tem dinheiro suficiente
     upgrades_tipos = ['motor', 'filtro_ar', 'ecu', 'transmissao', 'rodas', 'suspensao', 'nitro']
+    nivel_maximo = gerenciador_progresso.obter_nivel_maximo_upgrade()
     for tipo_upgrade in upgrades_tipos:
         nivel_atual = gerenciador_progresso.obter_upgrade(prefixo_cor, tipo_upgrade)
-        if nivel_atual < 5:  # Ainda há níveis disponíveis
+        if nivel_atual < nivel_maximo:  # Ainda há níveis disponíveis
             preco = gerenciador_progresso.calcular_preco_upgrade(tipo_upgrade, nivel_atual)
             if gerenciador_progresso.tem_dinheiro(preco):
                 return True  # Encontrou pelo menos um upgrade disponível
     
     return False  # Não há upgrades disponíveis ou não tem dinheiro suficiente
+
+def _mostrar_selecao_cores(screen, fundo_base):
+    """Mostra tela de seleção de cores para o carro da campanha (estilo Slick/Pixel)"""
+    from config import LARGURA, ALTURA, FPS, DIR_PROJETO, obter_caminho_sprite_dia_noite
+    from core.progresso import gerenciador_progresso
+    import os
+    import json
+    
+    clock = pygame.time.Clock()
+    
+    # Carregar configuração de cores
+    CAMINHO_CAMPANHA_CAR_CONFIG = os.path.join(DIR_PROJETO, "data", "campanha_car_config.json")
+    cores_disponiveis = []
+    try:
+        if os.path.exists(CAMINHO_CAMPANHA_CAR_CONFIG):
+            with open(CAMINHO_CAMPANHA_CAR_CONFIG, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                cores_disponiveis = config.get("cores_finais", [])
+    except Exception as e:
+        print(f"Erro ao carregar cores: {e}")
+    
+    # Se não carregou do JSON, usar cores padrão com preços
+    if not cores_disponiveis:
+        cores_disponiveis = [
+            {"cor": "azul", "nome_sprite": "Car1_final_azul", "descricao": "Versão final azul", "preco": 5000},
+            {"cor": "branco", "nome_sprite": "Car1_final_branco", "descricao": "Versão final branca", "preco": 5000},
+            {"cor": "preto", "nome_sprite": "Car1_final_preto", "descricao": "Versão final preta", "preco": 5000},
+            {"cor": "verde", "nome_sprite": "Car1_final_verde", "descricao": "Versão final verde", "preco": 5000}
+        ]
+    else:
+        # Adicionar preços padrão se não existirem no JSON
+        precos_padrao = {"azul": 5000, "branco": 5000, "preto": 5000, "verde": 5000}
+        for cor_data in cores_disponiveis:
+            if "preco" not in cor_data:
+                cor_data["preco"] = precos_padrao.get(cor_data.get("cor", ""), 5000)
+    
+    opcao_selecionada = 0
+    rodando = True
+    cor_escolhida = None
+    
+    # Carregar background da oficina
+    bg_oficina = None
+    try:
+        caminho_oficina = obter_caminho_sprite_dia_noite("oficina")
+        if caminho_oficina and os.path.exists(caminho_oficina):
+            bg_oficina = pygame.image.load(caminho_oficina).convert()
+            bg_oficina = pygame.transform.scale(bg_oficina, (LARGURA, ALTURA))
+    except Exception as e:
+        print(f"Erro ao carregar background: {e}")
+    
+    # Carregar previews dos carros
+    DIR_CAR_SELECTION_CAMPANHA = os.path.join(DIR_PROJETO, "assets", "images", "car_selection", "campanha")
+    previews_carros = {}
+    for cor_data in cores_disponiveis:
+        sprite_path = os.path.join(DIR_CAR_SELECTION_CAMPANHA, f"{cor_data['nome_sprite']}.png")
+        if os.path.exists(sprite_path):
+            try:
+                sprite = pygame.image.load(sprite_path).convert_alpha()
+                # Redimensionar para preview pequeno
+                preview_w = 150
+                preview_h = 100
+                sprite_w, sprite_h = sprite.get_size()
+                escala = min(preview_w / sprite_w, preview_h / sprite_h) if sprite_w > 0 and sprite_h > 0 else 1.0
+                nova_w = int(sprite_w * escala)
+                nova_h = int(sprite_h * escala)
+                preview = pygame.transform.scale(sprite, (nova_w, nova_h))
+                previews_carros[cor_data['cor']] = preview
+            except Exception as e:
+                print(f"Erro ao carregar preview de {cor_data['cor']}: {e}")
+    
+    while rodando:
+        dt = clock.tick(FPS) / 1000.0
+        
+        eventos = pygame.event.get()
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        
+        # Área do menu (centro da tela - padrão Pixel/Slick)
+        menu_largura = 800
+        menu_altura = 500
+        menu_x = (LARGURA - menu_largura) // 2
+        menu_y = (ALTURA - menu_altura) // 2
+        
+        # Verificar hover sobre itens
+        y_inicio = menu_y + 100
+        altura_item = 80
+        espacamento = 10
+        
+        for i, cor_data in enumerate(cores_disponiveis):
+            item_y = y_inicio + i * (altura_item + espacamento)
+            item_rect = pygame.Rect(menu_x + 20, item_y, menu_largura - 40, altura_item)
+            
+            if item_rect.collidepoint(mouse_x, mouse_y):
+                opcao_selecionada = i
+        
+        # Verificar hover sobre botão "Voltar"
+        voltar_y = menu_y + menu_altura - 50
+        voltar_rect = pygame.Rect(menu_x + menu_largura - 150, voltar_y, 130, 35)
+        if voltar_rect.collidepoint(mouse_x, mouse_y):
+            opcao_selecionada = len(cores_disponiveis)
+        
+        for ev in eventos:
+            if ev.type == pygame.QUIT:
+                return None
+            
+            if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                # Verificar clique em cores
+                for i, cor_data in enumerate(cores_disponiveis):
+                    item_y = y_inicio + i * (altura_item + espacamento)
+                    item_rect = pygame.Rect(menu_x + 20, item_y, menu_largura - 40, altura_item)
+                    
+                    if item_rect.collidepoint(mouse_x, mouse_y):
+                        # Verificar se já tem essa cor aplicada
+                        if gerenciador_progresso.carro_campanha_cor_final == cor_data['cor']:
+                            # Já tem essa cor, não precisa comprar novamente
+                            cor_escolhida = cor_data['cor']
+                            rodando = False
+                            break
+                        
+                        # Verificar dinheiro
+                        preco = cor_data.get('preco', 5000)
+                        if gerenciador_progresso.tem_dinheiro(preco):
+                            # Remover dinheiro e aplicar cor
+                            gerenciador_progresso.remover_dinheiro(preco)
+                            gerenciador_progresso.salvar()
+                            cor_escolhida = cor_data['cor']
+                            rodando = False
+                            break
+                        else:
+                            # Mostrar mensagem de dinheiro insuficiente
+                            from core.musica import popup_musica
+                            popup_musica.mostrar("Dinheiro insuficiente!", tipo="outra")
+                        break
+                
+                # Verificar clique no botão "Voltar"
+                if voltar_rect.collidepoint(mouse_x, mouse_y):
+                    rodando = False
+                    return None
+            
+            if ev.type == pygame.KEYDOWN:
+                if ev.key == pygame.K_ESCAPE:
+                    return None
+                
+                if ev.key in (pygame.K_UP, pygame.K_w):
+                    if opcao_selecionada > 0:
+                        opcao_selecionada -= 1
+                elif ev.key in (pygame.K_DOWN, pygame.K_s):
+                    if opcao_selecionada < len(cores_disponiveis):
+                        opcao_selecionada += 1
+                elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
+                    if opcao_selecionada < len(cores_disponiveis):
+                        cor_data = cores_disponiveis[opcao_selecionada]
+                        # Verificar se já tem essa cor aplicada
+                        if gerenciador_progresso.carro_campanha_cor_final == cor_data['cor']:
+                            # Já tem essa cor, não precisa comprar novamente
+                            cor_escolhida = cor_data['cor']
+                            rodando = False
+                        else:
+                            # Verificar dinheiro
+                            preco = cor_data.get('preco', 5000)
+                            if gerenciador_progresso.tem_dinheiro(preco):
+                                # Remover dinheiro e aplicar cor
+                                gerenciador_progresso.remover_dinheiro(preco)
+                                gerenciador_progresso.salvar()
+                                cor_escolhida = cor_data['cor']
+                                rodando = False
+                            else:
+                                # Mostrar mensagem de dinheiro insuficiente
+                                from core.musica import popup_musica
+                                popup_musica.mostrar("Dinheiro insuficiente!", tipo="outra")
+                    elif opcao_selecionada == len(cores_disponiveis):
+                        return None
+        
+        # Desenhar background
+        if fundo_base:
+            screen.blit(fundo_base, (0, 0))
+        elif bg_oficina:
+            screen.blit(bg_oficina, (0, 0))
+        else:
+            screen.fill((20, 20, 30))
+        
+        # Overlay escuro para melhorar legibilidade do menu
+        overlay_escuro = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+        overlay_escuro.fill((0, 0, 0, 150))
+        screen.blit(overlay_escuro, (0, 0))
+        
+        # Fundo do menu
+        overlay_menu = pygame.Surface((menu_largura, menu_altura), pygame.SRCALPHA)
+        overlay_menu.fill((0, 0, 0, 240))
+        screen.blit(overlay_menu, (menu_x, menu_y))
+        
+        # Borda amarela (tema loja/diálogo)
+        pygame.draw.rect(screen, (255, 200, 0), (menu_x, menu_y, menu_largura, menu_altura), 3)
+        
+        # Título
+        titulo = render_text("ESCOLHER COR DO CARRO", 28, (255, 200, 0), bold=True, pixel_style=True)
+        screen.blit(titulo, (menu_x + (menu_largura - titulo.get_width()) // 2, menu_y + 20))
+        
+        # Dinheiro
+        dinheiro_texto = render_text(f"Créditos: ${gerenciador_progresso.dinheiro:,}", 20, (255, 255, 100), bold=True, pixel_style=True)
+        screen.blit(dinheiro_texto, (menu_x + 20, menu_y + 60))
+        
+        # Desenhar cores disponíveis
+        for i, cor_data in enumerate(cores_disponiveis):
+            item_y = y_inicio + i * (altura_item + espacamento)
+            item_rect = pygame.Rect(menu_x + 20, item_y, menu_largura - 40, altura_item)
+            
+            # Verificar hover
+            hover = item_rect.collidepoint(mouse_x, mouse_y) or i == opcao_selecionada
+            ja_aplicada = gerenciador_progresso.carro_campanha_cor_final == cor_data['cor']
+            preco = cor_data.get('preco', 5000)
+            tem_dinheiro = gerenciador_progresso.tem_dinheiro(preco) or ja_aplicada
+            
+            if ja_aplicada:
+                cor_fundo = (20, 50, 20, 200) if hover else (10, 30, 10, 200)
+                cor_borda = (0, 255, 0) if hover else (0, 200, 0)
+            elif tem_dinheiro:
+                cor_fundo = (50, 50, 20, 200) if hover else (30, 30, 10, 200)
+                cor_borda = (255, 200, 0) if hover else (200, 150, 0)
+            else:
+                cor_fundo = (30, 20, 20, 200) if hover else (20, 10, 10, 200)
+                cor_borda = (200, 100, 100) if hover else (150, 80, 80)
+            
+            # Fundo do item
+            overlay_item = pygame.Surface((item_rect.width, item_rect.height), pygame.SRCALPHA)
+            overlay_item.fill(cor_fundo)
+            screen.blit(overlay_item, item_rect.topleft)
+            
+            # Borda do item
+            pygame.draw.rect(screen, cor_borda, item_rect, 2)
+            
+            # Preview do carro (se disponível)
+            if cor_data['cor'] in previews_carros:
+                preview = previews_carros[cor_data['cor']]
+                preview_x = item_rect.x + 10
+                preview_y = item_rect.y + (item_rect.height - preview.get_height()) // 2
+                screen.blit(preview, (preview_x, preview_y))
+            
+            # Nome da cor
+            nome_cor = cor_data['cor'].upper()
+            preco = cor_data.get('preco', 5000)
+            
+            # Verificar se já tem essa cor aplicada
+            ja_aplicada = gerenciador_progresso.carro_campanha_cor_final == cor_data['cor']
+            
+            if ja_aplicada:
+                nome_texto = render_text(f"{nome_cor} [APLICADA]", 20, (0, 255, 0), bold=True, pixel_style=True)
+            else:
+                nome_texto = render_text(nome_cor, 20, (255, 255, 255), bold=True, pixel_style=True)
+            
+            preview_w = previews_carros[cor_data['cor']].get_width() if cor_data['cor'] in previews_carros else 0
+            nome_x = item_rect.x + preview_w + 30
+            nome_y = item_rect.y + 15
+            screen.blit(nome_texto, (nome_x, nome_y))
+            
+            # Preço (só mostrar se não estiver aplicada)
+            if not ja_aplicada:
+                preco_texto = render_text(f"${preco:,}", 18, (255, 255, 0), bold=True, pixel_style=True)
+                preco_x = item_rect.right - preco_texto.get_width() - 10
+                preco_y = item_rect.y + 15
+                screen.blit(preco_texto, (preco_x, preco_y))
+                
+                # Verificar se tem dinheiro suficiente
+                if not gerenciador_progresso.tem_dinheiro(preco):
+                    # Mostrar texto "Dinheiro insuficiente" em vermelho
+                    falta_texto = render_text("Dinheiro insuficiente", 14, (255, 100, 100), bold=False, pixel_style=True)
+                    falta_x = item_rect.right - falta_texto.get_width() - 10
+                    falta_y = item_rect.y + 40
+                    screen.blit(falta_texto, (falta_x, falta_y))
+        
+        # Botão "Voltar"
+        voltar_hover = voltar_rect.collidepoint(mouse_x, mouse_y) or opcao_selecionada == len(cores_disponiveis)
+        cor_voltar = (100, 100, 100, 200) if voltar_hover else (80, 80, 80, 200)
+        cor_borda_voltar = (150, 150, 150) if voltar_hover else (120, 120, 120)
+        
+        overlay_voltar = pygame.Surface((voltar_rect.width, voltar_rect.height), pygame.SRCALPHA)
+        overlay_voltar.fill(cor_voltar)
+        screen.blit(overlay_voltar, voltar_rect.topleft)
+        pygame.draw.rect(screen, cor_borda_voltar, voltar_rect, 2)
+        
+        texto_voltar = render_text("VOLTAR", 18, (255, 255, 255), bold=True, pixel_style=True)
+        texto_voltar_x = voltar_rect.x + (voltar_rect.width - texto_voltar.get_width()) // 2
+        texto_voltar_y = voltar_rect.y + (voltar_rect.height - texto_voltar.get_height()) // 2
+        screen.blit(texto_voltar, (texto_voltar_x, texto_voltar_y))
+        
+        pygame.display.flip()
+    
+    return cor_escolhida
+
+def _executar_transicao_melhoria(screen, fundo_base):
+    """Executa transição de tela escura com som de oficina ao melhorar carro"""
+    from config import LARGURA, ALTURA, DIR_PROJETO
+    import time
+    
+    # Duração da transição (em segundos)
+    duracao_escurecer = 0.5
+    duracao_oficina = 1.5  # Tempo com tela preta e som de oficina
+    duracao_clarear = 0.5
+    
+    clock = pygame.time.Clock()
+    
+    # Carregar som de oficina
+    som_oficina = None
+    try:
+        if pygame.mixer.get_init():
+            som_oficina_path = os.path.join(DIR_PROJETO, "assets", "sounds", "purchase", "caixa.mp3")
+            if os.path.exists(som_oficina_path):
+                som_oficina = pygame.mixer.Sound(som_oficina_path)
+    except:
+        pass
+    
+    # Fase 1: Escurecer
+    tempo_inicio = time.time()
+    while True:
+        dt = clock.tick(60) / 1000.0
+        tempo_decorrido = time.time() - tempo_inicio
+        
+        if tempo_decorrido < duracao_escurecer:
+            # Escurecer gradualmente
+            alpha = int(255 * (tempo_decorrido / duracao_escurecer))
+            overlay = pygame.Surface((LARGURA, ALTURA))
+            overlay.fill((0, 0, 0))
+            overlay.set_alpha(alpha)
+            screen.blit(fundo_base, (0, 0))
+            screen.blit(overlay, (0, 0))
+        elif tempo_decorrido < duracao_escurecer + duracao_oficina:
+            # Tela preta com som de oficina
+            if som_oficina and tempo_decorrido - duracao_escurecer < 0.1:
+                # Tocar som apenas uma vez no início desta fase
+                som_oficina.play()
+            overlay = pygame.Surface((LARGURA, ALTURA))
+            overlay.fill((0, 0, 0))
+            overlay.set_alpha(255)
+            screen.blit(overlay, (0, 0))
+        elif tempo_decorrido < duracao_escurecer + duracao_oficina + duracao_clarear:
+            # Clarear gradualmente
+            tempo_clarear = tempo_decorrido - (duracao_escurecer + duracao_oficina)
+            alpha = int(255 * (1.0 - tempo_clarear / duracao_clarear))
+            overlay = pygame.Surface((LARGURA, ALTURA))
+            overlay.fill((0, 0, 0))
+            overlay.set_alpha(alpha)
+            screen.blit(fundo_base, (0, 0))
+            screen.blit(overlay, (0, 0))
+        else:
+            break
+        
+        pygame.display.flip()
+        
+        # Processar eventos para não travar
+        for ev in pygame.event.get():
+            if ev.type == pygame.QUIT:
+                return
 
 def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
     global _tinha_dinheiro_anterior
@@ -2170,6 +2553,12 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
     # Importar a lista de carros do main
     from main import CARROS_DISPONIVEIS
     
+    # No modo campanha, filtrar para mostrar apenas Car1
+    if not modo_arcade:
+        CARROS_DISPONIVEIS_FILTRADOS = [carro for carro in CARROS_DISPONIVEIS if carro['prefixo_cor'] == 'Car1']
+    else:
+        CARROS_DISPONIVEIS_FILTRADOS = CARROS_DISPONIVEIS
+    
     carro_p1_atual_salvo = gerenciador_progresso.obter_carro_atual(1)
     # Converter para int se necessário (pode vir como string do JSON)
     try:
@@ -2177,15 +2566,19 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
     except (ValueError, TypeError):
         carro_p1_atual_salvo = None
     
-    if carro_p1_atual_salvo is not None and 0 <= carro_p1_atual_salvo < len(CARROS_DISPONIVEIS):
-        # Sempre usar o carro salvo, mesmo que não esteja desbloqueado (pode ter sido vendido)
-        carro_p1 = carro_p1_atual_salvo
+    # Encontrar índice do Car1 na lista filtrada
+    if not modo_arcade:
+        carro_p1 = 0  # Sempre usar Car1 no modo campanha
     else:
-        carros_desbloqueados = [i for i, carro in enumerate(CARROS_DISPONIVEIS) if gerenciador_progresso.esta_desbloqueado(carro['prefixo_cor'])]
-        if carros_desbloqueados:
-            carro_p1 = carros_desbloqueados[0]
+        if carro_p1_atual_salvo is not None and 0 <= carro_p1_atual_salvo < len(CARROS_DISPONIVEIS):
+            # Sempre usar o carro salvo, mesmo que não esteja desbloqueado (pode ter sido vendido)
+            carro_p1 = carro_p1_atual_salvo
         else:
-            carro_p1 = 0
+            carros_desbloqueados = [i for i, carro in enumerate(CARROS_DISPONIVEIS) if gerenciador_progresso.esta_desbloqueado(carro['prefixo_cor'])]
+            if carros_desbloqueados:
+                carro_p1 = carros_desbloqueados[0]
+            else:
+                carro_p1 = 0
     
     carro_p2_atual_salvo = gerenciador_progresso.obter_carro_atual(2)
     # Converter para int se necessário (pode vir como string do JSON)
@@ -2206,7 +2599,7 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
         modo_dois_jogadores = False
     else:
         modo_dois_jogadores = (modo_jogo == ModoJogo.DOIS_JOGADORES)
-    carro_atual_p1_prefixo = CARROS_DISPONIVEIS[carro_p1]['prefixo_cor']
+    carro_atual_p1_prefixo = CARROS_DISPONIVEIS_FILTRADOS[carro_p1]['prefixo_cor'] if not modo_arcade else CARROS_DISPONIVEIS[carro_p1]['prefixo_cor']
     carro_atual_p2_prefixo = CARROS_DISPONIVEIS[carro_p2]['prefixo_cor']
     # Verificar se os carros estão selecionados (com conversão segura)
     carro_selecionado_p1 = (obter_carro_idx_seguro(1) == carro_p1)
@@ -2246,20 +2639,108 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
     # Variável para animação do ícone de exclamação na oficina
     tempo_animacao_exclamacao_oficina = 0.0
     
+    # Carregar configuração dos carros da campanha
+    CAMINHO_CAMPANHA_CAR_CONFIG = os.path.join(DIR_PROJETO, "data", "campanha_car_config.json")
+    config_campanha = None
+    try:
+        if os.path.exists(CAMINHO_CAMPANHA_CAR_CONFIG):
+            with open(CAMINHO_CAMPANHA_CAR_CONFIG, 'r', encoding='utf-8') as f:
+                config_campanha = json.load(f)
+    except Exception as e:
+        print(f"Erro ao carregar config de carros da campanha: {e}")
+    
+    # Função auxiliar para obter sprite do carro baseado no estágio da campanha
+    def obter_sprite_carro_campanha(prefixo_cor):
+        """Retorna o sprite do carro baseado no estágio da campanha"""
+        if modo_arcade:
+            # No modo arcade, usar sprite normal
+            return None
+        
+        # Verificar se é o Car1 (carro da campanha)
+        if prefixo_cor != "Car1":
+            return None
+        
+        estagio = gerenciador_progresso.carro_campanha_estagio
+        cor_final = gerenciador_progresso.carro_campanha_cor_final
+        
+        # Se tem cor final, usar sprite final com cor
+        if cor_final:
+            sprite_nome = f"Car1_final_{cor_final}"
+        else:
+            # Sequência de estágios: 0=inicial, 1=lataria, 2=pneus_drift, 3=bodykit
+            estagios = [
+                "Car1_campanha_inicial",
+                "Car1_lataria",
+                "Car1_pneus_drift",
+                "Car1_bodykit"
+            ]
+            if 0 <= estagio < len(estagios):
+                sprite_nome = estagios[estagio]
+            else:
+                sprite_nome = estagios[-1]  # Usar último estágio se estagio for maior
+        
+        # Tentar carregar da pasta campanha
+        DIR_CAR_SELECTION_CAMPANHA = os.path.join(DIR_CAR_SELECTION, "campanha")
+        sprite_path = os.path.join(DIR_CAR_SELECTION_CAMPANHA, f"{sprite_nome}.png")
+        if os.path.exists(sprite_path):
+            return sprite_path
+        return None
+    
+    # Função auxiliar para obter configuração do estágio/cor do carro
+    def obter_config_carro_campanha():
+        """Retorna a configuração do carro baseado no estágio/cor atual"""
+        if not config_campanha or modo_arcade:
+            return None
+        
+        estagio = gerenciador_progresso.carro_campanha_estagio
+        cor_final = gerenciador_progresso.carro_campanha_cor_final
+        
+        if cor_final:
+            # Buscar configuração da cor final
+            for cor_config in config_campanha.get("cores_finais", []):
+                if cor_config.get("cor") == cor_final:
+                    return cor_config
+        else:
+            # Buscar configuração do estágio
+            for estagio_config in config_campanha.get("estagios", []):
+                if estagio_config.get("estagio") == estagio:
+                    return estagio_config
+        
+        return None
+    
     # Carregar sprites dos carros para seleção (usando pasta car_selection)
     sprites_carros = {}
-    for carro in CARROS_DISPONIVEIS:
+    carros_para_carregar = CARROS_DISPONIVEIS_FILTRADOS if not modo_arcade else CARROS_DISPONIVEIS
+    for carro in carros_para_carregar:
         try:
-            # Primeiro tenta carregar da pasta car_selection
-            sprite_path = os.path.join(DIR_CAR_SELECTION, f"{carro['sprite_selecao']}.png")
-            if not os.path.exists(sprite_path):
-                # Se não existir, usa o sprite normal
-                sprite_path = os.path.join(DIR_SPRITES, f"{carro['prefixo_cor']}.png")
+            # Verificar se é carro da campanha e obter sprite apropriado
+            sprite_path_campanha = obter_sprite_carro_campanha(carro['prefixo_cor'])
+            if sprite_path_campanha:
+                sprite_path = sprite_path_campanha
+            else:
+                # Primeiro tenta carregar da pasta car_selection
+                sprite_path = os.path.join(DIR_CAR_SELECTION, f"{carro['sprite_selecao']}.png")
+                if not os.path.exists(sprite_path):
+                    # Se não existir, usa o sprite normal
+                    sprite_path = os.path.join(DIR_SPRITES, f"{carro['prefixo_cor']}.png")
             
             sprite = pygame.image.load(sprite_path).convert_alpha()
-            # Usar tamanho e posição individuais para cada carro
-            tamanho_oficina = carro.get('tamanho_oficina', (600, 300))  # Padrão se não especificado
-            canvas_largura, canvas_altura = tamanho_oficina
+            
+            # Obter configuração do carro da campanha se disponível
+            config_carro = obter_config_carro_campanha() if not modo_arcade and carro['prefixo_cor'] == 'Car1' else None
+            
+            if config_carro:
+                # Usar configuração do arquivo JSON
+                tamanho_oficina = config_carro.get('tamanho_oficina', [600, 300])
+                escala_config = config_carro.get('escala', 1.0)
+                canvas_largura = int(tamanho_oficina[0] * escala_config)
+                canvas_altura = int(tamanho_oficina[1] * escala_config)
+                print(f"[CAMPANHA CAR] Usando config: tamanho={tamanho_oficina}, escala={escala_config}, y_offset={config_carro.get('y_offset', -10)}")
+            else:
+                # Usar tamanho padrão do carro
+                tamanho_oficina = carro.get('tamanho_oficina', (600, 300))  # Padrão se não especificado
+                canvas_largura, canvas_altura = tamanho_oficina
+            
             sprite_original = sprite
             
             # Calcular escala para manter proporção e ajustar ao tamanho individual
@@ -2277,7 +2758,11 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
             
             # Centralizar horizontalmente e posicionar na parte inferior (encostado no chão)
             x_offset = (canvas_largura - nova_largura) // 2
-            y_offset = canvas_altura - nova_altura - 5  # Posicionar mais baixo, quase no chão
+            # Ajustar y_offset usando configuração ou padrão
+            if config_carro:
+                y_offset = canvas_altura - nova_altura + config_carro.get('y_offset', -10)
+            else:
+                y_offset = canvas_altura - nova_altura - 10  # Posicionar no chão
             sprite.blit(sprite_redimensionado, (x_offset, y_offset))
             
             sprites_carros[carro['prefixo_cor']] = sprite
@@ -2365,6 +2850,8 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
         botao_comprar_rect_p1 = None
         botao_upgrade_rect_p1 = None
         botao_vender_rect_p1 = None
+        botao_melhorar_rect_p1 = None  # Botão para melhorar carro no modo campanha
+        botao_escolher_cor_rect_p1 = None  # Botão para escolher cor do carro no modo campanha
         botao_dois_jogadores_rect_p1 = None
         botao_concluido_rect_p1 = None
         botao_usar_rect_p2 = None
@@ -2383,53 +2870,95 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                 esta_desbloqueado_p1 = gerenciador_progresso.esta_desbloqueado(carro_anterior_obj['prefixo_cor'])
                 carro_atual_p1 = carro_anterior_obj
             else:
-                carro_atual_p1 = CARROS_DISPONIVEIS[carro_p1]
+                carro_atual_p1 = CARROS_DISPONIVEIS_FILTRADOS[carro_p1] if not modo_arcade else CARROS_DISPONIVEIS[carro_p1]
                 esta_desbloqueado_p1 = gerenciador_progresso.esta_desbloqueado(carro_atual_p1['prefixo_cor'])
             info_x_p1 = LARGURA - 300
-            info_y_p1 = 180
-            info_altura_p1 = 360  # Altura aumentada para acomodar o texto de dano
+            info_y_p1 = 150  # Subir a posição da caixa
+            # Verificar se tem upgrades do Slick para ajustar altura do retângulo (só no modo campanha)
+            if not modo_arcade:
+                slick_upgrades_check = getattr(gerenciador_progresso, 'slick_upgrades_comprados', [])
+                if slick_upgrades_check:
+                    # Se tiver upgrades do Slick, aumentar altura moderadamente
+                    info_altura_p1 = 420  # Altura aumentada moderadamente para acomodar upgrades do Slick
+                else:
+                    # Sem upgrades do Slick, usar altura padrão
+                    info_altura_p1 = 360
+            else:
+                # Modo arcade: sempre usar altura padrão
+                info_altura_p1 = 360
             botao_y_p1 = info_y_p1 + info_altura_p1 + 20
             botao_largura_p1 = 130
             botao_altura_p1 = 45
             espacamento_botoes_p1 = 10
             info_largura_p1 = 280
             botao_largura_p1 = 80  # Reduzir largura para caber botões
-            num_botoes = 3  # Sempre 3 botões: COMPRAR/USAR, UPGRADE, VENDER
-            # Mover botões mais para a esquerda
+            # No modo campanha, adicionar botão MELHORAR se o carro não estiver no estágio máximo
+            mostrar_botao_melhorar = (not modo_arcade and carro_atual_p1['prefixo_cor'] == 'Car1' and 
+                                      gerenciador_progresso.carro_campanha_estagio < 3 and 
+                                      gerenciador_progresso.carro_campanha_cor_final is None)
+            # Botão ESCOLHER COR aparece quando estágio = 3 E cores foram desbloqueadas pelo Pixel
+            cores_desbloqueadas = hasattr(gerenciador_progresso, 'pixel_cores_especiais_desbloqueadas') and \
+                                  "todas" in getattr(gerenciador_progresso, 'pixel_cores_especiais_desbloqueadas', set())
+            mostrar_botao_escolher_cor = (not modo_arcade and carro_atual_p1['prefixo_cor'] == 'Car1' and 
+                                          gerenciador_progresso.carro_campanha_estagio >= 3 and cores_desbloqueadas)
+            num_botoes = 4 if (mostrar_botao_melhorar or mostrar_botao_escolher_cor) else 3  # 4 botões se tiver MELHORAR ou ESCOLHER COR, senão 3
+            # Posicionar botões mais para a direita na caixa de especificações
             largura_total_botoes = botao_largura_p1 * num_botoes + espacamento_botoes_p1 * (num_botoes - 1)
-            offset_esquerda = -30  # Mover para a esquerda
-            botoes_x_inicial_p1 = info_x_p1 + (info_largura_p1 - largura_total_botoes) // 2 + offset_esquerda
-            # Garantir que não saia da caixa pela esquerda
-            if botoes_x_inicial_p1 < info_x_p1:
-                botoes_x_inicial_p1 = info_x_p1 + 5
+            offset_direita = 40  # Mover bastante para a direita
+            botoes_x_inicial_p1 = info_x_p1 + (info_largura_p1 - largura_total_botoes) // 2 + offset_direita
+            # Garantir que não saia da caixa pela direita
+            if botoes_x_inicial_p1 + largura_total_botoes > info_x_p1 + info_largura_p1:
+                botoes_x_inicial_p1 = info_x_p1 + info_largura_p1 - largura_total_botoes - 5
             
             if esta_desbloqueado_p1:
                 botao_usar_rect_p1 = pygame.Rect(botoes_x_inicial_p1, botao_y_p1, botao_largura_p1, botao_altura_p1)
                 botao_upgrade_rect_p1 = pygame.Rect(botoes_x_inicial_p1 + botao_largura_p1 + espacamento_botoes_p1, botao_y_p1, botao_largura_p1, botao_altura_p1)
-                botao_vender_rect_p1 = pygame.Rect(botoes_x_inicial_p1 + (botao_largura_p1 + espacamento_botoes_p1) * 2, botao_y_p1, botao_largura_p1, botao_altura_p1)
+                if mostrar_botao_melhorar:
+                    botao_melhorar_rect_p1 = pygame.Rect(botoes_x_inicial_p1 + (botao_largura_p1 + espacamento_botoes_p1) * 2, botao_y_p1, botao_largura_p1, botao_altura_p1)
+                    botao_vender_rect_p1 = pygame.Rect(botoes_x_inicial_p1 + (botao_largura_p1 + espacamento_botoes_p1) * 3, botao_y_p1, botao_largura_p1, botao_altura_p1)
+                    botao_escolher_cor_rect_p1 = None
+                elif mostrar_botao_escolher_cor:
+                    botao_melhorar_rect_p1 = None
+                    botao_escolher_cor_rect_p1 = pygame.Rect(botoes_x_inicial_p1 + (botao_largura_p1 + espacamento_botoes_p1) * 2, botao_y_p1, botao_largura_p1, botao_altura_p1)
+                    botao_vender_rect_p1 = pygame.Rect(botoes_x_inicial_p1 + (botao_largura_p1 + espacamento_botoes_p1) * 3, botao_y_p1, botao_largura_p1, botao_altura_p1)
+                else:
+                    botao_melhorar_rect_p1 = None
+                    botao_escolher_cor_rect_p1 = None
+                    botao_vender_rect_p1 = pygame.Rect(botoes_x_inicial_p1 + (botao_largura_p1 + espacamento_botoes_p1) * 2, botao_y_p1, botao_largura_p1, botao_altura_p1)
                 # Botão "2 jogadores" removido (não aparece mais ao lado de vender)
                 botao_dois_jogadores_rect_p1 = None
                 
                 # Botão "Concluído" sempre aparece abaixo dos outros botões (esticado para centralizar)
                 botao_concluido_y_p1 = botao_y_p1 + botao_altura_p1 + 15
-                # Esticar o botão para ficar centralizado abaixo dos 3 botões acima
-                largura_total_botoes_acima = botao_largura_p1 * 3 + espacamento_botoes_p1 * 2
-                botao_concluido_largura_p1 = largura_total_botoes_acima  # Mesma largura dos 3 botões acima
-                # Centralizar o botão em relação aos 3 botões acima
+                # Esticar o botão para ficar centralizado abaixo dos botões acima
+                largura_total_botoes_acima = botao_largura_p1 * num_botoes + espacamento_botoes_p1 * (num_botoes - 1)
+                botao_concluido_largura_p1 = largura_total_botoes_acima  # Mesma largura dos botões acima
+                # Centralizar o botão em relação aos botões acima
                 botao_concluido_x_p1 = botoes_x_inicial_p1  # Alinhar com o primeiro botão
                 botao_concluido_rect_p1 = pygame.Rect(botao_concluido_x_p1, botao_concluido_y_p1, botao_concluido_largura_p1, botao_altura_p1)
             else:
-                # Mesmo quando carro não é possuído, mostrar os 3 botões (COMPRAR, UPGRADE, VENDER)
+                # Mesmo quando carro não é possuído, mostrar os botões (COMPRAR, UPGRADE, VENDER, e MELHORAR se aplicável)
                 botao_comprar_rect_p1 = pygame.Rect(botoes_x_inicial_p1, botao_y_p1, botao_largura_p1, botao_altura_p1)
                 botao_upgrade_rect_p1 = pygame.Rect(botoes_x_inicial_p1 + botao_largura_p1 + espacamento_botoes_p1, botao_y_p1, botao_largura_p1, botao_altura_p1)
-                botao_vender_rect_p1 = pygame.Rect(botoes_x_inicial_p1 + (botao_largura_p1 + espacamento_botoes_p1) * 2, botao_y_p1, botao_largura_p1, botao_altura_p1)
+                if mostrar_botao_melhorar:
+                    botao_melhorar_rect_p1 = pygame.Rect(botoes_x_inicial_p1 + (botao_largura_p1 + espacamento_botoes_p1) * 2, botao_y_p1, botao_largura_p1, botao_altura_p1)
+                    botao_vender_rect_p1 = pygame.Rect(botoes_x_inicial_p1 + (botao_largura_p1 + espacamento_botoes_p1) * 3, botao_y_p1, botao_largura_p1, botao_altura_p1)
+                    botao_escolher_cor_rect_p1 = None
+                elif mostrar_botao_escolher_cor:
+                    botao_melhorar_rect_p1 = None
+                    botao_escolher_cor_rect_p1 = pygame.Rect(botoes_x_inicial_p1 + (botao_largura_p1 + espacamento_botoes_p1) * 2, botao_y_p1, botao_largura_p1, botao_altura_p1)
+                    botao_vender_rect_p1 = pygame.Rect(botoes_x_inicial_p1 + (botao_largura_p1 + espacamento_botoes_p1) * 3, botao_y_p1, botao_largura_p1, botao_altura_p1)
+                else:
+                    botao_melhorar_rect_p1 = None
+                    botao_escolher_cor_rect_p1 = None
+                    botao_vender_rect_p1 = pygame.Rect(botoes_x_inicial_p1 + (botao_largura_p1 + espacamento_botoes_p1) * 2, botao_y_p1, botao_largura_p1, botao_altura_p1)
                 botao_dois_jogadores_rect_p1 = None
                 # Botão "Concluído" sempre aparece, mesmo quando carro não é possuído (esticado para centralizar)
                 botao_concluido_y_p1 = botao_y_p1 + botao_altura_p1 + 15
-                # Esticar o botão para ficar centralizado abaixo dos 3 botões acima
-                largura_total_botoes_acima = botao_largura_p1 * 3 + espacamento_botoes_p1 * 2
-                botao_concluido_largura_p1 = largura_total_botoes_acima  # Mesma largura dos 3 botões acima
-                # Centralizar o botão em relação aos 3 botões acima
+                # Esticar o botão para ficar centralizado abaixo dos botões acima
+                largura_total_botoes_acima = botao_largura_p1 * num_botoes + espacamento_botoes_p1 * (num_botoes - 1)
+                botao_concluido_largura_p1 = largura_total_botoes_acima  # Mesma largura dos botões acima
+                # Centralizar o botão em relação aos botões acima
                 botao_concluido_x_p1 = botoes_x_inicial_p1  # Alinhar com o primeiro botão
                 botao_concluido_rect_p1 = pygame.Rect(botao_concluido_x_p1, botao_concluido_y_p1, botao_concluido_largura_p1, botao_altura_p1)
         
@@ -2499,8 +3028,10 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                 barao.processar_eventos(eventos)
             if resultado_crank == "fechado":
                 crank.fechar()
-            # Filtrar eventos de mouse e teclado que o Crank processa
-            eventos = [ev for ev in eventos if not (ev.type in (pygame.MOUSEBUTTONDOWN, pygame.KEYDOWN) and crank.ativo)]
+            # NÃO filtrar eventos aqui - o Crank processa os eventos dele, mas os outros eventos
+            # devem continuar sendo processados normalmente
+            # O Crank só intercepta eventos quando está ativo e processando, mas não bloqueia
+            # eventos futuros que não foram processados por ele
         
         for ev in eventos:
             if ev.type == pygame.QUIT:
@@ -2511,7 +3042,7 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                 from core.menu_controles import processar_eventos_controle_menu
                 tempo_atual = pygame.time.get_ticks()
                 # Criar uma lista de opções para navegação (carros)
-                num_carros = len(CARROS_DISPONIVEIS)
+                num_carros = len(CARROS_DISPONIVEIS_FILTRADOS) if not modo_arcade else len(CARROS_DISPONIVEIS)
                 carro_atual_idx = carro_p1 if fase_selecao == 1 else carro_p2
                 
                 # Passar 0 como num_opcoes para evitar que esquerda/direita do D-pad sejam processadas como navegação de carros
@@ -2520,7 +3051,7 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                 # Para navegação de opções (usar, upgrade, vender, concluído), passar número de opções
                 # Determinar opções disponíveis baseado no estado do carro
                 if fase_selecao == 1:
-                    carro_atual = CARROS_DISPONIVEIS[carro_p1]
+                    carro_atual = CARROS_DISPONIVEIS_FILTRADOS[carro_p1] if not modo_arcade else CARROS_DISPONIVEIS[carro_p1]
                     esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
                 else:
                     carro_atual = CARROS_DISPONIVEIS[carro_p2]
@@ -2569,8 +3100,11 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                 if resultado_controle:
                     controle_processado = True
                     acao = resultado_controle.get("acao")
-                    # Processar ações de carro (L1/R1) - processar sempre, mesmo durante transição
-                    if acao == "carro_anterior" or acao == "carro_proximo":
+                    # Processar ações de carro (L1/R1) - apenas no modo arcade
+                    if not modo_arcade:
+                        # No modo campanha, ignorar navegação de carros
+                        pass
+                    elif acao == "carro_anterior" or acao == "carro_proximo":
                         # Processar mesmo durante transição (permitir mudança rápida)
                         if acao == "carro_anterior":
                             # Navegar para carro anterior (L1) - ir para esquerda (carro anterior)
@@ -2987,17 +3521,19 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                     mouse_x, mouse_y = ev.pos
                     
                     if fase_selecao == 1:
-                        carro_atual = CARROS_DISPONIVEIS[carro_p1]
+                        carro_atual = CARROS_DISPONIVEIS_FILTRADOS[carro_p1] if not modo_arcade else CARROS_DISPONIVEIS[carro_p1]
                         esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
                         
-                        # Verificar clique nas setas de navegação
-                        if seta_esquerda_rect_p1 and seta_esquerda_rect_p1.collidepoint(mouse_x, mouse_y) and carro_p1 > 0 and not transicao_ativa:
+                        # Verificar clique nas setas de navegação (apenas no modo arcade)
+                        if not modo_arcade:
+                            # No modo campanha, não há navegação entre carros
+                            pass
+                        elif seta_esquerda_rect_p1 and seta_esquerda_rect_p1.collidepoint(mouse_x, mouse_y) and carro_p1 > 0 and not transicao_ativa:
                             iniciar_transicao(-1, carro_p1)
                             carro_p1 = (carro_p1 - 1) % len(CARROS_DISPONIVEIS)
                             carro_selecionado_p1 = (obter_carro_idx_seguro(1) == carro_p1)
                             continue
-                        
-                        if seta_direita_rect_p1 and seta_direita_rect_p1.collidepoint(mouse_x, mouse_y) and not transicao_ativa:
+                        elif seta_direita_rect_p1 and seta_direita_rect_p1.collidepoint(mouse_x, mouse_y) and not transicao_ativa:
                             iniciar_transicao(1, carro_p1)
                             carro_p1 = (carro_p1 + 1) % len(CARROS_DISPONIVEIS)
                             carro_selecionado_p1 = (obter_carro_idx_seguro(1) == carro_p1)
@@ -3045,6 +3581,119 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                 elif not pode_upgrade:
                                     from core.i18n import t
                                     popup_musica.mostrar(t("mensagens.comprar_carro_primeiro"), tipo="outra")
+                            # Verificar clique no botão ESCOLHER COR (modo campanha)
+                            elif botao_escolher_cor_rect_p1 and botao_escolher_cor_rect_p1.collidepoint(mouse_x, mouse_y):
+                                # Mostrar tela de seleção de cores
+                                cor_escolhida = _mostrar_selecao_cores(screen, fundo_sem_textos)
+                                if cor_escolhida:
+                                    gerenciador_progresso.carro_campanha_cor_final = cor_escolhida
+                                    gerenciador_progresso.salvar()
+                                    
+                                    # Recarregar sprite do carro com a cor escolhida
+                                    sprite_path_campanha = obter_sprite_carro_campanha(carro_atual['prefixo_cor'])
+                                    if sprite_path_campanha and os.path.exists(sprite_path_campanha):
+                                        sprite = pygame.image.load(sprite_path_campanha).convert_alpha()
+                                        
+                                        # Obter configuração do carro da campanha
+                                        config_carro = obter_config_carro_campanha() if not modo_arcade and carro_atual['prefixo_cor'] == 'Car1' else None
+                                        
+                                        if config_carro:
+                                            tamanho_oficina = config_carro.get('tamanho_oficina', [600, 300])
+                                            escala_config = config_carro.get('escala', 1.0)
+                                            canvas_largura = int(tamanho_oficina[0] * escala_config)
+                                            canvas_altura = int(tamanho_oficina[1] * escala_config)
+                                        else:
+                                            tamanho_oficina = carro_atual.get('tamanho_oficina', (600, 300))
+                                            canvas_largura, canvas_altura = tamanho_oficina
+                                        
+                                        # Calcular escala para manter proporção
+                                        sprite_original = sprite
+                                        escala_x = canvas_largura / sprite_original.get_width() if sprite_original.get_width() > 0 else 1.0
+                                        escala_y = canvas_altura / sprite_original.get_height() if sprite_original.get_height() > 0 else 1.0
+                                        escala = min(escala_x, escala_y)
+                                        
+                                        # Redimensionar mantendo proporção
+                                        nova_largura = int(sprite_original.get_width() * escala)
+                                        nova_altura = int(sprite_original.get_height() * escala)
+                                        sprite_redimensionado = pygame.transform.scale(sprite_original, (nova_largura, nova_altura))
+                                        
+                                        # Criar canvas
+                                        sprite = pygame.Surface((canvas_largura, canvas_altura), pygame.SRCALPHA)
+                                        
+                                        # Posicionar sprite no canvas
+                                        x_offset = (canvas_largura - nova_largura) // 2
+                                        if config_carro:
+                                            y_offset = canvas_altura - nova_altura + config_carro.get('y_offset', -10)
+                                        else:
+                                            y_offset = canvas_altura - nova_altura - 10
+                                        sprite.blit(sprite_redimensionado, (x_offset, y_offset))
+                                        sprites_carros[carro_atual['prefixo_cor']] = sprite
+                                    
+                                    from core.i18n import t
+                                    popup_musica.mostrar(f"Cor {cor_escolhida.upper()} aplicada!", tipo="outra")
+                            
+                            # Verificar clique no botão MELHORAR (modo campanha)
+                            elif botao_melhorar_rect_p1 and botao_melhorar_rect_p1.collidepoint(mouse_x, mouse_y):
+                                estagio_atual = gerenciador_progresso.carro_campanha_estagio
+                                custo_melhoria = [5000, 10000, 15000][estagio_atual] if estagio_atual < 3 else 0
+                                
+                                if gerenciador_progresso.tem_dinheiro(custo_melhoria) and estagio_atual < 3:
+                                    # Processar melhoria com transição
+                                    gerenciador_progresso.dinheiro -= custo_melhoria
+                                    gerenciador_progresso.carro_campanha_estagio += 1
+                                    gerenciador_progresso.salvar()
+                                    
+                                    # Executar transição de melhoria
+                                    _executar_transicao_melhoria(screen, fundo_sem_textos)
+                                    
+                                    # Recarregar sprite do carro (forçar recarregamento)
+                                    sprite_path_campanha = obter_sprite_carro_campanha(carro_atual['prefixo_cor'])
+                                    if sprite_path_campanha and os.path.exists(sprite_path_campanha):
+                                        sprite = pygame.image.load(sprite_path_campanha).convert_alpha()
+                                        
+                                        # Obter configuração do carro da campanha (usar a mesma lógica do carregamento inicial)
+                                        config_carro = obter_config_carro_campanha() if not modo_arcade and carro_atual['prefixo_cor'] == 'Car1' else None
+                                        
+                                        if config_carro:
+                                            # Usar configuração do arquivo JSON (mesma lógica do carregamento inicial)
+                                            tamanho_oficina = config_carro.get('tamanho_oficina', [600, 300])
+                                            escala_config = config_carro.get('escala', 1.0)
+                                            canvas_largura = int(tamanho_oficina[0] * escala_config)
+                                            canvas_altura = int(tamanho_oficina[1] * escala_config)
+                                        else:
+                                            # Usar tamanho padrão do carro
+                                            tamanho_oficina = carro_atual.get('tamanho_oficina', (600, 300))
+                                            canvas_largura, canvas_altura = tamanho_oficina
+                                        
+                                        # Calcular escala para manter proporção
+                                        sprite_original = sprite
+                                        escala_x = canvas_largura / sprite_original.get_width() if sprite_original.get_width() > 0 else 1.0
+                                        escala_y = canvas_altura / sprite_original.get_height() if sprite_original.get_height() > 0 else 1.0
+                                        escala = min(escala_x, escala_y)  # Usar a menor escala para manter proporção
+                                        
+                                        # Redimensionar mantendo proporção
+                                        nova_largura = int(sprite_original.get_width() * escala)
+                                        nova_altura = int(sprite_original.get_height() * escala)
+                                        sprite_redimensionado = pygame.transform.scale(sprite_original, (nova_largura, nova_altura))
+                                        
+                                        # Criar canvas com tamanho individual
+                                        sprite = pygame.Surface((canvas_largura, canvas_altura), pygame.SRCALPHA)
+                                        
+                                        # Centralizar horizontalmente e posicionar na parte inferior (encostado no chão)
+                                        x_offset = (canvas_largura - nova_largura) // 2
+                                        # Ajustar y_offset usando configuração ou padrão
+                                        if config_carro:
+                                            y_offset = canvas_altura - nova_altura + config_carro.get('y_offset', -10)
+                                        else:
+                                            y_offset = canvas_altura - nova_altura - 10  # Posicionar no chão
+                                        sprite.blit(sprite_redimensionado, (x_offset, y_offset))
+                                        sprites_carros[carro_atual['prefixo_cor']] = sprite
+                                    
+                                    from core.i18n import t
+                                    popup_musica.mostrar(f"Cor {cor_escolhida.upper()} aplicada!", tipo="outra")
+                                else:
+                                    from core.i18n import t
+                                    popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
                             # Verificar clique no botão VENDER
                             elif botao_vender_rect_p1 and botao_vender_rect_p1.collidepoint(mouse_x, mouse_y):
                                 if gerenciador_progresso.contar_carros_desbloqueados() > 1:
@@ -3168,7 +3817,8 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                             # Menu principal
                             return None, None
                 elif ev.key in (pygame.K_LEFT, pygame.K_a):
-                    if not transicao_ativa:  # Só permite navegação se não estiver em transição
+                    # No modo campanha, não permitir navegação entre carros
+                    if modo_arcade and not transicao_ativa:  # Só permite navegação se não estiver em transição e estiver no modo arcade
                         if fase_selecao == 1:
                             iniciar_transicao(-1, carro_p1)
                             carro_p1 = (carro_p1 - 1) % len(CARROS_DISPONIVEIS)
@@ -3178,7 +3828,8 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                             carro_p2 = (carro_p2 - 1) % len(CARROS_DISPONIVEIS)
                             carro_selecionado_p2 = (obter_carro_idx_seguro(2) == carro_p2)
                 elif ev.key in (pygame.K_RIGHT, pygame.K_d):
-                    if not transicao_ativa:  # Só permite navegação se não estiver em transição
+                    # No modo campanha, não permitir navegação entre carros
+                    if modo_arcade and not transicao_ativa:  # Só permite navegação se não estiver em transição e estiver no modo arcade
                         if fase_selecao == 1:
                             iniciar_transicao(1, carro_p1)
                             carro_p1 = (carro_p1 + 1) % len(CARROS_DISPONIVEIS)
@@ -3190,7 +3841,7 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                 elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
                     if not transicao_ativa:  # Só permite confirmação se não estiver em transição
                         if fase_selecao == 1:
-                            carro_atual = CARROS_DISPONIVEIS[carro_p1]
+                            carro_atual = CARROS_DISPONIVEIS_FILTRADOS[carro_p1] if not modo_arcade else CARROS_DISPONIVEIS[carro_p1]
                             esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
                             if esta_desbloqueado and carro_selecionado_p1:
                                 fase_selecao = 2
@@ -3288,16 +3939,39 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
             # FASE 1: Player 1 selecionando - sem subtítulo de "JOGADOR 1" e sem instruções
             
             # Carro selecionado P1 - Grande e centralizado
-            carro_atual = CARROS_DISPONIVEIS[carro_p1]
+            # Garantir que carro_p1 seja válido no modo campanha
+            if not modo_arcade:
+                carro_p1 = 0  # Sempre usar índice 0 no modo campanha
+                if carro_p1 >= len(CARROS_DISPONIVEIS_FILTRADOS):
+                    carro_p1 = 0
+            carro_atual = CARROS_DISPONIVEIS_FILTRADOS[carro_p1] if not modo_arcade else CARROS_DISPONIVEIS[carro_p1]
             
             if transicao_ativa:
-                carro_anterior_obj = CARROS_DISPONIVEIS[carro_anterior]
-                carro_atual_obj = CARROS_DISPONIVEIS[carro_p1]
-                sprite_anterior = sprites_carros[carro_anterior_obj['prefixo_cor']]
-                sprite_atual = sprites_carros[carro_atual_obj['prefixo_cor']]
+                carro_anterior_obj = CARROS_DISPONIVEIS_FILTRADOS[carro_anterior] if not modo_arcade else CARROS_DISPONIVEIS[carro_anterior]
+                carro_atual_obj = CARROS_DISPONIVEIS_FILTRADOS[carro_p1] if not modo_arcade else CARROS_DISPONIVEIS[carro_p1]
+                sprite_anterior = sprites_carros.get(carro_anterior_obj['prefixo_cor'])
+                sprite_atual = sprites_carros.get(carro_atual_obj['prefixo_cor'])
+                if sprite_anterior is None or sprite_atual is None:
+                    # Fallback se sprite não encontrado
+                    sprite_anterior = sprite_atual = sprites_carros.get('Car1', pygame.Surface((100, 100)))
                 
-                pos_anterior = carro_anterior_obj.get('posicao_oficina', (LARGURA//2 - 300, 380))
-                pos_atual = carro_atual_obj.get('posicao_oficina', (LARGURA//2 - 300, 380))
+                # Para carros da campanha, centralizar o canvas como no editor
+                config_anterior = obter_config_carro_campanha() if not modo_arcade and carro_anterior_obj['prefixo_cor'] == 'Car1' else None
+                config_atual = obter_config_carro_campanha() if not modo_arcade and carro_atual_obj['prefixo_cor'] == 'Car1' else None
+                
+                if config_anterior:
+                    canvas_largura_ant = sprite_anterior.get_width()
+                    canvas_altura_ant = sprite_anterior.get_height()
+                    pos_anterior = ((LARGURA - canvas_largura_ant) // 2, (ALTURA - canvas_altura_ant) // 2)
+                else:
+                    pos_anterior = carro_anterior_obj.get('posicao_oficina', (LARGURA//2 - 300, 380))
+                
+                if config_atual:
+                    canvas_largura_atual = sprite_atual.get_width()
+                    canvas_altura_atual = sprite_atual.get_height()
+                    pos_atual = ((LARGURA - canvas_largura_atual) // 2, (ALTURA - canvas_altura_atual) // 2)
+                else:
+                    pos_atual = carro_atual_obj.get('posicao_oficina', (LARGURA//2 - 300, 380))
                 
                 pos_x_anterior = pos_anterior[0] + carro_atual_pos * LARGURA
                 pos_x_atual = pos_atual[0] + carro_proximo_pos * LARGURA
@@ -3311,8 +3985,21 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                     cadeado_y = pos_atual[1] + (sprite_atual.get_height() - icone_cadeado.get_height()) // 2
                     screen.blit(icone_cadeado, (cadeado_x, cadeado_y))
             else:
-                sprite_atual = sprites_carros[carro_atual['prefixo_cor']]
-                posicao = carro_atual.get('posicao_oficina', (LARGURA//2 - 300, 380))
+                sprite_atual = sprites_carros.get(carro_atual['prefixo_cor'])
+                if sprite_atual is None:
+                    # Fallback se sprite não encontrado
+                    sprite_atual = sprites_carros.get('Car1', pygame.Surface((100, 100)))
+                
+                # Para carros da campanha, centralizar o canvas como no editor
+                config_carro = obter_config_carro_campanha() if not modo_arcade and carro_atual['prefixo_cor'] == 'Car1' else None
+                if config_carro:
+                    # Centralizar canvas na tela (como no editor)
+                    canvas_largura = sprite_atual.get_width()
+                    canvas_altura = sprite_atual.get_height()
+                    posicao = ((LARGURA - canvas_largura) // 2, (ALTURA - canvas_altura) // 2)
+                else:
+                    posicao = carro_atual.get('posicao_oficina', (LARGURA//2 - 300, 380))
+                
                 screen.blit(sprite_atual, posicao)
                 
                 esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
@@ -3322,9 +4009,10 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                     screen.blit(icone_cadeado, (cadeado_x, cadeado_y))
             
             # Indicadores de navegação (setas) para carros P1 - desenhar DEPOIS do carro para ficar na frente
+            # No modo campanha, não mostrar setas (só tem Car1)
             seta_esquerda_rect_p1 = None
             seta_direita_rect_p1 = None
-            if len(CARROS_DISPONIVEIS) > 1:
+            if modo_arcade and len(CARROS_DISPONIVEIS) > 1:
                 # Seta esquerda (se não estiver no primeiro carro) - mesma altura da seta direita
                 if carro_p1 > 0:
                     seta_esquerda_temp = render_text("◄", 48, (150, 220, 255), bold=True, pixel_style=True)
@@ -3359,12 +4047,14 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
             
             # Informações do carro na lateral direita - retângulo otimizado
             info_x = LARGURA - 300  # Largura reduzida
-            info_y = 180  # Posição ajustada
+            info_y = 150  # Posição ajustada (subida)
             
             # Fundo semi-transparente para as informações - tamanho otimizado
             info_largura = 280
-            info_altura = 360  # Altura aumentada para acomodar o texto de dano
-            if not hasattr(selecionar_carros_loop, '_info_bg_cache'):
+            info_altura = info_altura_p1  # Usar a mesma altura definida para P1 (500)
+            # Recriar cache se a altura mudou
+            if not hasattr(selecionar_carros_loop, '_info_bg_cache') or \
+               selecionar_carros_loop._info_bg_cache.get_height() != info_altura:
                 info_bg = pygame.Surface((info_largura, info_altura), pygame.SRCALPHA)
                 info_bg.fill((0, 0, 0, 150))
                 selecionar_carros_loop._info_bg_cache = info_bg
@@ -3378,9 +4068,16 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
             else:
                 nome_carro_info, info_titulo = selecionar_carros_loop._textos_cache_p1
             
+            # Verificar se tem upgrades do Slick para ajustar posição vertical (só no modo campanha)
+            if not modo_arcade:
+                slick_upgrades_pos = getattr(gerenciador_progresso, 'slick_upgrades_comprados', [])
+                offset_y_slick = -10 if slick_upgrades_pos else 0  # Subir conteúdo levemente se tiver upgrades do Slick
+            else:
+                offset_y_slick = 0  # Modo arcade: sem offset
+            
             nome_x_info = info_x + (info_largura - nome_carro_info.get_width()) // 2
-            screen.blit(nome_carro_info, (nome_x_info, info_y + 15))
-            screen.blit(info_titulo, (info_x + 15, info_y + 55))
+            screen.blit(nome_carro_info, (nome_x_info, info_y + 15 + offset_y_slick))
+            screen.blit(info_titulo, (info_x + 15, info_y + 55 + offset_y_slick))
             
             # Tipo de tração - espaçamento melhorado
             # Normalizar tipo de tração: converter português para inglês
@@ -3398,7 +4095,7 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
             tracao_texto = t("menu.oficina.tracao").format(tracao_tipo)
             tracao_color = (120, 240, 180) if carro_atual['tipo_tracao'] == 'awd' else (150, 220, 255)
             tracao_render = render_text(tracao_texto, 16, tracao_color, bold=True, pixel_style=True)
-            screen.blit(tracao_render, (info_x + 15, info_y + 90))
+            screen.blit(tracao_render, (info_x + 15, info_y + 90 + offset_y_slick))
             
             if not hasattr(selecionar_carros_loop, '_especs_cache') or selecionar_carros_loop._carro_cache_p1 != carro_p1:
                 upgrades_carro = gerenciador_progresso.obter_todos_upgrades(carro_atual['prefixo_cor'])
@@ -3411,27 +4108,27 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
             vel_max = int(especs['velocidade'])
             vel_texto = t("menu.oficina.velocidade").format(vel_max)
             vel_render = render_text(vel_texto, 16, (120, 200, 255), bold=True, pixel_style=True)
-            screen.blit(vel_render, (info_x + 15, info_y + 120))
+            screen.blit(vel_render, (info_x + 15, info_y + 120 + offset_y_slick))
             
             dir_valor = especs['dirigibilidade']
             dir_texto = t("menu.oficina.dirigibilidade").format(dir_valor)
             dir_render = render_text(dir_texto, 16, (140, 210, 255), bold=True, pixel_style=True)
-            screen.blit(dir_render, (info_x + 15, info_y + 150))
+            screen.blit(dir_render, (info_x + 15, info_y + 150 + offset_y_slick))
             
             fren_valor = especs['frenagem']
             fren_texto = t("menu.oficina.frenagem").format(fren_valor)
             fren_render = render_text(fren_texto, 16, (130, 200, 255), bold=True, pixel_style=True)
-            screen.blit(fren_render, (info_x + 15, info_y + 180))
+            screen.blit(fren_render, (info_x + 15, info_y + 180 + offset_y_slick))
             
             acel_valor = especs['aceleracao']
             acel_texto = t("menu.oficina.aceleracao").format(acel_valor)
             acel_render = render_text(acel_texto, 16, (160, 220, 255), bold=True, pixel_style=True)
-            screen.blit(acel_render, (info_x + 15, info_y + 210))
+            screen.blit(acel_render, (info_x + 15, info_y + 210 + offset_y_slick))
             
             est_valor = especs['estabilidade']
             est_texto = t("menu.oficina.estabilidade").format(est_valor)
             est_render = render_text(est_texto, 16, (150, 230, 255), bold=True, pixel_style=True)
-            screen.blit(est_render, (info_x + 15, info_y + 240))
+            screen.blit(est_render, (info_x + 15, info_y + 240 + offset_y_slick))
             
             # Porcentagem de danos (P1) - sempre exibir se o carro visualizado é o equipado
             from core.crank import crank
@@ -3450,7 +4147,40 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                     dano_texto = t("menu.oficina.dano").format(0)
                     cor_dano = (120, 240, 180)  # Verde para indicar que está saudável
                 dano_render = render_text(dano_texto, 16, cor_dano, bold=True, pixel_style=True)
-                screen.blit(dano_render, (info_x + 15, info_y + 270))
+                screen.blit(dano_render, (info_x + 15, info_y + 270 + offset_y_slick))
+                y_slick = info_y + 300 + offset_y_slick
+            else:
+                y_slick = info_y + 270 + offset_y_slick
+            
+            # Mostrar upgrades do Slick se houver (só no modo campanha)
+            if not modo_arcade:
+                slick_upgrades = getattr(gerenciador_progresso, 'slick_upgrades_comprados', [])
+                if slick_upgrades:
+                    # Usar mesmo tamanho de fonte das outras especificações
+                    slick_titulo = render_text("UPGRADES SLICK:", 16, (0, 255, 100), bold=True, pixel_style=True)
+                    screen.blit(slick_titulo, (info_x + 15, y_slick))
+                    
+                    nomes_slick = {
+                        'motor': 'Motor Experimental',
+                        'filtro_ar': 'Filtro Quântico',
+                        'ecu': 'ECU Alienígena',
+                        'transmissao': 'Transmissão Dimensional',
+                        'rodas': 'Rodas de Plasma',
+                        'suspensao': 'Suspensão Antigravidade',
+                        'nitro': 'Nitro Hiperespacial'
+                    }
+                    
+                    y_slick += 25  # Espaçamento após título (igual às outras especificações)
+                    max_y_slick = info_y + info_altura_p1 - 20  # Limitar dentro da caixa de especificações
+                    for uid in slick_upgrades:
+                        if y_slick > max_y_slick:  # Parar se ultrapassar o limite
+                            break
+                        for tipo, nome in nomes_slick.items():
+                            if f'slick_{tipo}' in uid:
+                                slick_item = render_text(f"• {nome}", 16, (0, 255, 150), bold=False, pixel_style=True)
+                                screen.blit(slick_item, (info_x + 20, y_slick))
+                                y_slick += 20  # Espaçamento entre itens (igual às outras especificações)
+                                break
             
             esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
             preco = carro_atual.get('preco', 0)
@@ -3576,6 +4306,74 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                         exclamacao_x = botao_upgrade_rect_p1.x + botao_upgrade_rect_p1.width - icon_largura - 5 + int(vibracao_x)
                         exclamacao_y = botao_upgrade_rect_p1.y + 5 + int(vibracao_y)
                         screen.blit(icon_exclamacao_oficina, (exclamacao_x, exclamacao_y))
+                
+                # Botão MELHORAR CARRO (dourado/amarelo) - só aparece no modo campanha
+                if botao_melhorar_rect_p1:
+                    melhorar_hover_p1 = botao_melhorar_rect_p1.collidepoint(pygame.mouse.get_pos())
+                    selecionado_controle = (botao_selecionado_controle == "melhorar")
+                    # Custo baseado no estágio atual
+                    estagio_atual = gerenciador_progresso.carro_campanha_estagio
+                    custo_melhoria = [5000, 10000, 15000][estagio_atual] if estagio_atual < 3 else 0
+                    pode_melhorar = gerenciador_progresso.tem_dinheiro(custo_melhoria)
+                    
+                    if pode_melhorar:
+                        cor_melhorar = (200, 180, 50) if melhorar_hover_p1 else (180, 160, 40)
+                        cor_borda_melhorar = (255, 220, 100)
+                        cor_texto_melhorar = (255, 255, 255)
+                    else:
+                        cor_melhorar = (100, 90, 40) if melhorar_hover_p1 else (80, 70, 30)
+                        cor_borda_melhorar = (120, 100, 50)
+                        cor_texto_melhorar = (150, 150, 150)
+                    
+                    pygame.draw.rect(screen, cor_melhorar, botao_melhorar_rect_p1)
+                    pygame.draw.rect(screen, cor_borda_melhorar, botao_melhorar_rect_p1, 2)
+                    # Desenhar cursor do controle (caixa animada)
+                    if selecionado_controle and gerenciador_gamepad.obter_numero_controles() > 0:
+                        tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                        cursor_rect = pygame.Rect(
+                            botao_melhorar_rect_p1.x - tamanho_cursor,
+                            botao_melhorar_rect_p1.y - tamanho_cursor,
+                            botao_melhorar_rect_p1.width + tamanho_cursor * 2,
+                            botao_melhorar_rect_p1.height + tamanho_cursor * 2
+                        )
+                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
+                    
+                    # Mostrar preço no hover, senão mostrar "MELHORAR"
+                    if melhorar_hover_p1:
+                        texto_melhorar = render_text(f"${custo_melhoria}", 14, cor_texto_melhorar, bold=True, pixel_style=True)
+                    else:
+                        texto_melhorar = render_text("MELHORAR", 12, cor_texto_melhorar, bold=True, pixel_style=True)
+                    texto_melhorar_x = botao_melhorar_rect_p1.x + (botao_melhorar_rect_p1.width - texto_melhorar.get_width()) // 2
+                    texto_melhorar_y = botao_melhorar_rect_p1.y + (botao_melhorar_rect_p1.height - texto_melhorar.get_height()) // 2
+                    screen.blit(texto_melhorar, (texto_melhorar_x, texto_melhorar_y))
+                
+                # Botão ESCOLHER COR (roxo/azul) - só aparece no modo campanha quando estágio >= 3
+                if botao_escolher_cor_rect_p1:
+                    escolher_cor_hover_p1 = botao_escolher_cor_rect_p1.collidepoint(pygame.mouse.get_pos())
+                    selecionado_controle = (botao_selecionado_controle == "escolher_cor")
+                    cor_escolher_cor = (150, 100, 200) if escolher_cor_hover_p1 else (120, 80, 180)
+                    cor_borda_escolher_cor = (200, 150, 255)
+                    cor_texto_escolher_cor = (255, 255, 255)  # Branco para garantir contraste
+                    
+                    pygame.draw.rect(screen, cor_escolher_cor, botao_escolher_cor_rect_p1)
+                    pygame.draw.rect(screen, cor_borda_escolher_cor, botao_escolher_cor_rect_p1, 2)
+                    # Desenhar cursor do controle (caixa animada)
+                    if selecionado_controle and gerenciador_gamepad.obter_numero_controles() > 0:
+                        tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                        cursor_rect = pygame.Rect(
+                            botao_escolher_cor_rect_p1.x - tamanho_cursor,
+                            botao_escolher_cor_rect_p1.y - tamanho_cursor,
+                            botao_escolher_cor_rect_p1.width + tamanho_cursor * 2,
+                            botao_escolher_cor_rect_p1.height + tamanho_cursor * 2
+                        )
+                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
+                    
+                    # Renderizar texto "COR" com tamanho adequado
+                    texto_escolher_cor = render_text("COR", 16, cor_texto_escolher_cor, bold=True, pixel_style=True)
+                    if texto_escolher_cor:
+                        texto_escolher_cor_x = botao_escolher_cor_rect_p1.x + (botao_escolher_cor_rect_p1.width - texto_escolher_cor.get_width()) // 2
+                        texto_escolher_cor_y = botao_escolher_cor_rect_p1.y + (botao_escolher_cor_rect_p1.height - texto_escolher_cor.get_height()) // 2
+                        screen.blit(texto_escolher_cor, (texto_escolher_cor_x, texto_escolher_cor_y))
                 
                 # Botão VENDER (vermelho) - sempre vermelho quando carro é possuído
                 if botao_vender_rect_p1:
@@ -4231,9 +5029,22 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
     from core.i18n import t
     from core.progresso import gerenciador_progresso
     from core.glub import glub
-    from core.crank import crank
+    # Crank removido da tela de upgrades
     from config import DIR_PROJETO, LARGURA, ALTURA
     import os
+    
+    # IMPORTANTE: Garantir que a narrativa não está bloqueando eventos na tela de upgrade
+    # Se a narrativa estiver ativa, fechar temporariamente para permitir interação com upgrades
+    from core.narrative_system import narrative_system
+    narrativa_estava_ativa = narrative_system.active
+    narrative_current_scene = narrative_system.current_scene_id
+    narrative_current_line = narrative_system.current_line_index
+    if narrativa_estava_ativa:
+        print("[TELA_UPGRADES] Narrativa estava ativa, fechando temporariamente para permitir interação com upgrades")
+        # Fechar completamente a narrativa para evitar interceptação de eventos
+        narrative_system.fechar()
+        narrative_system.active = False
+        narrative_system.current_scene_id = None
     
     # Verificar se o carro está desbloqueado
     # Garantir que Car1 sempre está desbloqueado
@@ -4242,13 +5053,7 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
         popup_musica.mostrar(t("mensagens.comprar_carro_primeiro"), tipo="outra")
         return True  # Volta para seleção de carros
     
-    # Verificar se deve mostrar tutorial de upgrades do Crank (primeira vez)
-    if not crank.tutorial_upgrades_mostrado and not crank.ativo:
-        crank.mostrar_tutorial_upgrades()
-    
-    # Verificar se o Crank deve aparecer por dano crítico (apenas na tela de upgrades)
-    if not crank.ativo:
-        crank.verificar_aparecer_dano_critico()
+    # Crank removido da tela de upgrades - não mostrar tutorial ou diálogos
     
     # Capturar fundo atual se não foi fornecido
     if fundo_garagem is None:
@@ -4377,105 +5182,47 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
         
         eventos = list(pygame.event.get())
         
-        # Processar Crank primeiro (se ativo) - tem prioridade máxima
-        if crank.ativo:
-            resultado_crank = crank.processar_eventos(eventos)
-            
-            # Processar Barão se ativo
-            from core.barao import barao
-            if barao.ativo:
-                barao.processar_eventos(eventos)
-            if resultado_crank == "confirmado":
-                # Upgrade confirmado, realizar a compra
-                if crank.upgrade_pendente:
-                    upgrade_info = crank.upgrade_pendente
-                    nivel_antigo = upgrade_info.get('nivel', 0)
-                    
-                    # Verificar fome antes de fazer upgrade
-                    try:
-                        from core.status_jogador import status_jogador
-                        pode_fazer, mensagem = status_jogador.pode_fazer_upgrade()
-                        if not pode_fazer:
-                            popup_musica.mostrar(mensagem, tipo="outra")
-                            # Não fazer o upgrade, apenas retornar
-                            continue
-                    except Exception as e:
-                        print(f"Erro ao verificar status do jogador: {e}")
-                    
-                    if gerenciador_progresso.comprar_upgrade(upgrade_info['prefixo_cor'], upgrade_info['tipo'], upgrade_info['preco']):
-                        # Completar missão m5_cirurgia_na_garagem se estiver ativa (instalar peça na garagem)
-                        try:
-                            from core.missoes import gerenciador_missoes
-                            if gerenciador_missoes.missao_ativa_id == "m5_cirurgia_na_garagem":
-                                gerenciador_missoes.completar_missao("m5_cirurgia_na_garagem")
-                                print("[GARAGEM] Missão 'Cirurgia na Garagem' completada após instalar upgrade (confirmado)!")
-                        except Exception as e:
-                            print(f"[GARAGEM] Erro ao completar missão: {e}")
-                        
-                        # Tocar som de compra
-                        try:
-                            som_compra_path = os.path.join(DIR_PROJETO, "assets", "sounds", "purchase", "caixa.mp3")
-                            if os.path.exists(som_compra_path):
-                                som_compra = pygame.mixer.Sound(som_compra_path)
-                                som_compra.play()
-                        except Exception as e:
-                            print(f"Erro ao tocar som de compra: {e}")
-                        
-                        # Obter nível novo após compra
-                        nivel_novo = gerenciador_progresso.obter_upgrade(upgrade_info['prefixo_cor'], upgrade_info['tipo'])
-                        
-                        # Verificar reação do Crank à instalação
-                        if not crank.ativo:
-                            crank.verificar_reacao_instalacao_upgrade(
-                                upgrade_info['tipo'],
-                                nivel_novo,
-                                upgrade_info['prefixo_cor']
-                            )
-                        
-                        # Verificar se todos os upgrades estão maximizados
-                        from core.achievements import gerenciador_achievements
-                        upgrades_carro = gerenciador_progresso.obter_todos_upgrades(upgrade_info['prefixo_cor'])
-                        todos_maximizados = all(nivel >= 5 for nivel in upgrades_carro.values() if isinstance(nivel, int))
-                        if todos_maximizados:
-                            gerenciador_achievements.atualizar_estatistica("upgrades_maximizados", incrementar=True)
-                            gerenciador_achievements.verificar_achievements(gerenciador_progresso)
-                        
-                        # Usar o nome do upgrade do upgrade_info, não do upgrade_atual
-                        nome_upgrade = None
-                        for tipo, nome, _ in upgrades_disponiveis:
-                            if tipo == upgrade_info['tipo']:
-                                nome_upgrade = nome
-                                break
-                        if nome_upgrade:
-                            popup_musica.mostrar(t("mensagens.upgrade_comprado").format(nome_carro, nome_upgrade), tipo="outra")
-                        
-                        # Verificar se o Glub deve aparecer
-                        if not glub.ativo:
-                            glub.verificar_aparecer(upgrade_info['tipo'], nivel_antigo, upgrade_info['prefixo_cor'])
-                    else:
-                        popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
-                    crank.upgrade_pendente = None
-                crank.fechar()
-                # Filtrar TODOS os eventos de mouse após confirmação para evitar cliques duplos
-                eventos = [ev for ev in eventos if ev.type != pygame.MOUSEBUTTONDOWN]
-            elif resultado_crank == "cancelado":
-                # Upgrade cancelado
-                crank.upgrade_pendente = None
-                crank.fechar()
-            elif resultado_crank == "fechado":
-                crank.fechar()
-            # Filtrar eventos de mouse e teclado que o Crank processa
-            eventos = [ev for ev in eventos if not (ev.type in (pygame.MOUSEBUTTONDOWN, pygame.KEYDOWN) and crank.ativo)]
+        # IMPORTANTE: Garantir que a narrativa não está interceptando eventos
+        # Se a narrativa estiver ativa, desativá-la completamente
+        if narrative_system.active:
+            print("[TELA_UPGRADES] Narrativa ainda está ativa durante loop, desativando completamente")
+            narrative_system.fechar()
+            narrative_system.active = False
+            narrative_system.current_scene_id = None
         
-        # Processar Glub (se ativo e Crank não estiver ativo) - antes de outros eventos
-        if glub.ativo and not crank.ativo:
+        # Crank removido da tela de upgrades - upgrades são comprados diretamente
+        
+        # Processar Glub (se ativo) - antes de outros eventos
+        if glub.ativo:
             resultado_glub = glub.processar_eventos(eventos, prefixo_cor=prefixo_cor)
             if resultado_glub in ["vendido", "recusado", "fechado"]:
                 if resultado_glub == "vendido":
                     popup_musica.mostrar("Peça vendida para o Glub!", tipo="outra")
                 # Continuar processando eventos normalmente
+                # Filtrar eventos já processados pelo Glub (APENAS se o Glub estiver ativo)
+                if glub.ativo:
+                    eventos = [ev for ev in eventos if not (ev.type in (pygame.MOUSEBUTTONDOWN, pygame.KEYDOWN))]
+                    print(f"[TELA_UPGRADES] Eventos filtrados pelo Glub, restantes: {len(eventos)}")
+        
+        print(f"[TELA_UPGRADES] Total de eventos antes do loop: {len(eventos)}, tipos: {[ev.type for ev in eventos]}")
+        
+        # Definir rects das setas ANTES do loop de eventos (para que os cliques funcionem)
+        seta_esquerda_rect = None
+        seta_direita_rect = None
+        if len(upgrades_disponiveis) > 1:
+            if upgrade_atual > 0:
+                seta_esquerda_temp = render_text("◄", 48, (150, 220, 255), bold=True, pixel_style=True)
+                seta_esquerda_x = 50
+                seta_esquerda_y = ALTURA // 2 - seta_esquerda_temp.get_height() // 2
+                seta_esquerda_rect = pygame.Rect(seta_esquerda_x, seta_esquerda_y, seta_esquerda_temp.get_width(), seta_esquerda_temp.get_height())
+            if upgrade_atual < len(upgrades_disponiveis) - 1:
+                seta_direita_temp = render_text("►", 48, (150, 220, 255), bold=True, pixel_style=True)
+                seta_direita_x = LARGURA - 50 - seta_direita_temp.get_width()
+                seta_direita_y = ALTURA // 2 - seta_direita_temp.get_height() // 2
+                seta_direita_rect = pygame.Rect(seta_direita_x, seta_direita_y, seta_direita_temp.get_width(), seta_direita_temp.get_height())
         
         for ev in eventos:
+            print(f"[TELA_UPGRADES] Processando evento: type={ev.type}, button={ev.button if hasattr(ev, 'button') else 'N/A'}")
             if ev.type == pygame.QUIT:
                 return False
             
@@ -4503,7 +5250,8 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                         # Comprar upgrade (mesma lógica do clique do mouse)
                         upgrade_atual_tipo = upgrades_disponiveis[upgrade_atual][0]
                         nivel_atual = gerenciador_progresso.obter_upgrade(prefixo_cor, upgrade_atual_tipo)
-                        if nivel_atual < 5:
+                        nivel_maximo = gerenciador_progresso.obter_nivel_maximo_upgrade()
+                        if nivel_atual < nivel_maximo:
                             # Verificar fome antes de fazer upgrade
                             try:
                                 from core.status_jogador import status_jogador
@@ -4514,42 +5262,31 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                             except Exception as e:
                                 print(f"Erro ao verificar status do jogador: {e}")
                             
-                            # Verificar se pode comprar (bloqueio por dano crítico)
-                            pode_comprar, motivo = crank.pode_comprar_upgrade(upgrade_atual_tipo)
-                            if not pode_comprar and motivo == "dano_critico":
-                                crank.bloquear_upgrade_dano_critico(upgrade_atual_tipo)
+                            # Crank removido - calcular preço diretamente
+                            preco_base = gerenciador_progresso.calcular_preco_upgrade(upgrade_atual_tipo, nivel_atual)
+                            preco = preco_base
+                            nivel_antigo = nivel_atual  # Salvar nível antigo antes de comprar
+                            if gerenciador_progresso.comprar_upgrade(prefixo_cor, upgrade_atual_tipo, preco):
+                                # Obter nível novo após compra
+                                nivel_novo = gerenciador_progresso.obter_upgrade(prefixo_cor, upgrade_atual_tipo)
+                                
+                                # Crank removido - não verificar reação
+                                
+                                # Verificar se todos os upgrades estão maximizados
+                                from core.achievements import gerenciador_achievements
+                                upgrades_carro = gerenciador_progresso.obter_todos_upgrades(prefixo_cor)
+                                todos_maximizados = all(nivel >= 5 for nivel in upgrades_carro.values() if isinstance(nivel, int))
+                                if todos_maximizados:
+                                    gerenciador_achievements.atualizar_estatistica("upgrades_maximizados", incrementar=True)
+                                    gerenciador_achievements.verificar_achievements(gerenciador_progresso)
+                                nome_upgrade = upgrades_disponiveis[upgrade_atual][1]
+                                popup_musica.mostrar(t("mensagens.upgrade_comprado").format(nome_carro, nome_upgrade), tipo="outra")
+                                
+                                # Verificar se o Glub deve aparecer (após compra bem-sucedida)
+                                if not glub.ativo:
+                                    glub.verificar_aparecer(upgrade_atual_tipo, nivel_antigo, prefixo_cor)
                             else:
-                                preco_base = gerenciador_progresso.calcular_preco_upgrade(upgrade_atual_tipo, nivel_atual)
-                                # Aplicar multiplicador do humor do Crank
-                                preco = crank.calcular_preco_com_humor(preco_base)
-                                nivel_antigo = nivel_atual  # Salvar nível antigo antes de comprar
-                                if gerenciador_progresso.comprar_upgrade(prefixo_cor, upgrade_atual_tipo, preco):
-                                    # Obter nível novo após compra
-                                    nivel_novo = gerenciador_progresso.obter_upgrade(prefixo_cor, upgrade_atual_tipo)
-                                    
-                                    # Verificar reação do Crank à instalação
-                                    if not crank.ativo:
-                                        crank.verificar_reacao_instalacao_upgrade(
-                                            upgrade_atual_tipo,
-                                            nivel_novo,
-                                            prefixo_cor
-                                        )
-                                    
-                                    # Verificar se todos os upgrades estão maximizados
-                                    from core.achievements import gerenciador_achievements
-                                    upgrades_carro = gerenciador_progresso.obter_todos_upgrades(prefixo_cor)
-                                    todos_maximizados = all(nivel >= 5 for nivel in upgrades_carro.values() if isinstance(nivel, int))
-                                    if todos_maximizados:
-                                        gerenciador_achievements.atualizar_estatistica("upgrades_maximizados", incrementar=True)
-                                        gerenciador_achievements.verificar_achievements(gerenciador_progresso)
-                                    nome_upgrade = upgrades_disponiveis[upgrade_atual][1]
-                                    popup_musica.mostrar(t("mensagens.upgrade_comprado").format(nome_carro, nome_upgrade), tipo="outra")
-                                    
-                                    # Verificar se o Glub deve aparecer (após compra bem-sucedida)
-                                    if not glub.ativo:
-                                        glub.verificar_aparecer(upgrade_atual_tipo, nivel_antigo, prefixo_cor)
-                                else:
-                                    popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
+                                popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
                     elif acao == "cancelar":
                         # Verificar se está no modo de instalação do primeiro upgrade
                         try:
@@ -4584,17 +5321,31 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                     iniciar_transicao(1, upgrade_atual)
                     upgrade_atual = (upgrade_atual + 1) % len(upgrades_disponiveis)
             if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                # Não processar cliques se o Crank estiver ativo (diálogo de confirmação)
-                if crank.ativo:
+                print(f"[TELA_UPGRADES] Clique detectado: mouse_x={mouse_x}, mouse_y={mouse_y}, narrative_active={narrative_system.active}, glub_active={glub.ativo}")
+                
+                # IMPORTANTE: Garantir que a narrativa não está interceptando eventos
+                if narrative_system.active:
+                    print("[TELA_UPGRADES] Narrativa ainda está ativa durante clique, desativando completamente")
+                    narrative_system.fechar()
+                    narrative_system.active = False
+                    narrative_system.current_scene_id = None
+                
+                # Crank removido - não verificar se está ativo
+                
+                # Não processar cliques se o Glub estiver ativo
+                if glub.ativo:
+                    print("[TELA_UPGRADES] Glub está ativo, ignorando clique")
                     continue
                 
-                # Verificar clique nas setas de navegação
+                # Verificar clique nas setas de navegação (rects já foram definidos antes do loop)
                 if seta_esquerda_rect and seta_esquerda_rect.collidepoint(mouse_x, mouse_y) and upgrade_atual > 0 and not transicao_ativa:
+                    print(f"[TELA_UPGRADES] Clique na seta esquerda detectado")
                     iniciar_transicao(-1, upgrade_atual)
                     upgrade_atual = upgrade_atual - 1
                     continue
                 
                 if seta_direita_rect and seta_direita_rect.collidepoint(mouse_x, mouse_y) and upgrade_atual < len(upgrades_disponiveis) - 1 and not transicao_ativa:
+                    print(f"[TELA_UPGRADES] Clique na seta direita detectado")
                     iniciar_transicao(1, upgrade_atual)
                     upgrade_atual = upgrade_atual + 1
                     continue
@@ -4615,9 +5366,12 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                     hitbox_tamanho
                 )
                 
+                print(f"[TELA_UPGRADES] Verificando colisão: mouse=({mouse_x}, {mouse_y}), icon_rect={icon_rect}, collidepoint={icon_rect.collidepoint(mouse_x, mouse_y)}")
                 if icon_rect.collidepoint(mouse_x, mouse_y):
+                    print(f"[TELA_UPGRADES] Clique no ícone do upgrade {upgrade_atual_tipo} detectado")
                     nivel_atual = gerenciador_progresso.obter_upgrade(prefixo_cor, upgrade_atual_tipo)
-                    if nivel_atual < 5:
+                    nivel_maximo = gerenciador_progresso.obter_nivel_maximo_upgrade()
+                    if nivel_atual < nivel_maximo:
                         # Verificar fome antes de fazer upgrade
                         try:
                             from core.status_jogador import status_jogador
@@ -4628,96 +5382,180 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                         except Exception as e:
                             print(f"Erro ao verificar status do jogador: {e}")
                         
-                        # Verificar se pode comprar (bloqueio por dano crítico)
-                        pode_comprar, motivo = crank.pode_comprar_upgrade(upgrade_atual_tipo)
-                        if not pode_comprar and motivo == "dano_critico":
-                            crank.bloquear_upgrade_dano_critico(upgrade_atual_tipo)
+                        # Obter nome do upgrade e preço
+                        nome_upgrade = None
+                        for tipo, nome, _ in upgrades_disponiveis:
+                            if tipo == upgrade_atual_tipo:
+                                nome_upgrade = nome
+                                break
+                        
+                        preco_base = gerenciador_progresso.calcular_preco_upgrade(upgrade_atual_tipo, nivel_atual)
+                        # Crank removido - usar preço base diretamente
+                        preco = preco_base
+                        nivel_antigo = nivel_atual  # Salvar nível antigo antes de comprar
+                        
+                        # Verificar se precisa de confirmação
+                        from config import CONFIGURACOES
+                        precisa_confirmacao = CONFIGURACOES.get("jogo", {}).get("confirmar_upgrade", True)
+                        
+                        if precisa_confirmacao:
+                            # Confirmação simples inline (estilo Boris) - sem Crank
+                            confirmacao_ativa = True
+                            opcao_confirmacao = 0  # 0 = COMPRAR, 1 = CANCELAR
+                            
+                            # Loop de confirmação
+                            while confirmacao_ativa:
+                                dt_confirmacao = clock.tick(FPS) / 1000.0
+                                
+                                # Desenhar fundo com blur
+                                fundo_blur = aplicar_blur(fundo_garagem, fator=4)
+                                screen.blit(fundo_blur, (0, 0))
+                                overlay_transparente = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+                                overlay_transparente.fill((0, 0, 0, 100))
+                                screen.blit(overlay_transparente, (0, 0))
+                                
+                                # Desenhar caixa de confirmação (estilo Boris)
+                                caixa_largura = 500
+                                caixa_altura = 180
+                                caixa_x = (LARGURA - caixa_largura) // 2
+                                caixa_y = ALTURA - caixa_altura - 260
+                                
+                                overlay = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+                                overlay.fill((0, 0, 0, 220))
+                                screen.blit(overlay, (caixa_x, caixa_y))
+                                pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 2)
+                                
+                                titulo = render_text("CONFIRMAÇÃO DE COMPRA", 22, (255, 255, 0), bold=True, pixel_style=True)
+                                screen.blit(titulo, (caixa_x + (caixa_largura - titulo.get_width()) // 2, caixa_y + 10))
+                                
+                                if nome_upgrade:
+                                    desc = render_text(f"{nome_upgrade.upper()} nível {nivel_atual + 1}", 18, (220, 220, 220), bold=False, pixel_style=True)
+                                    preco_txt = render_text(f"Preço: ${preco:,}", 18, (180, 255, 180), bold=False, pixel_style=True)
+                                    screen.blit(desc, (caixa_x + 20, caixa_y + 45))
+                                    screen.blit(preco_txt, (caixa_x + 20, caixa_y + 70))
+                                
+                                # Opções
+                                opcoes = ["COMPRAR PEÇA", "SAIR"]
+                                mouse_x_confirm, mouse_y_confirm = pygame.mouse.get_pos()
+                                
+                                for i, texto_opcao in enumerate(opcoes):
+                                    cor = (0, 200, 255) if i == opcao_confirmacao else (200, 200, 200)
+                                    txt = render_text(texto_opcao, 20, cor, bold=True, pixel_style=True)
+                                    y = caixa_y + 105 + i * 30
+                                    rect_opcao = pygame.Rect(caixa_x + 40, y, caixa_largura - 80, 30)
+                                    
+                                    # Verificar hover
+                                    if rect_opcao.collidepoint(mouse_x_confirm, mouse_y_confirm):
+                                        cor = (0, 200, 255)
+                                        opcao_confirmacao = i
+                                    
+                                    screen.blit(txt, (caixa_x + 40, y))
+                                
+                                pygame.display.flip()
+                                
+                                # Processar eventos
+                                for ev_confirm in pygame.event.get():
+                                    if ev_confirm.type == pygame.QUIT:
+                                        return None
+                                    elif ev_confirm.type == pygame.KEYDOWN:
+                                        if ev_confirm.key in (pygame.K_UP, pygame.K_w):
+                                            opcao_confirmacao = (opcao_confirmacao - 1) % len(opcoes)
+                                        elif ev_confirm.key in (pygame.K_DOWN, pygame.K_s):
+                                            opcao_confirmacao = (opcao_confirmacao + 1) % len(opcoes)
+                                        elif ev_confirm.key in (pygame.K_RETURN, pygame.K_SPACE):
+                                            if opcao_confirmacao == 0:  # COMPRAR
+                                                confirmacao_ativa = False
+                                                break
+                                            else:  # SAIR
+                                                confirmacao_ativa = False
+                                                opcao_confirmacao = -1  # Cancelado
+                                                break
+                                        elif ev_confirm.key == pygame.K_ESCAPE:
+                                            confirmacao_ativa = False
+                                            opcao_confirmacao = -1  # Cancelado
+                                            break
+                                    elif ev_confirm.type == pygame.MOUSEBUTTONDOWN and ev_confirm.button == 1:
+                                        mouse_x_confirm, mouse_y_confirm = ev_confirm.pos
+                                        for i, texto_opcao in enumerate(opcoes):
+                                            rect_opcao = pygame.Rect(caixa_x + 40, caixa_y + 105 + i * 30, caixa_largura - 80, 30)
+                                            if rect_opcao.collidepoint(mouse_x_confirm, mouse_y_confirm):
+                                                if i == 0:  # COMPRAR
+                                                    confirmacao_ativa = False
+                                                    break
+                                                else:  # SAIR
+                                                    confirmacao_ativa = False
+                                                    opcao_confirmacao = -1  # Cancelado
+                                                    break
+                                        
+                                        if not confirmacao_ativa:
+                                            break
+                            
+                            if opcao_confirmacao != 0:  # Cancelado
+                                continue  # Usuário cancelou
+                        
+                        # Comprar upgrade
+                        if gerenciador_progresso.comprar_upgrade(prefixo_cor, upgrade_atual_tipo, preco):
+                            # Obter nível novo após compra
+                            nivel_novo = gerenciador_progresso.obter_upgrade(prefixo_cor, upgrade_atual_tipo)
+                            
+                            # Completar missão m5_cirurgia_na_garagem se estiver ativa (instalar peça na garagem)
+                            try:
+                                from core.missoes import gerenciador_missoes
+                                if gerenciador_missoes.missao_ativa_id == "m5_cirurgia_na_garagem":
+                                    gerenciador_missoes.completar_missao("m5_cirurgia_na_garagem")
+                                    print("[GARAGEM] Missão 'Cirurgia na Garagem' completada após instalar upgrade!")
+                            except Exception as e:
+                                print(f"[GARAGEM] Erro ao completar missão: {e}")
+                            
+                            # Crank removido - não verificar reação
+                            
+                            # Tocar som de compra
+                            try:
+                                som_compra_path = os.path.join(DIR_PROJETO, "assets", "sounds", "purchase", "caixa.mp3")
+                                if os.path.exists(som_compra_path):
+                                    som_compra = pygame.mixer.Sound(som_compra_path)
+                                    som_compra.play()
+                            except Exception as e:
+                                print(f"Erro ao tocar som de compra: {e}")
+                            
+                            # Verificar se todos os upgrades estão maximizados
+                            from core.achievements import gerenciador_achievements
+                            upgrades_carro = gerenciador_progresso.obter_todos_upgrades(prefixo_cor)
+                            todos_maximizados = all(nivel >= 5 for nivel in upgrades_carro.values() if isinstance(nivel, int))
+                            if todos_maximizados:
+                                gerenciador_achievements.atualizar_estatistica("upgrades_maximizados", incrementar=True)
+                                gerenciador_achievements.verificar_achievements(gerenciador_progresso)
+                            nome_upgrade = upgrades_disponiveis[upgrade_atual][1]
+                            popup_musica.mostrar(t("mensagens.upgrade_comprado").format(nome_carro, nome_upgrade), tipo="outra")
+                            
+                            # Verificar se o Glub deve aparecer (após compra bem-sucedida)
+                            if not glub.ativo:
+                                glub.verificar_aparecer(upgrade_atual_tipo, nivel_antigo, prefixo_cor)
                         else:
-                            preco_base = gerenciador_progresso.calcular_preco_upgrade(upgrade_atual_tipo, nivel_atual)
-                            # Aplicar multiplicador do humor do Crank
-                            preco = crank.calcular_preco_com_humor(preco_base)
-                            nivel_antigo = nivel_atual  # Salvar nível antigo antes de comprar
-                            
-                            # Verificar se precisa de confirmação
-                            from config import CONFIGURACOES
-                            precisa_confirmacao = CONFIGURACOES.get("jogo", {}).get("confirmar_upgrade", True)
-                            
-                            if precisa_confirmacao:
-                                # Mostrar diálogo de confirmação
-                                crank.mostrar_confirmacao_upgrade(upgrade_atual_tipo, preco, nivel_atual, prefixo_cor)
-                                continue  # Não processar mais nada neste clique
-                            elif gerenciador_progresso.comprar_upgrade(prefixo_cor, upgrade_atual_tipo, preco):
-                                # Obter nível novo após compra
-                                nivel_novo = gerenciador_progresso.obter_upgrade(prefixo_cor, upgrade_atual_tipo)
-                                
-                                # Completar missão m5_cirurgia_na_garagem se estiver ativa (instalar peça na garagem)
-                                try:
-                                    from core.missoes import gerenciador_missoes
-                                    if gerenciador_missoes.missao_ativa_id == "m5_cirurgia_na_garagem":
-                                        gerenciador_missoes.completar_missao("m5_cirurgia_na_garagem")
-                                        print("[GARAGEM] Missão 'Cirurgia na Garagem' completada após instalar upgrade!")
-                                except Exception as e:
-                                    print(f"[GARAGEM] Erro ao completar missão: {e}")
-                                
-                                # Verificar reação do Crank à instalação
-                                if not crank.ativo:
-                                    crank.verificar_reacao_instalacao_upgrade(
-                                        upgrade_atual_tipo,
-                                        nivel_novo,
-                                        prefixo_cor
-                                    )
-                                
-                                # Tocar som de compra
-                                try:
-                                    som_compra_path = os.path.join(DIR_PROJETO, "assets", "sounds", "purchase", "caixa.mp3")
-                                    if os.path.exists(som_compra_path):
-                                        som_compra = pygame.mixer.Sound(som_compra_path)
-                                        som_compra.play()
-                                except Exception as e:
-                                    print(f"Erro ao tocar som de compra: {e}")
-                                
-                                # Verificar se todos os upgrades estão maximizados
-                                from core.achievements import gerenciador_achievements
-                                upgrades_carro = gerenciador_progresso.obter_todos_upgrades(prefixo_cor)
-                                todos_maximizados = all(nivel >= 5 for nivel in upgrades_carro.values() if isinstance(nivel, int))
-                                if todos_maximizados:
-                                    gerenciador_achievements.atualizar_estatistica("upgrades_maximizados", incrementar=True)
-                                    gerenciador_achievements.verificar_achievements(gerenciador_progresso)
-                                nome_upgrade = upgrades_disponiveis[upgrade_atual][1]
-                                popup_musica.mostrar(t("mensagens.upgrade_comprado").format(nome_carro, nome_upgrade), tipo="outra")
-                                
-                                # Verificar se o Glub deve aparecer (após compra bem-sucedida)
-                                if not glub.ativo:
-                                    glub.verificar_aparecer(upgrade_atual_tipo, nivel_antigo, prefixo_cor)
-                            else:
-                                popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
+                            popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
                 
                 # Botão voltar (acima do dinheiro, no canto superior direito)
                 voltar_rect = pygame.Rect(LARGURA - 150, 20, 130, 40)
                 if voltar_rect.collidepoint(mouse_x, mouse_y):
                     return True
         
-        # Detectar hover no upgrade atual (apenas se o Crank não estiver ativo)
-        if not crank.ativo:
-            upgrade_atual_tipo = upgrades_disponiveis[upgrade_atual][0]
-            icon_center_x = LARGURA // 2
-            icon_center_y = ALTURA // 2  # Centralizado verticalmente
-            # Hitbox inclui o quadrado com blur (maior que o ícone)
-            hitbox_tamanho = tamanho_icon_grande + 40  # Tamanho do quadrado com blur
-            icon_rect = pygame.Rect(
-                icon_center_x - hitbox_tamanho // 2,
-                icon_center_y - hitbox_tamanho // 2,
-                hitbox_tamanho,
-                hitbox_tamanho
-            )
-            
-            if icon_rect.collidepoint(mouse_x, mouse_y):
-                upgrade_hover = upgrade_atual_tipo
-                tooltip_timer += dt
-            else:
-                tooltip_timer = 0.0
+        # Detectar hover no upgrade atual
+        upgrade_atual_tipo = upgrades_disponiveis[upgrade_atual][0]
+        icon_center_x = LARGURA // 2
+        icon_center_y = ALTURA // 2  # Centralizado verticalmente
+        # Hitbox inclui o quadrado com blur (maior que o ícone)
+        hitbox_tamanho = tamanho_icon_grande + 40  # Tamanho do quadrado com blur
+        icon_rect = pygame.Rect(
+            icon_center_x - hitbox_tamanho // 2,
+            icon_center_y - hitbox_tamanho // 2,
+            hitbox_tamanho,
+            hitbox_tamanho
+        )
+        
+        if icon_rect.collidepoint(mouse_x, mouse_y):
+            upgrade_hover = upgrade_atual_tipo
+            tooltip_timer += dt
         else:
-            upgrade_hover = None
             tooltip_timer = 0.0
         
         # Desenhar fundo com blur (garagem visível por trás)
@@ -4852,9 +5690,10 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                 # Informações do upgrade abaixo do ícone
                 nivel_atual = gerenciador_progresso.obter_upgrade(prefixo_cor, upgrade_atual_tipo)
                 preco_base = gerenciador_progresso.calcular_preco_upgrade(upgrade_atual_tipo, nivel_atual)
-                # Aplicar multiplicador do humor do Crank
-                preco = crank.calcular_preco_com_humor(preco_base)
-                pode_comprar = nivel_atual < 5 and gerenciador_progresso.tem_dinheiro(preco)
+                # Crank removido - usar preço base diretamente
+                preco = preco_base
+                nivel_maximo = gerenciador_progresso.obter_nivel_maximo_upgrade()
+                pode_comprar = nivel_atual < nivel_maximo and gerenciador_progresso.tem_dinheiro(preco)
                 
                 # Nome do upgrade (afastado do ícone)
                 nome = upgrades_disponiveis[upgrade_atual][1]
@@ -5006,19 +5845,18 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
         except Exception as e:
             pass  # Silenciosamente falhar se o sistema de missões não estiver disponível
         
-        # Desenhar Crank (se ativo) - tem prioridade máxima
-        if crank.ativo:
-            crank.desenhar_dialogo(screen, dt)
-            
-            # Desenhar Barão se ativo
-            from core.barao import barao
-            if barao.ativo:
-                barao.desenhar_dialogo(screen, dt)
-        # Desenhar Glub (se ativo e Crank não estiver ativo)
-        elif glub.ativo:
-            glub.desenhar_dialogo(screen, dt)
+        # Crank removido da tela de upgrades - não desenhar
+        # Desenhar Glub (se ativo e Crank não estiver ativo) - APENAS no modo arcade, não na campanha
+        # O Glub só deve aparecer na narrativa, não na oficina do modo campanha
+        # elif glub.ativo:
+        #     glub.desenhar_dialogo(screen, dt)
         
         pygame.display.flip()
+    
+    # Restaurar estado da narrativa se estava ativa antes de entrar na tela de upgrades
+    if narrativa_estava_ativa:
+        print("[TELA_UPGRADES] Restaurando estado da narrativa após sair da tela de upgrades")
+        narrative_system.active = narrativa_estava_ativa
 
 def submenu_audio(screen):
     """Submenu de configurações de áudio"""
@@ -8759,18 +9597,32 @@ def _iniciar_narrativa_pos_training_01(narrative_system, gerenciador_progresso):
     from core.estatisticas import gerenciador_estatisticas
     from core.missoes import gerenciador_missoes
     
-    # Se a narrativa já está ativa com a mesma cena, não reiniciar
-    if narrative_system.active and narrative_system.current_scene_id == "ch1_6_post_first_race_and_pixel":
-        print(f"[INICIAR_NARRATIVA] Narrativa já está ativa com a cena ch1_6_post_first_race_and_pixel. Pulando reinicialização.")
+    # Verificar se a flag já foi limpa - se sim, não processar novamente
+    if not hasattr(gerenciador_progresso, 'ultima_corrida_campanha') or gerenciador_progresso.ultima_corrida_campanha != "training_01":
+        print(f"[INICIAR_NARRATIVA] Flag ultima_corrida_campanha não é 'training_01' (é {getattr(gerenciador_progresso, 'ultima_corrida_campanha', None)}). Pulando.")
         return
     
-    print(f"[INICIAR_NARRATIVA] Iniciando narrativa pós-training_01...")
+    # Se a narrativa já está ativa com a cena de resultado, não reiniciar
+    if narrative_system.active and narrative_system.current_scene_id in ["ch1_1c_crank_test_result", "ch1_6_post_first_race_and_pixel", "ch1_6_post_race", "ch1_7_pixel_voice_intro"]:
+        print(f"[INICIAR_NARRATIVA] Narrativa já está ativa com a cena {narrative_system.current_scene_id}. Pulando reinicialização.")
+        # Limpar flag mesmo assim para evitar loop
+        gerenciador_progresso.ultima_corrida_campanha = None
+        gerenciador_progresso.salvar()
+        return
     
-    # Garantir missão completa
-    if not gerenciador_missoes.esta_completa("m6_batismo_de_pista"):
-        print(f"[INICIAR_NARRATIVA] Completando missão m6_batismo_de_pista...")
-        gerenciador_missoes.completar_por_cena("ch1_6_post_first_race_and_pixel")
-        gerenciador_missoes.salvar()
+    # Se a cena ch1_6_post_race ou ch1_7_pixel_voice_intro já foi visitada, não reiniciar
+    if "ch1_6_post_race" in narrative_system.scenes_visited or "ch1_7_pixel_voice_intro" in narrative_system.scenes_visited:
+        print(f"[INICIAR_NARRATIVA] Cena pós-corrida já foi visitada. Limpando flag e pulando.")
+        gerenciador_progresso.ultima_corrida_campanha = None
+        gerenciador_progresso.salvar()
+        return
+    
+    # Garantir que a cena anterior não seja reiniciada
+    if "ch1_1b_crank_test_briefing" not in narrative_system.scenes_visited:
+        narrative_system.scenes_visited.add("ch1_1b_crank_test_briefing")
+        print(f"[INICIAR_NARRATIVA] Cena ch1_1b_crank_test_briefing marcada como visitada para evitar loop")
+    
+    print(f"[INICIAR_NARRATIVA] Iniciando narrativa pós-training_01...")
     
     # Obter posição para lastRaceResult
     gerenciador_estatisticas.carregar()
@@ -8785,17 +9637,58 @@ def _iniciar_narrativa_pos_training_01(narrative_system, gerenciador_progresso):
     narrative_system.variables["lastRaceResult"] = "win" if melhor_posicao == 1 else "lose"
     print(f"[INICIAR_NARRATIVA] lastRaceResult definido como: {narrative_system.variables['lastRaceResult']}")
     
-    resultado = narrative_system._iniciar_cena_sem_transicao("ch1_6_post_first_race_and_pixel")
+    # Garantir que ch1_0_prologue está marcada como visitada para evitar reiniciar
+    if "ch1_0_prologue" not in narrative_system.scenes_visited:
+        narrative_system.scenes_visited.add("ch1_0_prologue")
+        print(f"[INICIAR_NARRATIVA] Cena ch1_0_prologue marcada como visitada para evitar reiniciar")
     
-    # Se retornou um trigger (dicionário), não ativar narrativa aqui - o trigger será processado
-    if isinstance(resultado, dict) and "trigger" in resultado:
-        print(f"[INICIAR_NARRATIVA] Trigger retornado: {resultado}")
-        # Não definir active=True aqui, o trigger será processado pelo loop principal
+    # Tentar usar o sistema de triggers primeiro
+    context = {
+        "raceId": "training_01",
+        "raceResult": narrative_system.variables["lastRaceResult"]
+    }
+    if narrative_system.verificar_gatilhos_pendentes(context):
+        print(f"[INICIAR_NARRATIVA] Gatilho encontrado e cena iniciada via verificar_gatilhos_pendentes")
+        narrative_system.active = True
+        # Salvar missões antes de limpar flag
+        from core.missoes import gerenciador_missoes
+        gerenciador_missoes.salvar()
+        # Limpar flag
+        if hasattr(gerenciador_progresso, 'ultima_corrida_campanha'):
+            gerenciador_progresso.ultima_corrida_campanha = None
+            gerenciador_progresso.salvar()
+            print(f"[INICIAR_NARRATIVA] Flag ultima_corrida_campanha limpa")
         return
     
-    narrative_system.active = True
-    narrative_system.current_line_index = 0
-    print(f"[INICIAR_NARRATIVA] Cena ch1_6_post_first_race_and_pixel iniciada. active={narrative_system.active}, scene_id={narrative_system.current_scene_id}")
+    # Fallback: tentar iniciar ch1_6_post_race (cena correta após training_01 iniciada por ch1_5_race_briefing)
+    # Se não funcionar, tentar ch1_1c_crank_test_result (cena antiga)
+    cena_fallback = "ch1_6_post_race"
+    if cena_fallback not in narrative_system.scenes_visited:
+        resultado = narrative_system._iniciar_cena_sem_transicao(cena_fallback)
+        if resultado:
+            # Se retornou um trigger (dicionário), não ativar narrativa aqui - o trigger será processado
+            if isinstance(resultado, dict) and "trigger" in resultado:
+                print(f"[INICIAR_NARRATIVA] Trigger retornado: {resultado}")
+                # Não definir active=True aqui, o trigger será processado pelo loop principal
+                return
+            narrative_system.active = True
+            narrative_system.current_line_index = 0
+            print(f"[INICIAR_NARRATIVA] Cena {cena_fallback} iniciada. active={narrative_system.active}, scene_id={narrative_system.current_scene_id}")
+        else:
+            # Se não conseguiu iniciar ch1_6_post_race, tentar ch1_1c_crank_test_result
+            resultado = narrative_system._iniciar_cena_sem_transicao("ch1_1c_crank_test_result")
+            if isinstance(resultado, dict) and "trigger" in resultado:
+                print(f"[INICIAR_NARRATIVA] Trigger retornado: {resultado}")
+                return
+            narrative_system.active = True
+            narrative_system.current_line_index = 0
+            print(f"[INICIAR_NARRATIVA] Cena ch1_1c_crank_test_result iniciada (fallback). active={narrative_system.active}, scene_id={narrative_system.current_scene_id}")
+    else:
+        print(f"[INICIAR_NARRATIVA] Cena {cena_fallback} já foi visitada, não reiniciando")
+    
+    # Salvar missões antes de limpar flag
+    from core.missoes import gerenciador_missoes
+    gerenciador_missoes.salvar()
     
     # Limpar flag
     if hasattr(gerenciador_progresso, 'ultima_corrida_campanha'):
@@ -8811,6 +9704,20 @@ def _verificar_e_iniciar_narrativa_training_01(narrative_system, gerenciador_pro
     if narrative_system.active:
         return False
     
+    # Não reiniciar se a cena atual é ch1_1b_crank_test_briefing (já foi processada)
+    if narrative_system.current_scene_id == "ch1_1b_crank_test_briefing":
+        # Se a cena já foi visitada, não reiniciar
+        if "ch1_1b_crank_test_briefing" in narrative_system.scenes_visited:
+            return False
+    
+    # Se as cenas pós-corrida já foram visitadas, não verificar novamente
+    if "ch1_6_post_race" in narrative_system.scenes_visited or "ch1_7_pixel_voice_intro" in narrative_system.scenes_visited:
+        return False
+    
+    # Se Pixel já foi visto, não verificar novamente
+    if gerenciador_progresso.pixel_primeira_aparicao_mostrada:
+        return False
+    
     # Verificar se já completou a corrida
     corrida_completa = _verificar_corrida_completa(1)
     missao_completa = gerenciador_missoes.esta_completa("m6_batismo_de_pista")
@@ -8823,6 +9730,25 @@ def _verificar_e_iniciar_narrativa_training_01(narrative_system, gerenciador_pro
 
 def run():
     from config import CONFIGURACOES, carregar_configuracoes
+    
+    # Verificar se m14_tres_mundos deve ser completada logo no início (reputação >= 500)
+    try:
+        from core.status_jogador import status_jogador
+        from core.missoes import gerenciador_missoes
+        # Garantir que o status está carregado
+        status_jogador.carregar()
+        popularidade_atual = status_jogador.popularidade
+        print(f"[RUN] Verificando reputação no início do jogo: {popularidade_atual:.1f}/500, missao_ativa={gerenciador_missoes.missao_ativa_id}, m14_completa={'m14_tres_mundos' in gerenciador_missoes.missoes_completas}")
+        if popularidade_atual >= 500.0:
+            if gerenciador_missoes.missao_ativa_id == "m14_tres_mundos":
+                if "m14_tres_mundos" not in gerenciador_missoes.missoes_completas:
+                    print(f"[RUN] Reputação já está em 500! Completando missão m14_tres_mundos no início do jogo...")
+                    gerenciador_missoes.completar_missao("m14_tres_mundos")
+                    gerenciador_missoes.salvar()
+    except Exception as e:
+        print(f"[RUN] Erro ao verificar reputação para m14_tres_mundos no início: {e}")
+        import traceback
+        traceback.print_exc()
     pygame.init()
     from core.i18n import inicializar_idioma, t, atualizar_titulo_janela
     inicializar_idioma()
@@ -8890,6 +9816,25 @@ def run():
                 from core.mapa_cidade import carregar_areas_mapa
                 from core.narrative_system import narrative_system
                 from core.progresso import gerenciador_progresso
+                from core.missoes import gerenciador_missoes
+                
+                # Verificar se m14_tres_mundos deve ser completada ao iniciar campanha (reputação >= 500)
+                try:
+                    from core.status_jogador import status_jogador
+                    # Garantir que o status está carregado
+                    status_jogador.carregar()
+                    popularidade_atual = status_jogador.popularidade
+                    print(f"[CAMPANHA] Verificando reputação ao iniciar campanha: {popularidade_atual:.1f}/500, missao_ativa={gerenciador_missoes.missao_ativa_id}")
+                    if popularidade_atual >= 500.0:
+                        if gerenciador_missoes.missao_ativa_id == "m14_tres_mundos":
+                            if "m14_tres_mundos" not in gerenciador_missoes.missoes_completas:
+                                print(f"[CAMPANHA] Reputação já está em 500! Completando missão m14_tres_mundos ao iniciar campanha...")
+                                gerenciador_missoes.completar_missao("m14_tres_mundos")
+                                gerenciador_missoes.salvar()
+                except Exception as e:
+                    print(f"[CAMPANHA] Erro ao verificar reputação para m14_tres_mundos ao iniciar campanha: {e}")
+                    import traceback
+                    traceback.print_exc()
                 
                 # Função auxiliar para executar loop de narrativa
                 def executar_narrativa():
@@ -8902,8 +9847,9 @@ def run():
                             # Verificar se a cena já foi vista e tem um trigger
                             from core.progresso import gerenciador_progresso
                             cena_para_flag = {
-                                "ch1_3_meet_boris": ("boris_primeira_aparicao_mostrada", "boris"),
+                                "ch1_2_meet_boris": ("boris_primeira_aparicao_mostrada", "boris"),
                                 "ch1_7_pixel_intro": ("pixel_primeira_aparicao_mostrada", "pixel"),
+                                "ch1_7_pixel_voice_intro": ("pixel_primeira_aparicao_mostrada", "pixel"),  # Cena real do Pixel
                                 "ch1_1_crank_garage_intro": ("crank_tutorial_mostrado", "crank"),
                             }
                             scene_id = narrative_system.current_scene_id
@@ -8954,12 +9900,12 @@ def run():
                             narrative_system.fechar()
                             break
                         elif resultado and isinstance(resultado, dict):
-                            # Se retornou um trigger (de uma escolha), processar e retornar
-                            narrative_system.fechar()
-                            trigger_resultado = processar_trigger(resultado)
-                            if trigger_resultado:
-                                return trigger_resultado
-                            break
+                            # Se retornou um trigger (de uma escolha), retornar o dicionário para ser processado no loop principal
+                            print(f"[EXECUTAR_NARRATIVA] Trigger de escolha detectado, retornando: {resultado}")
+                            print(f"[EXECUTAR_NARRATIVA] Tipo do trigger: {resultado.get('trigger')}, params: {resultado.get('params')}")
+                            # NÃO fechar a narrativa aqui - deixar o loop principal processar o trigger primeiro
+                            # narrative_system.fechar()
+                            return resultado
                         
                         # Verificar se há trigger na cena atual (quando o texto termina)
                         # Usar método público se existir, senão usar privado
@@ -8970,18 +9916,66 @@ def run():
                         if scene:
                             lines = scene.get("lines", [])
                             # Debug: verificar estado da cena
-                            if narrative_system.current_scene_id in ["ch1_3_boris_crank_branch", "ch1_3_boris_no_crank_branch"]:
+                            if narrative_system.current_scene_id in ["ch1_3_boris_crank_branch", "ch1_3_boris_no_crank_branch", "ch1_3_boris_deal"]:
                                 print(f"[DEBUG] Cena {narrative_system.current_scene_id}: line_index={narrative_system.current_line_index}, total_lines={len(lines)}, choices_visible={narrative_system.choices_visible}")
                             
-                            # Se terminou todas as linhas e não há escolhas, verificar trigger
+                            # Verificar trigger ANTES de verificar se terminou todas as linhas
+                            # Isso garante que mesmo se _avancar_cena() já foi chamado, o trigger ainda será detectado
+                            scene_trigger = scene.get("gameplayTrigger")
+                            print(f"[EXECUTAR_NARRATIVA] Verificando scene_trigger: scene_id={narrative_system.current_scene_id}, has_trigger={scene_trigger is not None}, line_index={narrative_system.current_line_index}, total_lines={len(lines)}, choices_visible={narrative_system.choices_visible}")
+                            if scene_trigger and narrative_system.current_scene_id:
+                                # Se a cena tem trigger e já terminou (sem escolhas), processar imediatamente
+                                # IMPORTANTE: Garantir que TODAS as linhas foram exibidas antes de processar o trigger
+                                # O jogador precisa clicar para avançar cada linha, então current_line_index >= len(lines)
+                                # significa que todas as linhas foram exibidas e o jogador clicou além da última
+                                if (narrative_system.current_line_index >= len(lines) and 
+                                    not narrative_system.choices_visible):
+                                    print(f"[EXECUTAR_NARRATIVA] Todas as linhas exibidas (line_index={narrative_system.current_line_index}, total={len(lines)}), processando trigger...")
+                                    # Debug: verificar se todas as linhas foram realmente exibidas
+                                    if narrative_system.current_scene_id == "ch1_3_boris_deal":
+                                        print(f"[EXECUTAR_NARRATIVA] ✓ Cena ch1_3_boris_deal: Todas as {len(lines)} linhas foram exibidas antes de abrir a loja!")
+                                        for i, line in enumerate(lines):
+                                            print(f"  Linha {i}: {line.get('speaker', '')} - {line.get('text', '')[:60]}...")
+                                    # Extrair o tipo do trigger e todos os outros campos como params
+                                    trigger_type = scene_trigger.get("trigger")
+                                    params = {k: v for k, v in scene_trigger.items() if k != "trigger"}
+                                    trigger = {
+                                        "trigger": trigger_type,
+                                        "params": params
+                                    }
+                                    print(f"[EXECUTAR_NARRATIVA] Trigger detectado diretamente da cena {narrative_system.current_scene_id}: {trigger}")
+                                    # Verificar se o trigger já foi processado (evitar loop infinito)
+                                    if trigger.get('trigger') in ['open_shop', 'openShop', 'open_shop_interface']:
+                                        shop_id = trigger.get('params', {}).get('shopId', '')
+                                        on_close_scene_id = trigger.get('params', {}).get('onCloseSceneId', '')
+                                        trigger_key = f"{shop_id}_{on_close_scene_id}"
+                                        if hasattr(processar_trigger, '_loja_processada') and trigger_key in processar_trigger._loja_processada:
+                                            print(f"[EXECUTAR_NARRATIVA] Trigger já processado dentro do loop, ignorando: {trigger_key}")
+                                            # Não retornar o trigger, continuar processando a narrativa
+                                            pass
+                                        else:
+                                            print(f"[EXECUTAR_NARRATIVA] Processando trigger open_shop: shop_id={shop_id}")
+                                            # Limpar current_scene_id antes de retornar o trigger
+                                            narrative_system.current_scene_id = None
+                                            narrative_system.active = False
+                                            return trigger
+                                    else:
+                                        print(f"[EXECUTAR_NARRATIVA] Processando trigger: {trigger.get('trigger')}")
+                                        narrative_system.current_scene_id = None
+                                        narrative_system.active = False
+                                        return trigger
+                            
+                            # Se terminou todas as linhas e não há escolhas, verificar trigger (método antigo como fallback)
                             if (narrative_system.current_line_index >= len(lines) and 
                                 not narrative_system.choices_visible):
+                                print(f"[EXECUTAR_NARRATIVA] Verificando trigger: line_index={narrative_system.current_line_index}, total_lines={len(lines)}, choices_visible={narrative_system.choices_visible}, scene_id={narrative_system.current_scene_id}")
                                 trigger = narrative_system.obter_trigger_atual()
+                                print(f"[EXECUTAR_NARRATIVA] obter_trigger_atual retornou: {trigger}")
                                 if trigger:
                                     print(f"[EXECUTAR_NARRATIVA] Trigger detectado na cena {narrative_system.current_scene_id}: {trigger}")
                                     print(f"[EXECUTAR_NARRATIVA] line_index={narrative_system.current_line_index}, total_lines={len(lines)}, choices_visible={narrative_system.choices_visible}")
                                     # Verificar se o trigger já foi processado (evitar loop infinito)
-                                    if trigger.get('trigger') == 'open_shop' or trigger.get('trigger') == 'openShop':
+                                    if trigger.get('trigger') in ['open_shop', 'openShop', 'open_shop_interface']:
                                         shop_id = trigger.get('params', {}).get('shopId', '')
                                         on_close_scene_id = trigger.get('params', {}).get('onCloseSceneId', '')
                                         trigger_key = f"{shop_id}_{on_close_scene_id}"
@@ -9017,7 +10011,7 @@ def run():
                                 trigger = narrative_system.obter_trigger_atual()
                                 if trigger:
                                     print(f"[EXECUTAR_NARRATIVA] Trigger detectado após atualizar (cena {narrative_system.current_scene_id}): {trigger}")
-                                    if trigger.get('trigger') == 'open_shop' or trigger.get('trigger') == 'openShop':
+                                    if trigger.get('trigger') in ['open_shop', 'openShop', 'open_shop_interface']:
                                         shop_id = trigger.get('params', {}).get('shopId', '')
                                         on_close_scene_id = trigger.get('params', {}).get('onCloseSceneId', '')
                                         trigger_key = f"{shop_id}_{on_close_scene_id}"
@@ -9045,7 +10039,7 @@ def run():
                                     if trigger:
                                         print(f"[EXECUTAR_NARRATIVA] Trigger detectado após transição: {trigger}")
                                         # Verificar se o trigger já foi processado (evitar loop infinito)
-                                        if trigger.get('trigger') == 'open_shop' or trigger.get('trigger') == 'openShop':
+                                        if trigger.get('trigger') in ['open_shop', 'openShop', 'open_shop_interface']:
                                             shop_id = trigger.get('params', {}).get('shopId', '')
                                             on_close_scene_id = trigger.get('params', {}).get('onCloseSceneId', '')
                                             trigger_key = f"{shop_id}_{on_close_scene_id}"
@@ -9064,11 +10058,16 @@ def run():
                         narrative_system.desenhar(screen)
                         pygame.display.flip()
                     
+                    # Verificar se o jogo terminou (após créditos)
+                    if narrative_system.game_ended:
+                        print(f"[EXECUTAR_NARRATIVA] Jogo terminou (game_ended=True), retornando None para voltar ao menu")
+                        return None
+                    
                     # Se saiu do loop sem trigger, verificar se há trigger na última cena
                     trigger = narrative_system.obter_trigger_atual()
                     print(f"[EXECUTAR_NARRATIVA] Verificando trigger ao sair do loop: {trigger}")
                     # Verificar se o trigger já foi processado (evitar loop infinito)
-                    if trigger and trigger.get('trigger') == 'open_shop':
+                    if trigger and trigger.get('trigger') in ['open_shop', 'openShop', 'open_shop_interface']:
                         shop_id = trigger.get('params', {}).get('shopId', '')
                         on_close_scene_id = trigger.get('params', {}).get('onCloseSceneId', '')
                         trigger_key = f"{shop_id}_{on_close_scene_id}"
@@ -9087,6 +10086,15 @@ def run():
                         print(f"[PROCESSAR_TRIGGER] trigger_info é None ou vazio")
                         return None
                     
+                    # Verificar se trigger_info é uma string (erro) ou dicionário
+                    if isinstance(trigger_info, str):
+                        print(f"[PROCESSAR_TRIGGER] ERRO: trigger_info é uma string: {trigger_info}")
+                        return None
+                    
+                    if not isinstance(trigger_info, dict):
+                        print(f"[PROCESSAR_TRIGGER] ERRO: trigger_info não é um dicionário: {type(trigger_info)}")
+                        return None
+                    
                     trigger_type = trigger_info.get("trigger")
                     params = trigger_info.get("params", {})
                     print(f"[PROCESSAR_TRIGGER] Processando trigger: type={trigger_type}, params={params}")
@@ -9095,8 +10103,16 @@ def run():
                         # Verificar se há focusRace (pista de treino)
                         focus_race = params.get("focusRace")
                         objective_text = params.get("objectiveText", "")
+                        skip_menu = params.get("skipMenu", False)
+                        # Garantir que skip_menu é um booleano (pode vir como string do JSON)
+                        if isinstance(skip_menu, str):
+                            skip_menu = skip_menu.lower() in ("true", "1", "yes")
+                        print(f"[PROCESSAR_TRIGGER] goto_map: focus_race={focus_race}, skip_menu={skip_menu}, type(skip_menu)={type(skip_menu)}")
                         
-                        if focus_race == "training_01":
+                        # Verificar condições
+                        print(f"[PROCESSAR_TRIGGER] Verificando condições: focus_race == 'training_01' = {focus_race == 'training_01'}, not skip_menu = {not skip_menu}, skip_menu = {skip_menu}")
+                        
+                        if focus_race == "training_01" and not skip_menu:
                             # Mostrar menu "Ir para a pista de treino" ou "Sair"
                             
                             # Importar dependências necessárias
@@ -9183,6 +10199,10 @@ def run():
                                                     
                                                     # Obter parâmetros da corrida
                                                     track = race_config.get("track", 1)
+                                                    # Garantir que training_01 sempre usa a pista 1 (fase 1 do arcade)
+                                                    if focus_race == "training_01":
+                                                        track = 1
+                                                        print(f"[PISTA TREINO] Forçando pista 1 para training_01 (fase 1 do arcade)")
                                                     laps = race_config.get("laps", 1)
                                                     difficulty = race_config.get("difficulty", "facil")
                                                     tipo = race_config.get("tipo", "corrida")
@@ -9246,7 +10266,13 @@ def run():
                                                     foi_training_01 = (hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and 
                                                                       gerenciador_progresso.ultima_corrida_campanha == "training_01")
                                                     
-                                                    if foi_training_01 and _verificar_corrida_completa(1):
+                                                    # Verificar se as cenas pós-corrida já foram visitadas antes de verificar a corrida
+                                                    if "ch1_6_post_race" in narrative_system.scenes_visited or "ch1_7_pixel_voice_intro" in narrative_system.scenes_visited:
+                                                        # Se já foram visitadas, limpar a flag para evitar verificações futuras
+                                                        if foi_training_01:
+                                                            gerenciador_progresso.ultima_corrida_campanha = None
+                                                            gerenciador_progresso.salvar()
+                                                    elif foi_training_01 and _verificar_corrida_completa(1):
                                                         _iniciar_narrativa_pos_training_01(narrative_system, gerenciador_progresso)
                                                         return "narrativa"
                                                     
@@ -9312,6 +10338,10 @@ def run():
                                                 
                                                 # Obter parâmetros da corrida
                                                 track = race_config.get("track", 1)
+                                                # Garantir que training_01 sempre usa a pista 1 (fase 1 do arcade)
+                                                if race_id == "training_01":
+                                                    track = 1
+                                                    print(f"[PISTA TREINO] Forçando pista 1 para training_01 (fase 1 do arcade)")
                                                 laps = race_config.get("laps", 1)
                                                 difficulty = race_config.get("difficulty", "facil")
                                                 tipo = race_config.get("tipo", "corrida")
@@ -9335,6 +10365,9 @@ def run():
                                                 gerenciador_progresso.ultima_corrida_campanha = "training_01"
                                                 gerenciador_progresso.salvar()
                                                 
+                                                # Log final antes de iniciar corrida
+                                                print(f"[PISTA TREINO] Iniciando corrida training_01 (menu): track={track}, laps={laps}, difficulty={difficulty}, sem_bots={sem_bots}")
+                                                
                                                 # Iniciar corrida
                                                 import main
                                                 main.principal(
@@ -9353,7 +10386,13 @@ def run():
                                                 foi_training_01 = (hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and 
                                                                   gerenciador_progresso.ultima_corrida_campanha == "training_01")
                                                 
-                                                if foi_training_01 and _verificar_corrida_completa(1):
+                                                # Verificar se as cenas pós-corrida já foram visitadas antes de verificar a corrida
+                                                if "ch1_6_post_race" in narrative_system.scenes_visited or "ch1_7_pixel_voice_intro" in narrative_system.scenes_visited:
+                                                    # Se já foram visitadas, limpar a flag para evitar verificações futuras
+                                                    if foi_training_01:
+                                                        gerenciador_progresso.ultima_corrida_campanha = None
+                                                        gerenciador_progresso.salvar()
+                                                elif foi_training_01 and _verificar_corrida_completa(1):
                                                     _iniciar_narrativa_pos_training_01(narrative_system, gerenciador_progresso)
                                                     return "narrativa"
                                                 
@@ -9418,10 +10457,152 @@ def run():
                                     print(f"[PISTA TREINO] Erro ao armazenar focus_race: {e}")
                             
                             return "mapa"
+                        elif focus_race == "training_01" and skip_menu:
+                            # Se skipMenu é True, iniciar corrida diretamente sem mostrar menu
+                            print(f"[PROCESSAR_TRIGGER] Verificando elif: focus_race == 'training_01' = {focus_race == 'training_01'}, skip_menu = {skip_menu}, type(skip_menu)={type(skip_menu)}")
+                            print(f"[PROCESSAR_TRIGGER] Entrando no bloco skipMenu=True para training_01")
+                            print(f"[PISTA TREINO] skipMenu=True, iniciando corrida training_01 diretamente...")
+                            
+                            # Marcar a cena atual como visitada ANTES de fechar a narrativa
+                            cena_atual = narrative_system.current_scene_id
+                            if cena_atual == "ch1_1b_crank_test_briefing":
+                                if "ch1_1b_crank_test_briefing" not in narrative_system.scenes_visited:
+                                    narrative_system.scenes_visited.add("ch1_1b_crank_test_briefing")
+                                    print(f"[PISTA TREINO] Cena ch1_1b_crank_test_briefing marcada como visitada")
+                            
+                            # Fechar narrativa antes de iniciar a corrida para evitar reiniciar
+                            if narrative_system.active:
+                                print(f"[PISTA TREINO] Fechando narrativa antes de iniciar corrida (cena atual: {cena_atual})")
+                                narrative_system.fechar()
+                                # Garantir que a narrativa está realmente fechada e limpar current_scene_id
+                                narrative_system.active = False
+                                # Limpar current_scene_id para evitar reiniciar a cena
+                                narrative_system.current_scene_id = None
+                                narrative_system.current_line_index = 0
+                                print(f"[PISTA TREINO] Narrativa fechada e current_scene_id limpo")
+                            
+                            # Carregar configuração da corrida
+                            import json
+                            import os
+                            from config import DIR_PROJETO
+                            
+                            caminho_races = os.path.join(DIR_PROJETO, "data", "races.json")
+                            race_config = None
+                            
+                            if os.path.exists(caminho_races):
+                                try:
+                                    with open(caminho_races, 'r', encoding='utf-8') as f:
+                                        races_data = json.load(f)
+                                        for race in races_data.get("races", []):
+                                            if race.get("id") == "training_01":
+                                                race_config = race
+                                                break
+                                except Exception as e:
+                                    print(f"Erro ao carregar corrida training_01: {e}")
+                            
+                            if race_config:
+                                # Verificar tédio antes de iniciar corrida
+                                try:
+                                    from core.status_jogador import status_jogador
+                                    pode_correr, mensagem = status_jogador.pode_correr()
+                                    if not pode_correr:
+                                        from core.popup_musica import popup_musica
+                                        popup_musica.mostrar(mensagem, tipo="outra")
+                                        return "mapa"
+                                except Exception as e:
+                                    print(f"Erro ao verificar status do jogador: {e}")
+                                
+                                # Obter parâmetros da corrida
+                                track = race_config.get("track", 1)
+                                # Garantir que training_01 sempre usa a pista 1 (fase 1 do arcade)
+                                if focus_race == "training_01":
+                                    track = 1
+                                    print(f"[PISTA TREINO] Forçando pista 1 para training_01 (fase 1 do arcade)")
+                                laps = race_config.get("laps", 1)
+                                difficulty = race_config.get("difficulty", "facil")
+                                tipo = race_config.get("tipo", "corrida")
+                                sem_bots = race_config.get("sem_bots", False)
+                                
+                                # Obter carro atual do jogador
+                                from core.progresso import gerenciador_progresso
+                                carro_p1_idx = 0
+                                if gerenciador_progresso.carro_p1_atual:
+                                    from config import CARROS_DISPONIVEIS
+                                    for i, carro in enumerate(CARROS_DISPONIVEIS):
+                                        if carro.get("prefixo_cor") == gerenciador_progresso.carro_p1_atual:
+                                            carro_p1_idx = i
+                                            break
+                                
+                                # Converter tipo para enum
+                                from main import TipoJogo, ModoJogo
+                                tipo_jogo = TipoJogo.CORRIDA if tipo == "corrida" else TipoJogo.DRIFT
+                                
+                                # Armazenar race_id para verificar após a corrida
+                                gerenciador_progresso.ultima_corrida_campanha = "training_01"
+                                gerenciador_progresso.salvar()
+                                
+                                # Log final antes de iniciar corrida
+                                print(f"[PISTA TREINO] Iniciando corrida training_01: track={track}, laps={laps}, difficulty={difficulty}, sem_bots={sem_bots}")
+                                
+                                # Modo de teste: marcar corrida como concluída automaticamente
+                                from config import MODO_TESTE_CORRIDAS
+                                if MODO_TESTE_CORRIDAS:
+                                    print(f"[MODO TESTE] Corrida training_01 marcada como concluída automaticamente")
+                                    from core.estatisticas import gerenciador_estatisticas
+                                    gerenciador_estatisticas.carregar()
+                                    # Registrar corrida como concluída (posição 1, tempo fictício)
+                                    gerenciador_estatisticas.registrar_corrida_completa(
+                                        numero_pista=track,
+                                        posicao_final=1,
+                                        tempo_final=60.0  # Tempo fictício
+                                    )
+                                    gerenciador_estatisticas.salvar()
+                                    
+                                    # Limpar flag e salvar
+                                    gerenciador_progresso.ultima_corrida_campanha = None
+                                    gerenciador_progresso.salvar()
+                                    
+                                    # Iniciar narrativa pós-corrida
+                                    _iniciar_narrativa_pos_training_01(narrative_system, gerenciador_progresso)
+                                    return "narrativa"
+                                else:
+                                    # Iniciar corrida normalmente
+                                    import main
+                                    print(f"[PISTA TREINO] Chamando main.principal com mapa_selecionado={track}")
+                                    main.principal(
+                                        carro_selecionado_p1=carro_p1_idx,
+                                        carro_selecionado_p2=0,
+                                        mapa_selecionado=track,
+                                        modo_jogo=ModoJogo.UM_JOGADOR,
+                                        tipo_jogo=tipo_jogo,
+                                        voltas=laps,
+                                        dificuldade_ia=difficulty,
+                                        modo_arcade=False,
+                                        sem_bots=sem_bots
+                                    )
+                                    
+                                    # Verificar se training_01 foi completada
+                                    foi_training_01 = (hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and 
+                                                      gerenciador_progresso.ultima_corrida_campanha == "training_01")
+                                    
+                                    # Verificar se as cenas pós-corrida já foram visitadas antes de verificar a corrida
+                                    if "ch1_6_post_race" in narrative_system.scenes_visited or "ch1_7_pixel_voice_intro" in narrative_system.scenes_visited:
+                                        # Se já foram visitadas, limpar a flag para evitar verificações futuras
+                                        if foi_training_01:
+                                            gerenciador_progresso.ultima_corrida_campanha = None
+                                            gerenciador_progresso.salvar()
+                                    elif foi_training_01 and _verificar_corrida_completa(1):
+                                        _iniciar_narrativa_pos_training_01(narrative_system, gerenciador_progresso)
+                                        return "narrativa"
+                                    
+                                    return "mapa"
+                            else:
+                                print(f"[PISTA TREINO] Erro: configuração da corrida training_01 não encontrada")
+                                return "mapa"
                         
                         # Verificar se acabamos de completar a cena de introdução do Pixel
-                        if narrative_system.current_scene_id == "ch1_7_pixel_intro":
-                            print(f"[PIXEL INTRO] Cena de introdução do Pixel completada, marcando primeira aparição")
+                        if narrative_system.current_scene_id == "ch1_7_pixel_voice_intro" or narrative_system.current_scene_id == "ch1_7_pixel_intro":
+                            print(f"[PIXEL INTRO] Cena de introdução do Pixel completada ({narrative_system.current_scene_id}), marcando primeira aparição")
                             from core.pixel import pixel
                             from core.progresso import gerenciador_progresso
                             # Marcar que o Pixel foi apresentado
@@ -9432,9 +10613,12 @@ def run():
                             
                             # Completar missão m7_olhos_no_painel
                             from core.missoes import gerenciador_missoes
-                            if not gerenciador_missoes.esta_completa("m7_olhos_no_painel"):
-                                gerenciador_missoes.completar_por_cena("ch1_7_pixel_intro")
-                                print(f"[PIXEL INTRO] Missão m7_olhos_no_painel completada")
+                            if "m7_olhos_no_painel" not in gerenciador_missoes.missoes_completas:
+                                gerenciador_missoes.completar_por_cena(narrative_system.current_scene_id)
+                                gerenciador_missoes.salvar()
+                                print(f"[PIXEL INTRO] Missão m7_olhos_no_painel completada pela cena {narrative_system.current_scene_id}")
+                            else:
+                                print(f"[PIXEL INTRO] Missão m7_olhos_no_painel já estava completa")
                             
                             # Marcar capítulo 1 como completo e iniciar capítulo 2
                             if not gerenciador_progresso.capitulo_foi_completo("ch1"):
@@ -9451,7 +10635,67 @@ def run():
                                     # Retornar "narrativa" para que o loop principal continue processando a narrativa
                                     return "narrativa"
                         
-                        # Voltar para o mapa normalmente (sem menu especial)
+                        # Voltar para o mapa normalmente (sem menu especial ou se não é training_01)
+                        print(f"[PROCESSAR_TRIGGER] goto_map: Nenhuma condição especial atendida, retornando 'mapa'. focus_race={focus_race}, skip_menu={skip_menu}")
+                        return "mapa"
+                    
+                    elif trigger_type in ["check_tire_and_offer_race", "start_race_setup"]:
+                        print(f"[PROCESSAR_TRIGGER] Trigger {trigger_type} detectado! Verificando pneu nível 1...")
+                        # Verificar pneu nível 1 antes de oferecer corrida
+                        race_id = params.get("raceId")
+                        on_result_scene_id = params.get("onResultSceneId")
+                        print(f"[PROCESSAR_TRIGGER] race_id={race_id}, on_result_scene_id={on_result_scene_id}")
+                        
+                        from core.progresso import gerenciador_progresso
+                        # Obter carro atual
+                        carro_atual = gerenciador_progresso.obter_carro_atual(1)
+                        if not carro_atual:
+                            carro_atual = "Car1"
+                        print(f"[PROCESSAR_TRIGGER] carro_atual inicial: {carro_atual}, tipo: {type(carro_atual)}")
+                        
+                        # Garantir que carro_atual é string (prefixo_cor)
+                        if isinstance(carro_atual, int):
+                            from config import CARROS_DISPONIVEIS
+                            if 0 <= carro_atual < len(CARROS_DISPONIVEIS):
+                                carro_atual = CARROS_DISPONIVEIS[carro_atual].get("prefixo_cor", "Car1")
+                            else:
+                                carro_atual = "Car1"
+                            print(f"[PROCESSAR_TRIGGER] carro_atual convertido: {carro_atual}")
+                        
+                        nivel_pneu = gerenciador_progresso.obter_upgrade(carro_atual, "rodas")
+                        print(f"[PROCESSAR_TRIGGER] Nível de pneu verificado: {nivel_pneu} (carro: {carro_atual})")
+                        
+                        # Se não tem pneus nível 1, redirecionar para o mapa
+                        if nivel_pneu < 1:
+                            print(f"[PROCESSAR_TRIGGER] Jogador não tem pneu nível 1 (nível atual: {nivel_pneu}), redirecionando para o mapa")
+                            from core.popup_musica import popup_musica
+                            popup_musica.mostrar("Você precisa de pneus nível 1 para correr na montanha. Compre com Boris ou Crank.", tipo="outra")
+                            # Fechar narrativa e voltar para o mapa
+                            narrative_system.fechar()
+                            narrative_system.active = False
+                            narrative_system.current_scene_id = None
+                            print(f"[PROCESSAR_TRIGGER] Narrativa fechada, retornando 'mapa'")
+                            return "mapa"
+                        
+                        # Se tem pneus nível 1, fechar narrativa e voltar para o território
+                        # O sistema antigo da Akira vai oferecer a corrida automaticamente
+                        print(f"[PROCESSAR_TRIGGER] Jogador tem pneu nível 1 (nível: {nivel_pneu}), fechando narrativa e voltando para o território")
+                        # Fechar narrativa
+                        narrative_system.fechar()
+                        narrative_system.active = False
+                        narrative_system.current_scene_id = None
+                        
+                        # Garantir que a primeira aparição da Akira foi marcada como mostrada
+                        from core.akira import akira
+                        from core.progresso import gerenciador_progresso
+                        akira.primeira_aparicao_mostrada = True
+                        akira.nome_revelado = True
+                        gerenciador_progresso.akira_primeira_aparicao_mostrada = True
+                        gerenciador_progresso.akira_nome_revelado = True
+                        gerenciador_progresso.salvar()
+                        
+                        # Voltar para o mapa - o jogador pode voltar ao território da Akira para aceitar a corrida
+                        print(f"[PROCESSAR_TRIGGER] Voltando para o mapa - jogador pode voltar ao território da Akira")
                         return "mapa"
                     
                     elif trigger_type == "start_race":
@@ -9492,8 +10736,41 @@ def run():
                                 except Exception as e:
                                     print(f"Erro ao verificar status do jogador: {e}")
                                 
+                                # Verificar se é a corrida da montanha e se o jogador tem pneu nível 1
+                                if race_id == "mountain_test_run":
+                                    from core.progresso import gerenciador_progresso
+                                    # Obter carro atual
+                                    carro_atual = gerenciador_progresso.obter_carro_atual(1)
+                                    if not carro_atual:
+                                        carro_atual = "Car1"
+                                    
+                                    # Garantir que carro_atual é string (prefixo_cor)
+                                    if isinstance(carro_atual, int):
+                                        from config import CARROS_DISPONIVEIS
+                                        if 0 <= carro_atual < len(CARROS_DISPONIVEIS):
+                                            carro_atual = CARROS_DISPONIVEIS[carro_atual].get("prefixo_cor", "Car1")
+                                        else:
+                                            carro_atual = "Car1"
+                                    
+                                    nivel_pneu = gerenciador_progresso.obter_upgrade(carro_atual, "rodas")
+                                    
+                                    # Se não tem pneus nível 1, redirecionar para o mapa
+                                    if nivel_pneu < 1:
+                                        print(f"[PROCESSAR_TRIGGER] Jogador não tem pneu nível 1 (nível atual: {nivel_pneu}), redirecionando para o mapa")
+                                        from core.popup_musica import popup_musica
+                                        popup_musica.mostrar("Você precisa de pneus nível 1 para correr na montanha. Compre com Boris ou Crank.", tipo="outra")
+                                        # Fechar narrativa e voltar para o mapa
+                                        narrative_system.fechar()
+                                        narrative_system.active = False
+                                        narrative_system.current_scene_id = None
+                                        return "mapa"
+                                
                                 # Obter parâmetros da corrida
                                 track = race_config.get("track", 1)
+                                # Garantir que training_01 sempre usa a pista 1 (fase 1 do arcade)
+                                if race_id == "training_01":
+                                    track = 1
+                                    print(f"[PISTA TREINO] Forçando pista 1 para training_01 (fase 1 do arcade)")
                                 laps = race_config.get("laps", 1)
                                 difficulty = race_config.get("difficulty", "medio")
                                 tipo = race_config.get("tipo", "corrida")
@@ -9513,6 +10790,24 @@ def run():
                                 # Converter tipo para enum
                                 from main import TipoJogo, ModoJogo
                                 tipo_jogo = TipoJogo.CORRIDA if tipo == "corrida" else TipoJogo.DRIFT
+                                
+                                # Definir flag de corrida da campanha ANTES de iniciar a corrida
+                                # Isso permite que o jogo saiba qual cena narrativa iniciar após a corrida
+                                if race_id:
+                                    gerenciador_progresso.ultima_corrida_campanha = race_id
+                                    gerenciador_progresso.salvar()
+                                    print(f"[PROCESSAR_TRIGGER] Flag ultima_corrida_campanha definida como '{race_id}' antes de iniciar corrida")
+                                
+                                # Marcar a cena atual como visitada antes de iniciar a corrida
+                                # Isso evita que a cena seja reiniciada após a corrida
+                                if narrative_system.current_scene_id:
+                                    narrative_system.scenes_visited.add(narrative_system.current_scene_id)
+                                    print(f"[PROCESSAR_TRIGGER] Cena {narrative_system.current_scene_id} marcada como visitada antes de iniciar corrida")
+                                    # Salvar flags da cena atual
+                                    narrative_system._salvar_flags_cena_atual()
+                                
+                                # Fechar narrativa antes de iniciar corrida
+                                narrative_system.fechar()
                                 
                                 # Iniciar corrida
                                 import main
@@ -9540,10 +10835,10 @@ def run():
                         
                         return "mapa"
                     
-                    elif trigger_type == "open_shop" or trigger_type == "openShop":
+                    elif trigger_type in ["open_shop", "openShop", "open_shop_interface"]:
                         # Abrir loja (integrado à narrativa da CAMPANHA)
                         shop_id = params.get("shopId")
-                        on_close_scene_id = params.get("onCloseSceneId")
+                        on_close_scene_id = params.get("onCloseSceneId") or params.get("onCloseSceneId")
                         
                         # Verificar se a loja já foi processada (evitar loop infinito)
                         if not hasattr(processar_trigger, '_loja_processada'):
@@ -9563,6 +10858,14 @@ def run():
                         # Marcar como processado ANTES de entrar na loja
                         processar_trigger._loja_processada.add(trigger_key)
                         print(f"[BORIS SHOP] Processando trigger: {trigger_key}")
+                        
+                        # Limpar current_scene_id após obter o trigger, mas antes de processar
+                        # Isso evita que a cena seja reiniciada
+                        if narrative_system.current_scene_id:
+                            cena_anterior = narrative_system.current_scene_id
+                            narrative_system.current_scene_id = None
+                            narrative_system.active = False
+                            print(f"[BORIS SHOP] current_scene_id limpo ({cena_anterior}) antes de abrir loja")
                         
                         # Implementação específica para a loja do Boris no fluxo da campanha:
                         # após a fala "Seguinte: tenho peças feias, baratas e fortes..."
@@ -9790,6 +11093,325 @@ def run():
                             # Se comprou, não deveria chegar aqui, mas por segurança:
                             return "narrativa"
                         
+                        elif shop_id == "slick_alien":
+                            # Loja do Slick - upgrades experimentais e especiais (padrão Pixel)
+                            from core.menu import render_text
+                            from config import FPS, LARGURA, ALTURA
+                            from core.progresso import gerenciador_progresso
+                            from core.narrative_system import narrative_system
+                            
+                            clock_slick = pygame.time.Clock()
+                            
+                            # Obter on_close_scene_id dos parâmetros
+                            on_close_scene_id = params.get("onCloseSceneId")
+                            
+                            # Carregar upgrades já comprados do progresso
+                            if not hasattr(gerenciador_progresso, 'slick_upgrades_comprados'):
+                                gerenciador_progresso.slick_upgrades_comprados = []
+                            
+                            # Gerar upgrades especiais do Slick (muito bons e caros, sem depender de nível)
+                            tipos_upgrade = ['motor', 'filtro_ar', 'ecu', 'transmissao', 'rodas', 'suspensao', 'nitro']
+                            upgrades_disponiveis = []
+                            
+                            # Gerar 3-4 upgrades aleatórios especiais
+                            import random
+                            num_upgrades = random.randint(3, 4)
+                            tipos_selecionados = random.sample(tipos_upgrade, min(num_upgrades, len(tipos_upgrade)))
+                            
+                            # Preços base muito altos para upgrades especiais do Slick
+                            precos_base_especiais = {
+                                'motor': 15000,
+                                'filtro_ar': 12000,
+                                'ecu': 14000,
+                                'transmissao': 13000,
+                                'rodas': 11000,
+                                'suspensao': 12000,
+                                'nitro': 16000
+                            }
+                            
+                            for tipo in tipos_selecionados:
+                                preco_base = precos_base_especiais.get(tipo, 13000)
+                                # Variação de preço: ±20%
+                                preco_final = int(preco_base * random.uniform(0.8, 1.2))
+                                
+                                # Criar ID único para este upgrade (sem nível)
+                                upgrade_id = f"slick_{tipo}_{preco_final}"
+                                
+                                upgrades_disponiveis.append({
+                                    'id': upgrade_id,
+                                    'tipo': tipo,
+                                    'preco': preco_final,
+                                    'ja_comprado': upgrade_id in gerenciador_progresso.slick_upgrades_comprados,
+                                    'nome': {
+                                        'motor': 'Motor Experimental Alienígena',
+                                        'filtro_ar': 'Filtro de Ar Quântico',
+                                        'ecu': 'ECU Alienígena Avançada',
+                                        'transmissao': 'Transmissão Dimensional',
+                                        'rodas': 'Rodas de Plasma',
+                                        'suspensao': 'Suspensão Antigravidade',
+                                        'nitro': 'Nitro Hiperespacial'
+                                    }.get(tipo, 'Upgrade Experimental'),
+                                    'descricao': {
+                                        'motor': 'Motor experimental alienígena que aumenta drasticamente potência e velocidade máxima (+50% força, +30% velocidade)',
+                                        'filtro_ar': 'Filtro quântico que melhora drasticamente respiração do motor e reduz arrasto (+40% força, -15% arrasto)',
+                                        'ecu': 'ECU alienígena com processamento avançado que otimiza tudo (+35% aceleração, +25% direção)',
+                                        'transmissao': 'Transmissão dimensional para trocas instantâneas (+30% velocidade, +25% força)',
+                                        'rodas': 'Rodas de plasma com aderência superior (+50% grip, +30% estabilidade)',
+                                        'suspensao': 'Suspensão antigravidade para estabilidade máxima (+40% estabilidade, +30% controle)',
+                                        'nitro': 'Nitro hiperespacial com carga dupla (+60% força nitro, +40% duração, -30% cooldown)'
+                                    }.get(tipo, 'Upgrade experimental alienígena com bônus extraordinários')
+                                })
+                            
+                            opcao_selecionada = 0
+                            rodando_slick = True
+                            saiu_da_loja = False
+                            
+                            print(f"[SLICK SHOP] Iniciando loja do Slick com {len(upgrades_disponiveis)} upgrades disponíveis")
+                            
+                            # Atualizar última aparição do Slick (cooldown de 4 dias)
+                            from core.tempo_jogo import gerenciador_tempo
+                            data_atual = gerenciador_tempo.obter_data_atual()
+                            gerenciador_progresso.slick_ultima_aparicao_data = data_atual.strftime("%Y-%m-%d")
+                            gerenciador_progresso.slick_primeira_aparicao_mostrada = True
+                            gerenciador_progresso.salvar()
+                            print(f"[SLICK] Última aparição atualizada para {gerenciador_tempo.obter_data_formatada()}, primeira aparição marcada como mostrada")
+                            
+                            # Carregar background e sprite do Slick
+                            from core.hub_territorio import obter_caminho_beco_neon
+                            import os
+                            bg_slick = None
+                            sprite_slick = None
+                            
+                            caminho_bg = obter_caminho_beco_neon()
+                            if caminho_bg and os.path.exists(caminho_bg):
+                                try:
+                                    bg_slick = pygame.image.load(caminho_bg).convert()
+                                    bg_slick = pygame.transform.scale(bg_slick, (LARGURA, ALTURA))
+                                except Exception as e:
+                                    print(f"[SLICK SHOP] Erro ao carregar background: {e}")
+                            
+                            # Tentar carregar sprite do Slick
+                            try:
+                                slick_dir = os.path.join(DIR_PROJETO, "assets", "images", "characters", "slick")
+                                sprite_slick_path = os.path.join(slick_dir, "sorriso_teatral.png")
+                                if not os.path.exists(sprite_slick_path):
+                                    sprite_slick_path = os.path.join(slick_dir, "neutro.png")
+                                if os.path.exists(sprite_slick_path):
+                                    sprite_slick = pygame.image.load(sprite_slick_path).convert_alpha()
+                                    # Redimensionar sprite do Slick (grande, como na cutscene)
+                                    sprite_original_w = sprite_slick.get_width()
+                                    sprite_original_h = sprite_slick.get_height()
+                                    if sprite_original_w > 0 and sprite_original_h > 0:
+                                        sprite_altura_max = 900
+                                        sprite_largura_max = 800
+                                        escala_w = sprite_largura_max / sprite_original_w if sprite_original_w > 0 else 1.0
+                                        escala_h = sprite_altura_max / sprite_original_h if sprite_original_h > 0 else 1.0
+                                        escala = min(escala_w, escala_h, 1.0)
+                                        sprite_w = int(sprite_original_w * escala)
+                                        sprite_h = int(sprite_original_h * escala)
+                                        sprite_slick = pygame.transform.scale(sprite_slick, (sprite_w, sprite_h))
+                            except Exception as e:
+                                print(f"[SLICK SHOP] Erro ao carregar sprite do Slick: {e}")
+                            
+                            # Função auxiliar para processar compra
+                            def processar_compra_slick(upgrade):
+                                """Processa a compra de um upgrade especial do Slick"""
+                                if upgrade['ja_comprado']:
+                                    return False, "Este upgrade já foi comprado!"
+                                
+                                if not gerenciador_progresso.tem_dinheiro(upgrade['preco']):
+                                    return False, "Dinheiro insuficiente!"
+                                
+                                # Remover dinheiro
+                                gerenciador_progresso.remover_dinheiro(upgrade['preco'])
+                                
+                                # Marcar como comprado (upgrades do Slick são aplicados automaticamente, não dependem de nível)
+                                upgrade['ja_comprado'] = True
+                                if upgrade['id'] not in gerenciador_progresso.slick_upgrades_comprados:
+                                    gerenciador_progresso.slick_upgrades_comprados.append(upgrade['id'])
+                                gerenciador_progresso.salvar()
+                                
+                                return True, f"Upgrade {upgrade['nome']} adquirido! Os bônus serão aplicados automaticamente."
+                            
+                            while rodando_slick and not saiu_da_loja:
+                                dt = clock_slick.tick(FPS) / 1000.0
+                                
+                                from core.tempo_jogo import gerenciador_tempo
+                                gerenciador_tempo.atualizar(dt)
+                                
+                                eventos = pygame.event.get()
+                                
+                                # Área do menu (centro da tela - padrão Pixel)
+                                menu_largura = 800
+                                menu_altura = 500
+                                menu_x = (LARGURA - menu_largura) // 2
+                                menu_y = (ALTURA - menu_altura) // 2
+                                
+                                mouse_x, mouse_y = pygame.mouse.get_pos()
+                                
+                                # Verificar hover sobre itens
+                                y_inicio = menu_y + 100
+                                altura_item = 80
+                                espacamento = 10
+                                
+                                for i, upgrade in enumerate(upgrades_disponiveis):
+                                    item_y = y_inicio + i * (altura_item + espacamento)
+                                    item_rect = pygame.Rect(menu_x + 20, item_y, menu_largura - 40, altura_item)
+                                    
+                                    if item_rect.collidepoint(mouse_x, mouse_y):
+                                        opcao_selecionada = i
+                                
+                                # Verificar hover sobre botão "Voltar"
+                                voltar_y = menu_y + menu_altura - 50
+                                voltar_rect = pygame.Rect(menu_x + menu_largura - 150, voltar_y, 130, 35)
+                                if voltar_rect.collidepoint(mouse_x, mouse_y):
+                                    opcao_selecionada = len(upgrades_disponiveis)
+                                
+                                for ev in eventos:
+                                    if ev.type == pygame.QUIT:
+                                        import sys
+                                        pygame.quit()
+                                        sys.exit()
+                                    
+                                    if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                                        # Verificar clique em itens
+                                        for i, upgrade in enumerate(upgrades_disponiveis):
+                                            item_y = y_inicio + i * (altura_item + espacamento)
+                                            item_rect = pygame.Rect(menu_x + 20, item_y, menu_largura - 40, altura_item)
+                                            
+                                            if item_rect.collidepoint(mouse_x, mouse_y):
+                                                if not upgrade['ja_comprado']:
+                                                    sucesso, mensagem = processar_compra_slick(upgrade)
+                                                    print(f"[SLICK SHOP] {mensagem}")
+                                                break
+                                        
+                                        # Verificar clique no botão "Voltar"
+                                        if voltar_rect.collidepoint(mouse_x, mouse_y):
+                                            saiu_da_loja = True
+                                            rodando_slick = False
+                                            # Iniciar cena para contar ao Pixel
+                                            if on_close_scene_id:
+                                                narrative_system.iniciar_cena(on_close_scene_id)
+                                                narrative_system.active = True
+                                                return None
+                                            return "mapa"
+                                    
+                                    if ev.type == pygame.KEYDOWN:
+                                        if ev.key == pygame.K_ESCAPE:
+                                            saiu_da_loja = True
+                                            rodando_slick = False
+                                            # Iniciar cena para contar ao Pixel
+                                            if on_close_scene_id:
+                                                narrative_system.iniciar_cena(on_close_scene_id)
+                                                narrative_system.active = True
+                                                return None
+                                            return "mapa"
+                                        
+                                        if ev.key in (pygame.K_UP, pygame.K_w):
+                                            if opcao_selecionada > 0:
+                                                opcao_selecionada -= 1
+                                        elif ev.key in (pygame.K_DOWN, pygame.K_s):
+                                            if opcao_selecionada < len(upgrades_disponiveis):
+                                                opcao_selecionada += 1
+                                        elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
+                                            if opcao_selecionada < len(upgrades_disponiveis):
+                                                upgrade = upgrades_disponiveis[opcao_selecionada]
+                                                if not upgrade['ja_comprado']:
+                                                    sucesso, mensagem = processar_compra_slick(upgrade)
+                                                    print(f"[SLICK SHOP] {mensagem}")
+                                            elif opcao_selecionada == len(upgrades_disponiveis):
+                                                saiu_da_loja = True
+                                                rodando_slick = False
+                                                # Iniciar cena para contar ao Pixel
+                                                if on_close_scene_id:
+                                                    narrative_system.iniciar_cena(on_close_scene_id)
+                                                    narrative_system.active = True
+                                                    return None
+                                                return "mapa"
+                                
+                                # Desenhar background do beco neon
+                                if bg_slick:
+                                    screen.blit(bg_slick, (0, 0))
+                                else:
+                                    screen.fill((20, 20, 30))
+                                
+                                # Desenhar sprite do Slick (atrás do menu)
+                                if sprite_slick:
+                                    sprite_x = LARGURA // 2 - sprite_slick.get_width() // 2
+                                    sprite_y = ALTURA - sprite_slick.get_height() - 100
+                                    screen.blit(sprite_slick, (sprite_x, sprite_y))
+                                
+                                # Overlay escuro para melhorar legibilidade do menu
+                                overlay_escuro = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+                                overlay_escuro.fill((0, 0, 0, 150))
+                                screen.blit(overlay_escuro, (0, 0))
+                                
+                                # Fundo do menu
+                                overlay_menu = pygame.Surface((menu_largura, menu_altura), pygame.SRCALPHA)
+                                overlay_menu.fill((0, 0, 0, 240))
+                                screen.blit(overlay_menu, (menu_x, menu_y))
+                                
+                                # Borda verde (tema tecnológico - padrão Pixel)
+                                pygame.draw.rect(screen, (0, 255, 0), (menu_x, menu_y, menu_largura, menu_altura), 3)
+                                
+                                # Título
+                                titulo = render_text("UPGRADES EXPERIMENTAIS", 28, (0, 255, 100), bold=True, pixel_style=True)
+                                screen.blit(titulo, (menu_x + (menu_largura - titulo.get_width()) // 2, menu_y + 20))
+                                
+                                # Dinheiro
+                                dinheiro_texto = render_text(f"Créditos: ${gerenciador_progresso.dinheiro:,}", 20, (255, 255, 100), bold=True, pixel_style=True)
+                                screen.blit(dinheiro_texto, (menu_x + 20, menu_y + 60))
+                                
+                                # Desenhar upgrades
+                                for i, upgrade in enumerate(upgrades_disponiveis):
+                                    item_y = y_inicio + i * (altura_item + espacamento)
+                                    item_rect = pygame.Rect(menu_x + 20, item_y, menu_largura - 40, altura_item)
+                                    
+                                    # Verificar hover
+                                    hover = item_rect.collidepoint(mouse_x, mouse_y) or i == opcao_selecionada
+                                    cor_fundo = (20, 50, 20, 200) if hover else (10, 30, 10, 200)
+                                    cor_borda = (0, 255, 0) if hover else (0, 200, 0)
+                                    
+                                    # Fundo do item
+                                    overlay_item = pygame.Surface((item_rect.width, item_rect.height), pygame.SRCALPHA)
+                                    overlay_item.fill(cor_fundo)
+                                    screen.blit(overlay_item, item_rect.topleft)
+                                    pygame.draw.rect(screen, cor_borda, item_rect, 2)
+                                    
+                                    # Nome do upgrade
+                                    nome = upgrade['nome']
+                                    if upgrade['ja_comprado']:
+                                        nome += " [VENDIDO]"
+                                    nome_texto = render_text(nome, 20, (0, 255, 150) if not upgrade['ja_comprado'] else (150, 150, 150), bold=True, pixel_style=True)
+                                    screen.blit(nome_texto, (item_rect.x + 10, item_rect.y + 10))
+                                    
+                                    # Descrição
+                                    desc_curta = upgrade['descricao'][:80] + "..." if len(upgrade['descricao']) > 80 else upgrade['descricao']
+                                    desc_texto = render_text(desc_curta, 14, (200, 255, 200), bold=False, pixel_style=True)
+                                    screen.blit(desc_texto, (item_rect.x + 10, item_rect.y + 35))
+                                    
+                                    # Preço (só mostrar se não foi comprado)
+                                    if not upgrade['ja_comprado']:
+                                        preco_texto = render_text(f"${upgrade['preco']:,}", 18, (255, 255, 0), bold=True, pixel_style=True)
+                                        screen.blit(preco_texto, (item_rect.right - preco_texto.get_width() - 10, item_rect.y + 10))
+                                
+                                # Botão Voltar (padrão Pixel)
+                                hover_voltar = voltar_rect.collidepoint(mouse_x, mouse_y) or opcao_selecionada == len(upgrades_disponiveis)
+                                cor_voltar = (0, 255, 0) if hover_voltar else (0, 200, 0)
+                                pygame.draw.rect(screen, (0, 0, 0), voltar_rect)
+                                pygame.draw.rect(screen, cor_voltar, voltar_rect, 2)
+                                voltar_texto = render_text("VOLTAR", 16, cor_voltar, bold=True, pixel_style=True)
+                                screen.blit(voltar_texto, (voltar_rect.x + (voltar_rect.width - voltar_texto.get_width()) // 2, voltar_rect.y + 8))
+                                
+                                pygame.display.flip()
+                            
+                            # Iniciar cena para contar ao Pixel ao sair
+                            if on_close_scene_id:
+                                narrative_system.iniciar_cena(on_close_scene_id)
+                                narrative_system.active = True
+                                return None
+                            return "mapa"
+                        
                         elif shop_id == "boris_basic":
                             from core.boris import boris
                             from core.menu import render_text
@@ -9805,11 +11427,22 @@ def run():
                             fase = "shop"  # pular o modo "dialogo" para não repetir saudação
                             
                             # Dados da peça principal que o jogador deve comprar
-                            # Gerar peça principal (MOTOR) com preço base igual ao dinheiro inicial da campanha (5000)
+                            # Primeira compra do motor na campanha: preço fixo de 2000
                             from core.progresso import gerenciador_progresso
-                            # Obter dinheiro inicial (5000 para nova campanha)
-                            dinheiro_inicial = 5000
-                            peca_info = boris.calcular_preco_peça("motor", preco_base=dinheiro_inicial)
+                            from core.missoes import gerenciador_missoes
+                            # Verificar se é a primeira compra (missão m4 ainda não completada)
+                            if "m4_coracao_de_sucata" not in gerenciador_missoes.missoes_completas:
+                                # Primeira compra: preço fixo de 2000
+                                peca_info = {
+                                    'tipo': 'motor',
+                                    'preco_base': 2000,
+                                    'preco_final': 2000,
+                                    'preco_tipo': 'otimo'
+                                }
+                            else:
+                                # Compras subsequentes: usar cálculo normal
+                                dinheiro_inicial = 5000
+                                peca_info = boris.calcular_preco_peça("motor", preco_base=dinheiro_inicial)
                             opcao_selecionada = 0  # 0 = Comprar peça, 1 = Sair
                             mensagem_status = ""
                             mensagem_tempo = 0.0
@@ -10399,8 +12032,18 @@ def run():
                     
                     return None
                 
+                # Inicializar territorio_id como None no início do loop
+                territorio_id = None
+                
                 # Verificar qual capítulo deve ser mostrado baseado no progresso
                 capitulo_atual = gerenciador_progresso.obter_capitulo_atual()
+                
+                # IMPORTANTE: Se a narrativa tem ch5_10_creditos como cena atual mas não está ativa,
+                # limpar a cena para evitar que fique preso nos créditos
+                if narrative_system.current_scene_id == "ch5_10_creditos" and not narrative_system.active:
+                    print(f"[LOOP PRINCIPAL] Cena de créditos detectada mas narrativa não está ativa. Limpando...")
+                    narrative_system.current_scene_id = None
+                    narrative_system.current_chapter_id = None
                 
                 # Se o Capítulo 1 foi completado mas ainda está marcado como ch1, avançar para ch2
                 if capitulo_atual == "ch1" and gerenciador_progresso.capitulo_foi_completo("ch1"):
@@ -10408,6 +12051,8 @@ def run():
                     gerenciador_progresso.definir_capitulo_atual("ch2")
                     gerenciador_progresso.salvar()
                     capitulo_atual = "ch2"
+                    # Atualizar o current_chapter_id do narrative_system também
+                    narrative_system.current_chapter_id = "ch2"
                 
                 # Se o Capítulo 2 foi completado mas ainda está marcado como ch2, avançar para ch3
                 # Capítulo 2 está completo quando a missão m10_portoes_do_cinturao é completada
@@ -10427,51 +12072,243 @@ def run():
                     gerenciador_progresso.salvar()
                     capitulo_atual = "ch3"
                 
+                # Validar se o capítulo atual está correto baseado no progresso real
+                from core.missoes import gerenciador_missoes
+                gerenciador_missoes.carregar()
+                
+                # Determinar qual capítulo o jogador deveria estar baseado nas missões completas
+                missoes_ch1 = ["m1_primeira_faisca", "m2_teste_de_sobrevivencia", "m3_rota_da_ferrugem", 
+                               "m4_coracao_de_sucata", "m5_cirurgia_na_garagem", "m6_batismo_de_pista", "m7_olhos_no_painel"]
+                missoes_ch2 = ["m8_oferta_envenenada", "m9a_peso_da_divida", "m10_portoes_do_cinturao", "m10b_corridas_cinturao"]
+                missoes_ch3 = ["m11_chamado_da_montanha", "m12_fantasma_do_circuito", "m13_teste_de_fluxo", "m14_tres_mundos"]
+                
+                ch1_completas = sum(1 for m in missoes_ch1 if m in gerenciador_missoes.missoes_completas)
+                ch2_completas = sum(1 for m in missoes_ch2 if m in gerenciador_missoes.missoes_completas)
+                ch3_completas = sum(1 for m in missoes_ch3 if m in gerenciador_missoes.missoes_completas)
+                
+                # Determinar capítulo esperado baseado no progresso
+                if ch1_completas < len(missoes_ch1):
+                    capitulo_esperado = "ch1"
+                elif ch2_completas < len(missoes_ch2):
+                    capitulo_esperado = "ch2"
+                elif ch3_completas < len(missoes_ch3):
+                    capitulo_esperado = "ch3"
+                else:
+                    capitulo_esperado = "ch4"
+                
+                # Se o capítulo atual está muito mais avançado que o esperado, corrigir
+                if capitulo_atual:
+                    capitulo_atual_num = int(capitulo_atual.replace("ch", "")) if capitulo_atual.startswith("ch") else 0
+                    capitulo_esperado_num = int(capitulo_esperado.replace("ch", "")) if capitulo_esperado.startswith("ch") else 0
+                    
+                    if capitulo_atual_num > capitulo_esperado_num + 1:
+                        print(f"[LOOP PRINCIPAL] Capítulo atual ({capitulo_atual}) está muito mais avançado que o esperado ({capitulo_esperado}) baseado no progresso. Corrigindo...")
+                        gerenciador_progresso.definir_capitulo_atual(capitulo_esperado)
+                        capitulo_atual = capitulo_esperado
+                        narrative_system.current_chapter_id = capitulo_esperado
+                        narrative_system.current_scene_id = None
+                        narrative_system.active = False
+                        print(f"[LOOP PRINCIPAL] Capítulo corrigido para {capitulo_esperado} baseado no progresso real (ch1: {ch1_completas}/{len(missoes_ch1)}, ch2: {ch2_completas}/{len(missoes_ch2)}, ch3: {ch3_completas}/{len(missoes_ch3)})")
+                
                 if capitulo_atual is None:
                     # Primeira vez - iniciar Capítulo 1
-                    if narrative_system.iniciar_capitulo("ch1"):
-                        narrative_system.active = True
-                        trigger_resultado = executar_narrativa()
-                        
-                        # Marcar que o Capítulo 1 foi iniciado
-                        gerenciador_progresso.definir_capitulo_atual("ch1")
+                    # Mas primeiro verificar se já completamos o capítulo 1 (pode ter sido completado mas não salvo)
+                    if gerenciador_progresso.capitulo_foi_completo("ch1"):
+                        print(f"[LOOP PRINCIPAL] Capítulo 1 já foi completado, avançando para Capítulo 2")
+                        gerenciador_progresso.definir_capitulo_atual("ch2")
                         gerenciador_progresso.salvar()
-                        
-                        # Se houve trigger, processar
-                        if trigger_resultado:
-                            # Processar trigger será feito no loop principal abaixo
-                            pass
+                        capitulo_atual = "ch2"
+                        narrative_system.current_chapter_id = "ch2"
+                    else:
+                        # Primeira vez - iniciar Capítulo 1
+                        if narrative_system.iniciar_capitulo("ch1"):
+                            # Verificar se uma cena foi realmente iniciada
+                            if narrative_system.current_scene_id:
+                                narrative_system.active = True
+                                trigger_resultado = executar_narrativa()
+                                
+                                # Marcar que o Capítulo 1 foi iniciado
+                                gerenciador_progresso.definir_capitulo_atual("ch1")
+                                gerenciador_progresso.salvar()
+                                
+                                # Se houve trigger, processar
+                                if trigger_resultado:
+                                    # Processar trigger será feito no loop principal abaixo
+                                    pass
+                            else:
+                                print(f"[LOOP PRINCIPAL] ERRO: iniciar_capitulo('ch1') retornou True mas não iniciou uma cena!")
+                                # Tentar iniciar a primeira cena manualmente
+                                narrative_system._iniciar_cena_sem_transicao("ch1_0_prologue")
+                                if narrative_system.current_scene_id:
+                                    narrative_system.active = True
+                                    gerenciador_progresso.definir_capitulo_atual("ch1")
+                                    gerenciador_progresso.salvar()
+                                else:
+                                    print(f"[LOOP PRINCIPAL] ERRO: Não foi possível iniciar a primeira cena do Capítulo 1! Indo para o mapa como fallback.")
+                                    # Se não conseguiu iniciar, ir para o mapa como fallback
+                                    # Garantir que a narrativa está fechada
+                                    narrative_system.fechar()
+                                    # Salvar progresso
+                                    gerenciador_progresso.definir_capitulo_atual("ch1")
+                                    gerenciador_progresso.salvar()
+                                    from core.missoes import gerenciador_missoes
+                                    from core.mapa_locations import gerenciador_localizacoes
+                                    gerenciador_missoes.salvar()
+                                    gerenciador_localizacoes.salvar()
+                                    # Ir para o mapa
+                                    territorio_id = mapa_cidade_loop(screen)
+                                    if territorio_id is None:
+                                        break
+                                    continue
                 elif capitulo_atual == "ch2" and not narrative_system.active:
-                    # Se estamos no Capítulo 2 mas a narrativa não está ativa, iniciar
-                    print(f"[LOOP PRINCIPAL] Iniciando Capítulo 2")
-                    if narrative_system.iniciar_capitulo("ch2"):
-                        narrative_system.active = True
-                        narrative_system.current_line_index = 0
-                        print(f"[LOOP PRINCIPAL] Capítulo 2 iniciado: scene_id={narrative_system.current_scene_id}")
+                    # Se estamos no Capítulo 2 mas a narrativa não está ativa
+                    # Verificar se há uma cena salva - se sim, não reiniciar o capítulo
+                    if narrative_system.current_scene_id and narrative_system.current_chapter_id == "ch2":
+                        # Há uma cena salva - verificar se já foi visitada
+                        if narrative_system.current_scene_id in narrative_system.scenes_visited:
+                            print(f"[LOOP PRINCIPAL] Cena {narrative_system.current_scene_id} já foi visitada, não reiniciando")
+                            narrative_system.current_scene_id = None
+                            narrative_system.active = False
+                            # Verificar se já passamos da oferta do barão
+                            if gerenciador_progresso.barao_nome_revelado:
+                                print(f"[LOOP PRINCIPAL] Capítulo 2: Barão já foi visto, não reiniciando capítulo")
+                            else:
+                                # Cena visitada mas barão não foi visto - pode ser um bug, mas não reiniciar
+                                print(f"[LOOP PRINCIPAL] Capítulo 2: Cena visitada mas barão não visto - pode ser inconsistência, não reiniciando")
+                        else:
+                            # Há uma cena salva que não foi visitada - continuar de onde parou
+                            print(f"[LOOP PRINCIPAL] Capítulo 2: Continuando cena salva {narrative_system.current_scene_id}")
+                            narrative_system.active = True
+                    else:
+                        # Não há cena salva - verificar se já passamos da oferta do barão
+                        from core.progresso import gerenciador_progresso
+                        if gerenciador_progresso.barao_nome_revelado:
+                            # Já passamos pela oferta do barão, não reiniciar o capítulo
+                            print(f"[LOOP PRINCIPAL] Capítulo 2: Barão já foi visto, não reiniciando capítulo")
+                        else:
+                            # Não há cena salva e barão não foi visto - iniciar capítulo normalmente
+                            print(f"[LOOP PRINCIPAL] Iniciando Capítulo 2")
+                            if narrative_system.iniciar_capitulo("ch2"):
+                                # Verificar se uma cena foi realmente iniciada
+                                if narrative_system.current_scene_id:
+                                    narrative_system.active = True
+                                    narrative_system.current_line_index = 0
+                                    print(f"[LOOP PRINCIPAL] Capítulo 2 iniciado: scene_id={narrative_system.current_scene_id}")
+                                else:
+                                    print(f"[LOOP PRINCIPAL] Capítulo 2 iniciado mas não há cena imediata (aguardando gatilhos). Indo para o mapa.")
+                                    narrative_system.fechar()
+                                    # Salvar progresso
+                                    gerenciador_progresso.salvar()
+                                    from core.missoes import gerenciador_missoes
+                                    from core.mapa_locations import gerenciador_localizacoes
+                                    gerenciador_missoes.salvar()
+                                    gerenciador_localizacoes.salvar()
+                                    # Ir para o mapa
+                                    territorio_id = mapa_cidade_loop(screen)
+                                    if territorio_id is None:
+                                        break
+                                    continue
                 
                 elif capitulo_atual == "ch3" and not narrative_system.active:
-                    # Se estamos no Capítulo 3 mas a narrativa não está ativa, iniciar
-                    print(f"[LOOP PRINCIPAL] Iniciando Capítulo 3")
-                    if narrative_system.iniciar_capitulo("ch3"):
-                        narrative_system.active = True
-                        narrative_system.current_line_index = 0
-                        print(f"[LOOP PRINCIPAL] Capítulo 3 iniciado: scene_id={narrative_system.current_scene_id}")
+                    # Verificar se as missões do capítulo 2 foram completadas antes de iniciar ch3
+                    from core.missoes import gerenciador_missoes
+                    missoes_ch2_necessarias = ["m8_oferta_envenenada", "m9a_peso_da_divida", "m10_portoes_do_cinturao", "m10b_corridas_cinturao"]
+                    missoes_ch2_completas = [m for m in missoes_ch2_necessarias if m in gerenciador_missoes.missoes_completas]
+                    
+                    # Verificar também se a flag cinturaoUnlocked está definida
+                    from core.progresso import gerenciador_progresso
+                    cinturao_unlocked = getattr(gerenciador_progresso, 'cinturaoUnlocked', False) or narrative_system.flags.get("cinturaoUnlocked", False)
+                    
+                    if len(missoes_ch2_completas) < len(missoes_ch2_necessarias) or not cinturao_unlocked:
+                        # Missões do capítulo 2 não foram completadas ou Cinturão não foi desbloqueado - voltar para ch2
+                        print(f"[LOOP PRINCIPAL] Capítulo 3 detectado mas condições não atendidas. Missões ch2: {len(missoes_ch2_completas)}/{len(missoes_ch2_necessarias)}, cinturaoUnlocked: {cinturao_unlocked}. Ajustando para ch2...")
+                        gerenciador_progresso.definir_capitulo_atual("ch2")
+                        capitulo_atual = "ch2"
+                        # Limpar cena do capítulo 3 se houver
+                        if narrative_system.current_chapter_id == "ch3":
+                            narrative_system.current_chapter_id = "ch2"
+                            narrative_system.current_scene_id = None
+                            narrative_system.active = False
+                            print(f"[LOOP PRINCIPAL] Cena do capítulo 3 limpa")
+                    else:
+                        # Se estamos no Capítulo 3 mas a narrativa não está ativa
+                        # Verificar se há uma cena salva - se sim, não reiniciar o capítulo
+                        if narrative_system.current_scene_id and narrative_system.current_chapter_id == "ch3":
+                            # Verificar se a cena salva é válida (não deve ser ch3_2_pixel_route se ainda não correu no Cinturão)
+                            if narrative_system.current_scene_id == "ch3_2_pixel_route":
+                                # Esta cena só deve aparecer após correr no Cinturão - limpar e voltar para ch2
+                                print(f"[LOOP PRINCIPAL] Cena ch3_2_pixel_route detectada prematuramente. Voltando para ch2...")
+                                gerenciador_progresso.definir_capitulo_atual("ch2")
+                                capitulo_atual = "ch2"
+                                narrative_system.current_chapter_id = "ch2"
+                                narrative_system.current_scene_id = None
+                                narrative_system.active = False
+                            else:
+                                # Há uma cena salva válida - não reiniciar, apenas continuar de onde parou
+                                print(f"[LOOP PRINCIPAL] Capítulo 3: Continuando cena salva {narrative_system.current_scene_id}")
+                        else:
+                            # Não há cena salva - iniciar capítulo normalmente
+                            print(f"[LOOP PRINCIPAL] Iniciando Capítulo 3")
+                            if narrative_system.iniciar_capitulo("ch3"):
+                                # Verificar se uma cena foi realmente iniciada
+                                if narrative_system.current_scene_id:
+                                    narrative_system.active = True
+                                    narrative_system.current_line_index = 0
+                                    print(f"[LOOP PRINCIPAL] Capítulo 3 iniciado: scene_id={narrative_system.current_scene_id}")
+                                else:
+                                    print(f"[LOOP PRINCIPAL] Capítulo 3 iniciado mas não há cena imediata (aguardando gatilhos). Indo para o mapa.")
+                                    narrative_system.fechar()
+                                    # Salvar progresso
+                                    gerenciador_progresso.salvar()
+                                    from core.missoes import gerenciador_missoes
+                                    from core.mapa_locations import gerenciador_localizacoes
+                                    gerenciador_missoes.salvar()
+                                    gerenciador_localizacoes.salvar()
+                                    # Ir para o mapa
+                                    territorio_id = mapa_cidade_loop(screen)
+                                    if territorio_id is None:
+                                        break
+                                    continue
                 
                 elif capitulo_atual == "ch4" and not narrative_system.active:
-                    # Se estamos no Capítulo 4 mas a narrativa não está ativa, iniciar
-                    print(f"[LOOP PRINCIPAL] Iniciando Capítulo 4")
-                    if narrative_system.iniciar_capitulo("ch4"):
-                        narrative_system.active = True
-                        narrative_system.current_line_index = 0
-                        print(f"[LOOP PRINCIPAL] Capítulo 4 iniciado: scene_id={narrative_system.current_scene_id}")
+                    # Se estamos no Capítulo 4 mas a narrativa não está ativa
+                    # Verificar se há uma cena salva - se sim, não reiniciar o capítulo
+                    if narrative_system.current_scene_id and narrative_system.current_chapter_id == "ch4":
+                        # Há uma cena salva - não reiniciar, apenas continuar de onde parou
+                        print(f"[LOOP PRINCIPAL] Capítulo 4: Continuando cena salva {narrative_system.current_scene_id}")
+                    else:
+                        # Não há cena salva - iniciar capítulo normalmente
+                        print(f"[LOOP PRINCIPAL] Iniciando Capítulo 4")
+                        if narrative_system.iniciar_capitulo("ch4"):
+                            narrative_system.active = True
+                            narrative_system.current_line_index = 0
+                            print(f"[LOOP PRINCIPAL] Capítulo 4 iniciado: scene_id={narrative_system.current_scene_id}")
                 
                 elif capitulo_atual == "ch5" and not narrative_system.active:
-                    # Se estamos no Capítulo 5 mas a narrativa não está ativa, iniciar
-                    print(f"[LOOP PRINCIPAL] Iniciando Capítulo 5")
-                    if narrative_system.iniciar_capitulo("ch5"):
-                        narrative_system.active = True
-                        narrative_system.current_line_index = 0
-                        print(f"[LOOP PRINCIPAL] Capítulo 5 iniciado: scene_id={narrative_system.current_scene_id}")
+                    # Verificar se o jogador realmente completou o Capítulo 4 antes de iniciar o 5
+                    from core.progresso import gerenciador_progresso
+                    from core.missoes import gerenciador_missoes
+                    
+                    # Verificar se o Capítulo 4 foi completado (missões m15, m16, m17 completas)
+                    ch4_completo = (
+                        gerenciador_missoes.esta_completa("m15_ruido_nos_servidores") and
+                        gerenciador_missoes.esta_completa("m16_contatos_estranhos") and
+                        gerenciador_missoes.esta_completa("m17_convite_da_coroa")
+                    )
+                    
+                    if ch4_completo:
+                        # Se estamos no Capítulo 5 mas a narrativa não está ativa, iniciar
+                        print(f"[LOOP PRINCIPAL] Iniciando Capítulo 5 (Capítulo 4 completo)")
+                        if narrative_system.iniciar_capitulo("ch5"):
+                            narrative_system.active = True
+                            narrative_system.current_line_index = 0
+                            print(f"[LOOP PRINCIPAL] Capítulo 5 iniciado: scene_id={narrative_system.current_scene_id}")
+                    else:
+                        # Se o Capítulo 4 não foi completado, reverter para o Capítulo 4
+                        print(f"[LOOP PRINCIPAL] Capítulo 5 detectado mas Capítulo 4 não completo. Revertendo para Capítulo 4...")
+                        gerenciador_progresso.definir_capitulo_atual("ch4")
+                        gerenciador_progresso.salvar()
+                        capitulo_atual = "ch4"
                 
                 # Loop principal de campanha - alterna entre narrativa e gameplay
                 while True:
@@ -10479,13 +12316,174 @@ def run():
                     if _verificar_e_iniciar_narrativa_training_01(narrative_system, gerenciador_progresso):
                         continue
                     
-                    # Verificar se há narrativa ativa
-                    if narrative_system.active:
+                    # Verificar se a corrida da Akira (mountain_test_run) foi completada mas as cenas pós-corrida ainda não foram mostradas
+                    # IMPORTANTE: Só verificar se realmente acabou de completar a corrida (ultima_corrida_campanha == "mountain_test_run")
+                    # Não verificar apenas por estatísticas, pois isso pode ativar a cena incorretamente
+                    from core.estatisticas import gerenciador_estatisticas
+                    from core.missoes import gerenciador_missoes
+                    
+                    # Verificar se realmente acabou de completar a corrida da montanha
+                    acabou_de_completar = (hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and 
+                                          gerenciador_progresso.ultima_corrida_campanha in ["mountain_test", "mountain_test_run"])
+                    
+                    # Só verificar se realmente acabou de completar a corrida
+                    # NÃO verificar apenas por estatísticas antigas, pois isso ativa a cena incorretamente quando o jogador apenas entra/sai de locais
+                    if acabou_de_completar:
+                        gerenciador_estatisticas.carregar()
+                        stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(3)
+                        melhor_tempo = stats_pista.get("melhor_tempo", None) if stats_pista else None
+                        melhor_posicao = stats_pista.get("melhor_posicao", None) if stats_pista else None
+                        missao_m13_completa = "m13_teste_de_fluxo" in gerenciador_missoes.missoes_completas
+                        
+                        # Verificar se o capítulo 4 foi iniciado (indica que ch3_6 foi realmente completada)
+                        capitulo_atual = gerenciador_progresso.obter_capitulo_atual()
+                        ch4_iniciado = capitulo_atual == "ch4" or "ch4_1_pixel_warning" in narrative_system.scenes_visited
+                        
+                        # Se a corrida foi completada mas o capítulo 4 não foi iniciado, as cenas pós-corrida não foram realmente mostradas
+                        corrida_completa = (melhor_tempo is not None and melhor_posicao is not None) or missao_m13_completa
+                        
+                        # Só processar se realmente acabou de completar a corrida (não apenas por estatísticas antigas)
+                        # Isso evita que a cena seja ativada incorretamente quando o jogador apenas entra/sai de locais
+                        if acabou_de_completar and not ch4_iniciado:
+                            # Se todas as cenas estão marcadas como visitadas mas o capítulo 4 não foi iniciado,
+                            # significa que foram marcadas incorretamente - remover todas e reiniciar
+                            if "ch3_4_test_result" in narrative_system.scenes_visited and \
+                               "ch3_5_crank_debrief" in narrative_system.scenes_visited and \
+                               "ch3_6_pixel_wrap_up" in narrative_system.scenes_visited:
+                                print(f"[LOOP PRINCIPAL] Cenas pós-corrida marcadas como visitadas mas capítulo 4 não iniciado. Removendo de visited e reiniciando sequência...")
+                                narrative_system.scenes_visited.discard("ch3_4_test_result")
+                                narrative_system.scenes_visited.discard("ch3_5_crank_debrief")
+                                narrative_system.scenes_visited.discard("ch3_6_pixel_wrap_up")
+                                # Salvar mudanças
+                                gerenciador_progresso.salvar()
+                            
+                            # Verificar se ch3_4 ainda não foi visitada (após possível remoção)
+                            if "ch3_4_test_result" not in narrative_system.scenes_visited:
+                                print(f"[LOOP PRINCIPAL] Detectada corrida da Akira completada mas cena ch3_4_test_result não foi visitada. Iniciando narrativa...")
+                                
+                                # Determinar resultado do teste
+                                if melhor_posicao is not None:
+                                    resultado_teste = "good" if melhor_posicao <= 2 else "bad"
+                                else:
+                                    resultado_teste = "good"  # Default se não houver estatísticas
+                                
+                                narrative_system.variables["mountainTest"] = resultado_teste
+                                narrative_system.variables["racePerformance"] = resultado_teste
+                                
+                                # Determinar resultado da corrida
+                                if melhor_posicao is not None:
+                                    resultado = "win" if melhor_posicao <= 2 else "lose"
+                                else:
+                                    resultado = "win"  # Default
+                                
+                                narrative_system.variables["lastRaceResult"] = resultado
+                                
+                                # Verificar gatilhos de race_finished
+                                context = {
+                                    "raceId": "mountain_test_run",
+                                    "raceResult": resultado
+                                }
+                                if narrative_system.verificar_gatilhos_pendentes(context):
+                                    narrative_system.active = True
+                                    print(f"[LOOP PRINCIPAL] Narrativa ch3_4_test_result iniciada via verificar_gatilhos_pendentes")
+                                    # Limpar flag após iniciar narrativa
+                                    if hasattr(gerenciador_progresso, 'ultima_corrida_campanha'):
+                                        gerenciador_progresso.ultima_corrida_campanha = None
+                                        gerenciador_progresso.salvar()
+                                    continue  # Voltar para o início do loop para executar narrativa
+                                else:
+                                    # Fallback: iniciar cena diretamente
+                                    print(f"[LOOP PRINCIPAL] Gatilho não encontrado, iniciando cena ch3_4_test_result diretamente")
+                                    narrative_system._iniciar_cena_sem_transicao("ch3_4_test_result")
+                                    narrative_system.active = True
+                                    # Limpar flag após iniciar narrativa
+                                    if hasattr(gerenciador_progresso, 'ultima_corrida_campanha'):
+                                        gerenciador_progresso.ultima_corrida_campanha = None
+                                        gerenciador_progresso.salvar()
+                                    continue
+                    
+                    # Verificar se há narrativa ativa OU se há uma cena ativa (mesmo que active=False temporariamente)
+                    # (pode acontecer que a narrativa foi fechada mas o trigger ainda precisa ser processado)
+                    # IMPORTANTE: Se não há narrativa ativa e não há cena, ir direto para o mapa
+                    if not narrative_system.active and not narrative_system.current_scene_id:
+                        # Não há narrativa ativa e não há cena - ir direto para o mapa da cidade
+                        print(f"[LOOP PRINCIPAL] Não há narrativa ativa, indo para o mapa da cidade")
+                        # Salvar progresso antes de ir para o mapa
+                        gerenciador_progresso.salvar()
+                        from core.missoes import gerenciador_missoes
+                        from core.mapa_locations import gerenciador_localizacoes
+                        gerenciador_missoes.salvar()
+                        gerenciador_localizacoes.salvar()
+                        # Ir para o mapa
+                        territorio_id = mapa_cidade_loop(screen)
+                        if territorio_id is None:
+                            # Se o mapa retornou None, voltar ao menu principal
+                            break
+                        # NÃO fazer continue aqui - deixar o código continuar para processar o territorio_id abaixo
+                        # O código abaixo vai processar o territorio_id retornado do mapa
+                        print(f"[LOOP PRINCIPAL] Mapa retornou territorio_id={territorio_id}, processando...")
+                    
+                    # Se há narrativa ativa, processar narrativa primeiro
+                    if narrative_system.active or narrative_system.current_scene_id:
+                        # Verificar se a narrativa foi fechada para iniciar uma corrida (current_scene_id None indica isso)
+                        if narrative_system.current_scene_id is None and narrative_system.active:
+                            print(f"[LOOP PRINCIPAL] Narrativa está ativa mas current_scene_id é None, fechando narrativa")
+                            narrative_system.fechar()
+                            continue
+                        
+                        # Se há uma cena ativa mas a narrativa não está marcada como ativa, ativar
+                        if narrative_system.current_scene_id and not narrative_system.active:
+                            print(f"[LOOP PRINCIPAL] Cena {narrative_system.current_scene_id} ativa mas narrative_system.active=False, ativando...")
+                            # Recarregar sprites e background da cena atual
+                            scene_id = narrative_system.current_scene_id
+                            # Encontrar a cena no JSON
+                            scene = None
+                            for ch in narrative_system.narrative_data.get("chapters", []):
+                                if ch.get("id") == narrative_system.current_chapter_id:
+                                    for sc in ch.get("scenes", []):
+                                        if sc.get("id") == scene_id:
+                                            scene = sc
+                                            break
+                                    if scene:
+                                        break
+                            
+                            if scene:
+                                # Recarregar background
+                                bg_name = scene.get("bg")
+                                if bg_name:
+                                    narrative_system._carregar_background(bg_name)
+                                
+                                # Recarregar sprites
+                                sprites_config = scene.get("sprites", [])
+                                print(f"[LOOP PRINCIPAL] Recarregando sprites da cena {scene_id}: {sprites_config}")
+                                narrative_system._carregar_sprites_cena(sprites_config)
+                            
+                            narrative_system.active = True
+                        
+                        # Verificar se o jogo terminou antes de executar narrativa
+                        if narrative_system.game_ended:
+                            print(f"[LOOP PRINCIPAL] Jogo terminou (game_ended=True), retornando ao menu principal")
+                            narrative_system.game_ended = False  # Resetar flag
+                            break  # Sair do loop de campanha e voltar ao menu principal
+                        
                         trigger_resultado = executar_narrativa()
+                        print(f"[LOOP PRINCIPAL] executar_narrativa retornou: {trigger_resultado}, type={type(trigger_resultado)}")
+                        
+                        # Verificar se o jogo terminou após executar narrativa
+                        if narrative_system.game_ended:
+                            print(f"[LOOP PRINCIPAL] Jogo terminou após executar_narrativa, retornando ao menu principal")
+                            narrative_system.game_ended = False  # Resetar flag
+                            break  # Sair do loop de campanha e voltar ao menu principal
+                        
                         if trigger_resultado:
+                            print(f"[LOOP PRINCIPAL] Trigger retornado de executar_narrativa: {trigger_resultado}")
+                            # Fechar narrativa antes de processar trigger (se ainda não foi fechada)
+                            if narrative_system.active:
+                                print(f"[LOOP PRINCIPAL] Fechando narrativa antes de processar trigger")
+                                narrative_system.fechar()
                             # Processar trigger
                             proximo_estado = processar_trigger(trigger_resultado)
-                            print(f"[LOOP PRINCIPAL] Próximo estado: {proximo_estado}")
+                            print(f"[LOOP PRINCIPAL] Próximo estado após processar_trigger: {proximo_estado}")
                             if proximo_estado == "narrativa":
                                 # Continuar narrativa (já foi iniciada no processar_trigger)
                                 print(f"[LOOP PRINCIPAL] Continuando narrativa (active={narrative_system.active}, scene={narrative_system.current_scene_id})")
@@ -10512,6 +12510,13 @@ def run():
                                         gerenciador_progresso.salvar()
                                 
                                 if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "training_01":
+                                    # Verificar se as cenas pós-corrida já foram visitadas para evitar loop
+                                    if "ch1_6_post_race" in narrative_system.scenes_visited or "ch1_7_pixel_voice_intro" in narrative_system.scenes_visited:
+                                        print(f"[LOOP PRINCIPAL] Cenas pós-corrida já foram visitadas. Limpando flag training_01 para evitar loop.")
+                                        gerenciador_progresso.ultima_corrida_campanha = None
+                                        gerenciador_progresso.salvar()
+                                        continue
+                                    
                                     print(f"[LOOP PRINCIPAL] Detectada corrida training_01 pendente, verificando se foi completada...")
                                     
                                     # Verificar se a corrida foi completada
@@ -10525,16 +12530,33 @@ def run():
                                     melhor_posicao = stats_pista.get("melhor_posicao", None) if stats_pista else None
                                     print(f"[LOOP PRINCIPAL] Estatísticas pista 1: melhor_tempo={melhor_tempo}, melhor_posicao={melhor_posicao}")
                                     
-                                    # Se completou a corrida, iniciar narrativa
+                                    # Se completou a corrida, verificar gatilhos narrativos
                                     if melhor_tempo is not None and melhor_posicao is not None:
-                                        print(f"[LOOP PRINCIPAL] Corrida training_01 completada! Iniciando narrativa pós-corrida...")
-                                        _iniciar_narrativa_pos_training_01(narrative_system, gerenciador_progresso)
-                                        continue
+                                        print(f"[LOOP PRINCIPAL] Corrida training_01 completada! Verificando gatilhos narrativos...")
+                                        
+                                        # Determinar resultado da corrida
+                                        resultado = "win" if melhor_posicao == 1 else "lose"
+                                        narrative_system.variables["lastRaceResult"] = resultado
+                                        
+                                        # Verificar gatilhos de race_finished
+                                        context = {
+                                            "raceId": "training_01",
+                                            "raceResult": resultado
+                                        }
+                                        if narrative_system.verificar_gatilhos_pendentes(context):
+                                            narrative_system.active = True
+                                            gerenciador_progresso.ultima_corrida_campanha = None
+                                            gerenciador_progresso.salvar()
+                                            continue
+                                        else:
+                                            # Fallback para sistema antigo se não houver gatilho
+                                            _iniciar_narrativa_pos_training_01(narrative_system, gerenciador_progresso)
+                                            continue
                                     else:
                                         print(f"[LOOP PRINCIPAL] Corrida training_01 ainda não completada. Continuando para o mapa...")
                                 
-                                # Verificar se foi mountain_test
-                                if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "mountain_test":
+                                # Verificar se foi mountain_test ou mountain_test_run
+                                if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha in ["mountain_test", "mountain_test_run"]:
                                     print(f"[LOOP PRINCIPAL] Detectada corrida mountain_test pendente, verificando se foi completada...")
                                     
                                     # Verificar se a corrida foi completada
@@ -10547,9 +12569,9 @@ def run():
                                     melhor_posicao = stats_pista.get("melhor_posicao", None) if stats_pista else None
                                     print(f"[LOOP PRINCIPAL] Estatísticas pista 3 (montanha): melhor_tempo={melhor_tempo}, melhor_posicao={melhor_posicao}")
                                     
-                                    # Se completou a corrida, iniciar narrativa
+                                    # Se completou a corrida, verificar gatilhos narrativos
                                     if melhor_tempo is not None and melhor_posicao is not None:
-                                        print(f"[LOOP PRINCIPAL] Mountain test completado! Iniciando narrativa pós-teste...")
+                                        print(f"[LOOP PRINCIPAL] Mountain test completado! Verificando gatilhos narrativos...")
                                         from core.missoes import gerenciador_missoes
                                         
                                         # Completar missão m13_teste_de_fluxo
@@ -10561,13 +12583,22 @@ def run():
                                         # mountainTest=good se posição <= 2
                                         resultado_teste = "good" if melhor_posicao <= 2 else "bad"
                                         narrative_system.variables["mountainTest"] = resultado_teste
+                                        narrative_system.variables["racePerformance"] = resultado_teste
                                         
-                                        # Iniciar cena pós-teste
-                                        narrative_system._iniciar_cena_sem_transicao("ch3_6_test_result")
-                                        narrative_system.active = True
-                                        gerenciador_progresso.ultima_corrida_campanha = None
-                                        gerenciador_progresso.salvar()
-                                        continue  # Voltar para o início do loop para executar narrativa
+                                        # Determinar resultado da corrida
+                                        resultado = "win" if melhor_posicao <= 2 else "lose"
+                                        narrative_system.variables["lastRaceResult"] = resultado
+                                        
+                                        # Verificar gatilhos de race_finished
+                                        context = {
+                                            "raceId": "mountain_test_run",
+                                            "raceResult": resultado
+                                        }
+                                        if narrative_system.verificar_gatilhos_pendentes(context):
+                                            narrative_system.active = True
+                                            gerenciador_progresso.ultima_corrida_campanha = None
+                                            gerenciador_progresso.salvar()
+                                            continue  # Voltar para o início do loop para executar narrativa
                                     else:
                                         print(f"[LOOP PRINCIPAL] Mountain test ainda não completado. Continuando para o mapa...")
                                 
@@ -10595,36 +12626,46 @@ def run():
                                         melhor_posicao = stats_pista.get("melhor_posicao", None) if stats_pista else None
                                         print(f"[LOOP PRINCIPAL] Estatísticas pista {pista} ({race_id}): melhor_tempo={melhor_tempo}, melhor_posicao={melhor_posicao}")
                                         
-                                        # Se completou a corrida, iniciar narrativa pós-corrida
+                                        # IMPORTANTE: Verificar se a corrida foi realmente completada nesta sessão
+                                        # Se o jogador desistiu (ESC -> menu), a flag ultima_corrida_campanha ainda estará definida,
+                                        # mas as estatísticas podem ser de uma corrida anterior. Precisamos verificar se a corrida
+                                        # foi realmente finalizada verificando se há uma nova entrada nas estatísticas ou se
+                                        # a flag ainda está definida (indicando que a corrida não foi completada)
+                                        
+                                        # Verificar se a corrida foi realmente completada: 
+                                        # 1. Deve ter melhor_tempo e melhor_posicao (corrida foi completada alguma vez)
+                                        # 2. A flag ultima_corrida_campanha deve estar definida (corrida foi iniciada nesta sessão)
+                                        # 3. Se a flag ainda está definida, significa que a corrida não foi completada nesta sessão
+                                        #    (se tivesse sido completada, a flag teria sido limpa em main.py após registrar)
+                                        
+                                        # Se completou a corrida NESTA SESSÃO, verificar gatilhos narrativos
+                                        # A flag ultima_corrida_campanha será limpa em main.py após registrar a corrida completa
+                                        # Se ainda está definida, significa que o jogador desistiu ou a corrida não foi completada
                                         if melhor_tempo is not None and melhor_posicao is not None:
-                                            print(f"[LOOP PRINCIPAL] Corrida {race_id} completada! Iniciando narrativa pós-corrida...")
-                                            
-                                            # Determinar resultado (win se posição <= 2, lose caso contrário)
-                                            resultado = "win" if melhor_posicao <= 2 else "lose"
-                                            narrative_system.variables["lastRaceResult"] = resultado
-                                            
-                                            # Determinar próxima cena baseada na corrida
-                                            cena_map = {
-                                                "crown_stage1": "ch5_5_stage1_post",
-                                                "crown_stage2": "ch5_5_stage2_post",
-                                                "crown_stage3": "ch5_5_stage3_post",
-                                                "crown_final": "ch5_7_post_final_epilogue"
-                                            }
-                                            
-                                            proxima_cena = cena_map.get(race_id)
-                                            if proxima_cena:
-                                                # Completar missões se necessário
-                                                from core.missoes import gerenciador_missoes
-                                                if race_id == "crown_stage1" and gerenciador_missoes.missao_ativa_id == "m18_circo_da_coroa":
-                                                    # Marcar progresso na missão m18 (completar etapas 1, 2 e 3)
-                                                    pass  # A missão será completada após todas as etapas
-                                                
-                                                # Iniciar cena pós-corrida
-                                                narrative_system._iniciar_cena_sem_transicao(proxima_cena)
-                                                narrative_system.active = True
+                                            # Verificar se a flag ainda está definida - se sim, a corrida não foi completada nesta sessão
+                                            if gerenciador_progresso.ultima_corrida_campanha == race_id:
+                                                # Flag ainda está definida, significa que o jogador desistiu ou não completou
+                                                print(f"[LOOP PRINCIPAL] Corrida {race_id} não foi completada nesta sessão (flag ainda definida). Limpando flag e ignorando triggers.")
                                                 gerenciador_progresso.ultima_corrida_campanha = None
                                                 gerenciador_progresso.salvar()
-                                                continue  # Voltar para o início do loop para executar narrativa
+                                            else:
+                                                # Flag foi limpa, significa que a corrida foi completada nesta sessão
+                                                print(f"[LOOP PRINCIPAL] Corrida {race_id} completada nesta sessão! Verificando gatilhos narrativos...")
+                                                
+                                                # Determinar resultado (win se posição <= 2, lose caso contrário)
+                                                resultado = "win" if melhor_posicao <= 2 else "lose"
+                                                narrative_system.variables["lastRaceResult"] = resultado
+                                                
+                                                # Verificar gatilhos de race_finished
+                                                context = {
+                                                    "raceId": race_id,
+                                                    "raceResult": resultado
+                                                }
+                                                if narrative_system.verificar_gatilhos_pendentes(context):
+                                                    narrative_system.active = True
+                                                    gerenciador_progresso.ultima_corrida_campanha = None
+                                                    gerenciador_progresso.salvar()
+                                                    continue  # Voltar para o início do loop para executar narrativa
                                     else:
                                         print(f"[LOOP PRINCIPAL] Pista não encontrada para {race_id}. Continuando para o mapa...")
                                 
@@ -10640,16 +12681,95 @@ def run():
                                 continue
                     
                     # Loop do mapa e gameplay
-                    territorio_id = mapa_cidade_loop(screen)
+                    # Só chamar mapa_cidade_loop se territorio_id ainda não foi definido
+                    # (pode ter sido definido anteriormente, por exemplo, na linha 12409)
                     if territorio_id is None:
-                        # Se o mapa retornou None, voltar ao menu principal
-                        break
+                        territorio_id = mapa_cidade_loop(screen)
+                        if territorio_id is None:
+                            # Se o mapa retornou None, voltar ao menu principal
+                            break
                     
                     # Verificar se há corrida da campanha completada antes de processar território
                     # Isso garante que a narrativa seja iniciada mesmo se o jogador voltar do mapa
                     # Mas só se a narrativa não estiver já ativa
                     if not narrative_system.active:
                         gerenciador_progresso.carregar()
+                        from core.missoes import gerenciador_missoes
+                        
+                        # Verificar e registrar corridas do Cinturão já completadas (baseado em estatísticas)
+                        from core.estatisticas import gerenciador_estatisticas
+                        gerenciador_estatisticas.carregar()
+                        
+                        # Verificar se o Cinturão está desbloqueado (corrigir flag se necessário)
+                        cinturao_unlocked_narrative = getattr(gerenciador_progresso, 'locations_unlocked_by_narrative', {}).get("cinturao_industrial", False)
+                        if cinturao_unlocked_narrative and not getattr(gerenciador_progresso, 'cinturaoUnlocked', False):
+                            print(f"[LOOP PRINCIPAL] Cinturão desbloqueado pela narrativa mas flag cinturaoUnlocked está False, corrigindo...")
+                            gerenciador_progresso.cinturaoUnlocked = True
+                            narrative_system.flags["cinturaoUnlocked"] = True
+                        
+                        # Verificar se há corridas nas pistas 4, 5 ou 6 que foram completadas mas não registradas
+                        if not hasattr(gerenciador_progresso, 'corridas_cinturao_completas'):
+                            gerenciador_progresso.corridas_cinturao_completas = set()
+                        if isinstance(gerenciador_progresso.corridas_cinturao_completas, list):
+                            gerenciador_progresso.corridas_cinturao_completas = set(gerenciador_progresso.corridas_cinturao_completas)
+                        
+                        # Verificar estatísticas das pistas 4, 5 e 6
+                        for pista_num in [4, 5, 6]:
+                            stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(pista_num)
+                            if stats_pista and stats_pista.get("corridas_completas", 0) > 0:
+                                # Se a pista tem corridas completas mas não está registrada, adicionar
+                                if pista_num not in gerenciador_progresso.corridas_cinturao_completas:
+                                    print(f"[LOOP PRINCIPAL] Detectada corrida do Cinturão já completada na pista {pista_num} (baseado em estatísticas), registrando...")
+                                    gerenciador_progresso.corridas_cinturao_completas.add(pista_num)
+                        
+                        # Se completou 3 corridas mas a missão não foi completada, completar agora
+                        if len(gerenciador_progresso.corridas_cinturao_completas) >= 3:
+                            if "m10b_corridas_cinturao" not in gerenciador_missoes.missoes_completas:
+                                print(f"[LOOP PRINCIPAL] Detectadas {len(gerenciador_progresso.corridas_cinturao_completas)} corridas do Cinturão completadas, completando missão m10b_corridas_cinturao...")
+                                gerenciador_missoes.completar_missao("m10b_corridas_cinturao")
+                                gerenciador_missoes.salvar()
+                                
+                                # Atualizar capítulo para ch3
+                                capitulo_atual = gerenciador_progresso.obter_capitulo_atual()
+                                if capitulo_atual != "ch3":
+                                    print(f"[LOOP PRINCIPAL] Atualizando capítulo de {capitulo_atual} para ch3 após completar m10b_corridas_cinturao")
+                                    gerenciador_progresso.definir_capitulo_atual("ch3")
+                                    narrative_system.current_chapter_id = "ch3"
+                                    gerenciador_progresso.salvar()
+                        
+                        # Verificar se a missão m14_tres_mundos deve ser completada (reputação >= 500)
+                        try:
+                            from core.status_jogador import status_jogador
+                            if status_jogador.popularidade >= 500.0:
+                                if gerenciador_missoes.missao_ativa_id == "m14_tres_mundos":
+                                    if "m14_tres_mundos" not in gerenciador_missoes.missoes_completas:
+                                        print(f"[LOOP PRINCIPAL] Reputação chegou a 500! Completando missão m14_tres_mundos...")
+                                        gerenciador_missoes.completar_missao("m14_tres_mundos")
+                                        gerenciador_missoes.salvar()
+                        except Exception as e:
+                            print(f"[LOOP PRINCIPAL] Erro ao verificar reputação para m14_tres_mundos: {e}")
+                        
+                        # Salvar progresso após verificar/registrar corridas
+                        if len(gerenciador_progresso.corridas_cinturao_completas) > 0 or cinturao_unlocked_narrative:
+                            gerenciador_progresso.salvar()
+                        
+                        # Verificar se m10b_corridas_cinturao foi completada e se há gatilhos pendentes
+                        if "m10b_corridas_cinturao" in gerenciador_missoes.missoes_completas:
+                            # Verificar se o capítulo foi atualizado para ch3
+                            capitulo_atual = gerenciador_progresso.obter_capitulo_atual()
+                            if capitulo_atual != "ch3":
+                                print(f"[LOOP PRINCIPAL] m10b_corridas_cinturao completa mas capítulo ainda é {capitulo_atual}, atualizando para ch3...")
+                                gerenciador_progresso.definir_capitulo_atual("ch3")
+                                narrative_system.current_chapter_id = "ch3"
+                                gerenciador_progresso.salvar()
+                            
+                            # Verificar gatilhos pendentes para ch3_1_crank_briefing (entrar na oficina)
+                            # Mas só se a cena ainda não foi visitada
+                            if "ch3_1_crank_briefing" not in narrative_system.scenes_visited:
+                                print(f"[LOOP PRINCIPAL] m10b_corridas_cinturao completa, verificando gatilhos para ch3_1_crank_briefing...")
+                                # Não forçar a cena aqui, apenas garantir que o capítulo está correto
+                                # A cena será ativada quando o jogador entrar na oficina
+                        
                         if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "training_01":
                             from core.estatisticas import gerenciador_estatisticas
                             gerenciador_estatisticas.carregar()
@@ -10682,17 +12802,122 @@ def run():
                                 # Determinar resultado do teste
                                 resultado_teste = "good" if melhor_posicao <= 2 else "bad"
                                 narrative_system.variables["mountainTest"] = resultado_teste
+                                narrative_system.variables["racePerformance"] = resultado_teste
                                 
-                                # Iniciar cena pós-teste
-                                narrative_system._iniciar_cena_sem_transicao("ch3_6_test_result")
-                                narrative_system.active = True
-                                gerenciador_progresso.ultima_corrida_campanha = None
-                                gerenciador_progresso.salvar()
-                                continue  # Voltar para o início do loop para executar narrativa
+                                # Determinar resultado da corrida
+                                resultado = "win" if melhor_posicao <= 2 else "lose"
+                                narrative_system.variables["lastRaceResult"] = resultado
+                                
+                                # Verificar gatilhos de race_finished (mountain_test_run no novo sistema)
+                                # Também verificar mountain_test para compatibilidade
+                                context = {
+                                    "raceId": "mountain_test_run",
+                                    "raceResult": resultado
+                                }
+                                gatilho_encontrado = narrative_system.verificar_gatilhos_pendentes(context)
+                                
+                                # Se não encontrou com mountain_test_run, tentar mountain_test
+                                if not gatilho_encontrado:
+                                    context["raceId"] = "mountain_test"
+                                    gatilho_encontrado = narrative_system.verificar_gatilhos_pendentes(context)
+                                
+                                if gatilho_encontrado:
+                                    narrative_system.active = True
+                                    gerenciador_progresso.ultima_corrida_campanha = None
+                                    gerenciador_progresso.salvar()
+                                    continue  # Voltar para o início do loop para executar narrativa
+                                else:
+                                    # Fallback: usar cena antiga se não houver gatilho
+                                    narrative_system._iniciar_cena_sem_transicao("ch3_6_test_result")
+                                    narrative_system.active = True
+                                    gerenciador_progresso.ultima_corrida_campanha = None
+                                    gerenciador_progresso.salvar()
+                                    continue
                     
-                    # Processar território selecionado
+                    # Processar território selecionado (se houver um territorio_id retornado do mapa)
+                    if territorio_id:
+                        print(f"[LOOP PRINCIPAL] Processando territorio_id={territorio_id}")
+                    
                     if territorio_id == "oficina":
-                        # Ir diretamente para a oficina
+                        # Verificar gatilhos narrativos ANTES de entrar na oficina
+                        # IMPORTANTE: A narrativa deve ter prioridade sobre a oficina
+                        from core.narrative_system import narrative_system
+                        from core.missoes import gerenciador_missoes
+                        
+                        print(f"[MENU] Entrando na oficina. current_chapter_id={narrative_system.current_chapter_id}, missão m4 completa={'m4_coracao_de_sucata' in gerenciador_missoes.missoes_completas}")
+                        
+                        # SEMPRE verificar gatilhos primeiro, mesmo sem current_chapter_id
+                        location_map = {
+                            "oficina": "bg_garagem",
+                            "bg_garagem": "bg_garagem",
+                        }
+                        location_id = location_map.get(territorio_id.lower(), territorio_id.lower())
+                        context = {"locationId": location_id}
+                        
+                        print(f"[MENU] Verificando gatilhos antes de entrar na oficina: location_id={location_id}, context={context}")
+                        
+                        # Verificar se há cenas pendentes com gatilho enter_location
+                        # Se current_chapter_id for None, tentar inferir do progresso
+                        if not narrative_system.current_chapter_id:
+                            capitulo_atual = gerenciador_progresso.obter_capitulo_atual()
+                            if capitulo_atual:
+                                narrative_system.current_chapter_id = capitulo_atual
+                                print(f"[MENU] current_chapter_id estava None, atualizado para {capitulo_atual} baseado no progresso")
+                        
+                        # Se a missão m14b_voltar_oficina_pixel está ativa, garantir que estamos no capítulo 4
+                        from core.missoes import gerenciador_missoes
+                        if gerenciador_missoes.missao_ativa_id == "m14b_voltar_oficina_pixel":
+                            if narrative_system.current_chapter_id != "ch4":
+                                print(f"[MENU] Missão m14b_voltar_oficina_pixel ativa mas capítulo é {narrative_system.current_chapter_id}, atualizando para ch4...")
+                                narrative_system.current_chapter_id = "ch4"
+                                gerenciador_progresso.definir_capitulo_atual("ch4")
+                                gerenciador_progresso.salvar()
+                        
+                        gatilho_encontrado = False
+                        if narrative_system.current_chapter_id:
+                            print(f"[MENU] Verificando gatilhos com current_chapter_id={narrative_system.current_chapter_id}, location_id={location_id}")
+                            # Verificar flags e missões antes de verificar gatilhos
+                            from core.progresso import gerenciador_progresso
+                            cinturao_unlocked = getattr(gerenciador_progresso, 'cinturaoUnlocked', False) or narrative_system.flags.get("cinturaoUnlocked", False)
+                            m10b_completa = "m10b_corridas_cinturao" in gerenciador_missoes.missoes_completas
+                            print(f"[MENU] Verificando condições para ch3_1_crank_briefing: cinturaoUnlocked={cinturao_unlocked}, m10b_completa={m10b_completa}")
+                            gatilho_encontrado = narrative_system.verificar_gatilhos_pendentes(context)
+                        else:
+                            print(f"[MENU] current_chapter_id é None, não é possível verificar gatilhos")
+                        
+                        print(f"[MENU] Resultado da verificação de gatilhos: {gatilho_encontrado}, current_scene_id={narrative_system.current_scene_id}, active={narrative_system.active}")
+                        
+                        # Se há gatilho OU se há uma cena ativa, executar narrativa PRIMEIRO
+                        if gatilho_encontrado or narrative_system.current_scene_id or narrative_system.active:
+                            print(f"[MENU] Gatilho encontrado ou narrativa ativa ao entrar na oficina, iniciando/continuando narrativa")
+                            # Se a narrativa não está ativa mas há um gatilho, ativar
+                            if not narrative_system.active and gatilho_encontrado:
+                                narrative_system.active = True
+                            
+                            # Executar narrativa (isso vai processar a cena e desenhar na tela)
+                            trigger_resultado = executar_narrativa()
+                            print(f"[MENU] executar_narrativa retornou: {trigger_resultado}")
+                            
+                            # Verificar se o jogo terminou (após créditos)
+                            if narrative_system.game_ended:
+                                print(f"[MENU] Jogo terminou (game_ended=True), retornando ao menu principal")
+                                narrative_system.game_ended = False  # Resetar flag
+                                break  # Sair do loop de campanha e voltar ao menu principal
+                            
+                            if trigger_resultado:
+                                proximo_estado = processar_trigger(trigger_resultado)
+                                if proximo_estado == "narrativa":
+                                    continue  # Continuar no loop principal para processar narrativa
+                                elif proximo_estado == "mapa":
+                                    continue  # Voltar para o mapa
+                            
+                            # Se a narrativa ainda está ativa após executar_narrativa, continuar processando
+                            if narrative_system.active or narrative_system.current_scene_id:
+                                print(f"[MENU] Narrativa ainda ativa após executar_narrativa, continuando no loop principal")
+                                continue  # Continuar no loop principal para processar narrativa
+                        
+                        # Se não há gatilho narrativo E não há narrativa ativa, ir diretamente para a oficina
+                        print(f"[MENU] Nenhum gatilho encontrado e narrativa não está ativa, indo para selecionar_carros_loop")
                         selecionar_carros_loop(screen)
                         continue  # Voltar para o loop do mapa após sair da oficina
                     elif territorio_id == "casa":
@@ -10740,29 +12965,66 @@ def run():
                         continue
                     elif territorio_id:
                         # Verificar se deve iniciar narrativa específica (ex: Boris no fosso_ferrugem)
+                        print(f"[MENU] Entrando no bloco elif territorio_id: territorio_id={territorio_id}")
                         territorio_id_lower = territorio_id.lower()
-                        if ("fosso_ferrugem" in territorio_id_lower or "fábrica_do_boris" in territorio_id_lower or 
-                            "fabrica_do_boris" in territorio_id_lower or "boris" in territorio_id_lower):
-                            # Verificar se estamos no capítulo 1
+                        # Verificar se é Torre Rex - mostrar menu de escolha
+                        is_torre_rex = ("torres_rex" in territorio_id_lower or "torre" in territorio_id_lower or 
+                            "rex" in territorio_id_lower or "prédio" in territorio_id_lower or "predio" in territorio_id_lower)
+                        
+                        if is_torre_rex:
+                            from core.mapa_cidade import mostrar_menu_torre_rex_beco_neon
+                            
+                            print(f"[MENU] Torre Rex detectada, mostrando menu de escolha...")
+                            # Sempre mostrar menu de escolha
+                            escolha_torre = mostrar_menu_torre_rex_beco_neon(screen)
+                            if escolha_torre is None:
+                                # Cancelou, voltar para o mapa
+                                print(f"[MENU] Menu cancelado, voltando para o mapa")
+                                continue
+                            elif escolha_torre == "torre_rex":
+                                # Ir para Torre Rex
+                                print(f"[MENU] Escolhido: Torre Rex")
+                                territorio_id = "torres_rex"
+                            elif escolha_torre == "beco_neon":
+                                # Ir para Beco Neon
+                                print(f"[MENU] Escolhido: Beco Neon")
+                                territorio_id = "beco_neon"
+                        
+                        is_boris_territory = ("fosso_ferrugem" in territorio_id_lower or "fábrica_do_boris" in territorio_id_lower or 
+                            "fabrica_do_boris" in territorio_id_lower or "fabrica_boris" in territorio_id_lower or "boris" in territorio_id_lower)
+                        
+                        print(f"[MENU] Verificando território do Boris: is_boris_territory={is_boris_territory}, territorio_id_lower={territorio_id_lower}")
+                        
+                        # Se o territorio_id já é "fabrica_boris" ou "beco_da_sucata", significa que o menu já foi mostrado no mapa
+                        # Não mostrar o menu novamente, apenas processar o território
+                        menu_ja_mostrado = (territorio_id == "fabrica_boris" or territorio_id == "beco_da_sucata")
+                        
+                        print(f"[MENU] menu_ja_mostrado={menu_ja_mostrado}")
+                        
+                        # SEMPRE verificar se é território do Boris e se precisa iniciar a cena (mesmo se o menu já foi mostrado)
+                        if is_boris_territory:
+                            # Verificar capítulo atual
                             capitulo_atual = gerenciador_progresso.obter_capitulo_atual()
-                            # Verificar se a cena já foi vista antes de iniciar
+                            print(f"[MENU] Território do Boris detectado: {territorio_id}, capítulo: {capitulo_atual}, menu_ja_mostrado={menu_ja_mostrado}")
+                            
+                            # Verificar se estamos no capítulo 1
                             if capitulo_atual == "ch1":
                                 # Garantir que o capítulo está definido no sistema de narrativa
                                 if not narrative_system.current_chapter_id:
                                     narrative_system.current_chapter_id = "ch1"
                                     print(f"[NARRATIVA] Definindo current_chapter_id como ch1")
                                 
-                                # Se a cena ainda não foi vista, iniciar a cutscene
-                                if not gerenciador_progresso.boris_primeira_aparicao_mostrada:
+                                # Verificar se a cena ch1_2_meet_boris já foi visitada
+                                if "ch1_2_meet_boris" not in narrative_system.scenes_visited:
                                     # Iniciar cena do Boris SEM transição para garantir que a cena seja iniciada imediatamente
-                                    print(f"[NARRATIVA] Clicou no fosso_ferrugem, iniciando cena ch1_3_meet_boris")
+                                    print(f"[NARRATIVA] Clicou no fosso_ferrugem/fabrica_boris, iniciando cena ch1_2_meet_boris")
                                     # Garantir que o capítulo está definido
                                     if not narrative_system.current_chapter_id:
                                         narrative_system.current_chapter_id = "ch1"
                                     # Usar _iniciar_cena_sem_transicao para iniciar imediatamente
-                                    resultado_iniciar = narrative_system._iniciar_cena_sem_transicao("ch1_3_meet_boris")
+                                    resultado_iniciar = narrative_system._iniciar_cena_sem_transicao("ch1_2_meet_boris")
                                     if resultado_iniciar:
-                                        print(f"[NARRATIVA] Cena ch1_3_meet_boris iniciada. current_scene_id={narrative_system.current_scene_id}")
+                                        print(f"[NARRATIVA] Cena ch1_2_meet_boris iniciada. current_scene_id={narrative_system.current_scene_id}")
                                         narrative_system.flags["metBoris"] = True
                                         narrative_system.active = True
                                         narrative_system.current_line_index = 0  # Garantir que começa do início
@@ -10775,23 +13037,71 @@ def run():
                                                 continue
                                         continue  # Voltar para o loop principal
                                     else:
-                                        print(f"[NARRATIVA] Falha ao iniciar cena ch1_3_meet_boris, continuando normalmente...")
+                                        print(f"[NARRATIVA] Falha ao iniciar cena ch1_2_meet_boris, continuando normalmente...")
                                 # Se a cena já foi vista, continuar normalmente para o hub do território
                                 # (o hub_territorio.py já vai abrir a loja automaticamente)
                                 print(f"[NARRATIVA] Cena do Boris já foi vista, continuando para o hub do território")
+                            
+                            # Se não é capítulo 1 E o menu ainda não foi mostrado, mostrar menu de escolha entre Boris e Glub ANTES de entrar
+                            elif capitulo_atual and capitulo_atual != "ch1" and not menu_ja_mostrado:
+                                from core.boris import boris
+                                from core.mapa_cidade import mostrar_menu_fabrica_boris_glub
+                                
+                                print(f"[MENU] Capítulo {capitulo_atual} detectado, verificando se Boris foi apresentado...")
+                                print(f"[MENU] boris.primeira_aparicao_mostrada = {boris.primeira_aparicao_mostrada}")
+                                
+                                # Verificar se Boris já foi apresentado (sempre mostrar menu após ch1)
+                                if boris.primeira_aparicao_mostrada or capitulo_atual in ["ch2", "ch3", "ch4"]:
+                                    print(f"[MENU] Mostrando menu de escolha entre Boris e Glub...")
+                                    # Mostrar menu de escolha
+                                    escolha_fabrica = mostrar_menu_fabrica_boris_glub(screen)
+                                    if escolha_fabrica is None:
+                                        # Cancelou, voltar para o mapa
+                                        print(f"[MENU] Menu cancelado, voltando para o mapa")
+                                        continue
+                                    elif escolha_fabrica == "boris":
+                                        # Ir para fábrica do Boris
+                                        print(f"[MENU] Escolhido: Boris")
+                                        territorio_id = "fosso_ferrugem"
+                                    elif escolha_fabrica == "glub":
+                                        # Ir para beco da sucata (Glub)
+                                        print(f"[MENU] Escolhido: Glub")
+                                        territorio_id = "beco_da_sucata"
+                                else:
+                                    print(f"[MENU] Boris ainda não foi apresentado, indo direto para o hub")
+                        
+                        # Mapear territorio_id se necessário (quando o menu já foi mostrado no mapa)
+                        if territorio_id == "fabrica_boris":
+                            # O menu já foi mostrado no mapa e escolheu Boris
+                            territorio_id_hub = "fabrica_boris"
+                        elif territorio_id == "beco_da_sucata":
+                            # O menu já foi mostrado no mapa e escolheu Glub
+                            territorio_id_hub = "beco_da_sucata"
+                        else:
+                            # Mapear outros IDs se necessário
+                            territorio_id_hub = territorio_id
                         
                         # Carregar informações da área
                         areas_mapa = carregar_areas_mapa()
                         area_info = None
                         for area in areas_mapa:
-                            if area.get("id") == territorio_id or area.get("territorio_id") == territorio_id:
+                            # Procurar por ID da área, territorio_id, ou por mapeamento especial
+                            area_id = area.get("id", "").lower()
+                            area_territorio_id = area.get("territorio_id", "").lower()
+                            territorio_id_lower = territorio_id.lower()
+                            
+                            if (area.get("id") == territorio_id or 
+                                area.get("territorio_id") == territorio_id or
+                                (territorio_id == "fabrica_boris" and ("fábrica" in area_id or "fabrica" in area_id or "boris" in area_id or "fosso" in area_territorio_id or "ferrugem" in area_territorio_id)) or
+                                (territorio_id == "beco_da_sucata" and ("beco" in area_id or "sucata" in area_id))):
                                 area_info = area
                                 break
                         
                         # Abrir hub do território
+                        print(f"[MENU] Abrindo hub do território: {territorio_id_hub} (área encontrada: {area_info.get('nome') if area_info else 'Nenhuma'})")
                         atividade = hub_territorio_loop(
                             screen, 
-                            territorio_id, 
+                            territorio_id_hub, 
                             area_nome=area_info.get("nome") if area_info else None,
                             sprite_fundo=area_info.get("sprite_fundo") if area_info else None
                         )
@@ -10816,19 +13126,31 @@ def run():
                             gerenciador_localizacoes.salvar()
                             break  # Sair do loop de campanha e voltar ao menu principal
                         
-                        # Se retornou None, também voltar para o mapa (compatibilidade)
+                        # Se retornou "narrativa_ativa", processar narrativa
+                        if atividade == "narrativa_ativa":
+                            print(f"[MENU] Narrativa foi ativada ao entrar no território, continuando no loop para processar narrativa")
+                            continue  # Voltar para o início do loop para executar narrativa
+                        
+                        # Se retornou None, verificar se narrativa foi iniciada
                         if atividade is None:
+                            # Verificar se narrativa foi iniciada (pode ter sido iniciada após entrar no território)
+                            if narrative_system.active:
+                                print(f"[MENU] Narrativa foi iniciada ao entrar no território, continuando no loop para processar narrativa")
+                                continue  # Voltar para o início do loop para executar narrativa
+                            # Se não há narrativa ativa, voltar para o mapa (não para o menu)
                             # Salvar progresso ao voltar do hub para o mapa
+                            print(f"[MENU] Hub do território retornou None sem narrativa ativa, voltando para o mapa")
                             gerenciador_progresso.salvar()
                             from core.missoes import gerenciador_missoes
                             from core.mapa_locations import gerenciador_localizacoes
                             gerenciador_missoes.salvar()
                             gerenciador_localizacoes.salvar()
-                            continue  # Voltar para o mapa se cancelado
+                            continue  # Voltar para o mapa se cancelado (não para o menu)
                         
                         # Processar atividade selecionada
                         if isinstance(atividade, dict):
                             atividade_tipo = atividade.get("atividade")
+                            print(f"[MENU] Processando atividade: tipo={atividade_tipo}, atividade completa={atividade}")
                             
                             # Processar corrida do Cinturão Industrial
                             if atividade_tipo == "corrida_cinturao":
@@ -11001,9 +13323,9 @@ def run():
                                         # Verificar se há cena narrativa pós-corrida
                                         cena_map = {
                                             "crown_stage1": "ch5_5_stage1_post",
-                                            "crown_stage2": "ch5_5_stage2_post",
+                                            "crown_stage2": "ch5_6_stage2_post",
                                             "crown_stage3": "ch5_5_stage3_post",
-                                            "crown_final": "ch5_7_post_final_epilogue"
+                                            "crown_final": "ch5_7_post_final"
                                         }
                                         
                                         proxima_cena = cena_map.get(race_id)
@@ -11030,7 +13352,8 @@ def run():
                                             voltas=voltas,
                                             dificuldade_ia=dificuldade,
                                             modo_arcade=False,
-                                            sem_bots=sem_bots
+                                            sem_bots=sem_bots,
+                                            race_id=race_id
                                         )
                                     
                                     # Após a corrida retornar, verificar se foi corrida do Circuito da Coroa
@@ -11045,41 +13368,143 @@ def run():
                                         if melhor_tempo is not None and melhor_posicao is not None:
                                             print(f"[AUTÓDROMO] Corrida {race_id} completada: posição={melhor_posicao}, tempo={melhor_tempo}")
                                             
-                                            # Limpar flag e salvar
-                                            gerenciador_progresso.ultima_corrida_campanha = None
-                                            gerenciador_progresso.salvar()
+                                            # Garantir que o capítulo 5 está ativo
+                                            if not narrative_system.current_chapter_id or narrative_system.current_chapter_id != "ch5":
+                                                print(f"[AUTÓDROMO] Definindo current_chapter_id para ch5 (atual: {narrative_system.current_chapter_id})")
+                                                narrative_system.current_chapter_id = "ch5"
                                             
-                                            # Verificar se há cena narrativa pós-corrida
-                                            cena_map = {
-                                                "crown_stage1": "ch5_5_stage1_post",
-                                                "crown_stage2": "ch5_5_stage2_post",
-                                                "crown_stage3": "ch5_5_stage3_post",
-                                                "crown_final": "ch5_7_post_final_epilogue"
+                                            # Determinar resultado (win se posição <= 2, lose caso contrário)
+                                            resultado = "win" if melhor_posicao <= 2 else "lose"
+                                            narrative_system.variables["lastRaceResult"] = resultado
+                                            print(f"[AUTÓDROMO] Resultado da corrida: {resultado}, current_chapter_id: {narrative_system.current_chapter_id}")
+                                            
+                                            # Desbloquear próxima corrida sequencialmente
+                                            if not hasattr(gerenciador_progresso, 'corridas_desbloqueadas'):
+                                                gerenciador_progresso.corridas_desbloqueadas = set()
+                                            if isinstance(gerenciador_progresso.corridas_desbloqueadas, list):
+                                                gerenciador_progresso.corridas_desbloqueadas = set(gerenciador_progresso.corridas_desbloqueadas)
+                                            
+                                            # Inicializar rastreamento de vitórias se não existir
+                                            if not hasattr(gerenciador_progresso, 'crown_stages_won'):
+                                                gerenciador_progresso.crown_stages_won = set()
+                                            if isinstance(gerenciador_progresso.crown_stages_won, list):
+                                                gerenciador_progresso.crown_stages_won = set(gerenciador_progresso.crown_stages_won)
+                                            
+                                            # Desbloquear próxima etapa sequencialmente e rastrear vitórias
+                                            if race_id == "crown_stage1":
+                                                # Adicionar vitória se venceu (posição 1)
+                                                if melhor_posicao == 1:
+                                                    gerenciador_progresso.crown_stages_won.add("crown_stage1")
+                                                    print(f"[AUTÓDROMO] Vitória na Etapa 1 registrada!")
+                                                # Desbloquear etapa 2 após completar etapa 1 (independente de vitória)
+                                                gerenciador_progresso.corridas_desbloqueadas.add("crown_stage2")
+                                                gerenciador_progresso.salvar()
+                                                print(f"[AUTÓDROMO] Etapa 2 desbloqueada após completar Etapa 1")
+                                            elif race_id == "crown_stage2":
+                                                # Adicionar vitória se venceu (posição 1)
+                                                if melhor_posicao == 1:
+                                                    gerenciador_progresso.crown_stages_won.add("crown_stage2")
+                                                    print(f"[AUTÓDROMO] Vitória na Etapa 2 registrada!")
+                                                # Desbloquear etapa 3 após completar etapa 2 (independente de vitória)
+                                                gerenciador_progresso.corridas_desbloqueadas.add("crown_stage3")
+                                                gerenciador_progresso.salvar()
+                                                print(f"[AUTÓDROMO] Etapa 3 desbloqueada após completar Etapa 2")
+                                            elif race_id == "crown_stage3":
+                                                # Adicionar vitória se venceu (posição 1)
+                                                if melhor_posicao == 1:
+                                                    gerenciador_progresso.crown_stages_won.add("crown_stage3")
+                                                    print(f"[AUTÓDROMO] Vitória na Etapa 3 registrada!")
+                                                
+                                                # Verificar se venceu todas as 3 etapas (posição 1 em todas)
+                                                venceu_todas = (
+                                                    "crown_stage1" in gerenciador_progresso.crown_stages_won and
+                                                    "crown_stage2" in gerenciador_progresso.crown_stages_won and
+                                                    "crown_stage3" in gerenciador_progresso.crown_stages_won
+                                                )
+                                                
+                                                if venceu_todas:
+                                                    gerenciador_progresso.corridas_desbloqueadas.add("crown_final")
+                                                    gerenciador_progresso.salvar()
+                                                    print(f"[AUTÓDROMO] Corrida final desbloqueada após vencer todas as 3 etapas!")
+                                                    
+                                                    # Ativar missão m19 quando todas as 3 etapas são completadas
+                                                    try:
+                                                        from core.missoes import gerenciador_missoes
+                                                        # Forçar ativação mesmo que tenha activateOnSceneId
+                                                        if gerenciador_missoes.ativar_missao("m19_jogo_do_rei", forcar_ativacao=True):
+                                                            gerenciador_missoes.salvar()
+                                                            print(f"[AUTÓDROMO] Missão m19_jogo_do_rei ativada após completar todas as 3 etapas!")
+                                                        else:
+                                                            print(f"[AUTÓDROMO] Não foi possível ativar missão m19_jogo_do_rei (já ativa ou completada?)")
+                                                    except Exception as e:
+                                                        print(f"[AUTÓDROMO] Erro ao ativar missão m19: {e}")
+                                                        import traceback
+                                                        traceback.print_exc()
+                                                else:
+                                                    gerenciador_progresso.salvar()
+                                                    print(f"[AUTÓDROMO] Corrida final não desbloqueada. Vitórias registradas: {gerenciador_progresso.crown_stages_won}")
+                                            
+                                            # Verificar gatilhos de race_finished usando o sistema de triggers
+                                            context = {
+                                                "raceId": race_id,
+                                                "raceResult": resultado
                                             }
                                             
-                                            proxima_cena = cena_map.get(race_id)
-                                            if proxima_cena:
-                                                # Iniciar cena pós-corrida
-                                                narrative_system._iniciar_cena_sem_transicao(proxima_cena)
+                                            print(f"[AUTÓDROMO] Verificando gatilhos para raceId={race_id}, raceResult={resultado}")
+                                            
+                                            # Mapear corrida para cena pós-corrida
+                                            cena_map = {
+                                                "crown_stage1": "ch5_5_stage1_post",
+                                                "crown_stage2": "ch5_6_stage2_post",
+                                                "crown_stage3": "ch5_5_stage3_post",
+                                                "crown_final": "ch5_7_post_final"
+                                            }
+                                            cena_id = cena_map.get(race_id)
+                                            
+                                            # Remover cena da lista de visitadas se já foi visitada (para permitir reativação)
+                                            if cena_id and cena_id in narrative_system.scenes_visited:
+                                                print(f"[AUTÓDROMO] Cena {cena_id} já foi visitada. Removendo da lista para permitir reativação...")
+                                                narrative_system.scenes_visited.discard(cena_id)
+                                            
+                                            # Verificar gatilhos
+                                            if narrative_system.verificar_gatilhos_pendentes(context):
+                                                print(f"[AUTÓDROMO] Gatilho encontrado para corrida {race_id}, iniciando narrativa...")
                                                 narrative_system.active = True
                                                 gerenciador_progresso.ultima_corrida_campanha = None
                                                 gerenciador_progresso.salvar()
                                                 continue  # Voltar para o início do loop para executar narrativa
+                                            else:
+                                                print(f"[AUTÓDROMO] Nenhum gatilho encontrado para corrida {race_id}.")
+                                                # Se não encontrou gatilho mas há uma cena mapeada, tentar iniciar diretamente
+                                                if cena_id:
+                                                    print(f"[AUTÓDROMO] Tentando iniciar cena {cena_id} diretamente...")
+                                                    if narrative_system._iniciar_cena_sem_transicao(cena_id):
+                                                        narrative_system.active = True
+                                                        gerenciador_progresso.ultima_corrida_campanha = None
+                                                        gerenciador_progresso.salvar()
+                                                        continue
+                                            
+                                            # Limpar flag mesmo se não houver gatilho
+                                            gerenciador_progresso.ultima_corrida_campanha = None
+                                            gerenciador_progresso.salvar()
                                     
                                     continue  # Voltar para o mapa após a corrida
                             
                             # Processar corrida da Akira (Desafio de Montanha)
-                            if atividade_tipo == "desafio_touge":
+                            elif atividade_tipo == "desafio_touge":
+                                print(f"[AKIRA] Processando corrida da Akira (desafio_touge)")
                                 pista = atividade.get("pista", 3)
-                                race_id = atividade.get("race_id", "mountain_test")
+                                race_id = atividade.get("race_id", "mountain_test_run")
                                 voltas = atividade.get("voltas", 1)
                                 dificuldade = atividade.get("dificuldade", "medio")
                                 sem_bots = atividade.get("sem_bots", False)
+                                print(f"[AKIRA] Parâmetros da corrida: pista={pista}, race_id={race_id}, voltas={voltas}, dificuldade={dificuldade}, sem_bots={sem_bots}")
                                 
                                 # A flag já foi definida no hub_territorio, mas garantir que está salva
-                                if race_id == "mountain_test":
-                                    gerenciador_progresso.ultima_corrida_campanha = "mountain_test"
+                                if race_id in ["mountain_test", "mountain_test_run"]:
+                                    gerenciador_progresso.ultima_corrida_campanha = "mountain_test_run"
                                     gerenciador_progresso.salvar()
+                                    print(f"[AKIRA] Flag de corrida definida: {gerenciador_progresso.ultima_corrida_campanha}")
                                 
                                 # Obter carro atual do jogador
                                 carro_p1_idx = 0
@@ -11109,9 +13534,9 @@ def run():
                                     gerenciador_progresso.salvar()
                                     
                                     # Verificar se há cena narrativa pós-corrida
-                                    if race_id == "mountain_test":
+                                    if race_id in ["mountain_test", "mountain_test_run"]:
                                         # Iniciar cena pós-corrida da montanha
-                                        narrative_system._iniciar_cena_sem_transicao("ch3_6_test_result")
+                                        narrative_system._iniciar_cena_sem_transicao("ch3_4_test_result")
                                         narrative_system.active = True
                                         gerenciador_progresso.ultima_corrida_campanha = None
                                         gerenciador_progresso.salvar()
@@ -11120,6 +13545,7 @@ def run():
                                     continue  # Voltar para o mapa
                                 else:
                                     # Iniciar corrida normalmente
+                                    print(f"[AKIRA] Iniciando corrida: pista={pista}, race_id={race_id}, voltas={voltas}, dificuldade={dificuldade}")
                                     from main import TipoJogo, ModoJogo
                                     import main
                                     
@@ -11134,10 +13560,11 @@ def run():
                                         modo_arcade=False,
                                         sem_bots=sem_bots
                                     )
+                                    print(f"[AKIRA] Corrida retornou, verificando se foi completada...")
                                 
-                                # Após a corrida retornar, verificar se foi mountain_test
+                                # Após a corrida retornar, verificar se foi mountain_test ou mountain_test_run
                                 gerenciador_progresso.carregar()
-                                if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "mountain_test":
+                                if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha in ["mountain_test", "mountain_test_run"]:
                                     from core.estatisticas import gerenciador_estatisticas
                                     gerenciador_estatisticas.carregar()
                                     stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(pista)
@@ -11164,10 +13591,10 @@ def run():
                                         # Se sim, iniciar capítulo 4 após a narrativa pós-corrida
                                         capitulo_3_completo = gerenciador_progresso.capitulo_foi_completo("ch3")
                                         
-                                        # Iniciar narrativa pós-teste (ch3_6_test_result)
-                                        narrative_system._iniciar_cena_sem_transicao("ch3_6_test_result")
+                                        # Iniciar narrativa pós-teste (ch3_4_test_result)
+                                        narrative_system._iniciar_cena_sem_transicao("ch3_4_test_result")
                                         narrative_system.active = True
-                                        print(f"[MONTANHA] Narrativa ch3_6_test_result iniciada com resultado: {resultado_teste}")
+                                        print(f"[MONTANHA] Narrativa ch3_4_test_result iniciada com resultado: {resultado_teste}")
                                         
                                         # Se o capítulo 3 já estava completo (todas as cenas foram vistas),
                                         # marcar para iniciar o capítulo 4 após a narrativa pós-corrida

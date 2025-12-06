@@ -1,5 +1,4 @@
 # src/core/mercador_alien.py
-"""Sistema de mercador alien que aparece ocasionalmente oferecendo upgrades especiais"""
 import pygame
 import random
 import os

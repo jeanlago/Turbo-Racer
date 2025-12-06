@@ -1,8 +1,3 @@
-# src/core/territorios.py
-"""
-Sistema de Territórios da Cidade
-Define os locais disponíveis no mapa isométrico e suas funcionalidades
-"""
 
 from enum import Enum
 from typing import Dict, List, Optional, Tuple

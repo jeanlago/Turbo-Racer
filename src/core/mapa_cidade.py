@@ -168,9 +168,12 @@ def mostrar_pensamento_jogador(screen, mensagem: str, duracao: float = 3.0) -> b
 
 def mostrar_menu_casa_oficina(screen) -> Optional[str]:
     """Mostra menu de escolha entre casa e oficina"""
+    from core.progresso import gerenciador_progresso
+    
     render_text = _get_render_text()
     clock = pygame.time.Clock()
-    opcao_selecionada = 0
+    # Se housingActive não estiver ativo, começar selecionado na oficina
+    opcao_selecionada = 0 if gerenciador_progresso.housingActive else 1
     escolhido = False
     resultado = None
     
@@ -207,7 +210,8 @@ def mostrar_menu_casa_oficina(screen) -> Optional[str]:
                 if ev.key == pygame.K_ESCAPE:
                     return None
                 elif ev.key in (pygame.K_LEFT, pygame.K_a):
-                    opcao_selecionada = 0
+                    if gerenciador_progresso.housingActive:
+                        opcao_selecionada = 0
                 elif ev.key in (pygame.K_RIGHT, pygame.K_d):
                     opcao_selecionada = 1
                 elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
@@ -230,12 +234,13 @@ def mostrar_menu_casa_oficina(screen) -> Optional[str]:
                     total_largura = opcao_largura * 2 + espacamento
                     inicio_x = caixa_x + (caixa_largura - total_largura) // 2
                     
-                    casa_x = inicio_x
-                    casa_y = caixa_y + 50
-                    casa_rect = pygame.Rect(casa_x, casa_y, opcao_largura, opcao_altura)
-                    if casa_rect.collidepoint(mouse_x, mouse_y):
-                        resultado = "casa"
-                        escolhido = True
+                    if gerenciador_progresso.housingActive:
+                        casa_x = inicio_x
+                        casa_y = caixa_y + 50
+                        casa_rect = pygame.Rect(casa_x, casa_y, opcao_largura, opcao_altura)
+                        if casa_rect.collidepoint(mouse_x, mouse_y):
+                            resultado = "casa"
+                            escolhido = True
                     
                     oficina_x = inicio_x + opcao_largura + espacamento
                     oficina_y = caixa_y + 50
@@ -267,37 +272,45 @@ def mostrar_menu_casa_oficina(screen) -> Optional[str]:
         opcao_largura = 300
         opcao_altura = 300
         espacamento = 50
-        total_largura = opcao_largura * 2 + espacamento
-        inicio_x = caixa_x + (caixa_largura - total_largura) // 2
         
-        casa_x = inicio_x
-        casa_y = caixa_y + 80
-        casa_rect = pygame.Rect(casa_x, casa_y, opcao_largura, opcao_altura)
-        
+        # Obter posição do mouse primeiro (antes de qualquer uso)
         mouse_x, mouse_y = pygame.mouse.get_pos()
-        casa_hover = casa_rect.collidepoint(mouse_x, mouse_y)
-        if casa_hover:
-            opcao_selecionada = 0
         
-        if opcao_selecionada == 0:
-            pygame.draw.rect(screen, (100, 150, 255), casa_rect, 4)
+        # Só mostrar opção de casa se housingActive estiver ativo
+        if gerenciador_progresso.housingActive:
+            total_largura = opcao_largura * 2 + espacamento
+            inicio_x = caixa_x + (caixa_largura - total_largura) // 2
+            
+            casa_x = inicio_x
+            casa_y = caixa_y + 80
+            casa_rect = pygame.Rect(casa_x, casa_y, opcao_largura, opcao_altura)
+            
+            casa_hover = casa_rect.collidepoint(mouse_x, mouse_y)
+            if casa_hover:
+                opcao_selecionada = 0
+            
+            if opcao_selecionada == 0:
+                pygame.draw.rect(screen, (100, 150, 255), casa_rect, 4)
+            else:
+                pygame.draw.rect(screen, (80, 80, 80), casa_rect, 2)
+            
+            if sprite_casa:
+                casa_sprite_w = min(opcao_largura - 20, sprite_casa.get_width())
+                casa_sprite_h = int(sprite_casa.get_height() * (casa_sprite_w / sprite_casa.get_width()))
+                casa_sprite_redim = pygame.transform.scale(sprite_casa, (casa_sprite_w, casa_sprite_h))
+                casa_sprite_x = casa_x + (opcao_largura - casa_sprite_w) // 2
+                casa_sprite_y = casa_y + 20
+                screen.blit(casa_sprite_redim, (casa_sprite_x, casa_sprite_y))
+            
+            casa_texto = render_text("CASA", 24, (255, 255, 255), bold=True, pixel_style=True)
+            casa_texto_x = casa_x + (opcao_largura - casa_texto.get_width()) // 2
+            screen.blit(casa_texto, (casa_texto_x, casa_y + opcao_altura - 40))
+            
+            # Oficina (direita)
+            oficina_x = inicio_x + opcao_largura + espacamento
         else:
-            pygame.draw.rect(screen, (80, 80, 80), casa_rect, 2)
-        
-        if sprite_casa:
-            casa_sprite_w = min(opcao_largura - 20, sprite_casa.get_width())
-            casa_sprite_h = int(sprite_casa.get_height() * (casa_sprite_w / sprite_casa.get_width()))
-            casa_sprite_redim = pygame.transform.scale(sprite_casa, (casa_sprite_w, casa_sprite_h))
-            casa_sprite_x = casa_x + (opcao_largura - casa_sprite_w) // 2
-            casa_sprite_y = casa_y + 20
-            screen.blit(casa_sprite_redim, (casa_sprite_x, casa_sprite_y))
-        
-        casa_texto = render_text("CASA", 24, (255, 255, 255), bold=True, pixel_style=True)
-        casa_texto_x = casa_x + (opcao_largura - casa_texto.get_width()) // 2
-        screen.blit(casa_texto, (casa_texto_x, casa_y + opcao_altura - 40))
-        
-        # Oficina (direita)
-        oficina_x = inicio_x + opcao_largura + espacamento
+            # Se casa não está disponível, mostrar apenas oficina centralizada
+            oficina_x = caixa_x + (caixa_largura - opcao_largura) // 2
         oficina_y = caixa_y + 80
         oficina_rect = pygame.Rect(oficina_x, oficina_y, opcao_largura, opcao_altura)
         
@@ -332,6 +345,391 @@ def mostrar_menu_casa_oficina(screen) -> Optional[str]:
     
     return resultado
 
+def mostrar_menu_fabrica_boris_glub(screen) -> Optional[str]:
+    """Mostra menu de escolha entre fábrica do Boris e Beco da Sucata"""
+    from core.progresso import gerenciador_progresso
+    
+    render_text = _get_render_text()
+    clock = pygame.time.Clock()
+    opcao_selecionada = 0  # Começar selecionado na fábrica do Boris
+    escolhido = False
+    resultado = None
+    
+    from config import obter_caminho_sprite_dia_noite
+    CAMINHO_FABRICA = obter_caminho_sprite_dia_noite("fosso")
+    
+    # Carregar background do beco da sucata (não o sprite do personagem)
+    from core.hub_territorio import obter_caminho_beco_sucata
+    CAMINHO_BECO_SUCATA = obter_caminho_beco_sucata()
+    
+    sprite_fabrica = None
+    sprite_beco_sucata = None
+    
+    if os.path.exists(CAMINHO_FABRICA):
+        try:
+            sprite_fabrica = pygame.image.load(CAMINHO_FABRICA).convert_alpha()
+        except Exception as e:
+            print(f"Erro ao carregar sprite da fábrica: {e}")
+    else:
+        print(f"AVISO: Sprite da fábrica não encontrado: {CAMINHO_FABRICA}")
+    
+    if CAMINHO_BECO_SUCATA and os.path.exists(CAMINHO_BECO_SUCATA):
+        try:
+            sprite_beco_sucata = pygame.image.load(CAMINHO_BECO_SUCATA).convert_alpha()
+        except Exception as e:
+            print(f"Erro ao carregar background do beco da sucata: {e}")
+    else:
+        print(f"AVISO: Background do beco da sucata não encontrado: {CAMINHO_BECO_SUCATA}")
+    
+    while not escolhido:
+        dt = clock.tick(FPS) / 1000.0
+        
+        eventos = pygame.event.get()
+        for ev in eventos:
+            if ev.type == pygame.QUIT:
+                return None
+            elif ev.type == pygame.KEYDOWN:
+                if ev.key == pygame.K_ESCAPE:
+                    return None
+                elif ev.key in (pygame.K_LEFT, pygame.K_a):
+                    opcao_selecionada = 0
+                elif ev.key in (pygame.K_RIGHT, pygame.K_d):
+                    opcao_selecionada = 1
+                elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
+                    if opcao_selecionada == 0:
+                        resultado = "boris"
+                    else:
+                        resultado = "glub"
+                    escolhido = True
+            elif ev.type == pygame.MOUSEBUTTONDOWN:
+                if ev.button == 1:
+                    mouse_x, mouse_y = ev.pos
+                    caixa_largura = 800
+                    caixa_altura = 400
+                    caixa_x = (LARGURA - caixa_largura) // 2
+                    caixa_y = (ALTURA - caixa_altura) // 2
+                    
+                    opcao_largura = 300
+                    opcao_altura = 300
+                    espacamento = 50
+                    total_largura = opcao_largura * 2 + espacamento
+                    inicio_x = caixa_x + (caixa_largura - total_largura) // 2
+                    
+                    boris_x = inicio_x
+                    boris_y = caixa_y + 50
+                    boris_rect = pygame.Rect(boris_x, boris_y, opcao_largura, opcao_altura)
+                    if boris_rect.collidepoint(mouse_x, mouse_y):
+                        resultado = "boris"
+                        escolhido = True
+                    
+                    glub_x = inicio_x + opcao_largura + espacamento
+                    glub_y = caixa_y + 50
+                    glub_rect = pygame.Rect(glub_x, glub_y, opcao_largura, opcao_altura)
+                    if glub_rect.collidepoint(mouse_x, mouse_y):
+                        resultado = "glub"
+                        escolhido = True
+        
+        screen.fill((20, 20, 30))
+        
+        overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 200))
+        screen.blit(overlay, (0, 0))
+        
+        caixa_largura = 800
+        caixa_altura = 400
+        caixa_x = (LARGURA - caixa_largura) // 2
+        caixa_y = (ALTURA - caixa_altura) // 2
+        
+        caixa_fundo = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+        caixa_fundo.fill((30, 30, 40, 250))
+        screen.blit(caixa_fundo, (caixa_x, caixa_y))
+        pygame.draw.rect(screen, (150, 150, 150), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
+        
+        titulo = render_text("Onde você quer ir?", 32, (255, 255, 255), bold=True, pixel_style=True)
+        titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
+        screen.blit(titulo, (titulo_x, caixa_y + 20))
+        
+        opcao_largura = 300
+        opcao_altura = 300
+        espacamento = 50
+        total_largura = opcao_largura * 2 + espacamento
+        inicio_x = caixa_x + (caixa_largura - total_largura) // 2
+        
+        # Obter posição do mouse primeiro (antes de qualquer uso)
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        
+        # Fábrica do Boris (esquerda)
+        boris_x = inicio_x
+        boris_y = caixa_y + 80
+        boris_rect = pygame.Rect(boris_x, boris_y, opcao_largura, opcao_altura)
+        
+        boris_hover = boris_rect.collidepoint(mouse_x, mouse_y)
+        if boris_hover:
+            opcao_selecionada = 0
+        
+        if opcao_selecionada == 0:
+            pygame.draw.rect(screen, (100, 150, 255), boris_rect, 4)
+        else:
+            pygame.draw.rect(screen, (80, 80, 80), boris_rect, 2)
+        
+        if sprite_fabrica:
+            # Manter proporção e ajustar para caber na área
+            boris_sprite_w = min(opcao_largura - 20, sprite_fabrica.get_width())
+            boris_sprite_h = int(sprite_fabrica.get_height() * (boris_sprite_w / sprite_fabrica.get_width()))
+            # Garantir que não ultrapasse a altura disponível (deixando espaço para o texto)
+            altura_maxima = opcao_altura - 60
+            if boris_sprite_h > altura_maxima:
+                boris_sprite_h = altura_maxima
+                boris_sprite_w = int(sprite_fabrica.get_width() * (boris_sprite_h / sprite_fabrica.get_height()))
+            boris_sprite_redim = pygame.transform.scale(sprite_fabrica, (boris_sprite_w, boris_sprite_h))
+            boris_sprite_x = boris_x + (opcao_largura - boris_sprite_w) // 2
+            boris_sprite_y = boris_y + 20
+            screen.blit(boris_sprite_redim, (boris_sprite_x, boris_sprite_y))
+        
+        boris_texto = render_text("FÁBRICA DO BORIS", 24, (255, 255, 255), bold=True, pixel_style=True)
+        boris_texto_x = boris_x + (opcao_largura - boris_texto.get_width()) // 2
+        screen.blit(boris_texto, (boris_texto_x, boris_y + opcao_altura - 40))
+        
+        # Beco da Sucata (direita)
+        glub_x = inicio_x + opcao_largura + espacamento
+        glub_y = caixa_y + 80
+        glub_rect = pygame.Rect(glub_x, glub_y, opcao_largura, opcao_altura)
+        
+        # Verificar hover
+        glub_hover = glub_rect.collidepoint(mouse_x, mouse_y)
+        if glub_hover:
+            opcao_selecionada = 1
+        
+        # Desenhar opção Glub
+        if opcao_selecionada == 1:
+            pygame.draw.rect(screen, (100, 150, 255), glub_rect, 4)
+        else:
+            pygame.draw.rect(screen, (80, 80, 80), glub_rect, 2)
+        
+        if sprite_beco_sucata:
+            # Manter proporção e ajustar para caber na área (mesmo padrão do Boris)
+            glub_sprite_w = min(opcao_largura - 20, sprite_beco_sucata.get_width())
+            glub_sprite_h = int(sprite_beco_sucata.get_height() * (glub_sprite_w / sprite_beco_sucata.get_width()))
+            # Garantir que não ultrapasse a altura disponível (deixando espaço para o texto)
+            altura_maxima = opcao_altura - 60
+            if glub_sprite_h > altura_maxima:
+                glub_sprite_h = altura_maxima
+                glub_sprite_w = int(sprite_beco_sucata.get_width() * (glub_sprite_h / sprite_beco_sucata.get_height()))
+            glub_sprite_redim = pygame.transform.scale(sprite_beco_sucata, (glub_sprite_w, glub_sprite_h))
+            glub_sprite_x = glub_x + (opcao_largura - glub_sprite_w) // 2
+            glub_sprite_y = glub_y + 20
+            screen.blit(glub_sprite_redim, (glub_sprite_x, glub_sprite_y))
+        else:
+            # Se não houver background, desenhar um placeholder
+            placeholder_texto = render_text("BECO DA SUCATA", 24, (150, 150, 150), bold=True, pixel_style=True)
+            placeholder_x = glub_x + (opcao_largura - placeholder_texto.get_width()) // 2
+            placeholder_y = glub_y + (opcao_altura - placeholder_texto.get_height()) // 2
+            screen.blit(placeholder_texto, (placeholder_x, placeholder_y))
+        
+        glub_texto = render_text("BECO DA SUCATA", 24, (255, 255, 255), bold=True, pixel_style=True)
+        glub_texto_x = glub_x + (opcao_largura - glub_texto.get_width()) // 2
+        screen.blit(glub_texto, (glub_texto_x, glub_y + opcao_altura - 40))
+        
+        instrucoes = render_text("Use SETAS ou clique para escolher | ESC para cancelar", 16, (150, 150, 150), bold=False, pixel_style=True)
+        instrucoes_x = caixa_x + (caixa_largura - instrucoes.get_width()) // 2
+        screen.blit(instrucoes, (instrucoes_x, caixa_y + caixa_altura - 30))
+        
+        pygame.display.flip()
+    
+    return resultado
+
+def mostrar_menu_torre_rex_beco_neon(screen) -> Optional[str]:
+    """Mostra menu de escolha entre Torre Rex e Beco Neon"""
+    from core.progresso import gerenciador_progresso
+    from core.mapa_locations import gerenciador_localizacoes
+    
+    # Verificar se o Beco Neon está desbloqueado
+    beco_neon_desbloqueado = gerenciador_localizacoes.esta_desbloqueado("beco_neon")
+    
+    # Se o Beco Neon não está desbloqueado, apenas ir para Torre Rex (sem menu)
+    if not beco_neon_desbloqueado:
+        print(f"[MENU TORRE REX] Beco Neon não está desbloqueado, indo direto para Torre Rex")
+        return "torre_rex"
+    
+    render_text = _get_render_text()
+    clock = pygame.time.Clock()
+    opcao_selecionada = 0  # Começar selecionado na Torre Rex
+    escolhido = False
+    resultado = None
+    
+    from config import obter_caminho_sprite_dia_noite
+    CAMINHO_TORRE = obter_caminho_sprite_dia_noite("predio_rex")
+    
+    # Tentar carregar sprite do Slick (se existir)
+    CAMINHO_SLICK = None
+    try:
+        slick_dir = os.path.join(DIR_PROJETO, "assets", "images", "characters", "slick")
+        if os.path.exists(slick_dir):
+            sprite_slick_path = os.path.join(slick_dir, "neutro.png")
+            if os.path.exists(sprite_slick_path):
+                CAMINHO_SLICK = sprite_slick_path
+    except:
+        pass
+    
+    sprite_torre = None
+    sprite_slick = None
+    
+    if os.path.exists(CAMINHO_TORRE):
+        try:
+            sprite_torre = pygame.image.load(CAMINHO_TORRE).convert_alpha()
+        except Exception as e:
+            print(f"Erro ao carregar sprite da torre: {e}")
+    else:
+        print(f"AVISO: Sprite da torre não encontrado: {CAMINHO_TORRE}")
+    
+    if CAMINHO_SLICK and os.path.exists(CAMINHO_SLICK):
+        try:
+            sprite_slick = pygame.image.load(CAMINHO_SLICK).convert_alpha()
+        except Exception as e:
+            print(f"Erro ao carregar sprite do Slick: {e}")
+    
+    while not escolhido:
+        dt = clock.tick(FPS) / 1000.0
+        
+        eventos = pygame.event.get()
+        for ev in eventos:
+            if ev.type == pygame.QUIT:
+                return None
+            elif ev.type == pygame.KEYDOWN:
+                if ev.key == pygame.K_ESCAPE:
+                    return None
+                elif ev.key in (pygame.K_LEFT, pygame.K_a):
+                    opcao_selecionada = 0
+                elif ev.key in (pygame.K_RIGHT, pygame.K_d):
+                    opcao_selecionada = 1
+                elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
+                    if opcao_selecionada == 0:
+                        resultado = "torre_rex"
+                    else:
+                        resultado = "beco_neon"
+                    escolhido = True
+            elif ev.type == pygame.MOUSEBUTTONDOWN:
+                if ev.button == 1:
+                    mouse_x, mouse_y = ev.pos
+                    caixa_largura = 800
+                    caixa_altura = 400
+                    caixa_x = (LARGURA - caixa_largura) // 2
+                    caixa_y = (ALTURA - caixa_altura) // 2
+                    
+                    opcao_largura = 300
+                    opcao_altura = 300
+                    espacamento = 50
+                    total_largura = opcao_largura * 2 + espacamento
+                    inicio_x = caixa_x + (caixa_largura - total_largura) // 2
+                    
+                    torre_x = inicio_x
+                    torre_y = caixa_y + 50
+                    torre_rect = pygame.Rect(torre_x, torre_y, opcao_largura, opcao_altura)
+                    if torre_rect.collidepoint(mouse_x, mouse_y):
+                        resultado = "torre_rex"
+                        escolhido = True
+                    
+                    beco_x = inicio_x + opcao_largura + espacamento
+                    beco_y = caixa_y + 50
+                    beco_rect = pygame.Rect(beco_x, beco_y, opcao_largura, opcao_altura)
+                    if beco_rect.collidepoint(mouse_x, mouse_y):
+                        resultado = "beco_neon"
+                        escolhido = True
+        
+        screen.fill((20, 20, 30))
+        
+        overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 200))
+        screen.blit(overlay, (0, 0))
+        
+        caixa_largura = 800
+        caixa_altura = 400
+        caixa_x = (LARGURA - caixa_largura) // 2
+        caixa_y = (ALTURA - caixa_altura) // 2
+        
+        caixa_fundo = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+        caixa_fundo.fill((30, 30, 40, 250))
+        screen.blit(caixa_fundo, (caixa_x, caixa_y))
+        pygame.draw.rect(screen, (150, 150, 150), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
+        
+        titulo = render_text("Onde você quer ir?", 32, (255, 255, 255), bold=True, pixel_style=True)
+        titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
+        screen.blit(titulo, (titulo_x, caixa_y + 20))
+        
+        opcao_largura = 300
+        opcao_altura = 300
+        espacamento = 50
+        total_largura = opcao_largura * 2 + espacamento
+        inicio_x = caixa_x + (caixa_largura - total_largura) // 2
+        
+        # Obter posição do mouse primeiro (antes de qualquer uso)
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        
+        # Torre Rex (esquerda)
+        torre_x = inicio_x
+        torre_y = caixa_y + 80
+        torre_rect = pygame.Rect(torre_x, torre_y, opcao_largura, opcao_altura)
+        
+        torre_hover = torre_rect.collidepoint(mouse_x, mouse_y)
+        if torre_hover:
+            opcao_selecionada = 0
+        
+        if opcao_selecionada == 0:
+            pygame.draw.rect(screen, (100, 150, 255), torre_rect, 4)
+        else:
+            pygame.draw.rect(screen, (80, 80, 80), torre_rect, 2)
+        
+        if sprite_torre:
+            torre_sprite_w = min(opcao_largura - 20, sprite_torre.get_width())
+            torre_sprite_h = int(sprite_torre.get_height() * (torre_sprite_w / sprite_torre.get_width()))
+            torre_sprite_redim = pygame.transform.scale(sprite_torre, (torre_sprite_w, torre_sprite_h))
+            torre_sprite_x = torre_x + (opcao_largura - torre_sprite_w) // 2
+            torre_sprite_y = torre_y + 20
+            screen.blit(torre_sprite_redim, (torre_sprite_x, torre_sprite_y))
+        
+        torre_texto = render_text("TORRE REX", 24, (255, 255, 255), bold=True, pixel_style=True)
+        torre_texto_x = torre_x + (opcao_largura - torre_texto.get_width()) // 2
+        screen.blit(torre_texto, (torre_texto_x, torre_y + opcao_altura - 40))
+        
+        # Beco Neon (direita)
+        beco_x = inicio_x + opcao_largura + espacamento
+        beco_y = caixa_y + 80
+        beco_rect = pygame.Rect(beco_x, beco_y, opcao_largura, opcao_altura)
+        
+        beco_hover = beco_rect.collidepoint(mouse_x, mouse_y)
+        if beco_hover:
+            opcao_selecionada = 1
+        
+        if opcao_selecionada == 1:
+            pygame.draw.rect(screen, (100, 150, 255), beco_rect, 4)
+        else:
+            pygame.draw.rect(screen, (80, 80, 80), beco_rect, 2)
+        
+        if sprite_slick:
+            beco_sprite_w = min(opcao_largura - 20, sprite_slick.get_width())
+            beco_sprite_h = int(sprite_slick.get_height() * (beco_sprite_w / sprite_slick.get_width()))
+            beco_sprite_redim = pygame.transform.scale(sprite_slick, (beco_sprite_w, beco_sprite_h))
+            beco_sprite_x = beco_x + (opcao_largura - beco_sprite_w) // 2
+            beco_sprite_y = beco_y + 20
+            screen.blit(beco_sprite_redim, (beco_sprite_x, beco_sprite_y))
+        else:
+            # Fallback: desenhar um retângulo colorido
+            pygame.draw.rect(screen, (100, 50, 200), (beco_x + 50, beco_y + 50, opcao_largura - 100, opcao_altura - 100))
+        
+        beco_texto = render_text("BECO NEON", 24, (255, 255, 255), bold=True, pixel_style=True)
+        beco_texto_x = beco_x + (opcao_largura - beco_texto.get_width()) // 2
+        screen.blit(beco_texto, (beco_texto_x, beco_y + opcao_altura - 40))
+        
+        # Instruções
+        instrucoes = render_text("Use SETAS ou clique para escolher | ESC para cancelar", 18, (200, 200, 200), bold=False, pixel_style=True)
+        instrucoes_x = caixa_x + (caixa_largura - instrucoes.get_width()) // 2
+        screen.blit(instrucoes, (instrucoes_x, caixa_y + caixa_altura - 30))
+        
+        pygame.display.flip()
+        clock.tick(FPS)
+    
+    return resultado
+
 def mapa_cidade_loop(screen) -> Optional[str]:
     """
     Loop principal da tela do mapa da cidade
@@ -341,12 +739,22 @@ def mapa_cidade_loop(screen) -> Optional[str]:
     from core.mapa_locations import gerenciador_localizacoes
     gerenciador_localizacoes.carregar()
     
-    # Verificar se a missão m18 foi completada e desbloquear autódromo se necessário
+    # Verificar se a missão m18 está ativa/completa ou se crownCircuitActive está definida e desbloquear autódromo se necessário
     from core.missoes import gerenciador_missoes
     gerenciador_missoes.carregar()
-    if gerenciador_missoes.esta_completa("m18_circo_da_coroa"):
+    missao_m18_ativa = gerenciador_missoes.missao_ativa_id == "m18_circo_da_coroa"
+    missao_m18_completa = gerenciador_missoes.esta_completa("m18_circo_da_coroa")
+    
+    # Verificar flag crownCircuitActive
+    try:
+        from core.progresso import gerenciador_progresso
+        crown_circuit_active = getattr(gerenciador_progresso, 'crownCircuitActive', False)
+    except:
+        crown_circuit_active = False
+    
+    if (missao_m18_ativa or missao_m18_completa or crown_circuit_active):
         if not gerenciador_localizacoes.esta_desbloqueado("autódromo"):
-            print(f"[MAPA_CIDADE] Missão m18 completada, desbloqueando autódromo...")
+            print(f"[MAPA_CIDADE] Desbloqueando autódromo: m18_ativa={missao_m18_ativa}, m18_completa={missao_m18_completa}, crownCircuitActive={crown_circuit_active}")
             gerenciador_localizacoes.desbloquear("autódromo")
             gerenciador_localizacoes.salvar()
     
@@ -401,6 +809,11 @@ def mapa_cidade_loop(screen) -> Optional[str]:
     area_hover = None
     territorio_selecionado: Optional[str] = None
     
+    # Estado para pensamento temporário (ex: Cinturão de dia)
+    mostrar_pensamento_temporario = False
+    texto_pensamento = ""
+    tempo_pensamento = 0.0
+    
     tempo_animacao = 0.0
     import math
     
@@ -417,12 +830,35 @@ def mapa_cidade_loop(screen) -> Optional[str]:
         dt = clock.tick(FPS) / 1000.0
         tempo_animacao += dt
         
+        # Atualizar tempo do pensamento temporário
+        if mostrar_pensamento_temporario:
+            tempo_pensamento += dt
+            duracao_pensamento = 3.0
+            if tempo_pensamento >= duracao_pensamento:
+                mostrar_pensamento_temporario = False
+                texto_pensamento = ""
+                tempo_pensamento = 0.0
+        
         from core.tempo_jogo import gerenciador_tempo
         gerenciador_tempo.atualizar(dt)
         
         estado_dia_noite_atual = obter_estado_dia_noite()
         if estado_dia_noite_atual != estado_dia_noite_anterior:
             estado_dia_noite_anterior = estado_dia_noite_atual
+            # Recarregar mapa da cidade (pode ter mudado para noite)
+            caminho_cidade = obter_caminho_mapa_cidade()
+            if os.path.exists(caminho_cidade):
+                try:
+                    bg_raw = pygame.image.load(caminho_cidade).convert_alpha()
+                    bg_largura_zoom = int(LARGURA * ZOOM_MAPA)
+                    bg_altura_zoom = int(ALTURA * ZOOM_MAPA)
+                    bg_zoom = pygame.transform.scale(bg_raw, (bg_largura_zoom, bg_altura_zoom))
+                    bg_zoom_ref = bg_zoom
+                    mapa_carregado = True
+                    print(f"[MAPA] Mapa recarregado para {estado_dia_noite_atual}")
+                except Exception as e:
+                    print(f"Erro ao recarregar mapa da cidade: {e}")
+            
             # Recarregar todos os hovers
             hover_sprites = {}
             for key, caminho in MAPEAMENTO_HOVER_SPRITES.items():
@@ -447,12 +883,47 @@ def mapa_cidade_loop(screen) -> Optional[str]:
             if ev.type == pygame.QUIT:
                 return None
             
+            # Fechar pensamento temporário se o jogador clicar ou pressionar uma tecla
+            if mostrar_pensamento_temporario:
+                if ev.type == pygame.KEYDOWN:
+                    if ev.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_ESCAPE):
+                        mostrar_pensamento_temporario = False
+                        texto_pensamento = ""
+                        tempo_pensamento = 0.0
+                        continue  # Não processar outros eventos enquanto o pensamento está sendo fechado
+                elif ev.type == pygame.MOUSEBUTTONDOWN:
+                    if ev.button == 1:
+                        mostrar_pensamento_temporario = False
+                        texto_pensamento = ""
+                        tempo_pensamento = 0.0
+                        continue  # Não processar outros eventos enquanto o pensamento está sendo fechado
+            
             if ev.type == pygame.KEYDOWN:
+                # Processar eventos do celular primeiro se o menu estiver aberto
+                try:
+                    from core.celular import celular
+                    if celular.menu_aberto:
+                        resultado_celular = celular.processar_eventos([ev])
+                        if resultado_celular == "fechado":
+                            celular.menu_aberto = False
+                        # Se o celular processou o evento, não processar outros eventos
+                        if resultado_celular:
+                            continue
+                except Exception as e:
+                    print(f"[MAPA_CIDADE] Erro ao processar celular: {e}")
+                
                 if ev.key == pygame.K_ESCAPE:
-                    # Alternar pause
-                    mapa_pausado = not mapa_pausado
-                    if mapa_pausado:
-                        opcao_pausa_selecionada = 0
+                    # Alternar pause (apenas se o celular não estiver aberto)
+                    try:
+                        from core.celular import celular
+                        if not celular.menu_aberto:
+                            mapa_pausado = not mapa_pausado
+                            if mapa_pausado:
+                                opcao_pausa_selecionada = 0
+                    except:
+                        mapa_pausado = not mapa_pausado
+                        if mapa_pausado:
+                            opcao_pausa_selecionada = 0
                 elif mapa_pausado:
                     # Processar navegação no menu de pause
                     if ev.key in (pygame.K_UP, pygame.K_w):
@@ -568,15 +1039,24 @@ def mapa_cidade_loop(screen) -> Optional[str]:
                     # Processar eventos do celular primeiro
                     try:
                         from core.celular import celular
-                        if celular.processar_clique((mouse_x, mouse_y)):
-                            # Celular foi clicado, processar eventos do menu
-                            eventos_celular = [ev]
-                            resultado_celular = celular.processar_eventos(eventos_celular)
+                        # Se o menu está aberto, processar todos os eventos do celular
+                        if celular.menu_aberto:
+                            resultado_celular = celular.processar_eventos([ev])
                             if resultado_celular == "fechado":
                                 celular.menu_aberto = False
+                            # Se o celular processou o evento, não processar outros eventos
+                            if resultado_celular:
+                                continue
+                        # Se o menu não está aberto, verificar se clicou no celular
+                        elif celular.processar_clique((mouse_x, mouse_y)):
+                            # Celular foi clicado, menu foi aberto por processar_clique
+                            # Não processar eventos ainda, apenas abrir o menu
+                            print(f"[MAPA_CIDADE] Celular clicado, menu aberto. menu_aberto={celular.menu_aberto}")
                             continue  # Não processar outros cliques se o celular foi clicado
                     except Exception as e:
                         print(f"[MAPA_CIDADE] Erro ao processar celular: {e}")
+                        import traceback
+                        traceback.print_exc()
                     
                     # Verificar se clicou em uma área primeiro
                     clicou_em_area = False
@@ -618,12 +1098,52 @@ def mapa_cidade_loop(screen) -> Optional[str]:
                                             # Cancelou, não fazer nada
                                             clicou_em_area = True
                                             break
+                                    elif "rex" in area_id_lower or "rex" in area_nome_lower or "torre" in area_id_lower or "prédio" in area_id_lower:
+                                        # Mostrar menu de escolha entre Torre Rex e Beco Neon
+                                        escolha = mostrar_menu_torre_rex_beco_neon(screen)
+                                        if escolha == "torre_rex":
+                                            # Ir para Torre Rex
+                                            territorio_id = "torres_rex"
+                                            return territorio_id
+                                        elif escolha == "beco_neon":
+                                            # Ir para Beco Neon
+                                            territorio_id = "beco_neon"
+                                            return territorio_id
+                                        elif escolha is None:
+                                            # Cancelou, não fazer nada
+                                            clicou_em_area = True
+                                            break
+                                    elif "fosso" in area_id_lower or "fábrica" in area_id_lower or "fabrica" in area_id_lower or "boris" in area_id_lower or "ferrugem" in area_id_lower:
+                                        # Verificar estado da localização primeiro
+                                        territorio_id_temp = area.get("territorio_id") or area.get("id")
+                                        estado_temp = gerenciador_localizacoes.obter_estado(territorio_id_temp)
+                                        
+                                        if estado_temp == EstadoLocalizacao.DESBLOQUEADO:
+                                            # Mostrar menu de escolha entre Fábrica do Boris e Beco da Sucata
+                                            escolha = mostrar_menu_fabrica_boris_glub(screen)
+                                            if escolha == "boris":
+                                                # Ir para Fábrica do Boris
+                                                return "fabrica_boris"
+                                            elif escolha == "glub":
+                                                # Ir para Beco da Sucata (Glub)
+                                                return "beco_da_sucata"
+                                            elif escolha is None:
+                                                # Cancelou, não fazer nada
+                                                clicou_em_area = True
+                                                break
+                                        else:
+                                            # Estado bloqueado ou invisível - tratar normalmente abaixo
+                                            pass
                                     else:
                                         # Tentar encontrar território correspondente
                                         territorio_id = area.get("territorio_id") or area.get("id")
                                         
                                         # Verificar estado da localização
                                         estado = gerenciador_localizacoes.obter_estado(territorio_id)
+                                        
+                                        # Debug: verificar estado da montanha
+                                        if territorio_id == "montanha":
+                                            print(f"[MAPA_CIDADE] Clique na montanha detectado. Estado: {estado}")
                                         
                                         if estado == EstadoLocalizacao.INVISIVEL:
                                             # Localização invisível - não fazer nada
@@ -641,15 +1161,37 @@ def mapa_cidade_loop(screen) -> Optional[str]:
                                             clicou_em_area = True
                                             break
                                         elif estado == EstadoLocalizacao.DESBLOQUEADO:
+                                            # Verificar se é Cinturão Industrial e se é dia
+                                            if territorio_id == "cinturao_industrial":
+                                                from core.tempo_jogo import gerenciador_tempo
+                                                hora_atual = gerenciador_tempo.obter_hora_atual()
+                                                if hora_atual >= 6 and hora_atual < 18:
+                                                    # É dia - mostrar pensamento no mapa (sobre o fundo do mapa)
+                                                    mostrar_pensamento_temporario = True
+                                                    texto_pensamento = "Eles não fariam corridas assim de dia..."
+                                                    tempo_pensamento = 0.0
+                                                    # Não permitir entrar
+                                                    clicou_em_area = True
+                                                    break
+                                            
                                             # Localização desbloqueada - permitir acesso
                                             territorio = obter_territorio(territorio_id) if territorio_id else None
                                             if territorio:
                                                 territorio_selecionado = territorio.id
                                             else:
                                                 # Mapeamento especial para localizações sem território direto
+                                                # Fosso de Ferrugem -> fabrica_boris
+                                                if territorio_id == "fosso_ferrugem" or territorio_id == "fábrica_do_boris" or territorio_id == "fabrica_do_boris":
+                                                    territorio_selecionado = "fabrica_boris"
                                                 # Montanha -> templo_akira
-                                                if territorio_id == "montanha":
+                                                elif territorio_id == "montanha":
                                                     territorio_selecionado = "templo_akira"
+                                                # Iate do Barão -> docas_barao
+                                                elif territorio_id == "iate_barao" or territorio_id == "iate_do_barão" or territorio_id == "iate_do_barao":
+                                                    territorio_selecionado = "docas_barao"
+                                                # Esconderijo da Pixel -> esconderijo_pixel
+                                                elif territorio_id == "esconderijo_pixel" or territorio_id == "pixel" or territorio_id == "bueiro_pixel":
+                                                    territorio_selecionado = "esconderijo_pixel"
                                                 else:
                                                     # Se não encontrar território, usar o ID da área
                                                     territorio_selecionado = area.get("id")
@@ -684,11 +1226,7 @@ def mapa_cidade_loop(screen) -> Optional[str]:
         
         screen.blit(bg, (0, 0))
         
-        # Desenhar relógio digital no canto superior direito
-        from core.hud import HUD
-        if not hasattr(mapa_cidade_loop, '_hud_instance'):
-            mapa_cidade_loop._hud_instance = HUD()
-        mapa_cidade_loop._hud_instance.desenhar_relogio_digital(screen)
+        # Relógio removido - agora apenas no celular
         
         # Desenhar áreas do mapa
         for area in areas_mapa:
@@ -1174,6 +1712,55 @@ def mapa_cidade_loop(screen) -> Optional[str]:
             traceback.print_exc()
             pass
             traceback.print_exc()
+        
+        # Desenhar pensamento temporário sobre o mapa (ex: Cinturão de dia)
+        if mostrar_pensamento_temporario and texto_pensamento:
+            duracao_pensamento = 3.0  # Duração em segundos
+            
+            if tempo_pensamento < duracao_pensamento:
+                # Dividir texto em linhas
+                palavras = texto_pensamento.split(' ')
+                linhas = []
+                linha_atual = ""
+                largura_max = 600
+                
+                for palavra in palavras:
+                    teste_linha = linha_atual + (" " if linha_atual else "") + palavra
+                    teste_render = render_text(teste_linha, 20, (255, 255, 255), bold=False, pixel_style=True)
+                    if teste_render.get_width() <= largura_max:
+                        linha_atual = teste_linha
+                    else:
+                        if linha_atual:
+                            linhas.append(linha_atual)
+                        linha_atual = palavra
+                if linha_atual:
+                    linhas.append(linha_atual)
+                
+                # Calcular posição e tamanho da caixa
+                altura_linha = 30
+                padding = 30
+                caixa_largura = largura_max + padding * 2
+                caixa_altura = len(linhas) * altura_linha + padding * 2
+                caixa_x = (LARGURA - caixa_largura) // 2
+                caixa_y = ALTURA - caixa_altura - 100
+                
+                # Desenhar caixa de pensamento (semi-transparente para ver o mapa por trás)
+                caixa_fundo = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+                caixa_fundo.fill((0, 0, 0, 180))  # Preto semi-transparente
+                screen.blit(caixa_fundo, (caixa_x, caixa_y))
+                pygame.draw.rect(screen, (150, 150, 150), (caixa_x, caixa_y, caixa_largura, caixa_altura), 2)
+                
+                # Desenhar texto
+                y_texto = caixa_y + padding
+                for linha in linhas:
+                    linha_render = render_text(linha, 20, (255, 255, 255), bold=False, pixel_style=True)
+                    screen.blit(linha_render, (caixa_x + padding, y_texto))
+                    y_texto += altura_linha
+            else:
+                # Tempo esgotado, esconder pensamento
+                mostrar_pensamento_temporario = False
+                texto_pensamento = ""
+                tempo_pensamento = 0.0
             
         pygame.display.flip()
 

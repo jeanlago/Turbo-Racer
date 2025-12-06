@@ -1,7 +1,3 @@
-# src/core/ghost.py
-"""
-Sistema de Ghost Car - Grava e reproduz a trajetória do melhor tempo
-"""
 import json
 import os
 import math
@@ -174,25 +170,33 @@ class GerenciadorGhosts:
         self.carregar()
     
     def carregar(self):
-        """Carrega os ghosts salvos do arquivo"""
-        if os.path.exists(CAMINHO_GHOSTS):
-            try:
-                with open(CAMINHO_GHOSTS, 'r', encoding='utf-8') as f:
+        """Carrega os ghosts do progresso.json"""
+        # Primeiro, tentar carregar do progresso.json (fonte principal)
+        try:
+            from core.progresso import gerenciador_progresso
+            caminho_progresso = os.path.join(os.path.dirname(CAMINHO_GHOSTS), 'progresso.json')
+            caminho_progresso = os.path.normpath(caminho_progresso)
+            
+            if os.path.exists(caminho_progresso):
+                with open(caminho_progresso, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    # Converter chaves para string para consistência
-                    self.ghosts = {str(k): v for k, v in data.items()}
-            except Exception as e:
-                print(f"Erro ao carregar ghosts: {e}")
-                self.ghosts = {}
-        else:
-            self.ghosts = {}
+                    if 'ghosts' in data:
+                        self.ghosts = {str(k): v for k, v in data.get('ghosts', {}).items()}
+                        print(f"[GHOSTS] Carregado do progresso.json: {len(self.ghosts)} ghosts")
+                        return  # Dados carregados do progresso.json, não precisa do arquivo antigo
+        except Exception as e:
+            print(f"[GHOSTS] Erro ao carregar do progresso.json: {e}")
+        
+        # Fallback: valores padrão se não houver dados
+        self.ghosts = {}
     
     def salvar(self):
-        """Salva os ghosts no arquivo"""
+        """Salva os ghosts"""
+        # Dados são salvos através do GerenciadorProgresso.salvar()
+        # Este método existe para compatibilidade, mas não salva mais em arquivo separado
         try:
-            os.makedirs(os.path.dirname(CAMINHO_GHOSTS), exist_ok=True)
-            with open(CAMINHO_GHOSTS, 'w', encoding='utf-8') as f:
-                json.dump(self.ghosts, f, indent=2, ensure_ascii=False)
+            from core.progresso import gerenciador_progresso
+            gerenciador_progresso.salvar()  # Isso salvará tudo, incluindo ghosts
         except Exception as e:
             print(f"Erro ao salvar ghosts: {e}")
     

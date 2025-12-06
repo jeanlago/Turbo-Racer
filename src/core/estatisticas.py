@@ -1,7 +1,3 @@
-# src/core/estatisticas.py
-"""
-Sistema de Estatísticas Detalhadas
-"""
 import json
 import os
 from config import DIR_PROJETO

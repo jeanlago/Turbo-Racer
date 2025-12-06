@@ -35,7 +35,8 @@
       "y": 120,
       "largura": 120,
       "altura": 80,
-      "desbloqueada": true
+      "desbloqueada": true,
+      "territorio_id": "torres_rex"
     },
     {
       "id": "iate_do_barão",
@@ -44,7 +45,8 @@
       "y": 555,
       "largura": 120,
       "altura": 80,
-      "desbloqueada": true
+      "desbloqueada": false,
+      "territorio_id": "iate_barao"
     },
     {
       "id": "fábrica_do_boris",
@@ -63,8 +65,8 @@
       "y": 632,
       "largura": 80,
       "altura": 60,
-      "desbloqueada": true,
-      "territorio_id": "pixel"
+      "desbloqueada": false,
+      "territorio_id": "esconderijo_pixel"
     },
     {
       "id": "cinturao_industrial",
@@ -75,6 +77,16 @@
       "altura": 80,
       "desbloqueada": false,
       "territorio_id": "cinturao_industrial"
+    },
+    {
+      "id": "beco_da_sucata",
+      "nome": "Beco da Sucata",
+      "x": 201,
+      "y": 455,
+      "largura": 120,
+      "altura": 80,
+      "desbloqueada": false,
+      "territorio_id": "beco_da_sucata"
     }
   ]
 }

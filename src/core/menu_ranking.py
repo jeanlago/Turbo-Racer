@@ -1,5 +1,3 @@
-# src/core/menu_ranking.py
-"""Tela de Ranking de Pilotos"""
 import pygame
 from config import LARGURA, ALTURA, FPS, CAMINHO_MENU
 from core.menu import render_text, scale_to_cover, gerenciador_musica, popup_musica

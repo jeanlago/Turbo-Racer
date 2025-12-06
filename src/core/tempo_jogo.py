@@ -19,7 +19,11 @@ class GerenciadorTempoJogo:
     SEGUNDOS_POR_HORA_JOGO = 60.0
     
     def __init__(self):
+        # Data inicial: 05/12/1990
+        from datetime import datetime, timedelta, date
+        self.data_inicial = date(1990, 12, 5)
         self.hora_jogo = 12
+        self.dia_jogo = 1  # Inicializar dia_jogo antes de carregar
         
         self.ultima_atualizacao_timestamp = time.time()
         
@@ -39,15 +43,51 @@ class GerenciadorTempoJogo:
             self.ultima_atualizacao_timestamp = agora
         
         horas_decorridas = dt / self.SEGUNDOS_POR_HORA_JOGO
+        hora_anterior = self.hora_jogo
         
         self.hora_jogo += horas_decorridas
         
+        # Verificar se passou meia-noite (hora passou de 24 para 0)
+        dias_passados = 0
         while self.hora_jogo >= 24.0:
             self.hora_jogo -= 24.0
+            dias_passados += 1
         while self.hora_jogo < 0.0:
             self.hora_jogo += 24.0
         
+        # Atualizar contador de dias quando passar meia-noite
+        if dias_passados > 0:
+            self.dia_jogo += dias_passados
+            print(f"[TEMPO] Passou meia-noite! Avançou {dias_passados} dia(s). Dia atual: {self.dia_jogo}, Data: {self.obter_data_formatada()}")
+        
         self._atualizar_estado_dia_noite()
+    
+    def obter_dia_atual(self) -> int:
+        """Retorna o dia atual do jogo
+        
+        Returns:
+            Número do dia (começando em 1)
+        """
+        return self.dia_jogo
+    
+    def obter_data_atual(self):
+        """Retorna a data atual do jogo como datetime.date
+        
+        Returns:
+            datetime.date: Data atual do jogo
+        """
+        # data_inicial já é a data base (05/12/1990), então só precisamos adicionar (dia_jogo - 1) dias
+        from datetime import timedelta
+        return self.data_inicial + timedelta(days=self.dia_jogo - 1)
+    
+    def obter_data_formatada(self) -> str:
+        """Retorna a data atual formatada como DD/MM/YYYY
+        
+        Returns:
+            String com data formatada (ex: "05/12/1990")
+        """
+        data_atual = self.obter_data_atual()
+        return data_atual.strftime("%d/%m/%Y")
     
     def _atualizar_estado_dia_noite(self):
         """Atualiza o estado dia/noite baseado na hora do jogo"""
@@ -67,10 +107,18 @@ class GerenciadorTempoJogo:
         """
         self.hora_jogo += horas
         
+        # Verificar se passou um dia (hora passou de 24 para 0)
+        dias_passados = 0
         while self.hora_jogo >= 24.0:
             self.hora_jogo -= 24.0
+            dias_passados += 1
         while self.hora_jogo < 0.0:
             self.hora_jogo += 24.0
+        
+        # Atualizar contador de dias
+        if dias_passados > 0:
+            self.dia_jogo += dias_passados
+            print(f"[TEMPO] Avançou {dias_passados} dia(s). Dia atual: {self.dia_jogo}, Data: {self.obter_data_formatada()}")
         
         self._atualizar_estado_dia_noite()
     
@@ -118,28 +166,49 @@ class GerenciadorTempoJogo:
         return obter_estado_dia_noite() == "noite"
     
     def carregar(self):
-        """Carrega o tempo do jogo do arquivo"""
-        if os.path.exists(CAMINHO_TEMPO):
-            try:
-                with open(CAMINHO_TEMPO, 'r', encoding='utf-8') as f:
+        """Carrega o tempo do jogo do progresso.json"""
+        # Primeiro, tentar carregar do progresso.json (fonte principal)
+        try:
+            from core.progresso import gerenciador_progresso
+            caminho_progresso = os.path.join(os.path.dirname(CAMINHO_TEMPO), 'progresso.json')
+            caminho_progresso = os.path.normpath(caminho_progresso)
+            
+            if os.path.exists(caminho_progresso):
+                with open(caminho_progresso, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    self.hora_jogo = data.get("hora_jogo", 12.0)
-                    self.hora_jogo = max(0.0, min(24.0, self.hora_jogo))
-            except Exception as e:
-                print(f"Erro ao carregar tempo do jogo: {e}")
-                self.hora_jogo = 12.0
+                    if 'tempo_jogo' in data:
+                        tempo_data = data.get('tempo_jogo', {})
+                        self.hora_jogo = tempo_data.get('hora_jogo', 12.0)
+                        self.dia_jogo = tempo_data.get('dia_jogo', 1)
+                        self.ultima_atualizacao_timestamp = tempo_data.get('ultima_atualizacao_timestamp', time.time())
+                        # Carregar data_inicial se disponível
+                        if 'data_inicial' in tempo_data:
+                            from datetime import datetime
+                            data_str = tempo_data['data_inicial']
+                            self.data_inicial = datetime.strptime(data_str, "%Y-%m-%d").date()
+                        else:
+                            from datetime import date
+                            self.data_inicial = date(1990, 12, 5)
+                        print(f"[TEMPO] Carregado do progresso.json: hora={self.hora_jogo:.2f}, dia={self.dia_jogo}, data={self.obter_data_formatada()}")
+                        return  # Dados carregados do progresso.json, não precisa do arquivo antigo
+        except Exception as e:
+            print(f"[TEMPO] Erro ao carregar do progresso.json: {e}")
         
+        # Fallback: valores padrão se não houver dados (começar em 05/12/1990)
+        self.hora_jogo = 12.0
+        self.dia_jogo = 1
         self.ultima_atualizacao_timestamp = time.time()
+        # Data inicial: 05/12/1990
+        from datetime import date
+        self.data_inicial = date(1990, 12, 5)
     
     def salvar(self):
-        """Salva o tempo do jogo no arquivo"""
+        """Salva o tempo do jogo (agora salvo no progresso.json)"""
+        # Dados são salvos através do GerenciadorProgresso.salvar()
+        # Este método existe para compatibilidade, mas não salva mais em arquivo separado
         try:
-            os.makedirs(os.path.dirname(CAMINHO_TEMPO), exist_ok=True)
-            data = {
-                "hora_jogo": self.hora_jogo
-            }
-            with open(CAMINHO_TEMPO, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2)
+            from core.progresso import gerenciador_progresso
+            gerenciador_progresso.salvar()  # Isso salvará tudo, incluindo tempo
         except Exception as e:
             print(f"Erro ao salvar tempo do jogo: {e}")
 
