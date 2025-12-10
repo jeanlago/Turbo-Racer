@@ -399,48 +399,7 @@ class Celular:
         
         # Borda removida conforme solicitado
         
-        # Obter informações de tempo
-        try:
-            from core.tempo_jogo import gerenciador_tempo
-            hora_atual = gerenciador_tempo.obter_hora_atual()
-            dia_atual = gerenciador_tempo.obter_dia_atual()
-            
-            # Formatar hora (HH:MM)
-            horas = int(hora_atual)
-            minutos = int((hora_atual - horas) * 60)
-            hora_formatada = f"{horas:02d}:{minutos:02d}"
-            
-            # Configurações de hora
-            config_hora = self.config.get("hora", {})
-            hora_x = menu_x + config_hora.get("x", 20)
-            hora_y = menu_y + config_hora.get("y", 20)
-            hora_tamanho = config_hora.get("tamanho_fonte", 24)
-            hora_cor = tuple(config_hora.get("cor", [255, 255, 255]))
-            hora_negrito = config_hora.get("negrito", True)
-            
-            # Exibir hora
-            hora_texto = render_text(hora_formatada, hora_tamanho, hora_cor, bold=hora_negrito, pixel_style=True)
-            tela.blit(hora_texto, (hora_x, hora_y))
-            
-            # Configurações de dia
-            config_dia = self.config.get("dia", {})
-            dia_x = menu_x + config_dia.get("x", 20)
-            dia_y = menu_y + config_dia.get("y", 50)
-            dia_tamanho = config_dia.get("tamanho_fonte", 18)
-            dia_cor = tuple(config_dia.get("cor", [200, 200, 200]))
-            dia_negrito = config_dia.get("negrito", False)
-            
-            # Calcular data real (05/12/1990 + dias)
-            from datetime import datetime, timedelta
-            data_inicial = datetime(1990, 12, 5)
-            data_atual = data_inicial + timedelta(days=dia_atual - 1)
-            dia_formatado = data_atual.strftime("%d/%m/%Y")
-            
-            # Exibir dia
-            dia_texto = render_text(dia_formatado, dia_tamanho, dia_cor, bold=dia_negrito, pixel_style=True)
-            tela.blit(dia_texto, (dia_x, dia_y))
-        except Exception as e:
-            print(f"[CELULAR] Erro ao obter informações de tempo: {e}")
+        # Horário e data removidos - não exibir mais
             # Título padrão se não conseguir obter tempo
             config_titulo = self.config.get("titulo", {})
             titulo_x = menu_x + config_titulo.get("x", 20)

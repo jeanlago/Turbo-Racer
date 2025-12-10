@@ -122,6 +122,24 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
     from config import carregar_configuracoes
     carregar_configuracoes()
+    
+    # IMPORTANTE: Se race_id foi fornecido, definir a flag antes de iniciar a corrida
+    # Isso garante que a flag seja mantida mesmo se já estava definida como outra coisa
+    # Se não há race_id mas a missão m6 está ativa e é pista 1, usar training_01
+    if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
+        gerenciador_progresso.carregar()
+        if race_id:
+            gerenciador_progresso.ultima_corrida_campanha = race_id
+            gerenciador_progresso.salvar()
+            print(f"[MAIN] Flag ultima_corrida_campanha definida como '{race_id}' no início da corrida")
+        elif mapa_selecionado == 1:
+            # Verificar se a missão m6 está ativa
+            from core.missoes import gerenciador_missoes
+            gerenciador_missoes.carregar()
+            if gerenciador_missoes.missao_ativa_id == "m6_batismo_de_pista":
+                gerenciador_progresso.ultima_corrida_campanha = "training_01"
+                gerenciador_progresso.salvar()
+                print(f"[MAIN] Missão m6 ativa e pista 1 - Flag ultima_corrida_campanha definida como 'training_01'")
 
     resolucao = CONFIGURACOES["video"]["resolucao"]
     fullscreen = CONFIGURACOES["video"]["fullscreen"]
@@ -491,7 +509,12 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             caixa_x = (LARGURA - caixa_largura) // 2
             caixa_y = (ALTURA - caixa_altura) // 2
         
-        altura_total_opcoes = len(opcoes) * 60
+        # Calcular espaçamento: aumentar entre "REINICIAR JOGO" e "MENU PRINCIPAL" no modo 2 jogadores
+        if modo_jogo == ModoJogo.DOIS_JOGADORES and len(opcoes) >= 2:
+            # Espaçamento maior entre os dois últimos botões
+            altura_total_opcoes = (len(opcoes) - 2) * 60 + 2 * 80  # 80px entre os dois últimos
+        else:
+            altura_total_opcoes = len(opcoes) * 60
         offset_opcoes = caixa_y + caixa_altura - altura_total_opcoes - 20
         
         if lado is None:
@@ -521,8 +544,18 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         opcao_hover = -1
         if mouse_in_caixa:
             for i, (nome, chave) in enumerate(opcoes):
-                y_opcao = offset_opcoes + i * 60
-                opcao_rect = pygame.Rect(caixa_x + 20, y_opcao - 5, caixa_largura - 40, 60)
+                # Calcular y_opcao com mesmo espaçamento usado no desenho
+                if modo_jogo == ModoJogo.DOIS_JOGADORES and len(opcoes) >= 2:
+                    if i < len(opcoes) - 2:
+                        y_opcao = offset_opcoes + i * 60
+                    elif i == len(opcoes) - 2:
+                        y_opcao = offset_opcoes + (len(opcoes) - 2) * 60 + 20
+                    else:
+                        y_opcao = offset_opcoes + (len(opcoes) - 2) * 60 + 20 + 80
+                else:
+                    y_opcao = offset_opcoes + i * 60
+                # Aumentar altura do hover para cobrir toda a palavra
+                opcao_rect = pygame.Rect(caixa_x + 20, y_opcao - 5, caixa_largura - 40, 70)  # Aumentado de 60 para 70
                 if opcao_rect.collidepoint(mouse_x, mouse_y):
                     opcao_hover = i
                     break
@@ -586,7 +619,16 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             desenhar_tela_fim_jogo._animacao_cursor = 0.0
         
         for i, (nome, chave) in enumerate(opcoes):
-            y = offset_opcoes + i * 60
+            # Aumentar espaçamento entre "REINICIAR JOGO" e "MENU PRINCIPAL" no modo 2 jogadores
+            if modo_jogo == ModoJogo.DOIS_JOGADORES and len(opcoes) >= 2:
+                if i < len(opcoes) - 2:
+                    y = offset_opcoes + i * 60
+                elif i == len(opcoes) - 2:
+                    y = offset_opcoes + (len(opcoes) - 2) * 60 + 20  # Espaço extra antes do penúltimo
+                else:
+                    y = offset_opcoes + (len(opcoes) - 2) * 60 + 20 + 80  # 80px após o penúltimo
+            else:
+                y = offset_opcoes + i * 60
             
             hover_progress = 0.0 if (i == opcao_atual) else hover_animation[i]
             
@@ -616,14 +658,15 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 cor_texto = base_cor_texto
             
             if cor_fundo[3] > 0:
-                opcao_fundo = pygame.Surface((caixa_largura - 40, 60), pygame.SRCALPHA)
+                # Aumentar altura do fundo para cobrir toda a palavra
+                opcao_fundo = pygame.Surface((caixa_largura - 40, 70), pygame.SRCALPHA)  # Aumentado de 60 para 70
                 opcao_fundo.fill(cor_fundo)
                 tela.blit(opcao_fundo, (caixa_x + 20, y - 5))
             
             if i == opcao_atual and gerenciador_gamepad.obter_numero_controles() > 0:
                 import math
                 tamanho_cursor = 3 + int(2 * abs(math.sin(desenhar_tela_fim_jogo._animacao_cursor * math.pi)))
-                opcao_rect = pygame.Rect(caixa_x + 20, y - 5, caixa_largura - 40, 60)
+                opcao_rect = pygame.Rect(caixa_x + 20, y - 5, caixa_largura - 40, 70)  # Aumentado de 60 para 70
                 cursor_rect = pygame.Rect(
                     opcao_rect.x - tamanho_cursor,
                     opcao_rect.y - tamanho_cursor,
@@ -633,7 +676,9 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 pygame.draw.rect(tela, (0, 200, 255), cursor_rect, 3)
             
             texto = render_text(nome, 24, cor_texto, bold=True, pixel_style=True)
-            tela.blit(texto, (caixa_x + 30, y))
+            # Centralizar texto verticalmente no botão (ajustado para altura de 70)
+            texto_y = y + (70 - texto.get_height()) // 2
+            tela.blit(texto, (caixa_x + 30, texto_y))
     
     def processar_tela_resultados_finais(ev, estado_resultados):
         """Processa eventos da tela de resultados finais quando ambos jogadores terminaram"""
@@ -1006,7 +1051,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         nome=carro_p1["nome"],
         tipo_tracao=carro_p1.get("tipo_tracao", CarroFisica.TRACAO_TRASEIRA),
         upgrades=upgrades_p1,
-        multiplicador_base=multiplicador_p1
+        multiplicador_base=multiplicador_p1,
+        modo_arcade=modo_arcade
     )
     carros.append(carro1)
     
@@ -1026,7 +1072,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             nome=carro_p2["nome"],
             tipo_tracao=carro_p2.get("tipo_tracao", CarroFisica.TRACAO_TRASEIRA),
             upgrades=upgrades_p2,
-            multiplicador_base=multiplicador_p2
+            multiplicador_base=multiplicador_p2,
+            modo_arcade=modo_arcade
         )
         carros.append(carro2)
 
@@ -1071,7 +1118,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 nome=nome_bot,
                 tipo_tracao=carro_data.get("tipo_tracao", CarroFisica.TRACAO_TRASEIRA),
                 upgrades=upgrades_ia,
-                multiplicador_base=multiplicador_ia
+                multiplicador_base=multiplicador_ia,
+                modo_arcade=modo_arcade
             )
             carro_ia.eh_bot = True
             carro_ia.skidmarks.max_skidmarks = 80
@@ -1276,30 +1324,32 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
         eventos = list(pygame.event.get())
         
+        # Cutscenes removidas completamente do modo arcade - não atualizar NPCs no modo arcade
         # Atualizar Rex (se ativo e modo 1 jogador)
-        if rex.ativo and modo_jogo == ModoJogo.UM_JOGADOR:
+        if rex.ativo and modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
             rex.atualizar(dt)
-        
+
         # Atualizar Akira (se ativa e modo 1 jogador)
-        if akira.ativo and modo_jogo == ModoJogo.UM_JOGADOR:
+        if akira.ativo and modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
             akira.atualizar(dt)
         
+        # Cutscenes removidas completamente do modo arcade - não processar NPCs no modo arcade
         # Processar Akira primeiro (se ativa, modo 1 jogador, NÃO estiver em corrida e não estiver na tela de fim de jogo ou resultados finais) - tem prioridade sobre todos
-        if akira.ativo and modo_jogo == ModoJogo.UM_JOGADOR and not corrida.iniciada and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
+        if akira.ativo and modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade and not corrida.iniciada and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
             akira.processar_eventos(eventos)
         
         # Processar Rex (se ativo, modo 1 jogador, NÃO estiver em corrida, Akira não estiver ativa e não estiver na tela de fim de jogo ou resultados finais) - tem prioridade sobre Crank
-        if rex.ativo and modo_jogo == ModoJogo.UM_JOGADOR and not corrida.iniciada and not akira.ativo and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
+        if rex.ativo and modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade and not corrida.iniciada and not akira.ativo and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
             rex.processar_eventos(eventos)
         
         # Processar Crank (se ativo, modo 1 jogador, NÃO estiver em corrida, Akira/Rex não estiverem ativos e não estiver na tela de fim de jogo ou resultados finais) - tem prioridade sobre mercador alien
-        if crank.ativo and modo_jogo == ModoJogo.UM_JOGADOR and not corrida.iniciada and not akira.ativo and not rex.ativo and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
+        if crank.ativo and modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade and not corrida.iniciada and not akira.ativo and not rex.ativo and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
             resultado_crank = crank.processar_eventos(eventos)
             if resultado_crank == "fechado":
                 crank.fechar()
-        
+
         # Processar mercador alien (se ativo, modo 1 jogador, NÃO estiver em corrida, Akira/Rex/Crank não estiverem ativos e não estiver na tela de fim de jogo ou resultados finais)
-        if mercador_alien.ativo and modo_jogo == ModoJogo.UM_JOGADOR and not corrida.iniciada and not akira.ativo and not rex.ativo and not crank.ativo and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
+        if mercador_alien.ativo and modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade and not corrida.iniciada and not akira.ativo and not rex.ativo and not crank.ativo and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
             resultado_mercador = mercador_alien.processar_eventos(eventos, prefixo_cor=carro_p1["prefixo_cor"])
             if resultado_mercador in ["comprado", "recusado", "fechado", "erro"]:
                 if resultado_mercador == "comprado":
@@ -1326,7 +1376,17 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             continue
                     if acao_resultados:
                         evento_processado = True
-                        if acao_resultados == "continuar_campanha":
+                        if acao_resultados == "continuar_arcade":
+                            # Continuar no modo arcade - voltar ao menu
+                            estado_resultados_finais = None
+                            estado_fim_jogo_p1 = None
+                            estado_fim_jogo_p2 = None
+                            # Limpar a tela antes de retornar
+                            tela.fill((0, 0, 0))
+                            pygame.display.flip()
+                            rodando = False
+                            return
+                        elif acao_resultados == "continuar_campanha":
                             # Continuar a campanha - garantir que o progresso está salvo
                             gerenciador_progresso.salvar()
                             from core.missoes import gerenciador_missoes
@@ -1344,7 +1404,16 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                         elif acao_resultados == "trocar_carro":
                             from core.menu import selecionar_carros_loop
-                            resultado = selecionar_carros_loop(tela)
+                            resultado = selecionar_carros_loop(tela, modo_arcade=modo_arcade, modo_jogo=modo_jogo)
+                            # Verificar se cancelou (None, None) - no modo arcade, voltar ao menu
+                            if resultado is None or (isinstance(resultado, tuple) and len(resultado) == 2 and resultado[0] is None and resultado[1] is None):
+                                if modo_arcade:
+                                    rodando = False
+                                    return
+                                estado_resultados_finais = None
+                                estado_fim_jogo_p1 = None
+                                estado_fim_jogo_p2 = None
+                                continue
                             if resultado and len(resultado) == 2:
                                 carro_p1_idx, carro_p2_idx = resultado
                                 if carro_p1_idx is not None and carro_p2_idx is not None:
@@ -1376,7 +1445,14 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                             elif acao == "trocar_carro":
                                 from core.menu import selecionar_carros_loop
-                                resultado = selecionar_carros_loop(tela)
+                                resultado = selecionar_carros_loop(tela, modo_arcade=modo_arcade, modo_jogo=modo_jogo)
+                                # Verificar se cancelou (None, None) - no modo arcade, voltar ao menu
+                                if resultado is None or (isinstance(resultado, tuple) and len(resultado) == 2 and resultado[0] is None and resultado[1] is None):
+                                    if modo_arcade:
+                                        rodando = False
+                                        return
+                                    estado_fim_jogo_p1 = None
+                                    continue
                                 if resultado and len(resultado) == 2:
                                     carro_p1_idx, carro_p2_idx = resultado
                                     if carro_p1_idx is not None and carro_p2_idx is not None:
@@ -1447,7 +1523,14 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                             elif acao == "trocar_carro":
                                 from core.menu import selecionar_carros_loop
-                                resultado = selecionar_carros_loop(tela)
+                                resultado = selecionar_carros_loop(tela, modo_arcade=modo_arcade, modo_jogo=modo_jogo)
+                                # Verificar se cancelou (None, None) - no modo arcade, voltar ao menu
+                                if resultado is None or (isinstance(resultado, tuple) and len(resultado) == 2 and resultado[0] is None and resultado[1] is None):
+                                    if modo_arcade:
+                                        rodando = False
+                                        return
+                                    estado_fim_jogo_p2 = None
+                                    continue
                                 if resultado and len(resultado) == 2:
                                     carro_p1_idx, carro_p2_idx = resultado
                                     # Validar índices antes de retornar
@@ -1577,14 +1660,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         estado_resultados_finais["resultados"] = resultados
                     else:
                         # Criar novos resultados finais
-                        # No modo campanha, adicionar opção "Continuar" para seguir a história
                         opcoes_resultado = []
-                        print(f"[RESULTADOS] Verificando modo: modo_arcade={modo_arcade}, modo_jogo={modo_jogo}")
-                        if not modo_arcade and modo_jogo == ModoJogo.UM_JOGADOR:
-                            print(f"[RESULTADOS] Adicionando opção CONTINUAR (modo campanha)")
+                        # No modo arcade, adicionar opção "CONTINUAR" para voltar ao menu
+                        if modo_arcade:
+                            opcoes_resultado.append(("CONTINUAR", "continuar_arcade"))
+                        # No modo campanha, adicionar opção "Continuar" para seguir a história
+                        elif not modo_arcade and modo_jogo == ModoJogo.UM_JOGADOR:
                             opcoes_resultado.append(("CONTINUAR", "continuar_campanha"))
-                        else:
-                            print(f"[RESULTADOS] Não adicionando CONTINUAR (modo_arcade={modo_arcade}, modo_jogo={modo_jogo})")
                         opcoes_resultado.extend([
                             ("TROCAR CARRO", "trocar_carro"),
                             ("REINICIAR JOGO", "reiniciar"),
@@ -1607,7 +1689,15 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 if estado_resultados_finais is not None:
                     acao = processar_tela_resultados_finais(ev, estado_resultados_finais)
                     if acao:
-                        if acao == "continuar_campanha":
+                        if acao == "continuar_arcade":
+                            # Continuar no modo arcade - voltar ao menu
+                            estado_resultados_finais = None
+                            # Limpar a tela antes de retornar
+                            tela.fill((0, 0, 0))
+                            pygame.display.flip()
+                            rodando = False
+                            return
+                        elif acao == "continuar_campanha":
                             # Continuar a campanha - limpar estado e retornar
                             # O código em menu.py continuará a narrativa automaticamente
                             estado_resultados_finais = None
@@ -1620,7 +1710,14 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                         elif acao == "trocar_carro":
                             from core.menu import selecionar_carros_loop
-                            resultado = selecionar_carros_loop(tela)
+                            resultado = selecionar_carros_loop(tela, modo_arcade=modo_arcade, modo_jogo=modo_jogo)
+                            # Verificar se cancelou (None, None) - no modo arcade, voltar ao menu
+                            if resultado is None or (isinstance(resultado, tuple) and len(resultado) == 2 and resultado[0] is None and resultado[1] is None):
+                                if modo_arcade:
+                                    rodando = False
+                                    return
+                                estado_resultados_finais = None
+                                continue
                             if resultado and len(resultado) == 2:
                                 carro_p1_idx, carro_p2_idx = resultado
                                 # Validar índices antes de retornar
@@ -1651,13 +1748,17 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                         elif acao == "trocar_carro":
                             from core.menu import selecionar_carros_loop
-                            resultado = selecionar_carros_loop(tela)
+                            resultado = selecionar_carros_loop(tela, modo_arcade=modo_arcade, modo_jogo=modo_jogo)
                             if resultado and len(resultado) == 2:
                                 carro_p1_idx, carro_p2_idx = resultado
                                 # Validar índices antes de retornar
                                 if carro_p1_idx is not None and carro_p2_idx is not None:
                                     if 0 <= carro_p1_idx < len(CARROS_DISPONIVEIS) and 0 <= carro_p2_idx < len(CARROS_DISPONIVEIS):
                                         return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
+                            # Se cancelou (None, None) no modo arcade, voltar ao menu
+                            if modo_arcade:
+                                rodando = False
+                                return
                             estado_fim_jogo = None
                             # Após fechar tela de fim de jogo, verificar se Rex deve aparecer (primeira corrida, modo 1 jogador, não no modo arcade)
                             if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not crank.ativo and not mercador_alien.ativo and not modo_arcade:
@@ -1676,7 +1777,16 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     continue
             
             if ev.type == pygame.QUIT:
-                rodando = False
+                # Mostrar diálogo modal de confirmação antes de fechar
+                from core.menu import mostrar_dialogo_confirmacao_fechar
+                screen_temp = pygame.display.get_surface()
+                bg_temp = screen_temp.copy() if screen_temp else None
+                if bg_temp:
+                    confirmado = mostrar_dialogo_confirmacao_fechar(screen_temp, bg_temp)
+                    if confirmado:
+                        rodando = False
+                else:
+                    rodando = False
 
             # Processar cliques do mouse no menu de pausa ANTES de outros eventos
             if jogo_pausado and ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
@@ -1745,7 +1855,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             elif chave == "menu":
                                 # IMPORTANTE: Se o jogador desistir da corrida (menu de pausa -> menu), limpar a flag de corrida da campanha
                                 if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
-                                    from core.progresso import gerenciador_progresso
+                                    # Usar a importação global de gerenciador_progresso (não importar localmente)
                                     if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha:
                                         print(f"[MAIN] Jogador desistiu da corrida (menu de pausa -> menu), limpando flag ultima_corrida_campanha")
                                         gerenciador_progresso.ultima_corrida_campanha = None
@@ -1953,22 +2063,14 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
         if not corrida.iniciada:
             # Verificar se há NPCs ativos (cutscenes) - não iniciar corrida durante cutscenes
-            npcs_ativos = (akira.ativo or rex.ativo or crank.ativo or mercador_alien.ativo or glub.ativo)
+            # No modo arcade, não há cutscenes, então npcs_ativos sempre será False
+            if modo_arcade:
+                npcs_ativos = False
+            else:
+                npcs_ativos = (akira.ativo or rex.ativo or crank.ativo or mercador_alien.ativo or glub.ativo)
             
-            # Verificar se Akira deve aparecer pré-corrida (modo 1 jogador, primeira vez na pista, APENAS no modo arcade)
-            # No modo campanha (modo_arcade=False), a narrativa é gerenciada pelo sistema de missões/roteiro,
-            # então a Akira NÃO deve aparecer antes das corridas - o roteiro já gerencia isso
-            if modo_jogo == ModoJogo.UM_JOGADOR and tipo_jogo == TipoJogo.CORRIDA and not npcs_ativos and modo_arcade:
-                # Só mostrar Akira pré-corrida no modo arcade (modo_arcade=True)
-                # No modo campanha, o roteiro já gerencia a narrativa
-                stats_gerais = gerenciador_estatisticas.obter_estatisticas_gerais()
-                corridas_completas = stats_gerais.get("corridas_completas", 0)
-                
-                # Só mostrar Akira pré-corrida se for realmente a primeira corrida (corridas_completas == 0)
-                if corridas_completas == 0:
-                    numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
-                    akira.verificar_aparecer_pre_corrida(numero_pista)
-                    npcs_ativos = akira.ativo  # Atualizar após verificar
+            # Cutscenes removidas completamente do modo arcade
+            # No modo arcade, não há cutscenes pré ou pós-corrida
             
             corrida.atualizar_contagem(dt, npcs_ativos=npcs_ativos)
         corrida.atualizar_tempo(dt, jogo_pausado)
@@ -2198,13 +2300,12 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                             gerenciador_estatisticas.registrar_corrida_completa(numero_pista, posicao_jogador_p1, tempo_final_p1)
                             
-                            # IMPORTANTE: Limpar flag de corrida da campanha após completar a corrida
-                            # Isso permite que o sistema detecte se o jogador desistiu (flag ainda definida) vs completou (flag limpa)
+                            # IMPORTANTE: NÃO limpar a flag aqui - ela será limpa no menu.py após verificar gatilhos narrativos
+                            # A flag deve permanecer definida para que o menu.py possa detectar que a corrida foi completada
+                            # e ativar a cena narrativa pós-corrida se necessário
                             if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
                                 if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha:
-                                    print(f"[MAIN] Corrida da campanha completada, limpando flag ultima_corrida_campanha")
-                                    gerenciador_progresso.ultima_corrida_campanha = None
-                                    gerenciador_progresso.salvar()
+                                    print(f"[MAIN] Corrida da campanha completada, mantendo flag ultima_corrida_campanha para verificação no menu")
                             
                             # Registrar no ranking
                             if posicao_jogador_p1 == 1:
@@ -2212,11 +2313,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             else:
                                 gerenciador_ranking.registrar_derrota_jogador()
                             
-                            # Verificar se Akira deve aparecer pós-corrida (modo 1 jogador, APENAS no modo arcade)
-                            # No modo campanha, o roteiro já gerencia a narrativa, então não chamar Akira pós-corrida
-                            if modo_jogo == ModoJogo.UM_JOGADOR and modo_arcade:
-                                colisoes_na_corrida = getattr(principal, '_colisoes_na_corrida', 0)
-                                akira.verificar_aparecer_pos_corrida(posicao_jogador_p1, colisoes_na_corrida, posicao_jogador_p1 == 1)
+                            # Cutscenes removidas completamente do modo arcade
                             
                             # Verificar se Rex deve aparecer (primeira corrida, modo 1 jogador, não no modo arcade) - DEPOIS de registrar a corrida
                             if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
@@ -2411,9 +2508,11 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             
                             resultados.sort(key=lambda x: x["posicao"] if x["posicao"] else 999)
                             
-                            # No modo campanha, adicionar opção "Continuar" para seguir a história
+                            # Adicionar opção "Continuar" baseado no modo
                             opcoes_resultado = []
-                            if not modo_arcade and modo_jogo == ModoJogo.UM_JOGADOR:
+                            if modo_arcade:
+                                opcoes_resultado.append(("CONTINUAR", "continuar_arcade"))
+                            elif not modo_arcade and modo_jogo == ModoJogo.UM_JOGADOR:
                                 opcoes_resultado.append(("CONTINUAR", "continuar_campanha"))
                             opcoes_resultado.extend([
                                 ("TROCAR CARRO", "trocar_carro"),
@@ -2621,10 +2720,25 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 print(f"[MAIN] 8 horas avançadas no jogo após completar corrida no modo campanha")
                                 
                                 print(f"[MAIN] Modo campanha detectado. Verificando ultima_corrida_campanha: {getattr(gerenciador_progresso, 'ultima_corrida_campanha', 'N/A')}")
-                                if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "training_01":
-                                    from core.missoes import gerenciador_missoes
+                                
+                                # IMPORTANTE: Verificar se a missão m6 está ativa e a corrida foi na pista 1
+                                from core.missoes import gerenciador_missoes
+                                gerenciador_missoes.carregar()
+                                if numero_pista == 1 and gerenciador_missoes.missao_ativa_id == "m6_batismo_de_pista":
+                                    # Se a missão m6 está ativa e a corrida foi na pista 1, completar a missão
+                                    print(f"[MAIN] Missão m6 ativa e corrida na pista 1 - completando missão m6_batismo_de_pista")
                                     gerenciador_missoes.completar_por_cena("ch1_6_post_first_race_and_pixel")
                                     gerenciador_missoes.salvar()
+                                    # Definir flag como training_01 para permitir cutscene pós-corrida
+                                    gerenciador_progresso.ultima_corrida_campanha = "training_01"
+                                    gerenciador_progresso.salvar()
+                                    print(f"[MAIN] Missão m6_batismo_de_pista completada e flag definida como training_01")
+                                
+                                if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "training_01":
+                                    # Completar missão se ainda não foi completada
+                                    if not gerenciador_missoes.esta_completa("m6_batismo_de_pista"):
+                                        gerenciador_missoes.completar_por_cena("ch1_6_post_first_race_and_pixel")
+                                        gerenciador_missoes.salvar()
                                     # Garantir que o progresso está salvo com a flag ainda ativa
                                     gerenciador_progresso.salvar()
                                     print(f"[MAIN] Missão m6_batismo_de_pista completada e salva. Flag ultima_corrida_campanha: {gerenciador_progresso.ultima_corrida_campanha}")
@@ -2895,9 +3009,11 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             
                             resultados.sort(key=lambda x: x["posicao"] if x["posicao"] else 999)
                             
-                            # No modo campanha, adicionar opção "Continuar" para seguir a história
+                            # Adicionar opção "Continuar" baseado no modo
                             opcoes_resultado = []
-                            if not modo_arcade and modo_jogo == ModoJogo.UM_JOGADOR:
+                            if modo_arcade:
+                                opcoes_resultado.append(("CONTINUAR", "continuar_arcade"))
+                            elif not modo_arcade and modo_jogo == ModoJogo.UM_JOGADOR:
                                 opcoes_resultado.append(("CONTINUAR", "continuar_campanha"))
                             opcoes_resultado.extend([
                                 ("TROCAR CARRO", "trocar_carro"),
@@ -3158,7 +3274,11 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     
                     if (pode_controlar_p1 or modo_jogo != ModoJogo.DOIS_JOGADORES) and not jogo_terminado_p1:
                         vlong, vlat = carro1._mundo_para_local(carro1.vx, carro1.vy)
-                        velocidade_kmh = abs(vlong) * 0.5
+                        # Usar mesma fórmula de conversão: velocidade_total * ARCADE_SPEED_MULT * PXPS_TO_KMH
+                        velocidade_total_pxps = math.sqrt(vlong*vlong + vlat*vlat)
+                        ARCADE_SPEED_MULT = 2.5
+                        PXPS_TO_KMH = 0.26
+                        velocidade_kmh = velocidade_total_pxps * ARCADE_SPEED_MULT * PXPS_TO_KMH
                         angulo_drift = abs(math.degrees(math.atan2(vlat, max(0.1, abs(vlong)))))
                         drift_ativado = getattr(carro1, 'drift_ativado', False)
                         derrapando = getattr(carro1, 'drifting', False)
@@ -3181,7 +3301,11 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     if carro2 is not None and drift_scoring_p2 is not None:
                         if (pode_controlar_p2 or modo_jogo != ModoJogo.DOIS_JOGADORES) and not jogo_terminado_p2:
                             vlong2, vlat2 = carro2._mundo_para_local(carro2.vx, carro2.vy)
-                            velocidade_kmh2 = abs(vlong2) * 0.5
+                            # Usar mesma fórmula de conversão: velocidade_total * ARCADE_SPEED_MULT * PXPS_TO_KMH
+                            velocidade_total_pxps2 = math.sqrt(vlong2*vlong2 + vlat2*vlat2)
+                            ARCADE_SPEED_MULT = 2.5
+                            PXPS_TO_KMH = 0.26
+                            velocidade_kmh2 = velocidade_total_pxps2 * ARCADE_SPEED_MULT * PXPS_TO_KMH
                             angulo_drift2 = abs(math.degrees(math.atan2(vlat2, max(0.1, abs(vlong2)))))
                             drift_ativado2 = getattr(carro2, 'drift_ativado', False)
                             derrapando2 = getattr(carro2, 'drifting', False)
@@ -3618,17 +3742,18 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 # Fallback para tela individual (caso ainda exista algum código que use)
                 desenhar_tela_fim_jogo(tela, estado_fim_jogo, dt)
 
+        # Cutscenes removidas completamente do modo arcade - não desenhar NPCs no modo arcade
         # Desenhar Akira (se ativa, modo 1 jogador e não estiver na tela de fim de jogo ou resultados finais) - tem prioridade sobre todos
-        if akira.ativo and modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
+        if akira.ativo and modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
             akira.desenhar_dialogo(tela, dt)
         # Desenhar Rex (se ativo, modo 1 jogador, Akira não estiver ativa e não estiver na tela de fim de jogo ou resultados finais) - tem prioridade sobre Crank
-        elif rex.ativo and modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
+        elif rex.ativo and modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
             rex.desenhar_dialogo(tela, dt)
         # Desenhar Crank (se ativo, modo 1 jogador, Akira/Rex não estiverem ativos e não estiver na tela de fim de jogo ou resultados finais) - tem prioridade sobre mercador alien
-        elif crank.ativo and modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
+        elif crank.ativo and modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
             crank.desenhar_dialogo(tela, dt)
         # Desenhar mercador alien (se ativo, modo 1 jogador, Akira/Rex/Crank não estiverem ativos e não estiver na tela de fim de jogo ou resultados finais) - deve aparecer sobre tudo
-        elif mercador_alien.ativo and modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
+        elif mercador_alien.ativo and modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade and estado_fim_jogo is None and estado_fim_jogo_p1 is None and estado_fim_jogo_p2 is None and estado_resultados_finais is None:
             mercador_alien.desenhar_dialogo(tela, dt)
 
         if modo_jogo != ModoJogo.DOIS_JOGADORES and tipo_jogo != TipoJogo.DRIFT and not tela_fim_mostrada:
@@ -3721,7 +3846,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 # Registrar corrida no Crank (mas não aparecer ainda - só após fechar tela de fim de jogo)
                 colisoes_na_corrida = getattr(principal, '_colisoes_na_corrida', 0)
                 venceu = (posicao_jogador == 1)
-                crank.registrar_corrida(posicao_jogador, colisoes_na_corrida, venceu)
+                crank.registrar_corrida(posicao_jogador, colisoes_na_corrida, venceu, modo_arcade=modo_arcade)
 
                 tela_fim_mostrada = True
 
@@ -3833,11 +3958,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         # Verificar se foi registrado corretamente
                         stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(numero_pista)
                         print(f"[MAIN] Estatísticas após registro (arcade): melhor_tempo={stats_pista.get('melhor_tempo')}, melhor_posicao={stats_pista.get('melhor_posicao')}, completas={stats_pista.get('corridas_completas', 0)}")
-                        # Verificar se Akira deve aparecer pós-corrida (modo 1 jogador, APENAS no modo arcade)
-                        # No modo campanha, o roteiro já gerencia a narrativa, então não chamar Akira pós-corrida
-                        if modo_jogo == ModoJogo.UM_JOGADOR and modo_arcade:
-                            colisoes_na_corrida = getattr(principal, '_colisoes_na_corrida', 0)
-                            akira.verificar_aparecer_pos_corrida(posicao_jogador, colisoes_na_corrida, posicao_jogador == 1)
+                        # Cutscenes removidas completamente do modo arcade
                         # Verificar se Rex deve aparecer (primeira corrida, modo 1 jogador, não no modo arcade) - DEPOIS de registrar a corrida
                         if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
                             rex.verificar_aparecer()
@@ -3928,8 +4049,10 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     print(f"[RESULTADOS] Tela de resultados criada assim que jogador terminou. Bots ainda correndo: {not todos_carros_finalizaram}")
                 # Limpar estado de fim de jogo individual para evitar sobreposição
                 estado_fim_jogo = None
-            elif estado_resultados_finais is not None and not todos_carros_finalizaram:
-                # Atualizar resultados em tempo real enquanto bots ainda estão correndo
+            
+            # SEMPRE atualizar resultados em tempo real enquanto a tela estiver aberta e houver carros correndo
+            if estado_resultados_finais is not None and not todos_carros_finalizaram:
+                # Atualizar resultados em tempo real sempre que alguém terminar
                 todos_carros = [c for c in carros if c is not None]
                 resultados = []
 

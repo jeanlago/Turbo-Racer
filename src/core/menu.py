@@ -686,12 +686,17 @@ def desenhar_tela_estatisticas(screen, dt, mouse_x=None, mouse_y=None):
             return f"{score_int:,}".replace(",", ".")
         return str(score_int)
     
-    # Coletar recordes de corrida
+    # Coletar melhores tempos de corrida das estatísticas (não dos recordes)
     recordes_corrida_texto = []
     for pista_num in range(1, 10):
-        recorde = gerenciador_progresso.obter_recorde(pista_num)
-        if recorde is not None:
-            recordes_corrida_texto.append(f"Pista {pista_num}: {formatar_tempo_estat(recorde)}")
+        # Usar melhor_tempo das estatísticas por pista (mais preciso)
+        stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(pista_num)
+        melhor_tempo = stats_pista.get("melhor_tempo")
+        # Se não houver nas estatísticas, tentar obter do recorde como fallback
+        if melhor_tempo is None:
+            melhor_tempo = gerenciador_progresso.obter_recorde(pista_num)
+        if melhor_tempo is not None:
+            recordes_corrida_texto.append(f"Pista {pista_num}: {formatar_tempo_estat(melhor_tempo)}")
     
     # Coletar recordes de drift
     recordes_drift_texto = []
@@ -724,8 +729,9 @@ def desenhar_tela_estatisticas(screen, dt, mouse_x=None, mouse_y=None):
         secoes.append(("MELHORES SCORES (DRIFT)", recordes_drift_texto))
     
     # Criar superfície com scroll para conteúdo
-    area_conteudo_altura = caixa_altura - 150
-    conteudo_surface = pygame.Surface((caixa_largura - 60, area_conteudo_altura), pygame.SRCALPHA)
+    # Aumentar altura da área de conteúdo para evitar corte
+    area_conteudo_altura = caixa_altura - 120  # Reduzir margem superior/inferior
+    conteudo_surface = pygame.Surface((caixa_largura - 60, max(area_conteudo_altura, 1000)), pygame.SRCALPHA)  # Superfície maior para scroll
     conteudo_surface.fill((0, 0, 0, 0))
     
     scroll_y = 0
@@ -757,12 +763,12 @@ def desenhar_tela_estatisticas(screen, dt, mouse_x=None, mouse_y=None):
     scroll_max = max(0, altura_total_conteudo - area_conteudo_altura)
     _estatisticas_scroll_offset = max(0, min(_estatisticas_scroll_offset, scroll_max))
     
-    # Criar área de clipping para o conteúdo
-    clip_rect = pygame.Rect(caixa_x + 30, caixa_y + 80, caixa_largura - 60, area_conteudo_altura)
+    # Criar área de clipping para o conteúdo (ajustar posição Y para mais espaço)
+    clip_rect = pygame.Rect(caixa_x + 30, caixa_y + 70, caixa_largura - 60, area_conteudo_altura)
     screen.set_clip(clip_rect)
     
     # Desenhar conteúdo com scroll
-    screen.blit(conteudo_surface, (caixa_x + 30, caixa_y + 80 - _estatisticas_scroll_offset))
+    screen.blit(conteudo_surface, (caixa_x + 30, caixa_y + 70 - _estatisticas_scroll_offset))
     
     # Remover clipping
     screen.set_clip(None)
@@ -777,12 +783,28 @@ def desenhar_tela_estatisticas(screen, dt, mouse_x=None, mouse_y=None):
     if mouse_x is not None and mouse_y is not None:
         fechar_hover = botao_fechar_rect.collidepoint(mouse_x, mouse_y)
     
-    # Cores do botão baseadas no hover
-    cor_fundo = (255, 80, 80) if fechar_hover else (200, 50, 50)
-    cor_borda = (255, 150, 150) if fechar_hover else (255, 100, 100)
+    # Verificar se está selecionado pelo controle
+    from core.gamepad_manager import gerenciador_gamepad
+    fechar_selecionado = getattr(desenhar_tela_estatisticas, '_fechar_selecionado', False)
+    
+    # Cores do botão baseadas no hover ou seleção
+    cor_fundo = (255, 80, 80) if (fechar_hover or fechar_selecionado) else (200, 50, 50)
+    cor_borda = (255, 150, 150) if (fechar_hover or fechar_selecionado) else (255, 100, 100)
     
     pygame.draw.rect(screen, cor_fundo, botao_fechar_rect)
     pygame.draw.rect(screen, cor_borda, botao_fechar_rect, 2)
+    
+    # Desenhar cursor do controle se selecionado
+    if fechar_selecionado and gerenciador_gamepad.obter_numero_controles() > 0:
+        tamanho_cursor = 3 + int(2 * abs(math.sin(_estatisticas_animacao_cursor * math.pi)))
+        cursor_rect = pygame.Rect(
+            botao_fechar_rect.x - tamanho_cursor,
+            botao_fechar_rect.y - tamanho_cursor,
+            botao_fechar_rect.width + tamanho_cursor * 2,
+            botao_fechar_rect.height + tamanho_cursor * 2
+        )
+        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
+    
     fechar_texto = render_text("FECHAR", 18, (255, 255, 255), bold=True, pixel_style=True)
     fechar_x = botao_fechar_rect.x + (botao_fechar_rect.width - fechar_texto.get_width()) // 2
     fechar_y = botao_fechar_rect.y + (botao_fechar_rect.height - fechar_texto.get_height()) // 2
@@ -833,14 +855,29 @@ def desenhar_tela_desafios(screen, dt):
             if y_atual > caixa_y + caixa_altura - 100:
                 break
             progresso = gerenciador_desafios.obter_progresso(desafio["id"])
+            # Garantir que o progresso não exceda o objetivo
+            progresso = min(progresso, desafio["objetivo"])
             porcentagem = min(100, int((progresso / desafio["objetivo"]) * 100))
+            esta_completo = gerenciador_desafios.esta_completado(desafio["id"])
             
-            desc_texto = render_text(desafio["descricao"], 18, (200, 200, 200), bold=False, pixel_style=True)
-            progresso_texto = render_text(f"{progresso}/{desafio['objetivo']} ({porcentagem}%)", 16, (100, 220, 255), bold=True, pixel_style=True)
+            # Cores diferentes para desafios completados
+            if esta_completo:
+                cor_desc = (150, 255, 150)  # Verde para completado
+                cor_progresso = (100, 255, 100)  # Verde mais claro
+                status_texto = render_text("✓ CONCLUÍDO", 14, (100, 255, 100), bold=True, pixel_style=True)
+            else:
+                cor_desc = (200, 200, 200)  # Cinza normal
+                cor_progresso = (100, 220, 255)  # Azul normal
+                status_texto = None
+            
+            desc_texto = render_text(desafio["descricao"], 18, cor_desc, bold=False, pixel_style=True)
+            progresso_texto = render_text(f"{progresso}/{desafio['objetivo']} ({porcentagem}%)", 16, cor_progresso, bold=True, pixel_style=True)
             recompensa_texto = render_text(f"Recompensa: ${desafio['recompensa']}", 16, (150, 255, 150), bold=True, pixel_style=True)
             
             screen.blit(desc_texto, (caixa_x + 50, y_atual))
             screen.blit(progresso_texto, (caixa_x + 50, y_atual + 25))
+            if status_texto:
+                screen.blit(status_texto, (caixa_x + 50 + desc_texto.get_width() + 10, y_atual))
             screen.blit(recompensa_texto, (caixa_x + caixa_largura - 250, y_atual))
             y_atual += 60
     
@@ -854,20 +891,59 @@ def desenhar_tela_desafios(screen, dt):
             if y_atual > caixa_y + caixa_altura - 100:
                 break
             progresso = gerenciador_desafios.obter_progresso(desafio["id"])
+            # Garantir que o progresso não exceda o objetivo
+            progresso = min(progresso, desafio["objetivo"])
             porcentagem = min(100, int((progresso / desafio["objetivo"]) * 100))
+            esta_completo = gerenciador_desafios.esta_completado(desafio["id"])
             
-            desc_texto = render_text(desafio["descricao"], 18, (200, 200, 200), bold=False, pixel_style=True)
-            progresso_texto = render_text(f"{progresso}/{desafio['objetivo']} ({porcentagem}%)", 16, (100, 220, 255), bold=True, pixel_style=True)
+            # Cores diferentes para desafios completados
+            if esta_completo:
+                cor_desc = (200, 150, 255)  # Roxo claro para completado
+                cor_progresso = (180, 120, 255)  # Roxo mais claro
+                status_texto = render_text("✓ CONCLUÍDO", 14, (180, 120, 255), bold=True, pixel_style=True)
+            else:
+                cor_desc = (200, 200, 200)  # Cinza normal
+                cor_progresso = (100, 220, 255)  # Azul normal
+                status_texto = None
+            
+            desc_texto = render_text(desafio["descricao"], 18, cor_desc, bold=False, pixel_style=True)
+            progresso_texto = render_text(f"{progresso}/{desafio['objetivo']} ({porcentagem}%)", 16, cor_progresso, bold=True, pixel_style=True)
             recompensa_texto = render_text(f"Recompensa: ${desafio['recompensa']}", 16, (200, 150, 255), bold=True, pixel_style=True)
             
             screen.blit(desc_texto, (caixa_x + 50, y_atual))
             screen.blit(progresso_texto, (caixa_x + 50, y_atual + 25))
+            if status_texto:
+                screen.blit(status_texto, (caixa_x + 50 + desc_texto.get_width() + 10, y_atual))
             screen.blit(recompensa_texto, (caixa_x + caixa_largura - 250, y_atual))
             y_atual += 60
     
     botao_fechar_rect = pygame.Rect(caixa_x + caixa_largura - 120, caixa_y + 20, 100, 40)
-    pygame.draw.rect(screen, (200, 50, 50), botao_fechar_rect)
-    pygame.draw.rect(screen, (255, 100, 100), botao_fechar_rect, 2)
+    # Verificar hover
+    mouse_x, mouse_y = pygame.mouse.get_pos()
+    fechar_hover = botao_fechar_rect.collidepoint(mouse_x, mouse_y)
+    
+    # Verificar se está selecionado pelo controle
+    from core.gamepad_manager import gerenciador_gamepad
+    fechar_selecionado = getattr(desenhar_tela_desafios, '_fechar_selecionado', False)
+    
+    # Cores do botão baseadas no hover ou seleção
+    cor_fundo = (255, 80, 80) if (fechar_hover or fechar_selecionado) else (200, 50, 50)
+    cor_borda = (255, 150, 150) if (fechar_hover or fechar_selecionado) else (255, 100, 100)
+    
+    pygame.draw.rect(screen, cor_fundo, botao_fechar_rect)
+    pygame.draw.rect(screen, cor_borda, botao_fechar_rect, 2)
+    
+    # Desenhar cursor do controle se selecionado
+    if fechar_selecionado and gerenciador_gamepad.obter_numero_controles() > 0:
+        tamanho_cursor = 3 + int(2 * abs(math.sin(_desafios_animacao_cursor * math.pi)))
+        cursor_rect = pygame.Rect(
+            botao_fechar_rect.x - tamanho_cursor,
+            botao_fechar_rect.y - tamanho_cursor,
+            botao_fechar_rect.width + tamanho_cursor * 2,
+            botao_fechar_rect.height + tamanho_cursor * 2
+        )
+        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
+    
     fechar_texto = render_text("FECHAR", 18, (255, 255, 255), bold=True, pixel_style=True)
     fechar_x = botao_fechar_rect.x + (botao_fechar_rect.width - fechar_texto.get_width()) // 2
     fechar_y = botao_fechar_rect.y + (botao_fechar_rect.height - fechar_texto.get_height()) // 2
@@ -1041,13 +1117,14 @@ def menu_loop(screen) -> Escolha:
                         elif icone_selecionado == -3:
                             icone_selecionado = -2
                     else:
-                        # Navegação entre opções do menu
-                        navegacao_esquerda = {
-                            0: 2, 1: 0, 2: None, 3: 1, 4: 3
-                        }
-                        novo_idx = navegacao_esquerda.get(idx)
-                        if novo_idx is not None:
-                            idx = novo_idx
+                        # Navegação entre opções do menu: 0=Opções (esquerda), 1=JOGAR (centro), 2=Sair (direita)
+                        # Esquerda: circular para a esquerda (0→2, 1→0, 2→1)
+                        if idx == 0:  # Opções → Sair
+                            idx = 2
+                        elif idx == 1:  # JOGAR → Opções
+                            idx = 0
+                        elif idx == 2:  # Sair → JOGAR
+                            idx = 1
                 elif acao == "direita" and resultado_hold.get("fonte") == "hold":
                     if icone_selecionado is not None:
                         if icone_selecionado == -1:
@@ -1055,13 +1132,14 @@ def menu_loop(screen) -> Escolha:
                         elif icone_selecionado == -2:
                             icone_selecionado = -3
                     else:
-                        # Navegação entre opções do menu
-                        navegacao_direita = {
-                            0: 1, 1: 3, 2: 0, 3: 4, 4: None
-                        }
-                        novo_idx = navegacao_direita.get(idx)
-                        if novo_idx is not None:
-                            idx = novo_idx
+                        # Navegação entre opções do menu: 0=Opções (esquerda), 1=JOGAR (centro), 2=Sair (direita)
+                        # Direita: circular para a direita (0→1, 1→2, 2→0)
+                        if idx == 0:  # Opções → JOGAR
+                            idx = 1
+                        elif idx == 1:  # JOGAR → Sair
+                            idx = 2
+                        elif idx == 2:  # Sair → Opções
+                            idx = 0
         
         # Verificação contínua do D-pad REMOVIDA
         # O D-pad agora é processado apenas via eventos JOYBUTTONDOWN
@@ -1111,6 +1189,8 @@ def menu_loop(screen) -> Escolha:
             elif tela_estatisticas_aberta and gerenciador_gamepad.obter_numero_controles() > 0:
                 from core.menu_controles import processar_eventos_controle_menu
                 tempo_atual = pygame.time.get_ticks()
+                # Sempre resetar para True quando a tela está aberta (garantir que aparece ao reabrir)
+                desenhar_tela_estatisticas._fechar_selecionado = True
                 resultado_controle = processar_eventos_controle_menu(ev, 0, 0, joystick_id=0, tempo_atual=tempo_atual)
                 if resultado_controle:
                     acao = resultado_controle.get("acao")
@@ -1136,22 +1216,41 @@ def menu_loop(screen) -> Escolha:
                         scroll_max = max(0, altura_total - area_conteudo_altura)
                         _estatisticas_scroll_offset = max(0, min(_estatisticas_scroll_offset, scroll_max))
                         continue
-                    elif acao == "confirmar" or acao == "cancelar":
+                    elif acao == "confirmar":
+                        # Fechar tela se botão fechar está selecionado
+                        if desenhar_tela_estatisticas._fechar_selecionado:
+                            tela_estatisticas_aberta = False
+                            _estatisticas_scroll_offset = 0.0
+                            icone_selecionado = None
+                            desenhar_tela_estatisticas._fechar_selecionado = False
+                        continue
+                    elif acao == "cancelar":
                         # Fechar tela
                         tela_estatisticas_aberta = False
                         _estatisticas_scroll_offset = 0.0
                         icone_selecionado = None
+                        desenhar_tela_estatisticas._fechar_selecionado = False
                         continue
             elif tela_desafios_aberta and gerenciador_gamepad.obter_numero_controles() > 0:
                 from core.menu_controles import processar_eventos_controle_menu
                 tempo_atual = pygame.time.get_ticks()
+                # Sempre resetar para True quando a tela está aberta (garantir que aparece ao reabrir)
+                desenhar_tela_desafios._fechar_selecionado = True
                 resultado_controle = processar_eventos_controle_menu(ev, 0, 0, joystick_id=0, tempo_atual=tempo_atual)
                 if resultado_controle:
                     acao = resultado_controle.get("acao")
-                    if acao == "confirmar" or acao == "cancelar":
+                    if acao == "confirmar":
+                        # Fechar tela se botão fechar está selecionado
+                        if desenhar_tela_desafios._fechar_selecionado:
+                            tela_desafios_aberta = False
+                            icone_selecionado = None
+                            desenhar_tela_desafios._fechar_selecionado = False
+                        continue
+                    elif acao == "cancelar":
                         # Fechar tela
                         tela_desafios_aberta = False
                         icone_selecionado = None
+                        desenhar_tela_desafios._fechar_selecionado = False
                         continue
             
             # Processar eventos de controle ANTES de outros eventos (para o menu principal)
@@ -1185,17 +1284,14 @@ def menu_loop(screen) -> Escolha:
                             elif icone_selecionado == -3:  # Missão Diária -> Conquistas
                                 icone_selecionado = -2
                         else:
-                            # Processar tanto D-pad quanto analógico nas opções do menu
-                            navegacao_esquerda = {
-                                0: 2,     # SELECIONAR CARROS -> RECORDES
-                                1: 0,     # JOGAR -> SELECIONAR CARROS
-                                2: None,  # RECORDES -> não tem esquerda (primeiro)
-                                3: 1,     # OPÇÕES -> JOGAR
-                                4: 3      # SAIR -> OPÇÕES
-                            }
-                            novo_idx = navegacao_esquerda.get(idx)
-                            if novo_idx is not None:
-                                idx = novo_idx
+                            # Navegação entre opções do menu: 0=Opções (esquerda), 1=JOGAR (centro), 2=Sair (direita)
+                            # Esquerda: circular para a esquerda (0→2, 1→0, 2→1)
+                            if idx == 0:  # Opções → Sair
+                                idx = 2
+                            elif idx == 1:  # JOGAR → Opções
+                                idx = 0
+                            elif idx == 2:  # Sair → JOGAR
+                                idx = 1
                     elif acao == "direita":
                         # Se está nos ícones, navegar entre eles
                         if icone_selecionado is not None:
@@ -1206,17 +1302,14 @@ def menu_loop(screen) -> Escolha:
                             elif icone_selecionado == -3:  # Missão Diária (último, não tem direita)
                                 pass
                         else:
-                            # Processar tanto D-pad quanto analógico nas opções do menu
-                            navegacao_direita = {
-                                0: 1,     # SELECIONAR CARROS -> JOGAR
-                                1: 3,     # JOGAR -> OPÇÕES
-                                2: 0,     # RECORDES -> SELECIONAR CARROS
-                                3: 4,     # OPÇÕES -> SAIR
-                                4: None   # SAIR -> não tem direita (último)
-                            }
-                            novo_idx = navegacao_direita.get(idx)
-                            if novo_idx is not None:
-                                idx = novo_idx
+                            # Navegação entre opções do menu: 0=Opções (esquerda), 1=JOGAR (centro), 2=Sair (direita)
+                            # Direita: circular para a direita (0→1, 1→2, 2→0)
+                            if idx == 0:  # Opções → JOGAR
+                                idx = 1
+                            elif idx == 1:  # JOGAR → Sair
+                                idx = 2
+                            elif idx == 2:  # Sair → Opções
+                                idx = 0
                     elif acao == "confirmar":
                         # Se está nos ícones, abrir a tela correspondente
                         if icone_selecionado == -1:  # Estatísticas
@@ -1232,7 +1325,14 @@ def menu_loop(screen) -> Escolha:
                             tela_desafios_aberta = True
                             icone_selecionado = None  # Resetar seleção ao abrir tela
                         else:
-                            # OPCOES (idx == 0), JOGAR (idx == 1) e SAIR (idx == 2) não têm bloqueios
+                            # Se for SAIR (idx == 2), mostrar confirmação antes de sair
+                            if idx == 2:
+                                confirmado = mostrar_dialogo_confirmacao_fechar(screen, bg)
+                                if confirmado:
+                                    return Escolha.SAIR
+                                # Se não confirmou, continuar no menu
+                                continue
+                            # OPCOES (idx == 0) e JOGAR (idx == 1) não têm bloqueios
                             return Escolha(idx)
                     elif acao == "cancelar":
                         # Se está nas telas de achievements, estatísticas ou desafios, fechar a tela
@@ -1250,13 +1350,22 @@ def menu_loop(screen) -> Escolha:
                             tela_desafios_aberta = False
                             icone_selecionado = None
                         else:
-                            # Se não está em nenhuma tela, sair do jogo
-                            return Escolha.SAIR
+                            # Se não está em nenhuma tela, mostrar confirmação antes de sair
+                            confirmado = mostrar_dialogo_confirmacao_fechar(screen, bg)
+                            if confirmado:
+                                return Escolha.SAIR
+                            # Se não confirmou, continuar no menu
+                            continue
                     # Se processou evento de controle, pular processamento de teclado
                     continue
             
             if ev.type == pygame.QUIT:
-                return Escolha.SAIR
+                # Mostrar diálogo modal de confirmação antes de fechar
+                confirmado = mostrar_dialogo_confirmacao_fechar(screen, bg)
+                if confirmado:
+                    return Escolha.SAIR
+                # Se não confirmou, continuar no menu
+                continue
             if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                 # Verificar clique no botão de achievements
                 if not tela_achievements_aberta and not tela_estatisticas_aberta and not tela_desafios_aberta and botao_achievements_rect.collidepoint(mouse_x, mouse_y):
@@ -1429,6 +1538,13 @@ def menu_loop(screen) -> Escolha:
                     if novo_idx is not None:
                         idx = novo_idx
                 elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
+                    # Se for SAIR (idx == 2), mostrar confirmação antes de sair
+                    if idx == 2:
+                        confirmado = mostrar_dialogo_confirmacao_fechar(screen, bg)
+                        if confirmado:
+                            return Escolha.SAIR
+                        # Se não confirmou, continuar no menu
+                        continue
                     return Escolha(idx)
                 elif ev.key == pygame.K_ESCAPE:
                     return Escolha.SAIR
@@ -1476,8 +1592,14 @@ def menu_loop(screen) -> Escolha:
                         
                         # Verificar clique no botão
                         if clique_no_botao:
-                            # OPCOES (i == 0) e SAIR (i == 2) não têm bloqueios
-                            # JOGAR (i == 1) também não tem bloqueios
+                            # Se for SAIR (i == 2), mostrar confirmação antes de sair
+                            if i == 2:
+                                confirmado = mostrar_dialogo_confirmacao_fechar(screen, bg)
+                                if confirmado:
+                                    return Escolha.SAIR
+                                # Se não confirmou, continuar no menu
+                                continue
+                            # OPCOES (i == 0) e JOGAR (i == 1) não têm bloqueios
                             return Escolha(i)
 
         # desenha
@@ -1490,8 +1612,17 @@ def menu_loop(screen) -> Escolha:
         
         # Contar missões diárias concluídas e selecionar ícone apropriado
         from core.desafios import gerenciador_desafios
+        # Recarregar desafios para garantir que está atualizado
+        gerenciador_desafios.gerenciador_progresso.carregar()
         missoes_concluidas = gerenciador_desafios.contar_missoes_diarias_concluidas()
-        icon_missao_atual = icon_missao_cache.get(missoes_concluidas, None)
+        # Garantir que o valor está entre 0 e 3
+        missoes_concluidas = max(0, min(3, int(missoes_concluidas)))
+        # Selecionar ícone - garantir que sempre encontre o ícone correto
+        if missoes_concluidas in icon_missao_cache:
+            icon_missao_atual = icon_missao_cache[missoes_concluidas]
+        else:
+            # Fallback: usar o primeiro ícone disponível ou None
+            icon_missao_atual = icon_missao_cache.get(0, None) if icon_missao_cache else None
         
         # Desenhar apenas o ícone de achievements (sem caixa de contorno)
         if not tela_achievements_aberta:
@@ -2054,11 +2185,14 @@ def calcular_especificacoes_carro(carro_info, upgrades):
     
     # Converter para km/h (mesma fórmula do HUD: v_long * ARCADE_SPEED_MULT * PXPS_TO_KMH)
     ARCADE_SPEED_MULT = 2.5
-    PXPS_TO_KMH = 1.0  # Mesma conversão do HUD
+    PXPS_TO_KMH = 0.26  # Ajustado para que ~500 px/s = ~325 km/h
     vel_max_kmh = vel_max_pxps * ARCADE_SPEED_MULT * PXPS_TO_KMH
     
-    # LIMITE HARD: garantir que nenhum carro ultrapasse 380 km/h
-    vel_max_kmh = min(380.0, vel_max_kmh)
+    # Aplicar mesmo multiplicador do velocímetro (5.0x) para exibição nas especificações
+    vel_max_kmh = vel_max_kmh * 5.0
+    
+    # LIMITE HARD: garantir que nenhum carro ultrapasse 500 km/h (ajustado para o multiplicador)
+    vel_max_kmh = min(500.0, vel_max_kmh)
     vel_max = int(vel_max_kmh)
     
     # Aceleração: baseada na força do motor (0-100)
@@ -2488,6 +2622,7 @@ def _executar_transicao_melhoria(screen, fundo_base):
                 return
 
 def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
+    from core.menu_controles import processar_eventos_controle_menu
     global _tinha_dinheiro_anterior
     # Importar gerenciador_progresso no início da função
     from core.progresso import gerenciador_progresso
@@ -2537,9 +2672,26 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
         elif not tem_dinheiro_atual:
             _tinha_dinheiro_anterior = False
     
-    from config import DIR_SPRITES, DIR_CAR_SELECTION, obter_caminho_sprite_dia_noite, LARGURA, ALTURA
-    # Usar sistema de ciclo dia/noite para carregar sprite correto
-    CAMINHO_OFICINA = obter_caminho_sprite_dia_noite("oficina")
+    from config import DIR_SPRITES, DIR_CAR_SELECTION, obter_caminho_sprite_dia_noite, LARGURA, ALTURA, DIR_UI
+    import os
+    # No modo arcade, sempre usar fundo de noite
+    if modo_arcade:
+        # Forçar fundo de noite no modo arcade
+        caminho_oficina_noite = os.path.join(DIR_UI, "oficina_noite.png")
+        if os.path.exists(caminho_oficina_noite):
+            CAMINHO_OFICINA = caminho_oficina_noite
+        else:
+            # Fallback: usar função obter_caminho_sprite_dia_noite mas forçando noite
+            # Temporariamente definir estado como noite
+            from config import definir_estado_dia_noite, obter_estado_dia_noite
+            estado_anterior = obter_estado_dia_noite()
+            definir_estado_dia_noite("noite")
+            CAMINHO_OFICINA = obter_caminho_sprite_dia_noite("oficina")
+            # Restaurar estado anterior
+            definir_estado_dia_noite(estado_anterior)
+    else:
+        # Usar sistema de ciclo dia/noite para carregar sprite correto
+        CAMINHO_OFICINA = obter_caminho_sprite_dia_noite("oficina")
     
     if os.path.exists(CAMINHO_OFICINA):
         bg_raw = pygame.image.load(CAMINHO_OFICINA).convert_alpha()
@@ -3033,17 +3185,40 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
             # O Crank só intercepta eventos quando está ativo e processando, mas não bloqueia
             # eventos futuros que não foram processados por ele
         
+        # Inicializar cursor do controle se houver controle conectado e ainda não foi inicializado
+        if gerenciador_gamepad.obter_numero_controles() > 0 and botao_selecionado_controle is None:
+            if fase_selecao == 1:
+                carro_atual_temp = CARROS_DISPONIVEIS_FILTRADOS[carro_p1] if not modo_arcade else CARROS_DISPONIVEIS[carro_p1]
+                esta_desbloqueado_temp = gerenciador_progresso.esta_desbloqueado(carro_atual_temp['prefixo_cor'])
+            else:
+                carro_atual_temp = CARROS_DISPONIVEIS[carro_p2]
+                esta_desbloqueado_temp = gerenciador_progresso.esta_desbloqueado(carro_atual_temp['prefixo_cor'])
+            if esta_desbloqueado_temp:
+                botao_selecionado_controle = "usar"
+            else:
+                botao_selecionado_controle = "comprar"
+        
         for ev in eventos:
             if ev.type == pygame.QUIT:
-                return None, None
+                # Mostrar diálogo modal de confirmação antes de fechar
+                confirmado = mostrar_dialogo_confirmacao_fechar(screen, fundo_sem_textos if 'fundo_sem_textos' in locals() else bg)
+                if confirmado:
+                    return None, None
+                # Se não confirmou, continuar na oficina
+                continue
             
             # Processar eventos de controle ANTES de outros eventos
+            # Verificar se há controles conectados e se o evento é de controle
+            controle_processado = False  # Inicializar variável
             if gerenciador_gamepad.obter_numero_controles() > 0:
-                from core.menu_controles import processar_eventos_controle_menu
+                # Verificar se é um evento de controle - processar TODOS os eventos de controle
+                if ev.type in (pygame.JOYBUTTONDOWN, pygame.JOYHATMOTION, pygame.JOYAXISMOTION):
+                    # Criar uma lista de opções para navegação (carros)
+                    num_carros = len(CARROS_DISPONIVEIS_FILTRADOS) if not modo_arcade else len(CARROS_DISPONIVEIS)
+                    carro_atual_idx = carro_p1 if fase_selecao == 1 else carro_p2
+                
+                # Definir tempo_atual para uso posterior (fora do bloco condicional para estar sempre disponível)
                 tempo_atual = pygame.time.get_ticks()
-                # Criar uma lista de opções para navegação (carros)
-                num_carros = len(CARROS_DISPONIVEIS_FILTRADOS) if not modo_arcade else len(CARROS_DISPONIVEIS)
-                carro_atual_idx = carro_p1 if fase_selecao == 1 else carro_p2
                 
                 # Passar 0 como num_opcoes para evitar que esquerda/direita do D-pad sejam processadas como navegação de carros
                 # Apenas L1/R1 devem trocar carros
@@ -3060,16 +3235,34 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                 # Opções disponíveis: 
                 # Linha superior: voltar (1 opção)
                 # Linha inferior: usar/comprar, upgrade, vender, concluído (4 opções)
+                # Setas: seta_esquerda, seta_direita (2 opções especiais)
                 num_opcoes_botoes_superior = 1  # voltar (botão dois_jogadores removido)
                 num_opcoes_botoes_inferior = 4  # usar/comprar, upgrade, vender, concluído
                 
+                # Verificar se há setas disponíveis
+                num_carros_disponiveis = len(CARROS_DISPONIVEIS_FILTRADOS) if not modo_arcade else len(CARROS_DISPONIVEIS)
+                tem_seta_esquerda = carro_p1 > 0 if fase_selecao == 1 else carro_p2 > 0
+                tem_seta_direita = (carro_p1 < num_carros_disponiveis - 1) if fase_selecao == 1 else (carro_p2 < len(CARROS_DISPONIVEIS) - 1)
+                
                 # Determinar em qual linha estamos
-                linha_atual = "inferior"  # ou "superior"
+                linha_atual = "inferior"  # ou "superior" ou "setas"
                 opcao_botao_atual = 0
+                # Inicializar botao_selecionado_controle se ainda não foi definido (primeira vez usando controle)
+                if botao_selecionado_controle is None:
+                    if esta_desbloqueado:
+                        botao_selecionado_controle = "usar"
+                    else:
+                        botao_selecionado_controle = "comprar"
                 if botao_selecionado_controle:
                     if botao_selecionado_controle == "voltar":
                         linha_atual = "superior"
                         opcao_botao_atual = 0
+                    elif botao_selecionado_controle == "seta_esquerda":
+                        linha_atual = "setas"
+                        opcao_botao_atual = 0
+                    elif botao_selecionado_controle == "seta_direita":
+                        linha_atual = "setas"
+                        opcao_botao_atual = 1
                     # Botão "dois_jogadores" removido
                     elif botao_selecionado_controle == "usar" or botao_selecionado_controle == "comprar":
                         linha_atual = "inferior"
@@ -3084,172 +3277,414 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                         linha_atual = "inferior"
                         opcao_botao_atual = 3
                 
-                # Processar eventos: uma chamada para cima/baixo (0 opções) e outra para esquerda/direita
+                # Processar eventos de controle - processar apenas UMA vez e verificar todas as ações
+                resultado_controle = None
                 num_opcoes_horizontal = num_opcoes_botoes_superior if linha_atual == "superior" else num_opcoes_botoes_inferior
-                resultado_controle_vertical = processar_eventos_controle_menu(ev, opcao_botao_atual, 0, joystick_id=0, tempo_atual=tempo_atual)
-                resultado_controle_horizontal = processar_eventos_controle_menu(ev, opcao_botao_atual, num_opcoes_horizontal, joystick_id=0, tempo_atual=tempo_atual)
                 
-                # Priorizar resultado vertical (cima/baixo) se existir, senão usar horizontal (esquerda/direita)
-                if resultado_controle_vertical and resultado_controle_vertical.get("acao") in ("cima", "baixo"):
-                    resultado_controle = resultado_controle_vertical
-                elif resultado_controle_horizontal and resultado_controle_horizontal.get("acao") in ("esquerda", "direita"):
-                    resultado_controle = resultado_controle_horizontal
-                else:
-                    resultado_controle = resultado_controle_vertical or resultado_controle_horizontal
+                # Se estiver na linha de setas, usar 2 opções (seta_esquerda, seta_direita)
+                if linha_atual == "setas":
+                    num_opcoes_horizontal = 2
+                
+                # Processar o evento uma vez com num_opcoes_horizontal para capturar todas as ações possíveis
+                resultado_controle_temp = processar_eventos_controle_menu(ev, opcao_botao_atual, num_opcoes_horizontal, joystick_id=0, tempo_atual=tempo_atual)
+                
+                if resultado_controle_temp:
+                    acao_temp = resultado_controle_temp.get("acao")
+                    # Verificar se é L1/R1 (carro_anterior/carro_proximo) - prioridade máxima
+                    if acao_temp in ("carro_anterior", "carro_proximo"):
+                        resultado_controle = resultado_controle_temp
+                    # Verificar se é D-pad (cima/baixo/esquerda/direita)
+                    elif acao_temp in ("cima", "baixo", "esquerda", "direita"):
+                        resultado_controle = resultado_controle_temp
+                    # Outras ações (confirmar, cancelar, etc.)
+                    else:
+                        resultado_controle = resultado_controle_temp
+                    
                 controle_processado = False
                 if resultado_controle:
                     controle_processado = True
                     acao = resultado_controle.get("acao")
-                    # Processar ações de carro (L1/R1) - apenas no modo arcade
-                    if not modo_arcade:
-                        # No modo campanha, ignorar navegação de carros
-                        pass
-                    elif acao == "carro_anterior" or acao == "carro_proximo":
+                    # Processar ações de carro (L1/R1) - funciona em ambos os modos
+                    # IMPORTANTE: Processar L1/R1 ANTES de outros eventos para garantir que funcione
+                    if acao == "carro_anterior" or acao == "carro_proximo":
                         # Processar mesmo durante transição (permitir mudança rápida)
                         if acao == "carro_anterior":
                             # Navegar para carro anterior (L1) - ir para esquerda (carro anterior)
                             if fase_selecao == 1:
+                                # Usar num_carros correto baseado no modo
+                                num_carros_disponiveis = len(CARROS_DISPONIVEIS_FILTRADOS) if not modo_arcade else len(CARROS_DISPONIVEIS)
+                                # Permitir comportamento circular: se estiver no primeiro, vai para o último
                                 iniciar_transicao(-1, carro_p1)
-                                carro_p1 = (carro_p1 - 1) % num_carros
+                                carro_p1 = (carro_p1 - 1) % num_carros_disponiveis
                                 carro_selecionado_p1 = (obter_carro_idx_seguro(1) == carro_p1)
-                                botao_selecionado_controle = None
+                                # Sempre inicializar o botão selecionado quando navegar entre carros
+                                carro_atual = CARROS_DISPONIVEIS_FILTRADOS[carro_p1] if not modo_arcade else CARROS_DISPONIVEIS[carro_p1]
+                                esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                                botao_selecionado_controle = "usar" if esta_desbloqueado else "comprar"
                             else:
+                                # Permitir comportamento circular: se estiver no primeiro, vai para o último
                                 iniciar_transicao(-1, carro_p2)
                                 carro_p2 = (carro_p2 - 1) % num_carros
                                 carro_selecionado_p2 = (obter_carro_idx_seguro(2) == carro_p2)
-                                botao_selecionado_controle = None
+                                # Sempre inicializar o botão selecionado quando navegar entre carros
+                                carro_atual = CARROS_DISPONIVEIS[carro_p2]
+                                esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                                botao_selecionado_controle = "usar" if esta_desbloqueado else "comprar"
                         elif acao == "carro_proximo":
                             # Navegar para próximo carro (R1) - ir para direita (próximo carro)
                             if fase_selecao == 1:
+                                num_carros_disponiveis = len(CARROS_DISPONIVEIS_FILTRADOS) if not modo_arcade else len(CARROS_DISPONIVEIS)
+                                # Permitir comportamento circular: se estiver no último, vai para o primeiro
                                 iniciar_transicao(1, carro_p1)
-                                carro_p1 = (carro_p1 + 1) % num_carros
+                                carro_p1 = (carro_p1 + 1) % num_carros_disponiveis
                                 carro_selecionado_p1 = (obter_carro_idx_seguro(1) == carro_p1)
-                                botao_selecionado_controle = None
+                                # Sempre inicializar o botão selecionado quando navegar entre carros
+                                carro_atual = CARROS_DISPONIVEIS_FILTRADOS[carro_p1] if not modo_arcade else CARROS_DISPONIVEIS[carro_p1]
+                                esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                                botao_selecionado_controle = "usar" if esta_desbloqueado else "comprar"
                             else:
+                                # Permitir comportamento circular: se estiver no último, vai para o primeiro
                                 iniciar_transicao(1, carro_p2)
                                 carro_p2 = (carro_p2 + 1) % num_carros
                                 carro_selecionado_p2 = (obter_carro_idx_seguro(2) == carro_p2)
-                                botao_selecionado_controle = None
+                                # Sempre inicializar o botão selecionado quando navegar entre carros
+                                carro_atual = CARROS_DISPONIVEIS[carro_p2]
+                                esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                                botao_selecionado_controle = "usar" if esta_desbloqueado else "comprar"
                         continue
                     
                     if not transicao_ativa:
                         if acao == "cima" or acao == "baixo":
-                            # Navegar entre botões (cima/baixo) - apenas setinhas
-                            if resultado_controle.get("fonte") == "dpad":
-                                if fase_selecao == 1:
-                                    carro_atual = CARROS_DISPONIVEIS[carro_p1]
-                                    esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
-                                    if esta_desbloqueado:
-                                        # Navegação vertical: qualquer botão (baixo) → concluído, concluído (baixo) → voltar
-                                        if botao_selecionado_controle is None:
-                                            botao_selecionado_controle = "usar"
-                                        elif botao_selecionado_controle == "usar":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
-                                        elif botao_selecionado_controle == "upgrade":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
-                                        elif botao_selecionado_controle == "vender":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
-                                        elif botao_selecionado_controle == "concluido":
-                                            botao_selecionado_controle = "voltar" if acao == "baixo" else "usar"
-                                        elif botao_selecionado_controle == "voltar":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
-                                        # Botão "dois_jogadores" removido
-                                    else:
-                                        # Navegação vertical: qualquer botão (baixo) → concluído, concluído (baixo) → voltar
-                                        if botao_selecionado_controle is None:
-                                            botao_selecionado_controle = "comprar"
-                                        elif botao_selecionado_controle == "comprar":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
-                                        elif botao_selecionado_controle == "upgrade":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
-                                        elif botao_selecionado_controle == "vender":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
-                                        elif botao_selecionado_controle == "concluido":
-                                            botao_selecionado_controle = "voltar" if acao == "baixo" else "comprar"
-                                        elif botao_selecionado_controle == "voltar":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
-                                        # Botão "dois_jogadores" removido
-                                else:
-                                    # Fase 2 (P2) - mesma lógica
-                                    carro_atual = CARROS_DISPONIVEIS[carro_p2]
-                                    esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
-                                    if esta_desbloqueado:
-                                        # Navegação vertical: qualquer botão (baixo) → concluído, concluído (baixo) → voltar
-                                        if botao_selecionado_controle is None:
-                                            botao_selecionado_controle = "usar"
-                                        elif botao_selecionado_controle == "usar":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
-                                        elif botao_selecionado_controle == "upgrade":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
-                                        elif botao_selecionado_controle == "vender":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
-                                        elif botao_selecionado_controle == "concluido":
-                                            botao_selecionado_controle = "voltar" if acao == "baixo" else "usar"
-                                        elif botao_selecionado_controle == "voltar":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
-                                        # Botão "dois_jogadores" removido
-                                    else:
-                                        # Navegação vertical: qualquer botão (baixo) → concluído, concluído (baixo) → voltar
-                                        if botao_selecionado_controle is None:
-                                            botao_selecionado_controle = "comprar"
-                                        elif botao_selecionado_controle == "comprar":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
-                                        elif botao_selecionado_controle == "upgrade":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
-                                        elif botao_selecionado_controle == "vender":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "voltar"
-                                        elif botao_selecionado_controle == "concluido":
-                                            botao_selecionado_controle = "voltar" if acao == "baixo" else "comprar"
-                                        elif botao_selecionado_controle == "voltar":
-                                            botao_selecionado_controle = "concluido" if acao == "baixo" else "concluido"
-                                        # Botão "dois_jogadores" removido
-                        elif acao == "esquerda" or acao == "direita":
-                            # Navegação horizontal entre opções
-                            if resultado_controle.get("fonte") == "dpad":
-                                # Determinar linha atual
-                                linha_atual = "inferior"
-                                if botao_selecionado_controle == "voltar":
-                                    linha_atual = "superior"
+                            # Navegar entre botões (cima/baixo) - funciona com D-pad e analógico
+                            if fase_selecao == 1:
+                                carro_atual = CARROS_DISPONIVEIS[carro_p1]
+                                esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                                num_carros_disponiveis = len(CARROS_DISPONIVEIS_FILTRADOS) if not modo_arcade else len(CARROS_DISPONIVEIS)
+                                tem_seta_esquerda = carro_p1 > 0
+                                tem_seta_direita = carro_p1 < num_carros_disponiveis - 1
                                 
-                                if linha_atual == "superior":
-                                    # Navegação horizontal na linha superior: apenas voltar (botão dois_jogadores removido)
-                                    opcao_idx = 0
-                                    opcoes_superior = ["voltar"]  # Botão dois_jogadores removido
-                                    botao_selecionado_controle = opcoes_superior[0]  # Apenas voltar
+                                # Se estiver nas setas, pode ir para baixo para os botões ou para cima para voltar
+                                if botao_selecionado_controle in ("seta_esquerda", "seta_direita"):
+                                    if acao == "baixo":
+                                        # Ir para o primeiro botão inferior
+                                        botao_selecionado_controle = "usar" if esta_desbloqueado else "comprar"
+                                    elif acao == "cima":
+                                        # Ir para o botão voltar (que fica acima das setas)
+                                        botao_selecionado_controle = "voltar"
+                                elif esta_desbloqueado:
+                                    # Navegação vertical: qualquer botão (baixo) → concluído, concluído (baixo) → voltar
+                                    # Se pressionar cima no primeiro botão e houver setas, ir para setas
+                                    if botao_selecionado_controle is None:
+                                        botao_selecionado_controle = "usar"
+                                    elif botao_selecionado_controle == "usar":
+                                        if acao == "cima":
+                                            if tem_seta_esquerda or tem_seta_direita:
+                                                # Ir para seta esquerda se disponível, senão direita
+                                                botao_selecionado_controle = "seta_esquerda" if tem_seta_esquerda else "seta_direita"
+                                            else:
+                                                # Se não há setas, ir para voltar
+                                                botao_selecionado_controle = "voltar"
+                                        else:  # acao == "baixo"
+                                            botao_selecionado_controle = "concluido"
+                                    elif botao_selecionado_controle == "upgrade":
+                                        if acao == "cima":
+                                            if tem_seta_esquerda or tem_seta_direita:
+                                                botao_selecionado_controle = "seta_esquerda" if tem_seta_esquerda else "seta_direita"
+                                            else:
+                                                # Se não há setas, ir para voltar
+                                                botao_selecionado_controle = "voltar"
+                                        else:  # acao == "baixo"
+                                            botao_selecionado_controle = "concluido"
+                                    elif botao_selecionado_controle == "vender":
+                                        if acao == "cima":
+                                            if tem_seta_esquerda or tem_seta_direita:
+                                                botao_selecionado_controle = "seta_esquerda" if tem_seta_esquerda else "seta_direita"
+                                            else:
+                                                # Se não há setas, ir para voltar
+                                                botao_selecionado_controle = "voltar"
+                                        else:  # acao == "baixo"
+                                            botao_selecionado_controle = "concluido"
+                                    elif botao_selecionado_controle == "concluido":
+                                        if acao == "baixo":
+                                            botao_selecionado_controle = "voltar"
+                                        else:  # acao == "cima"
+                                            botao_selecionado_controle = "usar"
+                                    elif botao_selecionado_controle == "voltar":
+                                        if acao == "baixo":
+                                            # Se houver setas, ir para elas, senão ir para concluido
+                                            if tem_seta_esquerda or tem_seta_direita:
+                                                botao_selecionado_controle = "seta_esquerda" if tem_seta_esquerda else "seta_direita"
+                                            else:
+                                                botao_selecionado_controle = "concluido"
+                                        else:  # acao == "cima"
+                                            # Voltar está no topo, então não fazer nada ou ir para concluido
+                                            botao_selecionado_controle = "concluido"
+                                    # Botão "dois_jogadores" removido
                                 else:
-                                    # Navegação horizontal na linha inferior: usar/comprar ↔ upgrade ↔ vender ↔ concluído
+                                    # Navegação vertical: qualquer botão (baixo) → concluído, concluído (baixo) → voltar
+                                    # Se pressionar cima no primeiro botão e houver setas, ir para setas
+                                    if botao_selecionado_controle is None:
+                                        botao_selecionado_controle = "comprar"
+                                    elif botao_selecionado_controle == "comprar":
+                                        if acao == "cima":
+                                            if tem_seta_esquerda or tem_seta_direita:
+                                                botao_selecionado_controle = "seta_esquerda" if tem_seta_esquerda else "seta_direita"
+                                            else:
+                                                # Se não há setas, ir para voltar
+                                                botao_selecionado_controle = "voltar"
+                                        else:  # acao == "baixo"
+                                            botao_selecionado_controle = "concluido"
+                                    elif botao_selecionado_controle == "upgrade":
+                                        if acao == "cima":
+                                            if tem_seta_esquerda or tem_seta_direita:
+                                                botao_selecionado_controle = "seta_esquerda" if tem_seta_esquerda else "seta_direita"
+                                            else:
+                                                # Se não há setas, ir para voltar
+                                                botao_selecionado_controle = "voltar"
+                                        else:  # acao == "baixo"
+                                            botao_selecionado_controle = "concluido"
+                                    elif botao_selecionado_controle == "vender":
+                                        if acao == "cima":
+                                            if tem_seta_esquerda or tem_seta_direita:
+                                                botao_selecionado_controle = "seta_esquerda" if tem_seta_esquerda else "seta_direita"
+                                            else:
+                                                # Se não há setas, ir para voltar
+                                                botao_selecionado_controle = "voltar"
+                                        else:  # acao == "baixo"
+                                            botao_selecionado_controle = "concluido"
+                                    elif botao_selecionado_controle == "concluido":
+                                        if acao == "baixo":
+                                            botao_selecionado_controle = "voltar"
+                                        else:  # acao == "cima"
+                                            botao_selecionado_controle = "comprar"
+                                    elif botao_selecionado_controle == "voltar":
+                                        if acao == "baixo":
+                                            # Se houver setas, ir para elas, senão ir para concluido
+                                            if tem_seta_esquerda or tem_seta_direita:
+                                                botao_selecionado_controle = "seta_esquerda" if tem_seta_esquerda else "seta_direita"
+                                            else:
+                                                botao_selecionado_controle = "concluido"
+                                        else:  # acao == "cima"
+                                            # Voltar está no topo, então não fazer nada ou ir para concluido
+                                            botao_selecionado_controle = "concluido"
+                                    # Botão "dois_jogadores" removido
+                            else:
+                                # Fase 2 (P2) - mesma lógica
+                                carro_atual = CARROS_DISPONIVEIS[carro_p2]
+                                esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                                tem_seta_esquerda = carro_p2 > 0
+                                tem_seta_direita = carro_p2 < len(CARROS_DISPONIVEIS) - 1
+                                
+                                # Se estiver nas setas, pode ir para baixo para os botões ou para cima para voltar
+                                if botao_selecionado_controle in ("seta_esquerda", "seta_direita"):
+                                    if acao == "baixo":
+                                        # Ir para o primeiro botão inferior
+                                        botao_selecionado_controle = "usar" if esta_desbloqueado else "comprar"
+                                    elif acao == "cima":
+                                        # Ir para o botão voltar (que fica acima das setas)
+                                        botao_selecionado_controle = "voltar"
+                                elif esta_desbloqueado:
+                                    # Navegação vertical: qualquer botão (baixo) → concluído, concluído (baixo) → voltar
+                                    # Se pressionar cima no primeiro botão e houver setas, ir para setas
+                                    if botao_selecionado_controle is None:
+                                        botao_selecionado_controle = "usar"
+                                    elif botao_selecionado_controle == "usar":
+                                        if acao == "cima":
+                                            if tem_seta_esquerda or tem_seta_direita:
+                                                botao_selecionado_controle = "seta_esquerda" if tem_seta_esquerda else "seta_direita"
+                                            else:
+                                                # Se não há setas, ir para voltar
+                                                botao_selecionado_controle = "voltar"
+                                        else:  # acao == "baixo"
+                                            botao_selecionado_controle = "concluido"
+                                    elif botao_selecionado_controle == "upgrade":
+                                        if acao == "cima":
+                                            if tem_seta_esquerda or tem_seta_direita:
+                                                botao_selecionado_controle = "seta_esquerda" if tem_seta_esquerda else "seta_direita"
+                                            else:
+                                                # Se não há setas, ir para voltar
+                                                botao_selecionado_controle = "voltar"
+                                        else:  # acao == "baixo"
+                                            botao_selecionado_controle = "concluido"
+                                    elif botao_selecionado_controle == "vender":
+                                        if acao == "cima":
+                                            if tem_seta_esquerda or tem_seta_direita:
+                                                botao_selecionado_controle = "seta_esquerda" if tem_seta_esquerda else "seta_direita"
+                                            else:
+                                                # Se não há setas, ir para voltar
+                                                botao_selecionado_controle = "voltar"
+                                        else:  # acao == "baixo"
+                                            botao_selecionado_controle = "concluido"
+                                    elif botao_selecionado_controle == "concluido":
+                                        if acao == "baixo":
+                                            botao_selecionado_controle = "voltar"
+                                        else:  # acao == "cima"
+                                            botao_selecionado_controle = "usar"
+                                    elif botao_selecionado_controle == "voltar":
+                                        if acao == "baixo":
+                                            # Se houver setas, ir para elas, senão ir para concluido
+                                            if tem_seta_esquerda or tem_seta_direita:
+                                                botao_selecionado_controle = "seta_esquerda" if tem_seta_esquerda else "seta_direita"
+                                            else:
+                                                botao_selecionado_controle = "concluido"
+                                        else:  # acao == "cima"
+                                            # Voltar está no topo, então não fazer nada ou ir para concluido
+                                            botao_selecionado_controle = "concluido"
+                                    # Botão "dois_jogadores" removido
+                                else:
+                                    # Navegação vertical: qualquer botão (baixo) → concluído, concluído (baixo) → voltar
+                                    # Se pressionar cima no primeiro botão e houver setas, ir para setas
+                                    if botao_selecionado_controle is None:
+                                        botao_selecionado_controle = "comprar"
+                                    elif botao_selecionado_controle == "comprar":
+                                        if acao == "cima":
+                                            if tem_seta_esquerda or tem_seta_direita:
+                                                botao_selecionado_controle = "seta_esquerda" if tem_seta_esquerda else "seta_direita"
+                                            else:
+                                                # Se não há setas, ir para voltar
+                                                botao_selecionado_controle = "voltar"
+                                        else:  # acao == "baixo"
+                                            botao_selecionado_controle = "concluido"
+                                    elif botao_selecionado_controle == "upgrade":
+                                        if acao == "cima":
+                                            if tem_seta_esquerda or tem_seta_direita:
+                                                botao_selecionado_controle = "seta_esquerda" if tem_seta_esquerda else "seta_direita"
+                                            else:
+                                                # Se não há setas, ir para voltar
+                                                botao_selecionado_controle = "voltar"
+                                        else:  # acao == "baixo"
+                                            botao_selecionado_controle = "concluido"
+                                    elif botao_selecionado_controle == "vender":
+                                        if acao == "cima":
+                                            if tem_seta_esquerda or tem_seta_direita:
+                                                botao_selecionado_controle = "seta_esquerda" if tem_seta_esquerda else "seta_direita"
+                                            else:
+                                                # Se não há setas, ir para voltar
+                                                botao_selecionado_controle = "voltar"
+                                        else:  # acao == "baixo"
+                                            botao_selecionado_controle = "concluido"
+                                    elif botao_selecionado_controle == "concluido":
+                                        if acao == "baixo":
+                                            botao_selecionado_controle = "voltar"
+                                        else:  # acao == "cima"
+                                            botao_selecionado_controle = "comprar"
+                                    elif botao_selecionado_controle == "voltar":
+                                        if acao == "baixo":
+                                            # Se houver setas, ir para elas, senão ir para concluido
+                                            if tem_seta_esquerda or tem_seta_direita:
+                                                botao_selecionado_controle = "seta_esquerda" if tem_seta_esquerda else "seta_direita"
+                                            else:
+                                                botao_selecionado_controle = "concluido"
+                                        else:  # acao == "cima"
+                                            # Voltar está no topo, então não fazer nada ou ir para concluido
+                                            botao_selecionado_controle = "concluido"
+                                    # Botão "dois_jogadores" removido
+                        elif acao == "esquerda" or acao == "direita":
+                            # Navegação horizontal entre opções (funciona com D-pad e analógico)
+                            # Determinar linha atual
+                            linha_atual_temp = "inferior"
+                            if botao_selecionado_controle == "voltar":
+                                linha_atual_temp = "superior"
+                            elif botao_selecionado_controle in ("seta_esquerda", "seta_direita"):
+                                linha_atual_temp = "setas"
+                            
+                            if linha_atual_temp == "superior":
+                                # Navegação horizontal na linha superior: apenas voltar (botão dois_jogadores removido)
+                                opcao_idx = 0
+                                opcoes_superior = ["voltar"]  # Botão dois_jogadores removido
+                                botao_selecionado_controle = opcoes_superior[0]  # Apenas voltar
+                            elif linha_atual_temp == "setas":
+                                # Navegação horizontal entre setas: seta_esquerda ↔ seta_direita
+                                if fase_selecao == 1:
+                                    num_carros_disponiveis = len(CARROS_DISPONIVEIS_FILTRADOS) if not modo_arcade else len(CARROS_DISPONIVEIS)
+                                    tem_seta_esquerda = carro_p1 > 0
+                                    tem_seta_direita = carro_p1 < num_carros_disponiveis - 1
+                                else:
+                                    tem_seta_esquerda = carro_p2 > 0
+                                    tem_seta_direita = carro_p2 < len(CARROS_DISPONIVEIS) - 1
+                                
+                                # Determinar índice atual
+                                if botao_selecionado_controle == "seta_esquerda":
+                                    seta_idx = 0
+                                elif botao_selecionado_controle == "seta_direita":
+                                    seta_idx = 1
+                                else:
+                                    seta_idx = 0
+                                
+                                # Navegar entre setas
+                                if acao == "esquerda":
+                                    seta_idx = (seta_idx - 1) % 2
+                                else:  # direita
+                                    seta_idx = (seta_idx + 1) % 2
+                                
+                                # Mapear índice de volta para seta (só se a seta estiver disponível)
+                                if seta_idx == 0 and tem_seta_esquerda:
+                                    botao_selecionado_controle = "seta_esquerda"
+                                elif seta_idx == 1 and tem_seta_direita:
+                                    botao_selecionado_controle = "seta_direita"
+                                elif seta_idx == 0 and not tem_seta_esquerda and tem_seta_direita:
+                                    botao_selecionado_controle = "seta_direita"
+                                elif seta_idx == 1 and not tem_seta_direita and tem_seta_esquerda:
+                                    botao_selecionado_controle = "seta_esquerda"
+                                else:
+                                    # Se nenhuma seta disponível, voltar para botões inferiores
                                     if fase_selecao == 1:
                                         carro_atual = CARROS_DISPONIVEIS[carro_p1]
                                         esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
                                     else:
                                         carro_atual = CARROS_DISPONIVEIS[carro_p2]
                                         esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
-                                    
-                                    # Mapear índice para botão
-                                    if "opcao" in resultado_controle:
-                                        opcao_idx = resultado_controle["opcao"]
-                                    else:
-                                        # Calcular manualmente
-                                        if botao_selecionado_controle:
-                                            if botao_selecionado_controle == "usar" or botao_selecionado_controle == "comprar":
-                                                opcao_idx = 0
-                                            elif botao_selecionado_controle == "upgrade":
-                                                opcao_idx = 1
-                                            elif botao_selecionado_controle == "vender":
-                                                opcao_idx = 2
-                                            elif botao_selecionado_controle == "concluido":
-                                                opcao_idx = 3
-                                            else:
-                                                opcao_idx = 0
+                                    botao_selecionado_controle = "usar" if esta_desbloqueado else "comprar"
+                            else:
+                                # Navegação horizontal na linha inferior: usar/comprar ↔ upgrade ↔ vender ↔ concluído
+                                # Mas também pode navegar para as setas se pressionar esquerda no primeiro botão ou direita no último
+                                if fase_selecao == 1:
+                                    carro_atual = CARROS_DISPONIVEIS[carro_p1]
+                                    esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                                    num_carros_disponiveis = len(CARROS_DISPONIVEIS_FILTRADOS) if not modo_arcade else len(CARROS_DISPONIVEIS)
+                                    tem_seta_esquerda = carro_p1 > 0
+                                    tem_seta_direita = carro_p1 < num_carros_disponiveis - 1
+                                else:
+                                    carro_atual = CARROS_DISPONIVEIS[carro_p2]
+                                    esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                                    tem_seta_esquerda = carro_p2 > 0
+                                    tem_seta_direita = carro_p2 < len(CARROS_DISPONIVEIS) - 1
+                                
+                                # Mapear índice para botão
+                                if "opcao" in resultado_controle:
+                                    opcao_idx = resultado_controle["opcao"]
+                                else:
+                                    # Calcular manualmente
+                                    if botao_selecionado_controle:
+                                        if botao_selecionado_controle == "usar" or botao_selecionado_controle == "comprar":
+                                            opcao_idx = 0
+                                        elif botao_selecionado_controle == "upgrade":
+                                            opcao_idx = 1
+                                        elif botao_selecionado_controle == "vender":
+                                            opcao_idx = 2
+                                        elif botao_selecionado_controle == "concluido":
+                                            opcao_idx = 3
                                         else:
                                             opcao_idx = 0
-                                        
-                                        if acao == "esquerda":
-                                            opcao_idx = (opcao_idx - 1) % 4
-                                        else:  # direita
-                                            opcao_idx = (opcao_idx + 1) % 4
+                                    else:
+                                        opcao_idx = 0
                                     
-                                    # Mapear índice de volta para botão
+                                    # Verificar se pode navegar para setas
+                                    if acao == "esquerda":
+                                        if opcao_idx == 0 and tem_seta_esquerda:
+                                            # Ir para seta esquerda
+                                            botao_selecionado_controle = "seta_esquerda"
+                                        else:
+                                            opcao_idx = (opcao_idx - 1) % 4
+                                    else:  # direita
+                                        if opcao_idx == 3 and tem_seta_direita:
+                                            # Ir para seta direita
+                                            botao_selecionado_controle = "seta_direita"
+                                        else:
+                                            opcao_idx = (opcao_idx + 1) % 4
+                                
+                                # Se ainda não mudou para seta, mapear índice de volta para botão
+                                if botao_selecionado_controle not in ("seta_esquerda", "seta_direita"):
                                     if esta_desbloqueado:
                                         opcoes = ["usar", "upgrade", "vender", "concluido"]
                                     else:
@@ -3259,6 +3694,42 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                         elif acao == "confirmar":
                             # Confirmar ação baseada no botão atual
                             if fase_selecao == 1:
+                                # Verificar se está nas setas primeiro
+                                if botao_selecionado_controle == "seta_esquerda":
+                                    # Trocar para carro anterior
+                                    if carro_p1 > 0 and not transicao_ativa:
+                                        num_carros_disponiveis = len(CARROS_DISPONIVEIS_FILTRADOS) if not modo_arcade else len(CARROS_DISPONIVEIS)
+                                        iniciar_transicao(-1, carro_p1)
+                                        carro_p1 = (carro_p1 - 1) % num_carros_disponiveis
+                                        carro_selecionado_p1 = (obter_carro_idx_seguro(1) == carro_p1)
+                                        # Manter cursor na seta após trocar
+                                        carro_atual = CARROS_DISPONIVEIS_FILTRADOS[carro_p1] if not modo_arcade else CARROS_DISPONIVEIS[carro_p1]
+                                        esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                                        # Se não há mais seta esquerda, ir para seta direita ou botão usar
+                                        if carro_p1 == 0:
+                                            num_carros_disponiveis = len(CARROS_DISPONIVEIS_FILTRADOS) if not modo_arcade else len(CARROS_DISPONIVEIS)
+                                            if carro_p1 < num_carros_disponiveis - 1:
+                                                botao_selecionado_controle = "seta_direita"
+                                            else:
+                                                botao_selecionado_controle = "usar" if esta_desbloqueado else "comprar"
+                                elif botao_selecionado_controle == "seta_direita":
+                                    # Trocar para próximo carro
+                                    if not transicao_ativa:
+                                        num_carros_disponiveis = len(CARROS_DISPONIVEIS_FILTRADOS) if not modo_arcade else len(CARROS_DISPONIVEIS)
+                                        if carro_p1 < num_carros_disponiveis - 1:
+                                            iniciar_transicao(1, carro_p1)
+                                            carro_p1 = (carro_p1 + 1) % num_carros_disponiveis
+                                            carro_selecionado_p1 = (obter_carro_idx_seguro(1) == carro_p1)
+                                            # Manter cursor na seta após trocar
+                                            carro_atual = CARROS_DISPONIVEIS_FILTRADOS[carro_p1] if not modo_arcade else CARROS_DISPONIVEIS[carro_p1]
+                                            esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                                            # Se não há mais seta direita, ir para seta esquerda ou botão usar
+                                            if carro_p1 == num_carros_disponiveis - 1:
+                                                if carro_p1 > 0:
+                                                    botao_selecionado_controle = "seta_esquerda"
+                                                else:
+                                                    botao_selecionado_controle = "usar" if esta_desbloqueado else "comprar"
+                                
                                 carro_atual = CARROS_DISPONIVEIS[carro_p1]
                                 esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
                                 if esta_desbloqueado:
@@ -3279,24 +3750,32 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                                 from core.i18n import t
                                                 popup_musica.mostrar(t("mensagens.comprar_carro_primeiro"), tipo="outra")
                                     elif botao_selecionado_controle == "vender":
-                                        # Vender carro
+                                        # Vender carro - mostrar confirmação primeiro
                                         if botao_vender_rect_p1:
                                             pode_vender = gerenciador_progresso.contar_carros_desbloqueados() > 1
                                             if pode_vender:
                                                 preco_venda = int(carro_atual.get('preco', 0) * 0.5)  # 50% do preço original
-                                                if gerenciador_progresso.vender_carro(carro_atual['prefixo_cor'], preco_venda):
-                                                    from core.i18n import t
-                                                    popup_musica.mostrar(t("mensagens.carro_vendido").format(carro_atual['nome']), tipo="outra")
-                                                else:
-                                                    from core.i18n import t
-                                                    popup_musica.mostrar(t("mensagens.erro_vender_carro"), tipo="outra")
+                                                # Mostrar diálogo de confirmação
+                                                fundo_para_confirmacao = fundo_sem_textos if 'fundo_sem_textos' in locals() else bg
+                                                confirmado = mostrar_dialogo_confirmacao_venda_carro(screen, fundo_para_confirmacao, carro_atual['nome'], preco_venda)
+                                                if confirmado:
+                                                    if gerenciador_progresso.vender_carro(carro_atual['prefixo_cor'], preco_venda):
+                                                        from core.i18n import t
+                                                        popup_musica.mostrar(t("mensagens.carro_vendido").format(carro_atual['nome']), tipo="outra")
+                                                    else:
+                                                        from core.i18n import t
+                                                        popup_musica.mostrar(t("mensagens.erro_vender_carro"), tipo="outra")
                                             else:
                                                 from core.i18n import t
                                                 popup_musica.mostrar(t("mensagens.nao_pode_vender_unico_carro"), tipo="outra")
                                     elif botao_selecionado_controle == "concluido":
                                         # Confirmar seleção
                                         if botao_concluido_rect_p1:
-                                            if modo_dois_jogadores:
+                                            # Verificar se o carro está desbloqueado antes de permitir concluir
+                                            if not esta_desbloqueado and carro_atual['prefixo_cor'] != "Car1":
+                                                from core.i18n import t
+                                                popup_musica.mostrar(t("mensagens.comprar_carro_primeiro"), tipo="outra")
+                                            elif modo_dois_jogadores:
                                                 if carro_selecionado_p1:
                                                     fase_selecao = 2
                                             else:
@@ -3304,8 +3783,11 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                                     gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1)
                                                     return carro_p1, carro_p2
                                     elif botao_selecionado_controle == "voltar":
-                                        # Voltar para o menu
-                                        if modo_dois_jogadores:
+                                        # Voltar para o menu ou seleção de mapas (no modo arcade)
+                                        if modo_arcade:
+                                            # No modo arcade, sempre voltar para seleção de mapas
+                                            return None, None
+                                        elif modo_dois_jogadores:
                                             if fase_selecao == 1 and carro_selecionado_p1:
                                                 fase_selecao = 2  # Vai para P2
                                             elif fase_selecao == 2 and carro_selecionado_p2:
@@ -3325,15 +3807,19 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                 else:
                                     # Carro não desbloqueado
                                     if botao_selecionado_controle == "comprar":
-                                        # Tentar comprar
+                                        # Tentar comprar - mostrar confirmação primeiro
                                         if botao_comprar_rect_p1:
                                             preco = carro_atual.get('preco', 0)
-                                            if gerenciador_progresso.comprar_carro(carro_atual['prefixo_cor'], preco):
-                                                from core.i18n import t
-                                                popup_musica.mostrar(t("mensagens.carro_comprado").format(carro_atual['nome']), tipo="outra")
-                                            else:
-                                                from core.i18n import t
-                                                popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
+                                            # Mostrar diálogo de confirmação
+                                            fundo_para_confirmacao = fundo_sem_textos if 'fundo_sem_textos' in locals() else bg
+                                            confirmado = mostrar_dialogo_confirmacao_compra_carro(screen, fundo_para_confirmacao, carro_atual['nome'], preco)
+                                            if confirmado:
+                                                if gerenciador_progresso.comprar_carro(carro_atual['prefixo_cor'], preco):
+                                                    from core.i18n import t
+                                                    popup_musica.mostrar(t("mensagens.carro_comprado").format(carro_atual['nome']), tipo="outra")
+                                                else:
+                                                    from core.i18n import t
+                                                    popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
                                     elif botao_selecionado_controle == "upgrade":
                                         # Abrir tela de upgrades (mesmo que não desbloqueado, pode mostrar)
                                         if botao_upgrade_rect_p1:
@@ -3354,6 +3840,39 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                         pass
                             else:
                                 # Fase 2 (P2)
+                                # Verificar se está nas setas primeiro
+                                if botao_selecionado_controle == "seta_esquerda":
+                                    # Trocar para carro anterior
+                                    if carro_p2 > 0 and not transicao_ativa:
+                                        iniciar_transicao(-1, carro_p2)
+                                        carro_p2 = (carro_p2 - 1) % num_carros
+                                        carro_selecionado_p2 = (obter_carro_idx_seguro(2) == carro_p2)
+                                        # Manter cursor na seta após trocar
+                                        carro_atual = CARROS_DISPONIVEIS[carro_p2]
+                                        esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                                        # Se não há mais seta esquerda, ir para seta direita ou botão usar
+                                        if carro_p2 == 0:
+                                            if carro_p2 < len(CARROS_DISPONIVEIS) - 1:
+                                                botao_selecionado_controle = "seta_direita"
+                                            else:
+                                                botao_selecionado_controle = "usar" if esta_desbloqueado else "comprar"
+                                elif botao_selecionado_controle == "seta_direita":
+                                    # Trocar para próximo carro
+                                    if not transicao_ativa:
+                                        if carro_p2 < len(CARROS_DISPONIVEIS) - 1:
+                                            iniciar_transicao(1, carro_p2)
+                                            carro_p2 = (carro_p2 + 1) % num_carros
+                                            carro_selecionado_p2 = (obter_carro_idx_seguro(2) == carro_p2)
+                                            # Manter cursor na seta após trocar
+                                            carro_atual = CARROS_DISPONIVEIS[carro_p2]
+                                            esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                                            # Se não há mais seta direita, ir para seta esquerda ou botão usar
+                                            if carro_p2 == len(CARROS_DISPONIVEIS) - 1:
+                                                if carro_p2 > 0:
+                                                    botao_selecionado_controle = "seta_esquerda"
+                                                else:
+                                                    botao_selecionado_controle = "usar" if esta_desbloqueado else "comprar"
+                                
                                 carro_atual = CARROS_DISPONIVEIS[carro_p2]
                                 esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
                                 if esta_desbloqueado:
@@ -3369,29 +3888,42 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                             tela_upgrades_aberta = True
                                             carro_upgrade_atual = carro_p2
                                     elif botao_selecionado_controle == "vender":
-                                        # Vender carro
+                                        # Vender carro - mostrar confirmação primeiro
                                         if botao_vender_rect_p2:
                                             pode_vender = gerenciador_progresso.contar_carros_desbloqueados() > 1
                                             if pode_vender:
                                                 preco_venda = int(carro_atual.get('preco', 0) * 0.5)  # 50% do preço original
-                                                if gerenciador_progresso.vender_carro(carro_atual['prefixo_cor'], preco_venda):
-                                                    from core.i18n import t
-                                                    popup_musica.mostrar(t("mensagens.carro_vendido").format(carro_atual['nome']), tipo="outra")
-                                                else:
-                                                    from core.i18n import t
-                                                    popup_musica.mostrar(t("mensagens.erro_vender_carro"), tipo="outra")
+                                                # Mostrar diálogo de confirmação
+                                                fundo_para_confirmacao = fundo_sem_textos if 'fundo_sem_textos' in locals() else bg
+                                                confirmado = mostrar_dialogo_confirmacao_venda_carro(screen, fundo_para_confirmacao, carro_atual['nome'], preco_venda)
+                                                if confirmado:
+                                                    if gerenciador_progresso.vender_carro(carro_atual['prefixo_cor'], preco_venda):
+                                                        from core.i18n import t
+                                                        popup_musica.mostrar(t("mensagens.carro_vendido").format(carro_atual['nome']), tipo="outra")
+                                                    else:
+                                                        from core.i18n import t
+                                                        popup_musica.mostrar(t("mensagens.erro_vender_carro"), tipo="outra")
                                             else:
                                                 from core.i18n import t
                                                 popup_musica.mostrar(t("mensagens.nao_pode_vender_unico_carro"), tipo="outra")
                                     elif botao_selecionado_controle == "concluido":
                                         # Confirmar seleção
                                         if botao_concluido_rect_p2:
-                                            if carro_selecionado_p2:
+                                            # Verificar se o carro está desbloqueado antes de permitir concluir
+                                            carro_atual_p2 = CARROS_DISPONIVEIS[carro_p2]
+                                            esta_desbloqueado_p2 = gerenciador_progresso.esta_desbloqueado(carro_atual_p2['prefixo_cor'])
+                                            if not esta_desbloqueado_p2 and carro_atual_p2['prefixo_cor'] != "Car1":
+                                                from core.i18n import t
+                                                popup_musica.mostrar(t("mensagens.comprar_carro_primeiro"), tipo="outra")
+                                            elif carro_selecionado_p2:
                                                 gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1, carro_p2=carro_p2)
                                                 return carro_p1, carro_p2
                                     elif botao_selecionado_controle == "voltar":
-                                        # Voltar para o menu
-                                        if carro_selecionado_p2:
+                                        # Voltar para o menu ou seleção de mapas (no modo arcade)
+                                        if modo_arcade:
+                                            # No modo arcade, sempre voltar para seleção de mapas
+                                            return None, None
+                                        elif carro_selecionado_p2:
                                             gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1, carro_p2=carro_p2)
                                             return carro_p1, carro_p2
                                         else:
@@ -3399,15 +3931,19 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                 else:
                                     # Carro não desbloqueado
                                     if botao_selecionado_controle == "comprar":
-                                        # Tentar comprar
+                                        # Tentar comprar - mostrar confirmação primeiro
                                         if botao_comprar_rect_p2:
                                             preco = carro_atual.get('preco', 0)
-                                            if gerenciador_progresso.comprar_carro(carro_atual['prefixo_cor'], preco):
-                                                from core.i18n import t
-                                                popup_musica.mostrar(t("mensagens.carro_comprado").format(carro_atual['nome']), tipo="outra")
-                                            else:
-                                                from core.i18n import t
-                                                popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
+                                            # Mostrar diálogo de confirmação
+                                            fundo_para_confirmacao = fundo_sem_textos if 'fundo_sem_textos' in locals() else bg
+                                            confirmado = mostrar_dialogo_confirmacao_compra_carro(screen, fundo_para_confirmacao, carro_atual['nome'], preco)
+                                            if confirmado:
+                                                if gerenciador_progresso.comprar_carro(carro_atual['prefixo_cor'], preco):
+                                                    from core.i18n import t
+                                                    popup_musica.mostrar(t("mensagens.carro_comprado").format(carro_atual['nome']), tipo="outra")
+                                                else:
+                                                    from core.i18n import t
+                                                    popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
                                     elif botao_selecionado_controle == "upgrade":
                                         # Abrir tela de upgrades
                                         if botao_upgrade_rect_p2:
@@ -3561,13 +4097,18 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                     gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1)
                             # Verificar clique no botão "Concluído"
                             elif botao_concluido_rect_p1 and botao_concluido_rect_p1.collidepoint(mouse_x, mouse_y):
-                                # Sempre salvar o carro atual antes de retornar
-                                gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1)
-                                if modo_dois_jogadores:
-                                    # P1 confirmou, vai para P2
-                                    fase_selecao = 2
+                                # Verificar se o carro está desbloqueado antes de permitir concluir
+                                if not esta_desbloqueado and carro_atual['prefixo_cor'] != "Car1":
+                                    from core.i18n import t
+                                    popup_musica.mostrar(t("mensagens.comprar_carro_primeiro"), tipo="outra")
                                 else:
-                                    return carro_p1, carro_p2
+                                    # Sempre salvar o carro atual antes de retornar
+                                    gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1)
+                                    if modo_dois_jogadores:
+                                        # P1 confirmou, vai para P2
+                                        fase_selecao = 2
+                                    else:
+                                        return carro_p1, carro_p2
                             # Botão "2 JOGADORES" lateral removido (não existe mais)
                             # Verificar clique no botão UPGRADE
                             elif botao_upgrade_rect_p1 and botao_upgrade_rect_p1.collidepoint(mouse_x, mouse_y):
@@ -3711,12 +4252,16 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                             # Verificar clique no botão COMPRAR
                             if botao_comprar_rect_p1 and botao_comprar_rect_p1.collidepoint(mouse_x, mouse_y):
                                 preco = carro_atual.get('preco', 0)
-                                if gerenciador_progresso.comprar_carro(carro_atual['prefixo_cor'], preco):
-                                    from core.i18n import t
-                                    popup_musica.mostrar(t("mensagens.carro_comprado").format(carro_atual['nome']), tipo="outra")
-                                else:
-                                    from core.i18n import t
-                                    popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
+                                # Mostrar diálogo de confirmação
+                                fundo_para_confirmacao = fundo_sem_textos if 'fundo_sem_textos' in locals() else bg
+                                confirmado = mostrar_dialogo_confirmacao_compra_carro(screen, fundo_para_confirmacao, carro_atual['nome'], preco)
+                                if confirmado:
+                                    if gerenciador_progresso.comprar_carro(carro_atual['prefixo_cor'], preco):
+                                        from core.i18n import t
+                                        popup_musica.mostrar(t("mensagens.carro_comprado").format(carro_atual['nome']), tipo="outra")
+                                    else:
+                                        from core.i18n import t
+                                        popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
                             # Verificar clique no botão UPGRADE (desabilitado se não comprado)
                             elif botao_upgrade_rect_p1 and botao_upgrade_rect_p1.collidepoint(mouse_x, mouse_y):
                                 # Botão está desabilitado visualmente, não faz nada
@@ -3740,11 +4285,22 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                         
                         if esta_desbloqueado:
                             # Verificar clique no botão USAR (apenas seleciona o carro, se não estiver já selecionado)
-                            if botao_usar_rect_p2 and botao_usar_rect_p2.collidepoint(mouse_x, mouse_y) and not carro_selecionado_p2:
-                                carro_selecionado_p2 = True
+                            if botao_usar_rect_p2 and botao_usar_rect_p2.collidepoint(mouse_x, mouse_y):
+                                if not carro_selecionado_p2:
+                                    carro_selecionado_p2 = True
+                                else:
+                                    # Carro já está selecionado
+                                    from core.i18n import t
+                                    popup_musica.mostrar("Carro já selecionado!", tipo="outra")
                             # Verificar clique no botão "Concluído"
                             elif botao_concluido_rect_p2 and botao_concluido_rect_p2.collidepoint(mouse_x, mouse_y):
-                                if carro_selecionado_p2:
+                                # Verificar se o carro está desbloqueado antes de permitir concluir
+                                carro_atual_p2 = CARROS_DISPONIVEIS[carro_p2]
+                                esta_desbloqueado_p2 = gerenciador_progresso.esta_desbloqueado(carro_atual_p2['prefixo_cor'])
+                                if not esta_desbloqueado_p2 and carro_atual_p2['prefixo_cor'] != "Car1":
+                                    from core.i18n import t
+                                    popup_musica.mostrar(t("mensagens.comprar_carro_primeiro"), tipo="outra")
+                                elif carro_selecionado_p2:
                                     gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1, carro_p2=carro_p2)
                                     return carro_p1, carro_p2
                             # Verificar clique no botão UPGRADE
@@ -3776,12 +4332,16 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                             # Verificar clique no botão COMPRAR
                             if botao_comprar_rect_p2 and botao_comprar_rect_p2.collidepoint(mouse_x, mouse_y):
                                 preco = carro_atual.get('preco', 0)
-                                if gerenciador_progresso.comprar_carro(carro_atual['prefixo_cor'], preco):
-                                    from core.i18n import t
-                                    popup_musica.mostrar(t("mensagens.carro_comprado").format(carro_atual['nome']), tipo="outra")
-                                else:
-                                    from core.i18n import t
-                                    popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
+                                # Mostrar diálogo de confirmação
+                                fundo_para_confirmacao = fundo_sem_textos if 'fundo_sem_textos' in locals() else bg
+                                confirmado = mostrar_dialogo_confirmacao_compra_carro(screen, fundo_para_confirmacao, carro_atual['nome'], preco)
+                                if confirmado:
+                                    if gerenciador_progresso.comprar_carro(carro_atual['prefixo_cor'], preco):
+                                        from core.i18n import t
+                                        popup_musica.mostrar(t("mensagens.carro_comprado").format(carro_atual['nome']), tipo="outra")
+                                    else:
+                                        from core.i18n import t
+                                        popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
                             # Verificar clique no botão UPGRADE (desabilitado se não comprado)
                             elif botao_upgrade_rect_p2 and botao_upgrade_rect_p2.collidepoint(mouse_x, mouse_y):
                                 # Botão está desabilitado visualmente, não faz nada
@@ -4012,7 +4572,9 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
             # No modo campanha, não mostrar setas (só tem Car1)
             seta_esquerda_rect_p1 = None
             seta_direita_rect_p1 = None
-            if modo_arcade and len(CARROS_DISPONIVEIS) > 1:
+            # Mostrar setas em ambos os modos (arcade e campanha)
+            if len(CARROS_DISPONIVEIS_FILTRADOS if not modo_arcade else CARROS_DISPONIVEIS) > 1:
+                num_carros_disponiveis = len(CARROS_DISPONIVEIS_FILTRADOS) if not modo_arcade else len(CARROS_DISPONIVEIS)
                 # Seta esquerda (se não estiver no primeiro carro) - mesma altura da seta direita
                 if carro_p1 > 0:
                     seta_esquerda_temp = render_text("◄", 48, (150, 220, 255), bold=True, pixel_style=True)
@@ -4020,30 +4582,54 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                     seta_esquerda_y = 100  # Mesma altura da seta direita
                     seta_esquerda_rect_p1 = pygame.Rect(seta_esquerda_x, seta_esquerda_y, seta_esquerda_temp.get_width(), seta_esquerda_temp.get_height())
                     seta_esquerda_hover = seta_esquerda_rect_p1.collidepoint(pygame.mouse.get_pos())
-                    cor_seta_esquerda = (200, 255, 255) if seta_esquerda_hover else (150, 220, 255)
-                    escala_seta = 1.3 if seta_esquerda_hover else 1.0
+                    # Verificar se está selecionado pelo controle (L1 pressionado)
+                    seta_esquerda_selecionada = (botao_selecionado_controle == "seta_esquerda")
+                    cor_seta_esquerda = (200, 255, 255) if (seta_esquerda_hover or seta_esquerda_selecionada) else (150, 220, 255)
+                    escala_seta = 1.3 if (seta_esquerda_hover or seta_esquerda_selecionada) else 1.0
                     tamanho_seta = int(48 * escala_seta)
                     seta_esquerda = render_text("◄", tamanho_seta, cor_seta_esquerda, bold=True, pixel_style=True)
                     # Ajustar posição para centralizar quando crescer
                     offset_x = (seta_esquerda.get_width() - seta_esquerda_temp.get_width()) // 2
                     offset_y = (seta_esquerda.get_height() - seta_esquerda_temp.get_height()) // 2
                     screen.blit(seta_esquerda, (seta_esquerda_x - offset_x, seta_esquerda_y - offset_y))
+                    # Desenhar cursor do controle se selecionado
+                    if seta_esquerda_selecionada and gerenciador_gamepad.obter_numero_controles() > 0:
+                        tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                        cursor_rect = pygame.Rect(
+                            seta_esquerda_rect_p1.x - tamanho_cursor,
+                            seta_esquerda_rect_p1.y - tamanho_cursor,
+                            seta_esquerda_rect_p1.width + tamanho_cursor * 2,
+                            seta_esquerda_rect_p1.height + tamanho_cursor * 2
+                        )
+                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
                 
                 # Seta direita (se não estiver no último carro) - posicionada acima dos botões
-                if carro_p1 < len(CARROS_DISPONIVEIS) - 1:
+                if carro_p1 < num_carros_disponiveis - 1:
                     seta_direita_temp = render_text("►", 48, (150, 220, 255), bold=True, pixel_style=True)
                     seta_direita_x = LARGURA - 20 - seta_direita_temp.get_width()
                     seta_direita_y = 100  # Posicionada acima dos botões de confirmação
                     seta_direita_rect_p1 = pygame.Rect(seta_direita_x, seta_direita_y, seta_direita_temp.get_width(), seta_direita_temp.get_height())
                     seta_direita_hover = seta_direita_rect_p1.collidepoint(pygame.mouse.get_pos())
-                    cor_seta_direita = (200, 255, 255) if seta_direita_hover else (150, 220, 255)
-                    escala_seta = 1.3 if seta_direita_hover else 1.0
+                    # Verificar se está selecionado pelo controle (R1 pressionado)
+                    seta_direita_selecionada = (botao_selecionado_controle == "seta_direita")
+                    cor_seta_direita = (200, 255, 255) if (seta_direita_hover or seta_direita_selecionada) else (150, 220, 255)
+                    escala_seta = 1.3 if (seta_direita_hover or seta_direita_selecionada) else 1.0
                     tamanho_seta = int(48 * escala_seta)
                     seta_direita = render_text("►", tamanho_seta, cor_seta_direita, bold=True, pixel_style=True)
                     # Ajustar posição para centralizar quando crescer
                     offset_x = (seta_direita.get_width() - seta_direita_temp.get_width()) // 2
                     offset_y = (seta_direita.get_height() - seta_direita_temp.get_height()) // 2
                     screen.blit(seta_direita, (seta_direita_x - offset_x, seta_direita_y - offset_y))
+                    # Desenhar cursor do controle se selecionado
+                    if seta_direita_selecionada and gerenciador_gamepad.obter_numero_controles() > 0:
+                        tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                        cursor_rect = pygame.Rect(
+                            seta_direita_rect_p1.x - tamanho_cursor,
+                            seta_direita_rect_p1.y - tamanho_cursor,
+                            seta_direita_rect_p1.width + tamanho_cursor * 2,
+                            seta_direita_rect_p1.height + tamanho_cursor * 2
+                        )
+                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
             
             # Informações do carro na lateral direita - retângulo otimizado
             info_x = LARGURA - 300  # Largura reduzida
@@ -4130,25 +4716,26 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
             est_render = render_text(est_texto, 16, (150, 230, 255), bold=True, pixel_style=True)
             screen.blit(est_render, (info_x + 15, info_y + 240 + offset_y_slick))
             
-            # Porcentagem de danos (P1) - sempre exibir se o carro visualizado é o equipado
-            from core.crank import crank
-            # Verificar se o carro atual está selecionado para mostrar o dano correto
-            carro_atual_p1_idx = obter_carro_idx_seguro(1)
-            
-            # Verificar se este é o carro atual do jogador (o carro visualizado é o equipado)
-            if carro_atual_p1_idx is not None and carro_atual_p1_idx == carro_p1:
-                saude_carro = crank.saude_carro if hasattr(crank, 'saude_carro') else 1.0
-                dano_percent = int((1.0 - saude_carro) * 100)
-                # Sempre exibir a saúde do carro, mesmo se não houver dano
-                if dano_percent > 0:
-                    dano_texto = t("menu.oficina.dano").format(dano_percent)
-                    cor_dano = (255, 150, 120) if dano_percent >= 50 else (255, 200, 120) if dano_percent >= 20 else (255, 220, 150)
-                else:
-                    dano_texto = t("menu.oficina.dano").format(0)
-                    cor_dano = (120, 240, 180)  # Verde para indicar que está saudável
-                dano_render = render_text(dano_texto, 16, cor_dano, bold=True, pixel_style=True)
-                screen.blit(dano_render, (info_x + 15, info_y + 270 + offset_y_slick))
-                y_slick = info_y + 300 + offset_y_slick
+            # Porcentagem de danos (P1) - sempre exibir se o carro visualizado é o equipado (exceto no modo arcade)
+            if not modo_arcade:
+                from core.crank import crank
+                # Verificar se o carro atual está selecionado para mostrar o dano correto
+                carro_atual_p1_idx = obter_carro_idx_seguro(1)
+                
+                # Verificar se este é o carro atual do jogador (o carro visualizado é o equipado)
+                if carro_atual_p1_idx is not None and carro_atual_p1_idx == carro_p1:
+                    saude_carro = crank.saude_carro if hasattr(crank, 'saude_carro') else 1.0
+                    dano_percent = int((1.0 - saude_carro) * 100)
+                    # Sempre exibir a saúde do carro, mesmo se não houver dano
+                    if dano_percent > 0:
+                        dano_texto = t("menu.oficina.dano").format(dano_percent)
+                        cor_dano = (255, 150, 120) if dano_percent >= 50 else (255, 200, 120) if dano_percent >= 20 else (255, 220, 150)
+                    else:
+                        dano_texto = t("menu.oficina.dano").format(0)
+                        cor_dano = (120, 240, 180)  # Verde para indicar que está saudável
+                    dano_render = render_text(dano_texto, 16, cor_dano, bold=True, pixel_style=True)
+                    screen.blit(dano_render, (info_x + 15, info_y + 270 + offset_y_slick))
+                    y_slick = info_y + 300 + offset_y_slick
             else:
                 y_slick = info_y + 270 + offset_y_slick
             
@@ -4209,8 +4796,8 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                     # Verificar se está selecionado pelo controle
                     selecionado_controle = (botao_selecionado_controle == "usar")
                     
-                    # Se o carro está selecionado, mostrar botão REPARAR
-                    if carro_esta_selecionado:
+                    # Se o carro está selecionado, mostrar botão REPARAR (apenas no modo campanha)
+                    if carro_esta_selecionado and not modo_arcade:
                         from core.crank import crank
                         saude_carro = crank.saude_carro if hasattr(crank, 'saude_carro') else 1.0
                         if saude_carro < 1.0:
@@ -4229,6 +4816,12 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                             cor_borda_usar = (100, 200, 150)
                             cor_texto_usar = (255, 255, 255)  # Branco em vez de cinza para não parecer apagado
                             texto_botao = t("menu.oficina.usar")  # Carro já está selecionado e sem dano
+                    elif carro_esta_selecionado and modo_arcade:
+                        # No modo arcade, sempre mostrar "USAR" mesmo se o carro já está selecionado
+                        cor_usar = (50, 140, 90) if usar_hover_p1 else (40, 120, 80)
+                        cor_borda_usar = (100, 200, 150)
+                        cor_texto_usar = (255, 255, 255)
+                        texto_botao = t("menu.oficina.usar")
                     else:
                         # Carro não está selecionado - mostrar botão "USAR" com cores mais brilhantes
                         if usar_selecionado:
@@ -4544,9 +5137,9 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
             nova_altura = int(altura_original * escala)
             sprite_p1 = pygame.transform.scale(sprite_p1_original, (nova_largura, nova_altura))
             from core.i18n import t
-            screen.blit(render_text(t("jogo.p1"), 20, (255, 255, 255), bold=True, pixel_style=True), (50, 130))
-            screen.blit(sprite_p1, (50, 155))
-            screen.blit(render_text(carro_p1_selecionado['nome'], 16, (255, 255, 255), bold=True, pixel_style=True), (50, 155 + nova_altura + 10))
+            screen.blit(render_text(t("jogo.p1"), 20, (255, 255, 255), bold=True, pixel_style=True), (50, 200))  # Descido para alinhar com a imagem
+            screen.blit(sprite_p1, (50, 210))  # Descido mais para não ficar por cima
+            screen.blit(render_text(carro_p1_selecionado['nome'], 16, (255, 255, 255), bold=True, pixel_style=True), (50, 210 + nova_altura + 10))
             
             # Instruções removidas conforme solicitado
             
@@ -4554,21 +5147,33 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
             seta_esquerda_rect_p2 = None
             seta_direita_rect_p2 = None
             if len(CARROS_DISPONIVEIS) > 1:
-                # Seta esquerda (se não estiver no primeiro carro)
+                # Seta esquerda (se não estiver no primeiro carro) - mesma altura da seta direita
                 if carro_p2 > 0:
                     seta_esquerda_temp = render_text("◄", 48, (150, 220, 255), bold=True, pixel_style=True)
                     seta_esquerda_x = 20
-                    seta_esquerda_y = ALTURA // 2 - seta_esquerda_temp.get_height() // 2
+                    seta_esquerda_y = 100  # Mesma altura da seta direita
                     seta_esquerda_rect_p2 = pygame.Rect(seta_esquerda_x, seta_esquerda_y, seta_esquerda_temp.get_width(), seta_esquerda_temp.get_height())
                     seta_esquerda_hover = seta_esquerda_rect_p2.collidepoint(pygame.mouse.get_pos())
-                    cor_seta_esquerda = (200, 255, 255) if seta_esquerda_hover else (150, 220, 255)
-                    escala_seta = 1.3 if seta_esquerda_hover else 1.0
+                    # Verificar se está selecionado pelo controle (L1 pressionado)
+                    seta_esquerda_selecionada = (botao_selecionado_controle == "seta_esquerda")
+                    cor_seta_esquerda = (200, 255, 255) if (seta_esquerda_hover or seta_esquerda_selecionada) else (150, 220, 255)
+                    escala_seta = 1.3 if (seta_esquerda_hover or seta_esquerda_selecionada) else 1.0
                     tamanho_seta = int(48 * escala_seta)
                     seta_esquerda = render_text("◄", tamanho_seta, cor_seta_esquerda, bold=True, pixel_style=True)
                     # Ajustar posição para centralizar quando crescer
                     offset_x = (seta_esquerda.get_width() - seta_esquerda_temp.get_width()) // 2
                     offset_y = (seta_esquerda.get_height() - seta_esquerda_temp.get_height()) // 2
                     screen.blit(seta_esquerda, (seta_esquerda_x - offset_x, seta_esquerda_y - offset_y))
+                    # Desenhar cursor do controle se selecionado
+                    if seta_esquerda_selecionada and gerenciador_gamepad.obter_numero_controles() > 0:
+                        tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                        cursor_rect = pygame.Rect(
+                            seta_esquerda_rect_p2.x - tamanho_cursor,
+                            seta_esquerda_rect_p2.y - tamanho_cursor,
+                            seta_esquerda_rect_p2.width + tamanho_cursor * 2,
+                            seta_esquerda_rect_p2.height + tamanho_cursor * 2
+                        )
+                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
                 
                 # Seta direita (se não estiver no último carro) - posicionada acima dos botões
                 if carro_p2 < len(CARROS_DISPONIVEIS) - 1:
@@ -4577,14 +5182,26 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                     seta_direita_y = 100  # Posicionada acima dos botões de confirmação
                     seta_direita_rect_p2 = pygame.Rect(seta_direita_x, seta_direita_y, seta_direita_temp.get_width(), seta_direita_temp.get_height())
                     seta_direita_hover = seta_direita_rect_p2.collidepoint(pygame.mouse.get_pos())
-                    cor_seta_direita = (200, 255, 255) if seta_direita_hover else (150, 220, 255)
-                    escala_seta = 1.3 if seta_direita_hover else 1.0
+                    # Verificar se está selecionado pelo controle (R1 pressionado)
+                    seta_direita_selecionada = (botao_selecionado_controle == "seta_direita")
+                    cor_seta_direita = (200, 255, 255) if (seta_direita_hover or seta_direita_selecionada) else (150, 220, 255)
+                    escala_seta = 1.3 if (seta_direita_hover or seta_direita_selecionada) else 1.0
                     tamanho_seta = int(48 * escala_seta)
                     seta_direita = render_text("►", tamanho_seta, cor_seta_direita, bold=True, pixel_style=True)
                     # Ajustar posição para centralizar quando crescer
                     offset_x = (seta_direita.get_width() - seta_direita_temp.get_width()) // 2
                     offset_y = (seta_direita.get_height() - seta_direita_temp.get_height()) // 2
                     screen.blit(seta_direita, (seta_direita_x - offset_x, seta_direita_y - offset_y))
+                    # Desenhar cursor do controle se selecionado
+                    if seta_direita_selecionada and gerenciador_gamepad.obter_numero_controles() > 0:
+                        tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                        cursor_rect = pygame.Rect(
+                            seta_direita_rect_p2.x - tamanho_cursor,
+                            seta_direita_rect_p2.y - tamanho_cursor,
+                            seta_direita_rect_p2.width + tamanho_cursor * 2,
+                            seta_direita_rect_p2.height + tamanho_cursor * 2
+                        )
+                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
             
             # Carro selecionado P2 - Grande e centralizado
             if transicao_ativa:
@@ -5029,6 +5646,7 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
     from core.i18n import t
     from core.progresso import gerenciador_progresso
     from core.glub import glub
+    from core.gamepad_manager import gerenciador_gamepad
     # Crank removido da tela de upgrades
     from config import DIR_PROJETO, LARGURA, ALTURA
     import os
@@ -5262,10 +5880,153 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                             except Exception as e:
                                 print(f"Erro ao verificar status do jogador: {e}")
                             
+                            # Obter nome do upgrade e preço
+                            nome_upgrade = None
+                            for tipo, nome, _ in upgrades_disponiveis:
+                                if tipo == upgrade_atual_tipo:
+                                    nome_upgrade = nome
+                                    break
+                            
                             # Crank removido - calcular preço diretamente
                             preco_base = gerenciador_progresso.calcular_preco_upgrade(upgrade_atual_tipo, nivel_atual)
                             preco = preco_base
                             nivel_antigo = nivel_atual  # Salvar nível antigo antes de comprar
+                            
+                            # Verificar se precisa de confirmação
+                            from config import CONFIGURACOES
+                            precisa_confirmacao = CONFIGURACOES.get("jogo", {}).get("confirmar_upgrade", True)
+                            
+                            if precisa_confirmacao:
+                                # Confirmação simples inline (estilo Boris) - sem Crank
+                                confirmacao_ativa = True
+                                opcao_confirmacao = 0  # 0 = COMPRAR, 1 = CANCELAR
+                                
+                                # Loop de confirmação
+                                while confirmacao_ativa:
+                                    dt_confirmacao = clock.tick(FPS) / 1000.0
+                                    
+                                    # Desenhar fundo com blur
+                                    fundo_blur = aplicar_blur(fundo_garagem, fator=4)
+                                    screen.blit(fundo_blur, (0, 0))
+                                    overlay_transparente = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+                                    overlay_transparente.fill((0, 0, 0, 100))
+                                    screen.blit(overlay_transparente, (0, 0))
+                                    
+                                    # Desenhar caixa de confirmação (estilo Boris)
+                                    caixa_largura = 500
+                                    caixa_altura = 180
+                                    caixa_x = (LARGURA - caixa_largura) // 2
+                                    caixa_y = ALTURA - caixa_altura - 260
+                                    
+                                    overlay = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+                                    overlay.fill((0, 0, 0, 220))
+                                    screen.blit(overlay, (caixa_x, caixa_y))
+                                    pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 2)
+                                    
+                                    titulo = render_text("CONFIRMAÇÃO DE COMPRA", 22, (255, 255, 0), bold=True, pixel_style=True)
+                                    screen.blit(titulo, (caixa_x + (caixa_largura - titulo.get_width()) // 2, caixa_y + 10))
+                                    
+                                    if nome_upgrade:
+                                        desc = render_text(f"{nome_upgrade.upper()} nível {nivel_atual + 1}", 18, (220, 220, 220), bold=False, pixel_style=True)
+                                        preco_txt = render_text(f"Preço: ${preco:,}", 18, (180, 255, 180), bold=False, pixel_style=True)
+                                        screen.blit(desc, (caixa_x + 20, caixa_y + 45))
+                                        screen.blit(preco_txt, (caixa_x + 20, caixa_y + 70))
+                                    
+                                    # Opções
+                                    opcoes = ["COMPRAR PEÇA", "SAIR"]
+                                    mouse_x_confirm, mouse_y_confirm = pygame.mouse.get_pos()
+                                    
+                                    # Animação do cursor do controle
+                                    if not hasattr(tela_upgrades, '_animacao_cursor_confirm'):
+                                        tela_upgrades._animacao_cursor_confirm = 0.0
+                                    tela_upgrades._animacao_cursor_confirm += dt_confirmacao * 3.0
+                                    if tela_upgrades._animacao_cursor_confirm >= 1.0:
+                                        tela_upgrades._animacao_cursor_confirm = 0.0
+                                    
+                                    for i, texto_opcao in enumerate(opcoes):
+                                        cor = (0, 200, 255) if i == opcao_confirmacao else (200, 200, 200)
+                                        txt = render_text(texto_opcao, 20, cor, bold=True, pixel_style=True)
+                                        y = caixa_y + 105 + i * 30
+                                        rect_opcao = pygame.Rect(caixa_x + 40, y, caixa_largura - 80, 30)
+                                        
+                                        # Verificar hover
+                                        if rect_opcao.collidepoint(mouse_x_confirm, mouse_y_confirm):
+                                            cor = (0, 200, 255)
+                                            opcao_confirmacao = i
+                                        
+                                        screen.blit(txt, (caixa_x + 40, y))
+                                        
+                                        # Desenhar cursor do controle se selecionado
+                                        if i == opcao_confirmacao and gerenciador_gamepad.obter_numero_controles() > 0:
+                                            tamanho_cursor = 3 + int(2 * abs(math.sin(tela_upgrades._animacao_cursor_confirm * math.pi)))
+                                            cursor_rect = pygame.Rect(
+                                                rect_opcao.x - tamanho_cursor,
+                                                rect_opcao.y - tamanho_cursor,
+                                                rect_opcao.width + tamanho_cursor * 2,
+                                                rect_opcao.height + tamanho_cursor * 2
+                                            )
+                                            pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
+                                    
+                                    pygame.display.flip()
+                                    
+                                    # Processar eventos
+                                    for ev_confirm in pygame.event.get():
+                                        if ev_confirm.type == pygame.QUIT:
+                                            return None
+                                        
+                                        # Processar controle primeiro
+                                        controle_processado_confirm = False
+                                        if gerenciador_gamepad.obter_numero_controles() > 0:
+                                            tempo_atual_confirm = pygame.time.get_ticks()
+                                            resultado_controle_confirm = processar_eventos_controle_menu(ev_confirm, opcao_confirmacao, len(opcoes), joystick_id=0, tempo_atual=tempo_atual_confirm)
+                                            if resultado_controle_confirm:
+                                                acao_confirm = resultado_controle_confirm.get("acao")
+                                                if acao_confirm == "cima":
+                                                    opcao_confirmacao = (opcao_confirmacao - 1) % len(opcoes)
+                                                    controle_processado_confirm = True
+                                                elif acao_confirm == "baixo":
+                                                    opcao_confirmacao = (opcao_confirmacao + 1) % len(opcoes)
+                                                    controle_processado_confirm = True
+                                                elif acao_confirm == "confirmar":
+                                                    if opcao_confirmacao == 0:  # COMPRAR
+                                                        confirmacao_ativa = False
+                                                    else:  # SAIR
+                                                        confirmacao_ativa = False
+                                                        continue  # Não comprar, apenas sair da confirmação
+                                                elif acao_confirm == "cancelar":
+                                                    confirmacao_ativa = False
+                                                    continue  # Não comprar
+                                        
+                                        if not controle_processado_confirm:
+                                            if ev_confirm.type == pygame.KEYDOWN:
+                                                if ev_confirm.key in (pygame.K_UP, pygame.K_w):
+                                                    opcao_confirmacao = (opcao_confirmacao - 1) % len(opcoes)
+                                                elif ev_confirm.key in (pygame.K_DOWN, pygame.K_s):
+                                                    opcao_confirmacao = (opcao_confirmacao + 1) % len(opcoes)
+                                                elif ev_confirm.key in (pygame.K_RETURN, pygame.K_SPACE):
+                                                    if opcao_confirmacao == 0:  # COMPRAR
+                                                        confirmacao_ativa = False
+                                                    else:  # SAIR
+                                                        confirmacao_ativa = False
+                                                        continue  # Não comprar
+                                                elif ev_confirm.key == pygame.K_ESCAPE:
+                                                    confirmacao_ativa = False
+                                                    continue  # Não comprar
+                                            elif ev_confirm.type == pygame.MOUSEBUTTONDOWN and ev_confirm.button == 1:
+                                                mouse_x_confirm, mouse_y_confirm = pygame.mouse.get_pos()
+                                                for i, texto_opcao in enumerate(opcoes):
+                                                    rect_opcao = pygame.Rect(caixa_x + 40, caixa_y + 105 + i * 30, caixa_largura - 80, 30)
+                                                    if rect_opcao.collidepoint(mouse_x_confirm, mouse_y_confirm):
+                                                        if i == 0:  # COMPRAR
+                                                            confirmacao_ativa = False
+                                                        else:  # SAIR
+                                                            confirmacao_ativa = False
+                                                            continue  # Não comprar
+                                
+                                # Se cancelou, não comprar
+                                if opcao_confirmacao != 0:
+                                    continue
+                            
                             if gerenciador_progresso.comprar_upgrade(prefixo_cor, upgrade_atual_tipo, preco):
                                 # Obter nível novo após compra
                                 nivel_novo = gerenciador_progresso.obter_upgrade(prefixo_cor, upgrade_atual_tipo)
@@ -5438,6 +6199,13 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                                 opcoes = ["COMPRAR PEÇA", "SAIR"]
                                 mouse_x_confirm, mouse_y_confirm = pygame.mouse.get_pos()
                                 
+                                # Animação do cursor do controle
+                                if not hasattr(tela_upgrades, '_animacao_cursor_confirm'):
+                                    tela_upgrades._animacao_cursor_confirm = 0.0
+                                tela_upgrades._animacao_cursor_confirm += dt_confirmacao * 3.0
+                                if tela_upgrades._animacao_cursor_confirm >= 1.0:
+                                    tela_upgrades._animacao_cursor_confirm = 0.0
+                                
                                 for i, texto_opcao in enumerate(opcoes):
                                     cor = (0, 200, 255) if i == opcao_confirmacao else (200, 200, 200)
                                     txt = render_text(texto_opcao, 20, cor, bold=True, pixel_style=True)
@@ -5450,6 +6218,18 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                                         opcao_confirmacao = i
                                     
                                     screen.blit(txt, (caixa_x + 40, y))
+                                    
+                                    # Desenhar cursor do controle se selecionado
+                                    from core.gamepad_manager import gerenciador_gamepad
+                                    if i == opcao_confirmacao and gerenciador_gamepad.obter_numero_controles() > 0:
+                                        tamanho_cursor = 3 + int(2 * abs(math.sin(tela_upgrades._animacao_cursor_confirm * math.pi)))
+                                        cursor_rect = pygame.Rect(
+                                            rect_opcao.x - tamanho_cursor,
+                                            rect_opcao.y - tamanho_cursor,
+                                            rect_opcao.width + tamanho_cursor * 2,
+                                            rect_opcao.height + tamanho_cursor * 2
+                                        )
+                                        pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
                                 
                                 pygame.display.flip()
                                 
@@ -5457,6 +6237,38 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                                 for ev_confirm in pygame.event.get():
                                     if ev_confirm.type == pygame.QUIT:
                                         return None
+                                    
+                                    # Processar controle primeiro
+                                    from core.gamepad_manager import gerenciador_gamepad
+                                    controle_processado_confirm = False
+                                    if gerenciador_gamepad.obter_numero_controles() > 0:
+                                        from core.menu_controles import processar_eventos_controle_menu
+                                        tempo_atual_confirm = pygame.time.get_ticks()
+                                        resultado_controle_confirm = processar_eventos_controle_menu(ev_confirm, opcao_confirmacao, len(opcoes), joystick_id=0, tempo_atual=tempo_atual_confirm)
+                                        if resultado_controle_confirm:
+                                            acao_confirm = resultado_controle_confirm.get("acao")
+                                            if acao_confirm == "cima":
+                                                opcao_confirmacao = (opcao_confirmacao - 1) % len(opcoes)
+                                                controle_processado_confirm = True
+                                            elif acao_confirm == "baixo":
+                                                opcao_confirmacao = (opcao_confirmacao + 1) % len(opcoes)
+                                                controle_processado_confirm = True
+                                            elif acao_confirm == "confirmar":
+                                                if opcao_confirmacao == 0:  # COMPRAR
+                                                    confirmacao_ativa = False
+                                                    break
+                                                else:  # SAIR
+                                                    confirmacao_ativa = False
+                                                    opcao_confirmacao = -1  # Cancelado
+                                                    break
+                                            elif acao_confirm == "cancelar":
+                                                confirmacao_ativa = False
+                                                opcao_confirmacao = -1  # Cancelado
+                                                break
+                                    
+                                    if controle_processado_confirm:
+                                        continue
+                                    
                                     elif ev_confirm.type == pygame.KEYDOWN:
                                         if ev_confirm.key in (pygame.K_UP, pygame.K_w):
                                             opcao_confirmacao = (opcao_confirmacao - 1) % len(opcoes)
@@ -6460,6 +7272,380 @@ def submenu_controles(screen):
         if max_scroll > 0:
             desenhar_scrollbar(screen, scroll_offset, max_scroll, caixa_x, caixa_y, caixa_largura, caixa_altura, scroll_dragging)
 
+        pygame.display.flip()
+
+def mostrar_dialogo_confirmacao_compra_carro(screen, bg, nome_carro, preco):
+    """Mostra diálogo modal de confirmação para comprar um carro"""
+    from config import LARGURA, ALTURA, FPS
+    from core.i18n import t
+    from core.gamepad_manager import gerenciador_gamepad
+    from core.menu_controles import processar_eventos_controle_menu
+    
+    clock = pygame.time.Clock()
+    opcao_selecionada = 0  # 0 = COMPRAR, 1 = CANCELAR
+    
+    # Variáveis para os botões
+    caixa_largura = 500
+    caixa_altura = 180
+    caixa_x = (LARGURA - caixa_largura) // 2
+    caixa_y = ALTURA - caixa_altura - 260
+    
+    animacao_cursor = 0.0
+    
+    # Aplicar blur no fundo
+    try:
+        # aplicar_blur está no mesmo arquivo, então podemos chamá-la diretamente
+        fundo_blur = aplicar_blur(bg, fator=4)
+    except:
+        fundo_blur = bg
+    
+    while True:
+        dt = clock.tick(FPS) / 1000.0
+        animacao_cursor += dt * 3.0
+        if animacao_cursor >= 1.0:
+            animacao_cursor = 0.0
+        
+        # Desenhar fundo com blur
+        screen.blit(fundo_blur, (0, 0))
+        overlay_transparente = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+        overlay_transparente.fill((0, 0, 0, 100))
+        screen.blit(overlay_transparente, (0, 0))
+        
+        # Desenhar caixa de confirmação
+        overlay = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 220))
+        screen.blit(overlay, (caixa_x, caixa_y))
+        pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 2)
+        
+        titulo = render_text("CONFIRMAÇÃO DE COMPRA", 22, (255, 255, 0), bold=True, pixel_style=True)
+        screen.blit(titulo, (caixa_x + (caixa_largura - titulo.get_width()) // 2, caixa_y + 10))
+        
+        desc = render_text(f"{nome_carro.upper()}", 18, (220, 220, 220), bold=False, pixel_style=True)
+        preco_txt = render_text(f"Preço: ${preco:,}", 18, (180, 255, 180), bold=False, pixel_style=True)
+        screen.blit(desc, (caixa_x + 20, caixa_y + 45))
+        screen.blit(preco_txt, (caixa_x + 20, caixa_y + 70))
+        
+        # Opções
+        opcoes = ["COMPRAR CARRO", "CANCELAR"]
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        
+        for i, texto_opcao in enumerate(opcoes):
+            cor = (0, 200, 255) if i == opcao_selecionada else (200, 200, 200)
+            txt = render_text(texto_opcao, 20, cor, bold=True, pixel_style=True)
+            y = caixa_y + 105 + i * 30
+            rect_opcao = pygame.Rect(caixa_x + 40, y, caixa_largura - 80, 30)
+            
+            # Verificar hover
+            if rect_opcao.collidepoint(mouse_x, mouse_y):
+                cor = (0, 200, 255)
+                opcao_selecionada = i
+            
+            screen.blit(txt, (caixa_x + 40, y))
+            
+            # Desenhar cursor do controle se selecionado
+            if i == opcao_selecionada and gerenciador_gamepad.obter_numero_controles() > 0:
+                tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                cursor_rect = pygame.Rect(
+                    rect_opcao.x - tamanho_cursor,
+                    rect_opcao.y - tamanho_cursor,
+                    rect_opcao.width + tamanho_cursor * 2,
+                    rect_opcao.height + tamanho_cursor * 2
+                )
+                pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
+        
+        pygame.display.flip()
+        
+        # Processar eventos
+        for ev in pygame.event.get():
+            if ev.type == pygame.QUIT:
+                return False
+            
+            # Processar controle primeiro
+            controle_processado = False
+            if gerenciador_gamepad.obter_numero_controles() > 0:
+                tempo_atual = pygame.time.get_ticks()
+                resultado_controle = processar_eventos_controle_menu(ev, opcao_selecionada, len(opcoes), joystick_id=0, tempo_atual=tempo_atual)
+                if resultado_controle:
+                    acao = resultado_controle.get("acao")
+                    if acao == "cima":
+                        opcao_selecionada = (opcao_selecionada - 1) % len(opcoes)
+                        controle_processado = True
+                    elif acao == "baixo":
+                        opcao_selecionada = (opcao_selecionada + 1) % len(opcoes)
+                        controle_processado = True
+                    elif acao == "confirmar":
+                        if opcao_selecionada == 0:  # COMPRAR
+                            return True
+                        else:  # CANCELAR
+                            return False
+                    elif acao == "cancelar":
+                        return False
+            
+            if not controle_processado:
+                if ev.type == pygame.KEYDOWN:
+                    if ev.key in (pygame.K_UP, pygame.K_w):
+                        opcao_selecionada = (opcao_selecionada - 1) % len(opcoes)
+                    elif ev.key in (pygame.K_DOWN, pygame.K_s):
+                        opcao_selecionada = (opcao_selecionada + 1) % len(opcoes)
+                    elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
+                        return opcao_selecionada == 0  # COMPRAR = True, CANCELAR = False
+                    elif ev.key == pygame.K_ESCAPE:
+                        return False  # Cancelar
+                elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                    mouse_x, mouse_y = pygame.mouse.get_pos()
+                    for i, texto_opcao in enumerate(opcoes):
+                        rect_opcao = pygame.Rect(caixa_x + 40, caixa_y + 105 + i * 30, caixa_largura - 80, 30)
+                        if rect_opcao.collidepoint(mouse_x, mouse_y):
+                            return i == 0  # COMPRAR = True, CANCELAR = False
+
+def mostrar_dialogo_confirmacao_venda_carro(screen, bg, nome_carro, preco_venda):
+    """Mostra diálogo modal de confirmação para vender um carro"""
+    from config import LARGURA, ALTURA, FPS
+    from core.i18n import t
+    from core.gamepad_manager import gerenciador_gamepad
+    from core.menu_controles import processar_eventos_controle_menu
+    
+    clock = pygame.time.Clock()
+    opcao_selecionada = 0  # 0 = VENDER, 1 = CANCELAR
+    
+    # Variáveis para os botões
+    caixa_largura = 500
+    caixa_altura = 180
+    caixa_x = (LARGURA - caixa_largura) // 2
+    caixa_y = ALTURA - caixa_altura - 260
+    
+    animacao_cursor = 0.0
+    
+    # Aplicar blur no fundo
+    try:
+        # aplicar_blur está no mesmo arquivo, então podemos chamá-la diretamente
+        fundo_blur = aplicar_blur(bg, fator=4)
+    except:
+        fundo_blur = bg
+    
+    while True:
+        dt = clock.tick(FPS) / 1000.0
+        animacao_cursor += dt * 3.0
+        if animacao_cursor >= 1.0:
+            animacao_cursor = 0.0
+        
+        # Desenhar fundo com blur
+        screen.blit(fundo_blur, (0, 0))
+        overlay_transparente = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+        overlay_transparente.fill((0, 0, 0, 100))
+        screen.blit(overlay_transparente, (0, 0))
+        
+        # Desenhar caixa de confirmação
+        overlay = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 220))
+        screen.blit(overlay, (caixa_x, caixa_y))
+        pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 2)
+        
+        titulo = render_text("CONFIRMAÇÃO DE VENDA", 22, (255, 200, 0), bold=True, pixel_style=True)
+        screen.blit(titulo, (caixa_x + (caixa_largura - titulo.get_width()) // 2, caixa_y + 10))
+        
+        desc = render_text(f"{nome_carro.upper()}", 18, (220, 220, 220), bold=False, pixel_style=True)
+        preco_txt = render_text(f"Valor de venda: ${preco_venda:,}", 18, (255, 180, 180), bold=False, pixel_style=True)
+        screen.blit(desc, (caixa_x + 20, caixa_y + 45))
+        screen.blit(preco_txt, (caixa_x + 20, caixa_y + 70))
+        
+        # Opções
+        opcoes = ["VENDER CARRO", "CANCELAR"]
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        
+        for i, texto_opcao in enumerate(opcoes):
+            cor = (255, 150, 150) if i == opcao_selecionada else (200, 200, 200)
+            txt = render_text(texto_opcao, 20, cor, bold=True, pixel_style=True)
+            y = caixa_y + 105 + i * 30
+            rect_opcao = pygame.Rect(caixa_x + 40, y, caixa_largura - 80, 30)
+            
+            # Verificar hover
+            if rect_opcao.collidepoint(mouse_x, mouse_y):
+                cor = (255, 150, 150)
+                opcao_selecionada = i
+            
+            screen.blit(txt, (caixa_x + 40, y))
+            
+            # Desenhar cursor do controle se selecionado
+            if i == opcao_selecionada and gerenciador_gamepad.obter_numero_controles() > 0:
+                tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+                cursor_rect = pygame.Rect(
+                    rect_opcao.x - tamanho_cursor,
+                    rect_opcao.y - tamanho_cursor,
+                    rect_opcao.width + tamanho_cursor * 2,
+                    rect_opcao.height + tamanho_cursor * 2
+                )
+                pygame.draw.rect(screen, (255, 150, 150), cursor_rect, 3)
+        
+        pygame.display.flip()
+        
+        # Processar eventos
+        for ev in pygame.event.get():
+            if ev.type == pygame.QUIT:
+                return False
+            
+            # Processar controle primeiro
+            controle_processado = False
+            if gerenciador_gamepad.obter_numero_controles() > 0:
+                tempo_atual = pygame.time.get_ticks()
+                resultado_controle = processar_eventos_controle_menu(ev, opcao_selecionada, len(opcoes), joystick_id=0, tempo_atual=tempo_atual)
+                if resultado_controle:
+                    acao = resultado_controle.get("acao")
+                    if acao == "cima":
+                        opcao_selecionada = (opcao_selecionada - 1) % len(opcoes)
+                        controle_processado = True
+                    elif acao == "baixo":
+                        opcao_selecionada = (opcao_selecionada + 1) % len(opcoes)
+                        controle_processado = True
+                    elif acao == "confirmar":
+                        if opcao_selecionada == 0:  # VENDER
+                            return True
+                        else:  # CANCELAR
+                            return False
+                    elif acao == "cancelar":
+                        return False
+            
+            if not controle_processado:
+                if ev.type == pygame.KEYDOWN:
+                    if ev.key in (pygame.K_UP, pygame.K_w):
+                        opcao_selecionada = (opcao_selecionada - 1) % len(opcoes)
+                    elif ev.key in (pygame.K_DOWN, pygame.K_s):
+                        opcao_selecionada = (opcao_selecionada + 1) % len(opcoes)
+                    elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
+                        return opcao_selecionada == 0  # VENDER = True, CANCELAR = False
+                    elif ev.key == pygame.K_ESCAPE:
+                        return False  # Cancelar
+                elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                    mouse_x, mouse_y = pygame.mouse.get_pos()
+                    for i, texto_opcao in enumerate(opcoes):
+                        rect_opcao = pygame.Rect(caixa_x + 40, caixa_y + 105 + i * 30, caixa_largura - 80, 30)
+                        if rect_opcao.collidepoint(mouse_x, mouse_y):
+                            return i == 0  # VENDER = True, CANCELAR = False
+
+def mostrar_dialogo_confirmacao_fechar(screen, bg):
+    """Mostra diálogo modal de confirmação para fechar o jogo"""
+    from config import LARGURA, ALTURA, FPS
+    from core.i18n import t
+    
+    clock = pygame.time.Clock()
+    opcao_selecionada = 0  # 0 = SIM, 1 = NÃO
+    
+    # Variáveis para os botões
+    caixa_largura = 600
+    caixa_altura = 220
+    caixa_x = (LARGURA - caixa_largura) // 2
+    caixa_y = (ALTURA - caixa_altura) // 2
+    
+    botao_sim_rect = pygame.Rect(caixa_x + 50, caixa_y + caixa_altura - 70, 180, 50)
+    botao_nao_rect = pygame.Rect(caixa_x + caixa_largura - 230, caixa_y + caixa_altura - 70, 180, 50)
+    
+    animacao_cursor = 0.0
+    
+    while True:
+        dt = clock.tick(FPS) / 1000.0
+        animacao_cursor += dt * 3.0
+        if animacao_cursor >= 1.0:
+            animacao_cursor = 0.0
+        
+        for ev in pygame.event.get():
+            if ev.type == pygame.QUIT:
+                return False  # Não fechar se clicar no X durante confirmação
+            elif ev.type == pygame.KEYDOWN:
+                if ev.key in (pygame.K_LEFT, pygame.K_a):
+                    opcao_selecionada = (opcao_selecionada - 1) % 2
+                elif ev.key in (pygame.K_RIGHT, pygame.K_d):
+                    opcao_selecionada = (opcao_selecionada + 1) % 2
+                elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
+                    return opcao_selecionada == 0  # SIM = True, NÃO = False
+                elif ev.key == pygame.K_ESCAPE:
+                    return False  # Cancelar
+            elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                if botao_sim_rect.collidepoint(mouse_x, mouse_y):
+                    return True
+                elif botao_nao_rect.collidepoint(mouse_x, mouse_y):
+                    return False
+            
+            # Processar controle
+            from core.gamepad_manager import gerenciador_gamepad
+            if gerenciador_gamepad.obter_numero_controles() > 0:
+                from core.menu_controles import processar_eventos_controle_menu
+                tempo_atual = pygame.time.get_ticks()
+                resultado_controle = processar_eventos_controle_menu(ev, opcao_selecionada, 2, joystick_id=0, tempo_atual=tempo_atual)
+                if resultado_controle:
+                    acao = resultado_controle.get("acao")
+                    if acao == "esquerda":
+                        opcao_selecionada = (opcao_selecionada - 1) % 2
+                    elif acao == "direita":
+                        opcao_selecionada = (opcao_selecionada + 1) % 2
+                    elif acao == "confirmar":
+                        return opcao_selecionada == 0  # SIM = True, NÃO = False
+                    elif acao == "cancelar":
+                        return False  # Cancelar
+        
+        # Desenhar
+        screen.blit(bg, (0, 0))
+        
+        # Overlay escuro
+        overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        screen.blit(overlay, (0, 0))
+        
+        # Caixa do diálogo
+        caixa_fundo = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
+        caixa_fundo.fill((0, 0, 0, 200))
+        screen.blit(caixa_fundo, (caixa_x, caixa_y))
+        pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
+        
+        # Texto principal - reduzir tamanho da fonte para caber na caixa
+        texto_pergunta = render_text("Você tem certeza que quer fechar o jogo?", 20, (255, 255, 255), bold=True, pixel_style=True)
+        texto_pergunta_x = caixa_x + (caixa_largura - texto_pergunta.get_width()) // 2
+        screen.blit(texto_pergunta, (texto_pergunta_x, caixa_y + 30))
+        
+        # Botões
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        sim_hover = botao_sim_rect.collidepoint(mouse_x, mouse_y)
+        nao_hover = botao_nao_rect.collidepoint(mouse_x, mouse_y)
+        
+        cor_sim = (100, 255, 100) if (opcao_selecionada == 0 or sim_hover) else (80, 200, 80)
+        cor_nao = (255, 100, 100) if (opcao_selecionada == 1 or nao_hover) else (200, 80, 80)
+        
+        pygame.draw.rect(screen, cor_sim, botao_sim_rect)
+        pygame.draw.rect(screen, (150, 255, 150), botao_sim_rect, 2)
+        pygame.draw.rect(screen, cor_nao, botao_nao_rect)
+        pygame.draw.rect(screen, (255, 150, 150), botao_nao_rect, 2)
+        
+        # Desenhar cursor do controle se selecionado
+        from core.gamepad_manager import gerenciador_gamepad
+        if gerenciador_gamepad.obter_numero_controles() > 0:
+            tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
+            if opcao_selecionada == 0:
+                cursor_rect = pygame.Rect(
+                    botao_sim_rect.x - tamanho_cursor,
+                    botao_sim_rect.y - tamanho_cursor,
+                    botao_sim_rect.width + tamanho_cursor * 2,
+                    botao_sim_rect.height + tamanho_cursor * 2
+                )
+                pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
+            else:
+                cursor_rect = pygame.Rect(
+                    botao_nao_rect.x - tamanho_cursor,
+                    botao_nao_rect.y - tamanho_cursor,
+                    botao_nao_rect.width + tamanho_cursor * 2,
+                    botao_nao_rect.height + tamanho_cursor * 2
+                )
+                pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
+        
+        texto_sim = render_text("SIM", 22, (255, 255, 255), bold=True, pixel_style=True)
+        texto_sim_x = botao_sim_rect.x + (botao_sim_rect.width - texto_sim.get_width()) // 2
+        texto_sim_y = botao_sim_rect.y + (botao_sim_rect.height - texto_sim.get_height()) // 2
+        screen.blit(texto_sim, (texto_sim_x, texto_sim_y))
+        
+        texto_nao = render_text("NÃO", 22, (255, 255, 255), bold=True, pixel_style=True)
+        texto_nao_x = botao_nao_rect.x + (botao_nao_rect.width - texto_nao.get_width()) // 2
+        texto_nao_y = botao_nao_rect.y + (botao_nao_rect.height - texto_nao.get_height()) // 2
+        screen.blit(texto_nao, (texto_nao_x, texto_nao_y))
+        
         pygame.display.flip()
 
 def mostrar_dialogo_confirmacao_resolucao(screen_ref, bg, nova_resolucao, resolucao_anterior):
@@ -9704,28 +10890,48 @@ def _verificar_e_iniciar_narrativa_training_01(narrative_system, gerenciador_pro
     if narrative_system.active:
         return False
     
-    # Não reiniciar se a cena atual é ch1_1b_crank_test_briefing (já foi processada)
-    if narrative_system.current_scene_id == "ch1_1b_crank_test_briefing":
-        # Se a cena já foi visitada, não reiniciar
-        if "ch1_1b_crank_test_briefing" in narrative_system.scenes_visited:
-            return False
-    
     # Se as cenas pós-corrida já foram visitadas, não verificar novamente
     if "ch1_6_post_race" in narrative_system.scenes_visited or "ch1_7_pixel_voice_intro" in narrative_system.scenes_visited:
+        # Limpar flag se ainda estiver definida para evitar loop
+        if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha:
+            gerenciador_progresso.ultima_corrida_campanha = None
+            gerenciador_progresso.salvar()
         return False
     
     # Se Pixel já foi visto, não verificar novamente
     if gerenciador_progresso.pixel_primeira_aparicao_mostrada:
+        # Limpar flag se ainda estiver definida para evitar loop
+        if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha:
+            gerenciador_progresso.ultima_corrida_campanha = None
+            gerenciador_progresso.salvar()
         return False
+    
+    # IMPORTANTE: Só processar se a flag for 'training_01'
+    # Se for outra corrida (como 'garage_test'), limpar a flag e não processar
+    if hasattr(gerenciador_progresso, 'ultima_corrida_campanha'):
+        if gerenciador_progresso.ultima_corrida_campanha and gerenciador_progresso.ultima_corrida_campanha != "training_01":
+            # Limpar flag de corrida desconhecida para evitar loop
+            print(f"[VERIFICAR_TRAINING_01] Flag ultima_corrida_campanha é '{gerenciador_progresso.ultima_corrida_campanha}', não 'training_01'. Limpando para evitar loop.")
+            gerenciador_progresso.ultima_corrida_campanha = None
+            gerenciador_progresso.salvar()
+            return False
     
     # Verificar se já completou a corrida
     corrida_completa = _verificar_corrida_completa(1)
     missao_completa = gerenciador_missoes.esta_completa("m6_batismo_de_pista")
     
-    # Se completou mas Pixel ainda não foi visto
+    # Se completou mas Pixel ainda não foi visto E a flag é 'training_01'
     if (corrida_completa or missao_completa) and not gerenciador_progresso.pixel_primeira_aparicao_mostrada:
-        _iniciar_narrativa_pos_training_01(narrative_system, gerenciador_progresso)
-        return True
+        # Verificar novamente se a flag é 'training_01' antes de processar
+        if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "training_01":
+            _iniciar_narrativa_pos_training_01(narrative_system, gerenciador_progresso)
+            return True
+        else:
+            # Se a flag não é 'training_01', limpar e não processar
+            if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha:
+                print(f"[VERIFICAR_TRAINING_01] Corrida completa mas flag não é 'training_01' (é '{gerenciador_progresso.ultima_corrida_campanha}'). Limpando.")
+                gerenciador_progresso.ultima_corrida_campanha = None
+                gerenciador_progresso.salvar()
     return False
 
 def run():
@@ -9804,12 +11010,73 @@ def run():
             escolha = resultado_menu
         
         if escolha == Escolha.JOGAR:
-            # Abrir tela de seleção entre Campanha e Arcade
-            modo_principal = selecao_modo_principal_loop(screen)
-            if modo_principal is None:
+            # Ir direto para o modo arcade (campanha removida)
+            # Abrir tela de seleção de modo de jogo (Arcade)
+            resultado_modo = modo_jogo_loop(screen)
+            if resultado_modo is None:
                 continue  # Cancelou, voltar ao menu
             
-            if modo_principal == "campanha":
+            if isinstance(resultado_modo, tuple):  # Se não cancelou e é uma tupla
+                if len(resultado_modo) == 5:  # Novo formato com voltas, dificuldade e fase
+                    modo_jogo, tipo_jogo, voltas, dificuldade_ia, fase_selecionada = resultado_modo
+                elif len(resultado_modo) == 4:  # Formato com voltas e dificuldade (sem fase)
+                    modo_jogo, tipo_jogo, voltas, dificuldade_ia = resultado_modo
+                    fase_selecionada = 1  # Padrão: fase 1
+                else:  # Formato antigo (compatibilidade)
+                    modo_jogo, tipo_jogo = resultado_modo
+                    voltas = 1  # Padrão
+                    dificuldade_ia = "medio"  # Padrão
+                    fase_selecionada = 1  # Padrão
+                
+                # Sempre permitir seleção de carro no modo arcade (após selecionar a pista)
+                # A função está definida no mesmo módulo, então podemos chamá-la diretamente
+                resultado_selecao = selecionar_carros_loop(screen, modo_arcade=True, modo_jogo=modo_jogo)
+                # Verificar se cancelou (None ou (None, None)) - voltar ao menu
+                if resultado_selecao is None or (isinstance(resultado_selecao, tuple) and len(resultado_selecao) == 2 and resultado_selecao[0] is None and resultado_selecao[1] is None):
+                    continue  # Cancelou, voltar ao menu
+                
+                if isinstance(resultado_selecao, tuple):
+                    carro_p1, carro_p2 = resultado_selecao
+                    # Verificar se ambos são None (cancelamento)
+                    if carro_p1 is None and carro_p2 is None:
+                        continue  # Cancelou, voltar ao menu
+                else:
+                    carro_p1 = resultado_selecao
+                    carro_p2 = 0
+                
+                # Parar música do menu se não deve tocar no jogo
+                if not CONFIGURACOES["audio"]["musica_no_jogo"]:
+                    gerenciador_musica.parar_musica()
+                
+                # Iniciar jogo no modo arcade
+                import main
+                main.principal(
+                    carro_selecionado_p1=carro_p1,
+                    carro_selecionado_p2=carro_p2,
+                    modo_jogo=modo_jogo,
+                    tipo_jogo=tipo_jogo,
+                    voltas=voltas,
+                    dificuldade_ia=dificuldade_ia,
+                    modo_arcade=True,
+                    mapa_selecionado=fase_selecionada
+                )
+                
+                # Após o jogo, volta para o menu (não fecha a janela)
+                # Reiniciar música do menu se habilitada
+                if CONFIGURACOES["audio"]["musica_habilitada"] and CONFIGURACOES["audio"]["musica_no_menu"]:
+                    if not gerenciador_musica.musica_tocando:
+                        if CONFIGURACOES["audio"]["musica_aleatoria"]:
+                            gerenciador_musica.musica_aleatoria()
+                        else:
+                            gerenciador_musica.tocar_musica()
+                        if gerenciador_musica.musica_tocando:
+                            popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
+            
+            # Pular todo o código de campanha abaixo
+            continue
+            
+            # CÓDIGO DE CAMPANHA REMOVIDO - COMEÇA AQUI:
+            if False:  # Nunca executar
                 # Loop de campanha - inicia com narrativa e alterna com gameplay
                 from core.mapa_cidade import mapa_cidade_loop
                 from core.hub_territorio import hub_territorio_loop
@@ -9839,6 +11106,11 @@ def run():
                 # Função auxiliar para executar loop de narrativa
                 def executar_narrativa():
                     """Executa o loop de narrativa até encontrar um trigger ou terminar"""
+                    # IMPORTANTE: Se há uma cena mas a narrativa não está ativa, ativar
+                    if narrative_system.current_scene_id and not narrative_system.active:
+                        print(f"[EXECUTAR_NARRATIVA] Cena {narrative_system.current_scene_id} existe mas narrativa não está ativa. Ativando...")
+                        narrative_system.active = True
+                    
                     # Verificar se há um trigger pendente antes de iniciar o loop
                     # Isso pode acontecer se uma cena já foi vista e retornou um trigger
                     if narrative_system.active and narrative_system.current_scene_id:
@@ -9921,49 +11193,60 @@ def run():
                             
                             # Verificar trigger ANTES de verificar se terminou todas as linhas
                             # Isso garante que mesmo se _avancar_cena() já foi chamado, o trigger ainda será detectado
-                            scene_trigger = scene.get("gameplayTrigger")
-                            print(f"[EXECUTAR_NARRATIVA] Verificando scene_trigger: scene_id={narrative_system.current_scene_id}, has_trigger={scene_trigger is not None}, line_index={narrative_system.current_line_index}, total_lines={len(lines)}, choices_visible={narrative_system.choices_visible}")
-                            if scene_trigger and narrative_system.current_scene_id:
-                                # Se a cena tem trigger e já terminou (sem escolhas), processar imediatamente
-                                # IMPORTANTE: Garantir que TODAS as linhas foram exibidas antes de processar o trigger
-                                # O jogador precisa clicar para avançar cada linha, então current_line_index >= len(lines)
-                                # significa que todas as linhas foram exibidas e o jogador clicou além da última
-                                if (narrative_system.current_line_index >= len(lines) and 
-                                    not narrative_system.choices_visible):
-                                    print(f"[EXECUTAR_NARRATIVA] Todas as linhas exibidas (line_index={narrative_system.current_line_index}, total={len(lines)}), processando trigger...")
-                                    # Debug: verificar se todas as linhas foram realmente exibidas
-                                    if narrative_system.current_scene_id == "ch1_3_boris_deal":
-                                        print(f"[EXECUTAR_NARRATIVA] ✓ Cena ch1_3_boris_deal: Todas as {len(lines)} linhas foram exibidas antes de abrir a loja!")
-                                        for i, line in enumerate(lines):
-                                            print(f"  Linha {i}: {line.get('speaker', '')} - {line.get('text', '')[:60]}...")
-                                    # Extrair o tipo do trigger e todos os outros campos como params
-                                    trigger_type = scene_trigger.get("trigger")
-                                    params = {k: v for k, v in scene_trigger.items() if k != "trigger"}
-                                    trigger = {
-                                        "trigger": trigger_type,
-                                        "params": params
-                                    }
-                                    print(f"[EXECUTAR_NARRATIVA] Trigger detectado diretamente da cena {narrative_system.current_scene_id}: {trigger}")
-                                    # Verificar se o trigger já foi processado (evitar loop infinito)
-                                    if trigger.get('trigger') in ['open_shop', 'openShop', 'open_shop_interface']:
-                                        shop_id = trigger.get('params', {}).get('shopId', '')
-                                        on_close_scene_id = trigger.get('params', {}).get('onCloseSceneId', '')
-                                        trigger_key = f"{shop_id}_{on_close_scene_id}"
-                                        if hasattr(processar_trigger, '_loja_processada') and trigger_key in processar_trigger._loja_processada:
-                                            print(f"[EXECUTAR_NARRATIVA] Trigger já processado dentro do loop, ignorando: {trigger_key}")
-                                            # Não retornar o trigger, continuar processando a narrativa
-                                            pass
-                                        else:
+                            # IMPORTANTE: NÃO verificar trigger se há escolhas visíveis (evitar loop infinito)
+                            if not narrative_system.choices_visible:
+                                scene_trigger = scene.get("gameplayTrigger")
+                                print(f"[EXECUTAR_NARRATIVA] Verificando scene_trigger: scene_id={narrative_system.current_scene_id}, has_trigger={scene_trigger is not None}, line_index={narrative_system.current_line_index}, total_lines={len(lines)}, choices_visible={narrative_system.choices_visible}")
+                                if scene_trigger and narrative_system.current_scene_id:
+                                    # Se a cena tem trigger e já terminou (sem escolhas), processar imediatamente
+                                    # IMPORTANTE: Garantir que TODAS as linhas foram exibidas antes de processar o trigger
+                                    # O jogador precisa clicar para avançar cada linha, então current_line_index >= len(lines)
+                                    # significa que todas as linhas foram exibidas e o jogador clicou além da última
+                                    if narrative_system.current_line_index >= len(lines):
+                                        print(f"[EXECUTAR_NARRATIVA] Todas as linhas exibidas (line_index={narrative_system.current_line_index}, total={len(lines)}), processando trigger...")
+                                        # Debug: verificar se todas as linhas foram realmente exibidas
+                                        if narrative_system.current_scene_id == "ch1_3_boris_deal":
+                                            print(f"[EXECUTAR_NARRATIVA] ✓ Cena ch1_3_boris_deal: Todas as {len(lines)} linhas foram exibidas antes de abrir a loja!")
+                                            for i, line in enumerate(lines):
+                                                print(f"  Linha {i}: {line.get('speaker', '')} - {line.get('text', '')[:60]}...")
+                                        # Extrair o tipo do trigger e todos os outros campos como params
+                                        trigger_type = scene_trigger.get("trigger")
+                                        params = {k: v for k, v in scene_trigger.items() if k != "trigger"}
+                                        trigger = {
+                                            "trigger": trigger_type,
+                                            "params": params
+                                        }
+                                        print(f"[EXECUTAR_NARRATIVA] Trigger detectado diretamente da cena {narrative_system.current_scene_id}: {trigger}")
+                                        # Verificar se o trigger já foi processado (evitar loop infinito)
+                                        # Usar um atributo da função para rastrear triggers processados
+                                        if not hasattr(executar_narrativa, '_triggers_processados'):
+                                            executar_narrativa._triggers_processados = set()
+                                        
+                                        trigger_key = f"{narrative_system.current_scene_id}_{trigger.get('trigger')}"
+                                        if trigger_key in executar_narrativa._triggers_processados:
+                                            print(f"[EXECUTAR_NARRATIVA] Trigger já processado, ignorando: {trigger_key}")
+                                            # Marcar a cena como visitada e desativar narrativa para evitar loop
+                                            if narrative_system.current_scene_id:
+                                                narrative_system.scenes_visited.add(narrative_system.current_scene_id)
+                                            narrative_system.active = False
+                                            narrative_system.current_scene_id = None
+                                            return None
+                                        
+                                        # Marcar trigger como processado
+                                        executar_narrativa._triggers_processados.add(trigger_key)
+                                        
+                                        if trigger.get('trigger') in ['open_shop', 'openShop', 'open_shop_interface']:
+                                            shop_id = trigger.get('params', {}).get('shopId', '')
                                             print(f"[EXECUTAR_NARRATIVA] Processando trigger open_shop: shop_id={shop_id}")
                                             # Limpar current_scene_id antes de retornar o trigger
                                             narrative_system.current_scene_id = None
                                             narrative_system.active = False
                                             return trigger
-                                    else:
-                                        print(f"[EXECUTAR_NARRATIVA] Processando trigger: {trigger.get('trigger')}")
-                                        narrative_system.current_scene_id = None
-                                        narrative_system.active = False
-                                        return trigger
+                                        else:
+                                            print(f"[EXECUTAR_NARRATIVA] Processando trigger: {trigger.get('trigger')}")
+                                            narrative_system.current_scene_id = None
+                                            narrative_system.active = False
+                                            return trigger
                             
                             # Se terminou todas as linhas e não há escolhas, verificar trigger (método antigo como fallback)
                             if (narrative_system.current_line_index >= len(lines) and 
@@ -9974,19 +11257,29 @@ def run():
                                 if trigger:
                                     print(f"[EXECUTAR_NARRATIVA] Trigger detectado na cena {narrative_system.current_scene_id}: {trigger}")
                                     print(f"[EXECUTAR_NARRATIVA] line_index={narrative_system.current_line_index}, total_lines={len(lines)}, choices_visible={narrative_system.choices_visible}")
+                                    
                                     # Verificar se o trigger já foi processado (evitar loop infinito)
+                                    if not hasattr(executar_narrativa, '_triggers_processados'):
+                                        executar_narrativa._triggers_processados = set()
+                                    
+                                    trigger_key = f"{narrative_system.current_scene_id}_{trigger.get('trigger')}"
+                                    if trigger_key in executar_narrativa._triggers_processados:
+                                        print(f"[EXECUTAR_NARRATIVA] Trigger já processado, ignorando: {trigger_key}")
+                                        # Marcar a cena como visitada e desativar narrativa para evitar loop
+                                        if narrative_system.current_scene_id:
+                                            narrative_system.scenes_visited.add(narrative_system.current_scene_id)
+                                        narrative_system.active = False
+                                        narrative_system.current_scene_id = None
+                                        return None
+                                    
+                                    # Marcar trigger como processado
+                                    executar_narrativa._triggers_processados.add(trigger_key)
+                                    
                                     if trigger.get('trigger') in ['open_shop', 'openShop', 'open_shop_interface']:
                                         shop_id = trigger.get('params', {}).get('shopId', '')
-                                        on_close_scene_id = trigger.get('params', {}).get('onCloseSceneId', '')
-                                        trigger_key = f"{shop_id}_{on_close_scene_id}"
-                                        if hasattr(processar_trigger, '_loja_processada') and trigger_key in processar_trigger._loja_processada:
-                                            print(f"[EXECUTAR_NARRATIVA] Trigger já processado dentro do loop, ignorando: {trigger_key}")
-                                            # Não retornar o trigger, continuar processando a narrativa
-                                            pass
-                                        else:
-                                            print(f"[EXECUTAR_NARRATIVA] Processando trigger open_shop: shop_id={shop_id}")
-                                            narrative_system.fechar()
-                                            return trigger
+                                        print(f"[EXECUTAR_NARRATIVA] Processando trigger open_shop: shop_id={shop_id}")
+                                        narrative_system.fechar()
+                                        return trigger
                                     else:
                                         print(f"[EXECUTAR_NARRATIVA] Processando trigger: {trigger.get('trigger')}")
                                         narrative_system.fechar()
@@ -10250,6 +11543,7 @@ def run():
                                                     else:
                                                         # Iniciar corrida normalmente
                                                         import main
+                                                        print(f"[PISTA TREINO] Chamando main.principal com mapa_selecionado={track}, race_id=training_01")
                                                         main.principal(
                                                             carro_selecionado_p1=carro_p1_idx,
                                                             carro_selecionado_p2=0,
@@ -10259,7 +11553,8 @@ def run():
                                                             voltas=laps,
                                                             dificuldade_ia=difficulty,
                                                             modo_arcade=False,
-                                                            sem_bots=sem_bots
+                                                            sem_bots=sem_bots,
+                                                            race_id="training_01"
                                                         )
                                                     
                                                     # Verificar se training_01 foi completada
@@ -10370,6 +11665,7 @@ def run():
                                                 
                                                 # Iniciar corrida
                                                 import main
+                                                print(f"[PISTA TREINO] Chamando main.principal com mapa_selecionado={track}, race_id=training_01")
                                                 main.principal(
                                                     carro_selecionado_p1=carro_p1_idx,
                                                     carro_selecionado_p2=0,
@@ -10379,7 +11675,8 @@ def run():
                                                     voltas=laps,
                                                     dificuldade_ia=difficulty,
                                                     modo_arcade=False,
-                                                    sem_bots=sem_bots
+                                                    sem_bots=sem_bots,
+                                                    race_id="training_01"
                                                 )
                                                 
                                                 # Verificar se training_01 foi completada
@@ -10568,7 +11865,7 @@ def run():
                                 else:
                                     # Iniciar corrida normalmente
                                     import main
-                                    print(f"[PISTA TREINO] Chamando main.principal com mapa_selecionado={track}")
+                                    print(f"[PISTA TREINO] Chamando main.principal com mapa_selecionado={track}, race_id=training_01")
                                     main.principal(
                                         carro_selecionado_p1=carro_p1_idx,
                                         carro_selecionado_p2=0,
@@ -10578,7 +11875,8 @@ def run():
                                         voltas=laps,
                                         dificuldade_ia=difficulty,
                                         modo_arcade=False,
-                                        sem_bots=sem_bots
+                                        sem_bots=sem_bots,
+                                        race_id="training_01"
                                     )
                                     
                                     # Verificar se training_01 foi completada
@@ -10813,6 +12111,7 @@ def run():
                                 import main
                                 # Passar flag para indicar que não deve ter bots (será processado no main.py)
                                 modo_arcade = False  # Sempre modo campanha para corridas da narrativa
+                                print(f"[PROCESSAR_TRIGGER] Chamando main.principal com race_id={race_id}")
                                 main.principal(
                                     carro_selecionado_p1=carro_p1_idx,
                                     carro_selecionado_p2=0,
@@ -10822,7 +12121,8 @@ def run():
                                     voltas=laps,
                                     dificuldade_ia=difficulty,
                                     modo_arcade=modo_arcade,
-                                    sem_bots=sem_bots  # Passar flag para não criar bots
+                                    sem_bots=sem_bots,  # Passar flag para não criar bots
+                                    race_id=race_id  # IMPORTANTE: Passar race_id para manter a flag
                                 )
                                 
                                 # Após a corrida, continuar narrativa se houver próxima cena
@@ -11440,9 +12740,9 @@ def run():
                                     'preco_tipo': 'otimo'
                                 }
                             else:
-                                # Compras subsequentes: usar cálculo normal
-                                dinheiro_inicial = 5000
-                                peca_info = boris.calcular_preco_peça("motor", preco_base=dinheiro_inicial)
+                                # Compras subsequentes: usar cálculo normal com preço base de 2500
+                                preco_base_motor = 2500
+                                peca_info = boris.calcular_preco_peça("motor", preco_base=preco_base_motor)
                             opcao_selecionada = 0  # 0 = Comprar peça, 1 = Sair
                             mensagem_status = ""
                             mensagem_tempo = 0.0
@@ -12121,9 +13421,28 @@ def run():
                         narrative_system.current_chapter_id = "ch2"
                     else:
                         # Primeira vez - iniciar Capítulo 1
+                        print(f"[LOOP PRINCIPAL] Primeira vez - tentando iniciar Capítulo 1")
+                        print(f"[LOOP PRINCIPAL] Cenas visitadas antes de iniciar: {narrative_system.scenes_visited}")
+                        print(f"[LOOP PRINCIPAL] current_scene_id antes de iniciar: {narrative_system.current_scene_id}")
+                        print(f"[LOOP PRINCIPAL] active antes de iniciar: {narrative_system.active}")
+                        
+                        # IMPORTANTE: Para um novo save, garantir que ch1_0_prologue NÃO está marcada como visitada
+                        if "ch1_0_prologue" in narrative_system.scenes_visited:
+                            print(f"[LOOP PRINCIPAL] AVISO: ch1_0_prologue já está marcada como visitada em um novo save! Removendo...")
+                            narrative_system.scenes_visited.discard("ch1_0_prologue")
+                        
+                        # FORÇAR: Garantir que o capítulo está definido
+                        narrative_system.current_chapter_id = "ch1"
+                        
+                        # Tentar iniciar o capítulo
                         if narrative_system.iniciar_capitulo("ch1"):
+                            print(f"[LOOP PRINCIPAL] iniciar_capitulo('ch1') retornou True")
+                            print(f"[LOOP PRINCIPAL] current_scene_id após iniciar: {narrative_system.current_scene_id}")
+                            print(f"[LOOP PRINCIPAL] active após iniciar: {narrative_system.active}")
+                            
                             # Verificar se uma cena foi realmente iniciada
                             if narrative_system.current_scene_id:
+                                print(f"[LOOP PRINCIPAL] Cena {narrative_system.current_scene_id} foi iniciada, executando narrativa...")
                                 narrative_system.active = True
                                 trigger_resultado = executar_narrativa()
                                 
@@ -12137,29 +13456,93 @@ def run():
                                     pass
                             else:
                                 print(f"[LOOP PRINCIPAL] ERRO: iniciar_capitulo('ch1') retornou True mas não iniciou uma cena!")
+                                print(f"[LOOP PRINCIPAL] Tentando iniciar ch1_0_prologue manualmente...")
                                 # Tentar iniciar a primeira cena manualmente
-                                narrative_system._iniciar_cena_sem_transicao("ch1_0_prologue")
+                                # IMPORTANTE: Garantir que a cena não está marcada como visitada
+                                if "ch1_0_prologue" in narrative_system.scenes_visited:
+                                    narrative_system.scenes_visited.discard("ch1_0_prologue")
+                                    print(f"[LOOP PRINCIPAL] Removendo ch1_0_prologue de scenes_visited para permitir reinício")
+                                
+                                resultado = narrative_system._iniciar_cena_sem_transicao("ch1_0_prologue")
+                                print(f"[LOOP PRINCIPAL] _iniciar_cena_sem_transicao('ch1_0_prologue') retornou: {resultado}")
+                                print(f"[LOOP PRINCIPAL] current_scene_id após iniciar manualmente: {narrative_system.current_scene_id}")
+                                
                                 if narrative_system.current_scene_id:
+                                    print(f"[LOOP PRINCIPAL] Cena iniciada com sucesso, executando narrativa...")
                                     narrative_system.active = True
                                     gerenciador_progresso.definir_capitulo_atual("ch1")
                                     gerenciador_progresso.salvar()
+                                    # Executar a narrativa
+                                    trigger_resultado = executar_narrativa()
+                                    if trigger_resultado:
+                                        # Processar trigger será feito no loop principal abaixo
+                                        pass
                                 else:
-                                    print(f"[LOOP PRINCIPAL] ERRO: Não foi possível iniciar a primeira cena do Capítulo 1! Indo para o mapa como fallback.")
-                                    # Se não conseguiu iniciar, ir para o mapa como fallback
-                                    # Garantir que a narrativa está fechada
-                                    narrative_system.fechar()
-                                    # Salvar progresso
-                                    gerenciador_progresso.definir_capitulo_atual("ch1")
-                                    gerenciador_progresso.salvar()
-                                    from core.missoes import gerenciador_missoes
-                                    from core.mapa_locations import gerenciador_localizacoes
-                                    gerenciador_missoes.salvar()
-                                    gerenciador_localizacoes.salvar()
-                                    # Ir para o mapa
-                                    territorio_id = mapa_cidade_loop(screen)
-                                    if territorio_id is None:
-                                        break
-                                    continue
+                                    print(f"[LOOP PRINCIPAL] ERRO CRÍTICO: Não foi possível iniciar a primeira cena do Capítulo 1!")
+                                    print(f"[LOOP PRINCIPAL] Tentando forçar ativação da narrativa...")
+                                    # Última tentativa: forçar ativação
+                                    narrative_system.current_chapter_id = "ch1"
+                                    narrative_system.current_scene_id = "ch1_0_prologue"
+                                    narrative_system.active = True
+                                    narrative_system.current_line_index = 0
+                                    # Recarregar a cena
+                                    narrative_system._iniciar_cena_sem_transicao("ch1_0_prologue")
+                                    if narrative_system.current_scene_id:
+                                        print(f"[LOOP PRINCIPAL] Forçou ativação com sucesso, executando narrativa...")
+                                        trigger_resultado = executar_narrativa()
+                                        if trigger_resultado:
+                                            # Processar trigger será feito no loop principal abaixo
+                                            pass
+                                    else:
+                                        print(f"[LOOP PRINCIPAL] ERRO: Mesmo forçando não funcionou! Indo para o mapa como fallback.")
+                                        # Se não conseguiu iniciar, ir para o mapa como fallback
+                                        # Garantir que a narrativa está fechada
+                                        narrative_system.fechar()
+                                        # Salvar progresso
+                                        gerenciador_progresso.definir_capitulo_atual("ch1")
+                                        gerenciador_progresso.salvar()
+                                        from core.missoes import gerenciador_missoes
+                                        from core.mapa_locations import gerenciador_localizacoes
+                                        gerenciador_missoes.salvar()
+                                        gerenciador_localizacoes.salvar()
+                                        # Ir para o mapa
+                                        territorio_id = mapa_cidade_loop(screen)
+                                        if territorio_id is None:
+                                            break
+                                        continue
+                        else:
+                            print(f"[LOOP PRINCIPAL] ERRO: iniciar_capitulo('ch1') retornou False!")
+                            # Tentar iniciar manualmente mesmo assim
+                            print(f"[LOOP PRINCIPAL] Tentando iniciar ch1_0_prologue manualmente como fallback...")
+                            if "ch1_0_prologue" in narrative_system.scenes_visited:
+                                narrative_system.scenes_visited.discard("ch1_0_prologue")
+                            
+                            resultado = narrative_system._iniciar_cena_sem_transicao("ch1_0_prologue")
+                            if resultado and narrative_system.current_scene_id:
+                                print(f"[LOOP PRINCIPAL] Cena iniciada manualmente com sucesso, executando narrativa...")
+                                narrative_system.active = True
+                                narrative_system.current_chapter_id = "ch1"
+                                gerenciador_progresso.definir_capitulo_atual("ch1")
+                                gerenciador_progresso.salvar()
+                                trigger_resultado = executar_narrativa()
+                                if trigger_resultado:
+                                    # Processar trigger será feito no loop principal abaixo
+                                    pass
+                            else:
+                                print(f"[LOOP PRINCIPAL] ERRO: Não foi possível iniciar a primeira cena do Capítulo 1! Indo para o mapa como fallback.")
+                                # Se não conseguiu iniciar, ir para o mapa como fallback
+                                narrative_system.fechar()
+                                gerenciador_progresso.definir_capitulo_atual("ch1")
+                                gerenciador_progresso.salvar()
+                                from core.missoes import gerenciador_missoes
+                                from core.mapa_locations import gerenciador_localizacoes
+                                gerenciador_missoes.salvar()
+                                gerenciador_localizacoes.salvar()
+                                # Ir para o mapa
+                                territorio_id = mapa_cidade_loop(screen)
+                                if territorio_id is None:
+                                    break
+                                continue
                 elif capitulo_atual == "ch2" and not narrative_system.active:
                     # Se estamos no Capítulo 2 mas a narrativa não está ativa
                     # Verificar se há uma cena salva - se sim, não reiniciar o capítulo
@@ -12402,6 +13785,142 @@ def run():
                                         gerenciador_progresso.salvar()
                                     continue
                     
+                    # IMPORTANTE: Antes de verificar se não há narrativa, tentar iniciar o capítulo 1 se for um novo save
+                    if not narrative_system.active and not narrative_system.current_scene_id:
+                        # Verificar se é um novo save (nenhuma missão completa)
+                        from core.missoes import gerenciador_missoes
+                        gerenciador_missoes.carregar()
+                        if len(gerenciador_missoes.missoes_completas) == 0:
+                            capitulo_atual = gerenciador_progresso.obter_capitulo_atual()
+                            if not capitulo_atual or capitulo_atual == "ch1":
+                                print(f"[LOOP PRINCIPAL] NOVO SAVE DETECTADO: Tentando iniciar Capítulo 1 antes de ir para o mapa")
+                                # Garantir que o capítulo está definido
+                                if not capitulo_atual:
+                                    gerenciador_progresso.definir_capitulo_atual("ch1")
+                                    gerenciador_progresso.salvar()
+                                
+                                # Remover ch1_0_prologue de scenes_visited se estiver lá
+                                if "ch1_0_prologue" in narrative_system.scenes_visited:
+                                    narrative_system.scenes_visited.discard("ch1_0_prologue")
+                                    print(f"[LOOP PRINCIPAL] Removendo ch1_0_prologue de scenes_visited para permitir início")
+                                
+                                # Tentar iniciar o capítulo
+                                narrative_system.current_chapter_id = "ch1"
+                                if narrative_system.iniciar_capitulo("ch1"):
+                                    if narrative_system.current_scene_id:
+                                        print(f"[LOOP PRINCIPAL] Capítulo 1 iniciado com sucesso! Cena: {narrative_system.current_scene_id}")
+                                        narrative_system.active = True
+                                        # Continuar no loop para executar a narrativa
+                                        continue
+                                    else:
+                                        print(f"[LOOP PRINCIPAL] iniciar_capitulo retornou True mas não iniciou cena, tentando iniciar ch1_0_prologue manualmente")
+                                        resultado = narrative_system._iniciar_cena_sem_transicao("ch1_0_prologue")
+                                        if resultado and narrative_system.current_scene_id:
+                                            print(f"[LOOP PRINCIPAL] ch1_0_prologue iniciada manualmente com sucesso!")
+                                            narrative_system.active = True
+                                            continue
+                                        else:
+                                            print(f"[LOOP PRINCIPAL] Falha ao iniciar ch1_0_prologue manualmente")
+                                else:
+                                    print(f"[LOOP PRINCIPAL] iniciar_capitulo('ch1') retornou False")
+                    
+                    # IMPORTANTE: Verificar corridas da campanha ANTES de processar narrativa
+                    # Isso garante que corridas como garage_test sejam processadas imediatamente após retornar
+                    gerenciador_progresso.carregar()
+                    
+                    # Verificar se foi garage_test (corrida de teste da garagem)
+                    # IMPORTANTE: Verificar ANTES de processar narrativa, logo após a corrida retornar
+                    if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "garage_test":
+                        print(f"[LOOP PRINCIPAL] Detectada corrida garage_test pendente (ANTES de processar narrativa), verificando se foi completada...")
+                        
+                        # Verificar se a corrida foi completada
+                        from core.estatisticas import gerenciador_estatisticas
+                        gerenciador_estatisticas.carregar()
+                        
+                        # Verificar estatísticas da pista 1 (pista de teste)
+                        stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(1)
+                        melhor_tempo = stats_pista.get("melhor_tempo", None) if stats_pista else None
+                        melhor_posicao = stats_pista.get("melhor_posicao", None) if stats_pista else None
+                        print(f"[LOOP PRINCIPAL] Estatísticas pista 1 (garage_test): melhor_tempo={melhor_tempo}, melhor_posicao={melhor_posicao}")
+                        
+                        # Se completou a corrida, verificar gatilhos narrativos
+                        if melhor_tempo is not None and melhor_posicao is not None:
+                            print(f"[LOOP PRINCIPAL] Corrida garage_test completada! Verificando gatilhos narrativos...")
+                            
+                            # Limpar flag imediatamente para evitar loop
+                            gerenciador_progresso.ultima_corrida_campanha = None
+                            gerenciador_progresso.salvar()
+                            
+                            # IMPORTANTE: Marcar ch1_4b_housing_offer como visitada para evitar reativação
+                            if "ch1_4b_housing_offer" not in narrative_system.scenes_visited:
+                                narrative_system.scenes_visited.add("ch1_4b_housing_offer")
+                                print(f"[LOOP PRINCIPAL] Marcando ch1_4b_housing_offer como visitada para evitar reativação")
+                            
+                            # Determinar resultado da corrida
+                            resultado = "win" if melhor_posicao == 1 else "lose"
+                            narrative_system.variables["lastRaceResult"] = resultado
+                            
+                            # Verificar gatilhos de race_finished
+                            context = {
+                                "raceId": "garage_test",
+                                "raceResult": resultado
+                            }
+                            print(f"[LOOP PRINCIPAL] Verificando gatilhos pendentes com context: {context}")
+                            gatilho_encontrado = narrative_system.verificar_gatilhos_pendentes(context)
+                            print(f"[LOOP PRINCIPAL] verificar_gatilhos_pendentes retornou: {gatilho_encontrado}")
+                            
+                            if gatilho_encontrado:
+                                print(f"[LOOP PRINCIPAL] Gatilho encontrado! Ativando narrativa...")
+                                narrative_system.active = True
+                                continue  # Voltar para o início do loop para executar narrativa
+                            else:
+                                print(f"[LOOP PRINCIPAL] Nenhum gatilho encontrado para garage_test. Tentando iniciar ch1_1c_crank_test_result manualmente...")
+                                # Tentar iniciar a cena manualmente
+                                # IMPORTANTE: Remover da lista de visitadas se estiver lá para permitir reinício
+                                if "ch1_1c_crank_test_result" in narrative_system.scenes_visited:
+                                    print(f"[LOOP PRINCIPAL] Removendo ch1_1c_crank_test_result de scenes_visited para permitir reinício...")
+                                    narrative_system.scenes_visited.discard("ch1_1c_crank_test_result")
+                                
+                                # IMPORTANTE: Remover da lista de visitadas para permitir reinício
+                                if "ch1_1c_crank_test_result" in narrative_system.scenes_visited:
+                                    print(f"[LOOP PRINCIPAL] Removendo ch1_1c_crank_test_result de scenes_visited para permitir reinício...")
+                                    narrative_system.scenes_visited.discard("ch1_1c_crank_test_result")
+                                
+                                resultado = narrative_system._iniciar_cena_sem_transicao("ch1_1c_crank_test_result")
+                                print(f"[LOOP PRINCIPAL] _iniciar_cena_sem_transicao retornou: {resultado}, current_scene_id={narrative_system.current_scene_id}")
+                                if resultado and narrative_system.current_scene_id:
+                                    narrative_system.active = True
+                                    print(f"[LOOP PRINCIPAL] Cena ch1_1c_crank_test_result iniciada com sucesso! Continuando narrativa...")
+                                    # IMPORTANTE: Ativar missão m3 imediatamente após iniciar a cena
+                                    from core.missoes import gerenciador_missoes
+                                    gerenciador_missoes.carregar()
+                                    if "m3_rota_da_ferrugem" not in gerenciador_missoes.missoes_completas:
+                                        # Marcar a cena como visitada temporariamente para permitir ativação
+                                        narrative_system.scenes_visited.add("ch1_1c_crank_test_result")
+                                        # Tentar ativar m3
+                                        missao_ativada = gerenciador_missoes.ativar_por_cena("ch1_1c_crank_test_result")
+                                        if missao_ativada:
+                                            print(f"[LOOP PRINCIPAL] Missão {missao_ativada} ativada após iniciar ch1_1c_crank_test_result")
+                                            gerenciador_missoes.salvar()
+                                        else:
+                                            print(f"[LOOP PRINCIPAL] Nenhuma missão foi ativada após iniciar ch1_1c_crank_test_result")
+                                    continue
+                                else:
+                                    # Se não conseguiu iniciar a cena, verificar se já foi visitada
+                                    print(f"[LOOP PRINCIPAL] Não conseguiu iniciar ch1_1c_crank_test_result. Verificando se a cena já foi visitada...")
+                                    if "ch1_1c_crank_test_result" in narrative_system.scenes_visited:
+                                        print(f"[LOOP PRINCIPAL] Cena ch1_1c_crank_test_result já foi visitada. Completando missão m2 e continuando...")
+                                        # Completar missão m2 se ainda não foi completada
+                                        from core.missoes import gerenciador_missoes
+                                        if "m2_teste_de_sobrevivencia" not in gerenciador_missoes.missoes_completas:
+                                            gerenciador_missoes.completar_missao("m2_teste_de_sobrevivencia")
+                                            gerenciador_missoes.salvar()
+                                        # Continuar para o mapa normalmente
+                                    else:
+                                        print(f"[LOOP PRINCIPAL] ERRO: Não conseguiu iniciar ch1_1c_crank_test_result e a cena não foi visitada!")
+                        else:
+                            print(f"[LOOP PRINCIPAL] Corrida garage_test ainda não completada. Continuando normalmente...")
+                    
                     # Verificar se há narrativa ativa OU se há uma cena ativa (mesmo que active=False temporariamente)
                     # (pode acontecer que a narrativa foi fechada mas o trigger ainda precisa ser processado)
                     # IMPORTANTE: Se não há narrativa ativa e não há cena, ir direto para o mapa
@@ -12432,10 +13951,35 @@ def run():
                             continue
                         
                         # Se há uma cena ativa mas a narrativa não está marcada como ativa, ativar
+                        # IMPORTANTE: NÃO reativar ch1_4b_housing_offer se a corrida garage_test já foi completada
                         if narrative_system.current_scene_id and not narrative_system.active:
+                            scene_id = narrative_system.current_scene_id
+                            
+                            # Verificar se é ch1_4b_housing_offer e se garage_test já foi completada
+                            if scene_id == "ch1_4b_housing_offer":
+                                from core.estatisticas import gerenciador_estatisticas
+                                gerenciador_estatisticas.carregar()
+                                stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(1)
+                                melhor_tempo = stats_pista.get("melhor_tempo", None) if stats_pista else None
+                                melhor_posicao = stats_pista.get("melhor_posicao", None) if stats_pista else None
+                                
+                                # Se a corrida já foi completada, não reativar a cena
+                                if melhor_tempo is not None and melhor_posicao is not None:
+                                    print(f"[LOOP PRINCIPAL] ch1_4b_housing_offer detectada mas garage_test já foi completada. Não reativando cena.")
+                                    # Limpar a cena e ir para o mapa ou próxima cena
+                                    narrative_system.current_scene_id = None
+                                    narrative_system.active = False
+                                    # Tentar iniciar ch1_1c_crank_test_result se ainda não foi visitada
+                                    if "ch1_1c_crank_test_result" not in narrative_system.scenes_visited:
+                                        resultado = narrative_system._iniciar_cena_sem_transicao("ch1_1c_crank_test_result")
+                                        if resultado:
+                                            narrative_system.active = True
+                                            continue
+                                    # Se já foi visitada, ir para o mapa
+                                    continue
+                            
                             print(f"[LOOP PRINCIPAL] Cena {narrative_system.current_scene_id} ativa mas narrative_system.active=False, ativando...")
                             # Recarregar sprites e background da cena atual
-                            scene_id = narrative_system.current_scene_id
                             # Encontrar a cena no JSON
                             scene = None
                             for ch in narrative_system.narrative_data.get("chapters", []):
@@ -12509,6 +14053,64 @@ def run():
                                         gerenciador_progresso.ultima_corrida_campanha = None
                                         gerenciador_progresso.salvar()
                                 
+                                # Verificar se foi garage_test (corrida de teste da garagem)
+                                # IMPORTANTE: Verificar ANTES de ir para o mapa, logo após a corrida retornar
+                                if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "garage_test":
+                                    print(f"[LOOP PRINCIPAL] Detectada corrida garage_test pendente, verificando se foi completada...")
+                                    
+                                    # Verificar se a corrida foi completada
+                                    from core.estatisticas import gerenciador_estatisticas
+                                    gerenciador_estatisticas.carregar()
+                                    
+                                    # Verificar estatísticas da pista 1 (pista de teste)
+                                    stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(1)
+                                    melhor_tempo = stats_pista.get("melhor_tempo", None) if stats_pista else None
+                                    melhor_posicao = stats_pista.get("melhor_posicao", None) if stats_pista else None
+                                    print(f"[LOOP PRINCIPAL] Estatísticas pista 1 (garage_test): melhor_tempo={melhor_tempo}, melhor_posicao={melhor_posicao}")
+                                    
+                                    # Se completou a corrida, verificar gatilhos narrativos
+                                    if melhor_tempo is not None and melhor_posicao is not None:
+                                        print(f"[LOOP PRINCIPAL] Corrida garage_test completada! Verificando gatilhos narrativos...")
+                                        
+                                        # Limpar flag imediatamente para evitar loop
+                                        gerenciador_progresso.ultima_corrida_campanha = None
+                                        gerenciador_progresso.salvar()
+                                        
+                                        # Determinar resultado da corrida
+                                        resultado = "win" if melhor_posicao == 1 else "lose"
+                                        narrative_system.variables["lastRaceResult"] = resultado
+                                        
+                                        # Verificar gatilhos de race_finished
+                                        context = {
+                                            "raceId": "garage_test",
+                                            "raceResult": resultado
+                                        }
+                                        if narrative_system.verificar_gatilhos_pendentes(context):
+                                            narrative_system.active = True
+                                            continue  # Voltar para o início do loop para executar narrativa
+                                        else:
+                                            print(f"[LOOP PRINCIPAL] Nenhum gatilho encontrado para garage_test. Tentando iniciar ch1_1c_crank_test_result manualmente...")
+                                            # Tentar iniciar a cena manualmente
+                                            resultado = narrative_system._iniciar_cena_sem_transicao("ch1_1c_crank_test_result")
+                                            if resultado:
+                                                narrative_system.active = True
+                                                continue
+                                            else:
+                                                # Se não conseguiu iniciar a cena, verificar se já foi visitada
+                                                print(f"[LOOP PRINCIPAL] Não conseguiu iniciar ch1_1c_crank_test_result. Verificando se a cena já foi visitada...")
+                                                if "ch1_1c_crank_test_result" in narrative_system.scenes_visited:
+                                                    print(f"[LOOP PRINCIPAL] Cena ch1_1c_crank_test_result já foi visitada. Completando missão m2 e continuando...")
+                                                    # Completar missão m2 se ainda não foi completada
+                                                    from core.missoes import gerenciador_missoes
+                                                    if "m2_teste_de_sobrevivencia" not in gerenciador_missoes.missoes_completas:
+                                                        gerenciador_missoes.completar_missao("m2_teste_de_sobrevivencia")
+                                                        gerenciador_missoes.salvar()
+                                                    # Continuar para o mapa normalmente
+                                                else:
+                                                    print(f"[LOOP PRINCIPAL] ERRO: Não conseguiu iniciar ch1_1c_crank_test_result e a cena não foi visitada!")
+                                    else:
+                                        print(f"[LOOP PRINCIPAL] Corrida garage_test ainda não completada. Continuando para o mapa...")
+                                
                                 if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "training_01":
                                     # Verificar se as cenas pós-corrida já foram visitadas para evitar loop
                                     if "ch1_6_post_race" in narrative_system.scenes_visited or "ch1_7_pixel_voice_intro" in narrative_system.scenes_visited:
@@ -12544,13 +14146,30 @@ def run():
                                             "raceResult": resultado
                                         }
                                         if narrative_system.verificar_gatilhos_pendentes(context):
+                                            print(f"[LOOP PRINCIPAL] Gatilho encontrado para training_01, ativando narrativa...")
                                             narrative_system.active = True
                                             gerenciador_progresso.ultima_corrida_campanha = None
                                             gerenciador_progresso.salvar()
                                             continue
                                         else:
                                             # Fallback para sistema antigo se não houver gatilho
+                                            print(f"[LOOP PRINCIPAL] Nenhum gatilho encontrado, usando fallback _iniciar_narrativa_pos_training_01...")
                                             _iniciar_narrativa_pos_training_01(narrative_system, gerenciador_progresso)
+                                            # Verificar se a narrativa foi ativada
+                                            if narrative_system.active:
+                                                print(f"[LOOP PRINCIPAL] Narrativa ativada pelo fallback, continuando...")
+                                                continue
+                                            else:
+                                                print(f"[LOOP PRINCIPAL] AVISO: Fallback não ativou a narrativa! Tentando iniciar cena diretamente...")
+                                                # Tentar iniciar a cena diretamente
+                                                resultado = narrative_system._iniciar_cena_sem_transicao("ch1_6_post_race")
+                                                if resultado:
+                                                    narrative_system.active = True
+                                                    gerenciador_progresso.ultima_corrida_campanha = None
+                                                    gerenciador_progresso.salvar()
+                                                    continue
+                                                else:
+                                                    print(f"[LOOP PRINCIPAL] ERRO: Não foi possível iniciar a cena ch1_6_post_race!")
                                             continue
                                     else:
                                         print(f"[LOOP PRINCIPAL] Corrida training_01 ainda não completada. Continuando para o mapa...")
@@ -12627,29 +14246,20 @@ def run():
                                         print(f"[LOOP PRINCIPAL] Estatísticas pista {pista} ({race_id}): melhor_tempo={melhor_tempo}, melhor_posicao={melhor_posicao}")
                                         
                                         # IMPORTANTE: Verificar se a corrida foi realmente completada nesta sessão
-                                        # Se o jogador desistiu (ESC -> menu), a flag ultima_corrida_campanha ainda estará definida,
-                                        # mas as estatísticas podem ser de uma corrida anterior. Precisamos verificar se a corrida
-                                        # foi realmente finalizada verificando se há uma nova entrada nas estatísticas ou se
-                                        # a flag ainda está definida (indicando que a corrida não foi completada)
+                                        # A flag ultima_corrida_campanha é definida no início da corrida em main.py
+                                        # e deve permanecer definida até aqui para indicar que a corrida foi completada
+                                        # Se a flag ainda está definida (igual ao race_id), significa que a corrida foi completada nesta sessão
                                         
                                         # Verificar se a corrida foi realmente completada: 
                                         # 1. Deve ter melhor_tempo e melhor_posicao (corrida foi completada alguma vez)
-                                        # 2. A flag ultima_corrida_campanha deve estar definida (corrida foi iniciada nesta sessão)
-                                        # 3. Se a flag ainda está definida, significa que a corrida não foi completada nesta sessão
-                                        #    (se tivesse sido completada, a flag teria sido limpa em main.py após registrar)
+                                        # 2. A flag ultima_corrida_campanha deve estar definida e igual ao race_id (corrida foi iniciada e completada nesta sessão)
                                         
                                         # Se completou a corrida NESTA SESSÃO, verificar gatilhos narrativos
-                                        # A flag ultima_corrida_campanha será limpa em main.py após registrar a corrida completa
-                                        # Se ainda está definida, significa que o jogador desistiu ou a corrida não foi completada
+                                        # A flag ultima_corrida_campanha permanece definida até aqui para indicar que a corrida foi completada
                                         if melhor_tempo is not None and melhor_posicao is not None:
-                                            # Verificar se a flag ainda está definida - se sim, a corrida não foi completada nesta sessão
+                                            # Verificar se a flag ainda está definida e igual ao race_id - se sim, a corrida foi completada nesta sessão
                                             if gerenciador_progresso.ultima_corrida_campanha == race_id:
-                                                # Flag ainda está definida, significa que o jogador desistiu ou não completou
-                                                print(f"[LOOP PRINCIPAL] Corrida {race_id} não foi completada nesta sessão (flag ainda definida). Limpando flag e ignorando triggers.")
-                                                gerenciador_progresso.ultima_corrida_campanha = None
-                                                gerenciador_progresso.salvar()
-                                            else:
-                                                # Flag foi limpa, significa que a corrida foi completada nesta sessão
+                                                # Flag ainda está definida, significa que a corrida foi completada nesta sessão
                                                 print(f"[LOOP PRINCIPAL] Corrida {race_id} completada nesta sessão! Verificando gatilhos narrativos...")
                                                 
                                                 # Determinar resultado (win se posição <= 2, lose caso contrário)
@@ -12666,6 +14276,18 @@ def run():
                                                     gerenciador_progresso.ultima_corrida_campanha = None
                                                     gerenciador_progresso.salvar()
                                                     continue  # Voltar para o início do loop para executar narrativa
+                                                else:
+                                                    # Não há gatilhos pendentes, limpar flag e continuar para o mapa
+                                                    print(f"[LOOP PRINCIPAL] Nenhum gatilho narrativo encontrado para {race_id}. Continuando para o mapa...")
+                                                    gerenciador_progresso.ultima_corrida_campanha = None
+                                                    gerenciador_progresso.salvar()
+                                            else:
+                                                # Flag não está definida ou é diferente - corrida não foi completada nesta sessão ou já foi processada
+                                                print(f"[LOOP PRINCIPAL] Corrida {race_id} não foi completada nesta sessão ou já foi processada (flag: {gerenciador_progresso.ultima_corrida_campanha}). Continuando para o mapa...")
+                                                if gerenciador_progresso.ultima_corrida_campanha == race_id:
+                                                    # Limpar flag se ainda estiver definida (caso de erro)
+                                                    gerenciador_progresso.ultima_corrida_campanha = None
+                                                    gerenciador_progresso.salvar()
                                     else:
                                         print(f"[LOOP PRINCIPAL] Pista não encontrada para {race_id}. Continuando para o mapa...")
                                 
@@ -13609,48 +15231,7 @@ def run():
                             # Outras atividades podem ser processadas aqui
                         
                         continue  # Voltar para o loop do mapa
-            elif modo_principal == "arcade":
-                # Abrir tela de seleção de modo de jogo (Arcade)
-                resultado_modo = modo_jogo_loop(screen)
-                if resultado_modo is None:
-                    continue  # Cancelou, voltar ao menu
-                
-                if isinstance(resultado_modo, tuple):  # Se não cancelou e é uma tupla
-                    if len(resultado_modo) == 5:  # Novo formato com voltas, dificuldade e fase
-                        modo_jogo, tipo_jogo, voltas, dificuldade_ia, fase_selecionada = resultado_modo
-                    elif len(resultado_modo) == 4:  # Formato com voltas e dificuldade (sem fase)
-                        modo_jogo, tipo_jogo, voltas, dificuldade_ia = resultado_modo
-                        fase_selecionada = 1  # Padrão: fase 1
-                    else:  # Formato antigo (compatibilidade)
-                        modo_jogo, tipo_jogo = resultado_modo
-                        voltas = 1  # Padrão
-                        dificuldade_ia = "medio"  # Padrão
-                        fase_selecionada = 1  # Padrão
-                    
-                    # Sempre permitir seleção de carro no modo arcade (após selecionar a pista)
-                    # A função está definida no mesmo módulo, então podemos chamá-la diretamente
-                    resultado_carros = selecionar_carros_loop(screen, modo_arcade=True, modo_jogo=modo_jogo)
-                    if resultado_carros[0] is None or resultado_carros[1] is None:
-                        # Cancelou a seleção, continuar no menu
-                        continue
-                    # Atualizar carros selecionados
-                    carro_p1, carro_p2 = resultado_carros
-                    
-                    # Parar música do menu se não deve tocar no jogo
-                    if not CONFIGURACOES["audio"]["musica_no_jogo"]:
-                        gerenciador_musica.parar_musica()
-                    # inicia seu jogo original com carros selecionados e modos (modo arcade = sem cutscenes)
-                    main.principal(carro_p1, carro_p2, mapa_selecionado=fase_selecionada, modo_jogo=modo_jogo, tipo_jogo=tipo_jogo, voltas=voltas, dificuldade_ia=dificuldade_ia, modo_arcade=True)
-                    # Após o jogo, volta para o menu (não fecha a janela)
-                    # Reiniciar música do menu se habilitada
-                    if CONFIGURACOES["audio"]["musica_habilitada"] and CONFIGURACOES["audio"]["musica_no_menu"]:
-                        if not gerenciador_musica.musica_tocando:
-                            if CONFIGURACOES["audio"]["musica_aleatoria"]:
-                                gerenciador_musica.musica_aleatoria()
-                            else:
-                                gerenciador_musica.tocar_musica()
-                            if gerenciador_musica.musica_tocando:
-                                popup_musica.mostrar(gerenciador_musica.obter_nome_musica_atual())
+            # Código de arcade removido - agora está no início do bloco Escolha.JOGAR
         # Removido: SELECIONAR_CARROS (oficina agora acessível via Campanha)
         if False:  # Placeholder
             # Abre tela de seleção de carros

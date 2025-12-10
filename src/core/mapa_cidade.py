@@ -349,6 +349,9 @@ def mostrar_menu_fabrica_boris_glub(screen) -> Optional[str]:
     """Mostra menu de escolha entre fábrica do Boris e Beco da Sucata"""
     from core.progresso import gerenciador_progresso
     
+    # Verificar se o Glub foi desbloqueado
+    glub_desbloqueado = getattr(gerenciador_progresso, 'glub_desbloqueado', False)
+    
     render_text = _get_render_text()
     clock = pygame.time.Clock()
     opcao_selecionada = 0  # Começar selecionado na fábrica do Boris
@@ -393,12 +396,12 @@ def mostrar_menu_fabrica_boris_glub(screen) -> Optional[str]:
                     return None
                 elif ev.key in (pygame.K_LEFT, pygame.K_a):
                     opcao_selecionada = 0
-                elif ev.key in (pygame.K_RIGHT, pygame.K_d):
+                elif ev.key in (pygame.K_RIGHT, pygame.K_d) and glub_desbloqueado:
                     opcao_selecionada = 1
                 elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
                     if opcao_selecionada == 0:
                         resultado = "boris"
-                    else:
+                    elif opcao_selecionada == 1 and glub_desbloqueado:
                         resultado = "glub"
                     escolhido = True
             elif ev.type == pygame.MOUSEBUTTONDOWN:
@@ -412,7 +415,10 @@ def mostrar_menu_fabrica_boris_glub(screen) -> Optional[str]:
                     opcao_largura = 300
                     opcao_altura = 300
                     espacamento = 50
-                    total_largura = opcao_largura * 2 + espacamento
+                    if glub_desbloqueado:
+                        total_largura = opcao_largura * 2 + espacamento
+                    else:
+                        total_largura = opcao_largura
                     inicio_x = caixa_x + (caixa_largura - total_largura) // 2
                     
                     boris_x = inicio_x
@@ -422,12 +428,13 @@ def mostrar_menu_fabrica_boris_glub(screen) -> Optional[str]:
                         resultado = "boris"
                         escolhido = True
                     
-                    glub_x = inicio_x + opcao_largura + espacamento
-                    glub_y = caixa_y + 50
-                    glub_rect = pygame.Rect(glub_x, glub_y, opcao_largura, opcao_altura)
-                    if glub_rect.collidepoint(mouse_x, mouse_y):
-                        resultado = "glub"
-                        escolhido = True
+                    if glub_desbloqueado:
+                        glub_x = inicio_x + opcao_largura + espacamento
+                        glub_y = caixa_y + 50
+                        glub_rect = pygame.Rect(glub_x, glub_y, opcao_largura, opcao_altura)
+                        if glub_rect.collidepoint(mouse_x, mouse_y):
+                            resultado = "glub"
+                            escolhido = True
         
         screen.fill((20, 20, 30))
         
@@ -452,13 +459,17 @@ def mostrar_menu_fabrica_boris_glub(screen) -> Optional[str]:
         opcao_largura = 300
         opcao_altura = 300
         espacamento = 50
-        total_largura = opcao_largura * 2 + espacamento
+        # Ajustar largura total baseado se Glub está desbloqueado
+        if glub_desbloqueado:
+            total_largura = opcao_largura * 2 + espacamento
+        else:
+            total_largura = opcao_largura  # Apenas Boris
         inicio_x = caixa_x + (caixa_largura - total_largura) // 2
         
         # Obter posição do mouse primeiro (antes de qualquer uso)
         mouse_x, mouse_y = pygame.mouse.get_pos()
         
-        # Fábrica do Boris (esquerda)
+        # Fábrica do Boris (esquerda ou centralizado se Glub não desbloqueado)
         boris_x = inicio_x
         boris_y = caixa_y + 80
         boris_rect = pygame.Rect(boris_x, boris_y, opcao_largura, opcao_altura)
@@ -490,45 +501,46 @@ def mostrar_menu_fabrica_boris_glub(screen) -> Optional[str]:
         boris_texto_x = boris_x + (opcao_largura - boris_texto.get_width()) // 2
         screen.blit(boris_texto, (boris_texto_x, boris_y + opcao_altura - 40))
         
-        # Beco da Sucata (direita)
-        glub_x = inicio_x + opcao_largura + espacamento
-        glub_y = caixa_y + 80
-        glub_rect = pygame.Rect(glub_x, glub_y, opcao_largura, opcao_altura)
-        
-        # Verificar hover
-        glub_hover = glub_rect.collidepoint(mouse_x, mouse_y)
-        if glub_hover:
-            opcao_selecionada = 1
-        
-        # Desenhar opção Glub
-        if opcao_selecionada == 1:
-            pygame.draw.rect(screen, (100, 150, 255), glub_rect, 4)
-        else:
-            pygame.draw.rect(screen, (80, 80, 80), glub_rect, 2)
-        
-        if sprite_beco_sucata:
-            # Manter proporção e ajustar para caber na área (mesmo padrão do Boris)
-            glub_sprite_w = min(opcao_largura - 20, sprite_beco_sucata.get_width())
-            glub_sprite_h = int(sprite_beco_sucata.get_height() * (glub_sprite_w / sprite_beco_sucata.get_width()))
-            # Garantir que não ultrapasse a altura disponível (deixando espaço para o texto)
-            altura_maxima = opcao_altura - 60
-            if glub_sprite_h > altura_maxima:
-                glub_sprite_h = altura_maxima
-                glub_sprite_w = int(sprite_beco_sucata.get_width() * (glub_sprite_h / sprite_beco_sucata.get_height()))
-            glub_sprite_redim = pygame.transform.scale(sprite_beco_sucata, (glub_sprite_w, glub_sprite_h))
-            glub_sprite_x = glub_x + (opcao_largura - glub_sprite_w) // 2
-            glub_sprite_y = glub_y + 20
-            screen.blit(glub_sprite_redim, (glub_sprite_x, glub_sprite_y))
-        else:
-            # Se não houver background, desenhar um placeholder
-            placeholder_texto = render_text("BECO DA SUCATA", 24, (150, 150, 150), bold=True, pixel_style=True)
-            placeholder_x = glub_x + (opcao_largura - placeholder_texto.get_width()) // 2
-            placeholder_y = glub_y + (opcao_altura - placeholder_texto.get_height()) // 2
-            screen.blit(placeholder_texto, (placeholder_x, placeholder_y))
-        
-        glub_texto = render_text("BECO DA SUCATA", 24, (255, 255, 255), bold=True, pixel_style=True)
-        glub_texto_x = glub_x + (opcao_largura - glub_texto.get_width()) // 2
-        screen.blit(glub_texto, (glub_texto_x, glub_y + opcao_altura - 40))
+        # Beco da Sucata (direita) - só mostrar se Glub foi desbloqueado
+        if glub_desbloqueado:
+            glub_x = inicio_x + opcao_largura + espacamento
+            glub_y = caixa_y + 80
+            glub_rect = pygame.Rect(glub_x, glub_y, opcao_largura, opcao_altura)
+            
+            # Verificar hover
+            glub_hover = glub_rect.collidepoint(mouse_x, mouse_y)
+            if glub_hover:
+                opcao_selecionada = 1
+            
+            # Desenhar opção Glub
+            if opcao_selecionada == 1:
+                pygame.draw.rect(screen, (100, 150, 255), glub_rect, 4)
+            else:
+                pygame.draw.rect(screen, (80, 80, 80), glub_rect, 2)
+            
+            if sprite_beco_sucata:
+                # Manter proporção e ajustar para caber na área (mesmo padrão do Boris)
+                glub_sprite_w = min(opcao_largura - 20, sprite_beco_sucata.get_width())
+                glub_sprite_h = int(sprite_beco_sucata.get_height() * (glub_sprite_w / sprite_beco_sucata.get_width()))
+                # Garantir que não ultrapasse a altura disponível (deixando espaço para o texto)
+                altura_maxima = opcao_altura - 60
+                if glub_sprite_h > altura_maxima:
+                    glub_sprite_h = altura_maxima
+                    glub_sprite_w = int(sprite_beco_sucata.get_width() * (glub_sprite_h / sprite_beco_sucata.get_height()))
+                glub_sprite_redim = pygame.transform.scale(sprite_beco_sucata, (glub_sprite_w, glub_sprite_h))
+                glub_sprite_x = glub_x + (opcao_largura - glub_sprite_w) // 2
+                glub_sprite_y = glub_y + 20
+                screen.blit(glub_sprite_redim, (glub_sprite_x, glub_sprite_y))
+            else:
+                # Se não houver background, desenhar um placeholder
+                placeholder_texto = render_text("BECO DA SUCATA", 24, (150, 150, 150), bold=True, pixel_style=True)
+                placeholder_x = glub_x + (opcao_largura - placeholder_texto.get_width()) // 2
+                placeholder_y = glub_y + (opcao_altura - placeholder_texto.get_height()) // 2
+                screen.blit(placeholder_texto, (placeholder_x, placeholder_y))
+            
+            glub_texto = render_text("BECO DA SUCATA", 24, (255, 255, 255), bold=True, pixel_style=True)
+            glub_texto_x = glub_x + (opcao_largura - glub_texto.get_width()) // 2
+            screen.blit(glub_texto, (glub_texto_x, glub_y + opcao_altura - 40))
         
         instrucoes = render_text("Use SETAS ou clique para escolher | ESC para cancelar", 16, (150, 150, 150), bold=False, pixel_style=True)
         instrucoes_x = caixa_x + (caixa_largura - instrucoes.get_width()) // 2
@@ -1119,8 +1131,14 @@ def mapa_cidade_loop(screen) -> Optional[str]:
                                         estado_temp = gerenciador_localizacoes.obter_estado(territorio_id_temp)
                                         
                                         if estado_temp == EstadoLocalizacao.DESBLOQUEADO:
-                                            # Mostrar menu de escolha entre Fábrica do Boris e Beco da Sucata
-                                            escolha = mostrar_menu_fabrica_boris_glub(screen)
+                                            # Verificar se o Glub foi desbloqueado antes de mostrar menu de escolha
+                                            glub_desbloqueado = getattr(gerenciador_progresso, 'glub_desbloqueado', False)
+                                            if glub_desbloqueado:
+                                                # Mostrar menu de escolha entre Fábrica do Boris e Beco da Sucata
+                                                escolha = mostrar_menu_fabrica_boris_glub(screen)
+                                            else:
+                                                # Glub ainda não desbloqueado, ir direto para Boris
+                                                escolha = "boris"
                                             if escolha == "boris":
                                                 # Ir para Fábrica do Boris
                                                 return "fabrica_boris"

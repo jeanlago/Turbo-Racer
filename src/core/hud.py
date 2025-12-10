@@ -99,16 +99,33 @@ class HUD:
         if not carro:
             return
         
-        # Desenhar relógio digital no canto superior direito
-        self.desenhar_relogio_digital(superficie)
+        # Relógio removido - não desenhar mais
         
         # Criar fonte se não existir
         if not hasattr(self, 'fonte_velocimetro'):
             self.fonte_velocimetro = pygame.font.SysFont("consolas", 28, bold=True)
             self.fonte_velocimetro_pequena = pygame.font.SysFont("consolas", 16)
         
-        # Obter velocidade do carro
-        velocidade_kmh = getattr(carro, 'velocidade_kmh', 0.0)
+        # Obter velocidade do carro e converter para km/h
+        # Usar velocidade_kmh se disponível, senão calcular a partir de px/s
+        if hasattr(carro, 'velocidade_kmh'):
+            velocidade_kmh = carro.velocidade_kmh
+        else:
+            # Calcular a partir de velocidade em px/s
+            if hasattr(carro, 'u'):
+                velocidade_pxps = abs(carro.u)
+            else:
+                velocidade_pxps = 0.0
+            # Converter para km/h: mesma fórmula do carro_fisica.py
+            ARCADE_SPEED_MULT = 2.5
+            PXPS_TO_KMH = 0.26
+            velocidade_kmh = velocidade_pxps * ARCADE_SPEED_MULT * PXPS_TO_KMH
+        
+        # Multiplicar por 5.0 apenas para exibição (não altera a física)
+        # Ajustado para que carro base inicial chegue ~200 km/h e último carro com tunagem ~450 km/h
+        # Carro base: ~40 km/h real * 5.0 = ~200 km/h mostrado
+        # Último carro: ~90 km/h real * 5.0 = ~450 km/h mostrado
+        velocidade_kmh = velocidade_kmh * 5.0
         
         # Simular oscilação do velocímetro quando próximo do limite máximo
         # Adicionar pequena variação visual para simular o limite que o carro aguenta
@@ -117,16 +134,17 @@ class HUD:
         
         self._tempo_oscilacao += dt
         
-        # Quando a velocidade está próxima ou acima de 180 km/h, adicionar oscilação
-        if velocidade_kmh >= 170:  # Começar a oscilar quando próximo do máximo
-            # Calcular quanto acima de 170 estamos (0 a ~30 km/h)
-            excesso = min(velocidade_kmh - 170, 30.0)
-            # Oscilação senoidal: varia entre -5 e +8 km/h quando no máximo
-            amplitude = 3.0 + (excesso / 30.0) * 5.0  # Aumenta a amplitude conforme se aproxima do máximo
+        # Quando a velocidade está próxima ou acima de ~1625 km/h (325 * 5.0), adicionar oscilação
+        limite_kmh_oscilacao = 1625.0  # ~500 px/s * 2.5 * 0.26 * 5.0 = 1625 km/h
+        if velocidade_kmh >= limite_kmh_oscilacao - 20:  # Começar a oscilar quando próximo do máximo
+            # Calcular quanto acima do limite estamos
+            excesso = min(velocidade_kmh - (limite_kmh_oscilacao - 20), 40.0)
+            # Oscilação senoidal: varia entre -3 e +5 km/h quando no máximo
+            amplitude = 2.0 + (excesso / 40.0) * 3.0  # Aumenta a amplitude conforme se aproxima do máximo
             frequencia = 2.5  # Velocidade da oscilação
             oscilacao = math.sin(self._tempo_oscilacao * frequencia) * amplitude
-            # Adicionar oscilação ao valor mostrado (mas não deixar abaixo de 170)
-            velocidade_kmh_mostrada = max(170, velocidade_kmh + oscilacao)
+            # Adicionar oscilação ao valor mostrado (mas não deixar abaixo do limite)
+            velocidade_kmh_mostrada = max(limite_kmh_oscilacao - 20, velocidade_kmh + oscilacao)
         else:
             velocidade_kmh_mostrada = velocidade_kmh
         
@@ -162,10 +180,11 @@ class HUD:
         
         # Desenhar velocímetro
         if self.velocimetro_sem_cor and self.velocimetro_colorido:
-            # Calcular porcentagem de velocidade (0-180 km/h)
+            # Calcular porcentagem de velocidade (0-500 km/h)
             # Usar velocidade_kmh_mostrada que inclui a oscilação
-            velocidade_max = 180.0
-            porcentagem_velocidade = min(velocidade_kmh_mostrada / velocidade_max, 1.0)
+            # Máximo ajustado para ~500 km/h (último carro com tunagem: ~90 * 5.0 = ~450, limitado a 500)
+            velocidade_max_kmh = 500.0
+            porcentagem_velocidade = min(velocidade_kmh_mostrada / velocidade_max_kmh, 1.0)
             
             # Redimensionar imagens para um tamanho menor
             largura_original = self.velocimetro_sem_cor.get_width()
@@ -835,6 +854,8 @@ class HUD:
         """
         try:
             from core.missoes import gerenciador_missoes
+            # IMPORTANTE: Recarregar missões para garantir que está atualizado
+            gerenciador_missoes.carregar()
             missao = gerenciador_missoes.obter_missao_ativa()
             if not missao:
                 # Debug: verificar se há missão ativa
@@ -842,12 +863,17 @@ class HUD:
                     if gerenciador_missoes.missao_ativa_id:
                         print(f"[HUD] Missão ativa ID: {gerenciador_missoes.missao_ativa_id}, mas não encontrada no dicionário")
                         print(f"[HUD] Missões disponíveis: {list(gerenciador_missoes.missoes.keys())}")
+                        # Tentar ativar a missão manualmente se o ID existe
+                        if gerenciador_missoes.missao_ativa_id in gerenciador_missoes.missoes:
+                            missao = gerenciador_missoes.missoes[gerenciador_missoes.missao_ativa_id]
+                            print(f"[HUD] Missão encontrada manualmente: {gerenciador_missoes.missao_ativa_id}")
+                        else:
+                            return
                     else:
                         # Sem missão ativa - isso é normal, não exibir rastreador
-                        print(f"[HUD] Nenhuma missão ativa no momento (missao_ativa_id=None)")
-                return
-            
-            print(f"[HUD] Desenhando missão ativa: {missao.get('id', 'desconhecida')}")
+                        return
+                else:
+                    return
             
             # Criar fonte se não existir
             if not hasattr(self, 'fonte_missao_nome'):
@@ -859,10 +885,7 @@ class HUD:
             objetivo = gerenciador_missoes.obter_objetivo_missao()
             
             if not nome and not objetivo:
-                print(f"[HUD] Missão ativa mas sem nome ou objetivo: nome='{nome}', objetivo='{objetivo}'")
                 return
-            
-            print(f"[HUD] Desenhando rastreador: nome='{nome}', objetivo='{objetivo[:50]}...'")
             
             # Desenhar fundo semi-transparente
             padding = 10

@@ -213,18 +213,9 @@ def processar_eventos_controle_menu(ev, opcao_atual, num_opcoes, joystick_id=0, 
                     _ultimo_tempo_navegacao[chave_debounce_l1r1] = tempo_atual
                     return {"acao": "carro_proximo", "fonte": "botao"}
             elif ev.button == 9:
-                from core.gamepad_manager import gerenciador_gamepad
-                if joystick_id < len(gerenciador_gamepad.joysticks):
-                    joystick = gerenciador_gamepad.joysticks[joystick_id]
-                    nome_controle = joystick.get_name().lower()
-                    if "ps5" in nome_controle or "ps4" in nome_controle or "playstation" in nome_controle or "dualsense" in nome_controle or "dualshock" in nome_controle:
-                        return {"acao": "pausar"}
-                    chave_debounce_l1r1 = f"{joystick_id}_l1r1"
-                    if chave_debounce_l1r1 not in _ultimo_tempo_navegacao or \
-                       tempo_atual - _ultimo_tempo_navegacao.get(chave_debounce_l1r1, 0) >= debounce_tempo:
-                        _ultimo_tempo_navegacao[chave_debounce_l1r1] = tempo_atual
-                        return {"acao": "carro_anterior", "fonte": "botao"}
-                else:
+                # Button 9 é L1 em Xbox, mas pode ser Share/PS button em PS5/PS4
+                # Na oficina, sempre tratar como L1 (carro_anterior)
+                # O botão de pausar será tratado em outro lugar se necessário
                     chave_debounce_l1r1 = f"{joystick_id}_l1r1"
                     if chave_debounce_l1r1 not in _ultimo_tempo_navegacao or \
                        tempo_atual - _ultimo_tempo_navegacao.get(chave_debounce_l1r1, 0) >= debounce_tempo:

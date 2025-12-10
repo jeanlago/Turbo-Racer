@@ -28,8 +28,8 @@
       "id": "m4_coracao_de_sucata",
       "nome": "Coração de Sucata",
       "objetivo": "Compre uma peça principal com Boris para melhorar seu carro.",
-      "activateOnSceneId": "ch1_3_meet_boris",
-      "completeOnSceneId": null,
+      "activateOnSceneId": "ch1_2_meet_boris",
+      "completeOnSceneId": "ch1_3_boris_deal",
       "chapter": "ch1"
     },
     {

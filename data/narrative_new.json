@@ -536,9 +536,10 @@
             { "speaker": "PIXEL", "text": "Olha, encontrei algo estranho nos servidores. Dados sobre viagem interdimensional... isso só pode ter relação com o Rex." },
             { "speaker": "PIXEL", "text": "Mas isso é história antiga. O que me chamou atenção foi outra coisa." },
             { "speaker": "PIXEL", "text": "Captei uma imagem estranha por uma das câmeras da cidade, durante a noite. Algo que não deveria estar ali." },
-            { "speaker": "PIXEL", "text": "Dá uma olhada lá no Beco Neon. Tem algo acontecendo que não faz sentido." }
+            { "speaker": "PIXEL", "text": "Dá uma olhada lá no Beco Neon. Tem algo acontecendo que não faz sentido." },
+            { "speaker": "PIXEL", "text": "E enquanto você investiga isso, saiba que o Rex lá nas torres já está de olho em você. Quando o Slick aparecer, você vai entender melhor o que está acontecendo." }
           ],
-          "effects": ["unlockLocation:beco_neon", "autoSave"],
+          "effects": ["unlockLocation:beco_neon", "mentionLocation:torres_rex", "autoSave"],
           "nextSceneId": null
         },
         {

@@ -35,8 +35,8 @@
     {
       "id": "torres_rex",
       "nome": "Torres do Rex",
-      "state": "unlocked",
-      "lockedThought": null,
+      "state": "locked_hidden",
+      "lockedThought": "Esse é outro mundo. Por enquanto, só posso olhar de longe.",
       "unlockFlags": []
     },
     {

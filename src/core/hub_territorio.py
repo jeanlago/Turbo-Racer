@@ -692,7 +692,10 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
     
     # Verificar se é território do Glub (beco da sucata) - NÃO incluir beco_neon
     glub_em_cooldown = False
-    if not is_beco_neon and ((territorio.npc_id and ("glub" in territorio.npc_id.lower() or ("beco" in territorio.npc_id.lower() and "sucata" in territorio.npc_id.lower()))) or \
+    mostrar_glub = False
+    # IMPORTANTE: Só processar Glub se foi desbloqueado pela narrativa (cena ch4_4_meet_glub)
+    glub_desbloqueado = getattr(gerenciador_progresso, 'glub_desbloqueado', False)
+    if not is_beco_neon and glub_desbloqueado and ((territorio.npc_id and ("glub" in territorio.npc_id.lower() or ("beco" in territorio.npc_id.lower() and "sucata" in territorio.npc_id.lower()))) or \
        ("glub" in territorio_id_lower or ("beco" in territorio_id_lower and "sucata" in territorio_id_lower))):
         if not glub.sprites_carregados:
             glub.carregar_sprites()
@@ -1254,16 +1257,16 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
                                         # Menu principal
                                         return "menu_principal"
                                     break
-                        continue  # Não processar outros cliques quando pausado
-                    
-                    # Verificar clique no botão voltar (antes de verificar atividades)
-                    voltar_largura = 120
-                    voltar_altura = 40
-                    voltar_x = LARGURA - voltar_largura - 20
-                    voltar_y = 20
-                    voltar_rect = pygame.Rect(voltar_x, voltar_y, voltar_largura, voltar_altura)
-                    if voltar_rect.collidepoint(mouse_x, mouse_y):
-                        return "voltar_mapa"  # Voltar para o mapa
+                            continue  # Não processar outros cliques quando pausado
+                        
+                        # Verificar clique no botão voltar (antes de verificar atividades)
+                        voltar_largura = 120
+                        voltar_altura = 40
+                        voltar_x = LARGURA - voltar_largura - 20
+                        voltar_y = 20
+                        voltar_rect = pygame.Rect(voltar_x, voltar_y, voltar_largura, voltar_altura)
+                        if voltar_rect.collidepoint(mouse_x, mouse_y):
+                            return "voltar_mapa"  # Voltar para o mapa
         
         # Verificar mensagem de cooldown do Slick ANTES de desenhar qualquer coisa (prioridade máxima)
         if mostrar_mensagem_cooldown_slick:

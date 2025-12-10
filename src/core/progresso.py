@@ -90,6 +90,9 @@ class GerenciadorProgresso:
         # Upgrades comprados do Slick
         self.slick_upgrades_comprados = []  # Lista de IDs de upgrades comprados do Slick
         
+        # Desbloqueios de features
+        self.glub_desbloqueado = False  # Flag para indicar que o Glub foi desbloqueado pela narrativa
+        
         self.achievements_desbloqueados = set()
         self.achievements_visualizados = set()
         self.achievements_estatisticas = {
@@ -558,6 +561,31 @@ class GerenciadorProgresso:
         """Obtém o recorde de corrida de uma pista"""
         return self.recordes_corrida.get(str(numero_pista), None)
     
+    def registrar_recorde(self, numero_pista, tempo):
+        """Registra um novo recorde de corrida se o tempo for melhor
+        
+        Args:
+            numero_pista: Número da pista
+            tempo: Tempo da corrida em segundos
+            
+        Returns:
+            True se foi um novo recorde, False caso contrário
+        """
+        chave = str(numero_pista)
+        recorde_atual = self.recordes_corrida.get(chave, None)
+        
+        # Se não há recorde ou o novo tempo é melhor (menor)
+        if recorde_atual is None or tempo < recorde_atual:
+            self.recordes_corrida[chave] = tempo
+            # Sincronizar com estatísticas - atualizar melhor_tempo também
+            from core.estatisticas import gerenciador_estatisticas
+            stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(numero_pista)
+            if stats_pista.get("melhor_tempo") is None or tempo < stats_pista.get("melhor_tempo", float('inf')):
+                stats_pista["melhor_tempo"] = tempo
+            self.salvar()
+            return True
+        return False
+    
     def obter_recorde_drift(self, numero_pista):
         """Obtém o recorde de drift de uma pista"""
         return self.recordes_drift.get(str(numero_pista), None)
@@ -565,6 +593,28 @@ class GerenciadorProgresso:
     def obter_trofeu(self, numero_pista):
         """Obtém o troféu de uma pista"""
         return self.trofeus.get(str(numero_pista), None)
+    
+    def registrar_trofeu(self, numero_pista, tipo_trofeu):
+        """Registra um troféu para uma pista
+        
+        Args:
+            numero_pista: Número da pista
+            tipo_trofeu: Tipo do troféu ("ouro", "prata", "bronze")
+        """
+        chave = str(numero_pista)
+        trofeu_atual = self.trofeus.get(chave, None)
+        
+        # Ordem de prioridade: ouro > prata > bronze
+        prioridade = {"ouro": 3, "prata": 2, "bronze": 1}
+        prioridade_atual = prioridade.get(trofeu_atual, 0) if trofeu_atual else 0
+        prioridade_nova = prioridade.get(tipo_trofeu, 0)
+        
+        # Só atualizar se o novo troféu tiver maior prioridade
+        if prioridade_nova > prioridade_atual:
+            self.trofeus[chave] = tipo_trofeu
+            self.salvar()
+            return True
+        return False
     
     def obter_upgrade(self, prefixo_cor, tipo_upgrade):
         """Obtém o nível de um upgrade de um carro"""

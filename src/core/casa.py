@@ -403,7 +403,8 @@ def casa_loop(screen, sprite_fundo: Optional[str] = None) -> Optional[str]:
                                             voltas=corrida_info["voltas"],
                                             dificuldade_ia=corrida_info["dificuldade"],
                                             modo_arcade=False,
-                                            sem_bots=sem_bots
+                                            sem_bots=sem_bots,
+                                            race_id=race_id  # IMPORTANTE: Passar race_id para manter a flag
                                         )
                                         
                                         # Após a corrida retornar, verificar se foi training_01 e continuar narrativa

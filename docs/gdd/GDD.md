@@ -1,6 +1,6 @@
 # Turbo Racer — Game Design Document (GDD)
 
-Versão: 0.1  |  Data: 2025-09-26
+Versão: 0.2  |  Data: 2025-12-08
 
 ## Visão Geral
 - Título: Turbo Racer
@@ -60,6 +60,15 @@ Versão: 0.1  |  Data: 2025-09-26
 - Barra de nitro com estados cheio/vazio.
 - Popup de música e controle de trilha: `src/core/popup_musica.py`, `src/core/musica.py`.
 - Menu e Oficina (seleção de carro): `src/core/menu.py`, `assets/images/ui/oficina.png`.
+- **Sistema de Controles na Oficina**: Navegação completa por controle na oficina de carros:
+  - Navegação vertical (D-pad cima/baixo) entre botões: usar/comprar, upgrade, vender, concluído, voltar
+  - Navegação horizontal (D-pad esquerda/direita) entre opções na mesma linha
+  - Navegação para setas de carros (esquerda/direita) com D-pad cima quando disponíveis
+  - Setas de navegação de carros selecionáveis e acionáveis com botão X (confirmar)
+  - Botão L1/R1 para trocar carros rapidamente
+  - Cursor visual animado indicando o botão selecionado
+  - Diálogos de confirmação para compras (carros e upgrades) funcionando tanto com controle quanto mouse/teclado
+  - Diálogo de confirmação para fechar o jogo
 
 ## Arte e Direção Visual
 - Estilo pixel art retro.
@@ -90,16 +99,27 @@ Versão: 0.1  |  Data: 2025-09-26
 - Núcleo do jogo: `src/core/*`
 - Configuração: `src/config.py`
 
+## Sistema de Controles
+- **Suporte Completo a Gamepads**: Controles compatíveis com PlayStation (DualSense/DualShock) e Xbox
+  - Implementação: `src/core/gamepad_manager.py`, `src/core/menu_controles.py`
+  - Mapeamento de botões: `docs/Mapeamento_PS5_e_Xbox_Pygame_Windows.pdf`
+  - Navegação de menus com D-pad e analógico
+  - Botões de ação: X (confirmar), O/B (cancelar), L1/R1 (navegação lateral)
+  - Debounce inteligente para evitar inputs duplicados
+  - Suporte simultâneo para múltiplos controles
+
 ## Requisitos Técnicos
 - Python 3.x
 - Bibliotecas listadas no projeto (ver `README.md`).
 - Sistema de arquivos conforme árvore do repositório.
+- Gamepad opcional (PlayStation ou Xbox) para melhor experiência de navegação.
 
 ## Tarefas Futuras (Backlog)
 - Ghost no contra-relógio
 - IA de oponentes mais avançada (`src/core/ia.py`)
 - Sistema de campeonatos e desbloqueáveis
 - Salvamento de replays e leaderboards
+- Melhorias adicionais na navegação por controle em outras telas do jogo
 
 ## Referências Rápidas
 - Design: `docs/design/game-design.md`

@@ -7,6 +7,54 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+## [3.2.6] - 2025-12-08
+
+### Adicionado
+- **Navegação Completa por Controle na Oficina** - Sistema completo de navegação por controle na oficina de carros:
+  - Navegação vertical (D-pad cima/baixo) entre todos os botões: usar/comprar, upgrade, vender, concluído, voltar
+  - Navegação horizontal (D-pad esquerda/direita) entre opções na mesma linha
+  - Navegação para setas de carros (esquerda/direita) com D-pad cima quando disponíveis
+  - Setas de navegação de carros agora são selecionáveis e acionáveis com botão X (confirmar)
+  - Cursor visual animado indicando o botão selecionado pelo controle
+- **Diálogo de Confirmação de Compra de Carro** - Diálogo modal de confirmação antes de comprar carros:
+  - Funciona tanto com controle quanto mouse/teclado
+  - Mostra nome do carro e preço
+  - Opções: COMPRAR CARRO ou CANCELAR
+  - Navegação por controle (D-pad cima/baixo) e mouse
+- **Diálogo de Confirmação de Compra de Upgrade** - Diálogo de confirmação para compras de upgrades:
+  - Funciona tanto com controle quanto mouse/teclado
+  - Mostra nome do upgrade, nível e preço
+  - Opções: COMPRAR PEÇA ou SAIR
+  - Navegação por controle (D-pad cima/baixo) e mouse
+- **Diálogo de Confirmação de Fechar Jogo** - Diálogo modal para confirmar fechamento do jogo:
+  - Aparece ao pressionar botão "bola" (cancelar) no menu
+  - Aparece ao clicar no botão "SAIR" do menu
+  - Opções: SIM ou NÃO
+  - Navegação por controle e mouse/teclado
+
+### Modificado
+- **Navegação na Oficina** - Melhorada navegação do controle na oficina:
+  - Cursor agora pode navegar até as setas de carros (esquerda/direita)
+  - Pressionar X (confirmar) nas setas troca o carro
+  - Navegação circular entre setas → voltar → concluído → botões inferiores
+  - Botão "voltar" agora acessível pelo controle em todos os modos (arcade e campanha)
+- **Lógica de Navegação Vertical** - Ajustada navegação vertical para incluir setas e botão voltar:
+  - Quando não há setas, pressionar cima nos botões inferiores vai para "voltar"
+  - Quando há setas, pressionar cima nas setas vai para "voltar"
+  - Pressionar baixo em "voltar" vai para setas (se disponíveis) ou "concluído"
+- **Botão Voltar no Modo Arcade** - Corrigida lógica do botão voltar no modo arcade:
+  - Agora sempre retorna para seleção de mapas (retorna `None, None`)
+  - Não inicia mais a corrida quando pressionado pelo controle
+
+### Corrigido
+- **Botão L1 não Funcionava na Oficina** - Corrigido mapeamento do botão L1 (button 9) para funcionar corretamente na oficina
+- **Cursor não Movia com D-pad na Oficina** - Corrigida navegação do cursor com D-pad na oficina
+- **Confirmação de Compra só Aparecia com Controle** - Agora aparece tanto com controle quanto mouse/teclado
+- **Confirmação de Upgrade só Aparecia com Mouse/Teclado** - Agora aparece tanto com controle quanto mouse/teclado
+- **Botão Voltar Iniciava Corrida no Modo Arcade** - Corrigido para sempre voltar à seleção de mapas
+
+---
+
 ## [3.2.5] - 2025-11-25
 
 ### Removido
@@ -447,6 +495,6 @@ chore: atualizar dependências do pygame
 
 ---
 
-**Última atualização:** 25 de Novembro de 2025  
-**Versão atual:** 3.2.5  
+**Última atualização:** Janeiro de 2025  
+**Versão atual:** 3.2.6  
 **Próxima versão:** 3.3.0 (planejada)

@@ -62,6 +62,9 @@ class NarrativeSystem:
         self.scene_transition_tempo_escuro = 0.1
         self.scene_transition_tempo_clarear = 0.3
         
+        # Flag para evitar loop de escolhas
+        self._escolha_ja_processada = False
+        
         self.scenario_hitboxes = {}
         self.hover_hitbox_atual = None
         self.hover_sprite_atual = None
@@ -178,6 +181,18 @@ class NarrativeSystem:
                 
                 # Se não tem startTrigger ou é "immediate", verificar condições
                 if not start_trigger or start_trigger.get("type") == "immediate":
+                    # IMPORTANTE: Para ch1_0_prologue em um novo save, forçar início mesmo se já foi visitada
+                    if scene_id == "ch1_0_prologue" and chapter_id == "ch1":
+                        # Se é um novo save (nenhuma missão completa), forçar início
+                        try:
+                            from core.missoes import gerenciador_missoes
+                            if len(gerenciador_missoes.missoes_completas) == 0:
+                                print(f"[NARRATIVA] NOVO SAVE: Forçando início de ch1_0_prologue mesmo se já visitada")
+                                # Remover de scenes_visited para permitir reinício
+                                self.scenes_visited.discard(scene_id)
+                        except:
+                            pass
+                    
                     # Verificar se já foi visitada
                     if scene_id not in self.scenes_visited:
                         # Verificar condições se houver
@@ -202,7 +217,22 @@ class NarrativeSystem:
     
     def iniciar_cena(self, scene_id: str):
         """Inicia uma cena específica (com transição de fade se já houver uma cena ativa)"""
+        # Resetar flag de escolha processada ao iniciar nova cena
+        self._escolha_ja_processada = False
+        
+        # IMPORTANTE: Para ch1_0_prologue em novos saves, permitir reinício
+        if scene_id == "ch1_0_prologue":
+            try:
+                from core.missoes import gerenciador_missoes
+                if len(gerenciador_missoes.missoes_completas) == 0:
+                    print(f"[NARRATIVA] NOVO SAVE: Permitindo reinício de ch1_0_prologue")
+                    # Remover de scenes_visited para permitir reinício
+                    self.scenes_visited.discard(scene_id)
+            except:
+                pass
+        
         # Evitar reiniciar cenas que já foram visitadas quando a narrativa foi fechada para iniciar uma corrida
+        # MAS permitir se a narrativa está ativa (para sequências)
         if scene_id in self.scenes_visited and not self.active:
             print(f"[NARRATIVA] Tentativa de reiniciar cena {scene_id} que já foi visitada. Narrativa está fechada, pulando...")
             return False
@@ -222,9 +252,43 @@ class NarrativeSystem:
         if not self.narrative_data or not self.current_chapter_id:
             return False
         
+        # Resetar flag de escolha processada ao iniciar nova cena
+        self._escolha_ja_processada = False
+        
+        # IMPORTANTE: Para ch1_0_prologue em novos saves, permitir reinício
+        if scene_id == "ch1_0_prologue":
+            try:
+                from core.missoes import gerenciador_missoes
+                if len(gerenciador_missoes.missoes_completas) == 0:
+                    print(f"[NARRATIVA] NOVO SAVE: Permitindo reinício de ch1_0_prologue em _iniciar_cena_sem_transicao")
+                    # Remover de scenes_visited para permitir reinício
+                    self.scenes_visited.discard(scene_id)
+            except:
+                pass
+        
+        # IMPORTANTE: Para cenas com startTrigger de race_finished, permitir reinício mesmo se já foram visitadas
+        # Isso é necessário porque a cena pode precisar ser reiniciada após completar uma corrida
+        scene_data = None
+        for ch in self.narrative_data.get("chapters", []):
+            for sc in ch.get("scenes", []):
+                if sc.get("id") == scene_id:
+                    scene_data = sc
+                    break
+            if scene_data:
+                break
+        
+        # Se a cena tem startTrigger de race_finished, permitir reinício
+        permitir_reinicio = False
+        if scene_data:
+            start_trigger = scene_data.get("startTrigger", {})
+            if isinstance(start_trigger, dict) and start_trigger.get("type") == "race_finished":
+                permitir_reinicio = True
+                print(f"[NARRATIVA] Cena {scene_id} tem startTrigger race_finished, permitindo reinício mesmo se já foi visitada")
+        
         # Evitar reiniciar cenas que já foram visitadas quando a narrativa foi fechada para iniciar uma corrida
         # MAS permitir avançar para cenas com nextSceneId mesmo se já foram visitadas (para permitir sequências)
-        if scene_id in self.scenes_visited and not self.active:
+        # E permitir reinício de cenas com startTrigger race_finished
+        if scene_id in self.scenes_visited and not self.active and not permitir_reinicio:
             print(f"[NARRATIVA] Tentativa de reiniciar cena {scene_id} que já foi visitada. Narrativa está fechada, pulando...")
             return False
         
@@ -375,10 +439,42 @@ class NarrativeSystem:
         
         try:
             from core.missoes import gerenciador_missoes
+            # IMPORTANTE: Para ch1_4b_housing_offer, marcar como visitada imediatamente para evitar reativação
+            # e garantir que a missão seja ativada
+            if scene_id == "ch1_4b_housing_offer" and scene_id not in self.scenes_visited:
+                self.scenes_visited.add(scene_id)
+                print(f"[NARRATIVA] Marcando ch1_4b_housing_offer como visitada imediatamente para evitar reativação")
+            
+            # IMPORTANTE: Para ch1_1c_crank_test_result, marcar como visitada imediatamente para permitir ativação de m3
+            # Isso garante que a missão seja ativada quando a cena é iniciada
+            if scene_id == "ch1_1c_crank_test_result" and scene_id not in self.scenes_visited:
+                self.scenes_visited.add(scene_id)
+                print(f"[NARRATIVA] Marcando ch1_1c_crank_test_result como visitada imediatamente para permitir ativação de m3")
+            
+            # IMPORTANTE: Marcar cenas mapeadas como visitadas também
+            # Isso garante que missões sejam ativadas corretamente
+            mapeamento_ativacao = {
+                "ch1_5_race_briefing": "ch1_5_first_race_unlocked",
+                "ch1_6_post_race": "ch1_6_post_first_race_and_pixel",
+            }
+            cena_mapeada = mapeamento_ativacao.get(scene_id)
+            if cena_mapeada and cena_mapeada not in self.scenes_visited:
+                self.scenes_visited.add(cena_mapeada)
+                print(f"[NARRATIVA] Marcando cena mapeada {cena_mapeada} como visitada (original: {scene_id})")
+            
             # Ativar missões que devem ser ativadas nesta cena
+            print(f"[NARRATIVA] Chamando ativar_por_cena para cena {scene_id}")
             missao_ativada = gerenciador_missoes.ativar_por_cena(scene_id)
             if missao_ativada:
                 print(f"[NARRATIVA] Missão {missao_ativada} ativada pela cena {scene_id}")
+                gerenciador_missoes.salvar()  # Salvar imediatamente após ativar
+            else:
+                print(f"[NARRATIVA] Nenhuma missão foi ativada pela cena {scene_id}")
+                # DEBUG: Verificar quais missões têm activateOnSceneId para esta cena
+                for mid, m in gerenciador_missoes.missoes.items():
+                    activate_on = m.get("activateOnSceneId")
+                    if activate_on == scene_id:
+                        print(f"[NARRATIVA] DEBUG: Missão {mid} tem activateOnSceneId={activate_on}, mas não foi ativada. Completa: {mid in gerenciador_missoes.missoes_completas}, visitada: {scene_id in self.scenes_visited}")
             # Completar missões que devem ser completadas quando esta cena é iniciada
             # (especialmente para cenas que são gatilhos de entrada, como ch1_1_crank_garage_intro)
             gerenciador_missoes.completar_por_cena(scene_id)
@@ -710,10 +806,14 @@ class NarrativeSystem:
                 for i, line in enumerate(lines):
                     print(f"  Linha {i}: {line.get('speaker', '')} - {line.get('text', '')[:60]}...")
             
-            # Se estávamos exibindo linhas de uma escolha, restaurar linhas originais e fechar
+            # Se estávamos exibindo linhas de uma escolha, restaurar linhas originais e avançar para próxima cena
             if hasattr(self, '_original_scene_lines'):
                 scene["lines"] = self._original_scene_lines
+                next_scene_id = getattr(self, '_next_scene_id_escolha', None)
                 delattr(self, '_original_scene_lines')
+                if hasattr(self, '_next_scene_id_escolha'):
+                    delattr(self, '_next_scene_id_escolha')
+                
                 # Completar missão m10 se o Cinturão foi desbloqueado
                 if self.current_scene_id in ["ch2_6_crank_cinturao_offer", "ch2_5_boris_offer_again"]:
                     from core.missoes import gerenciador_missoes
@@ -726,17 +826,48 @@ class NarrativeSystem:
                         gerenciador_missoes.atualizar_objetivo_missao("m10_portoes_do_cinturao", "Corra no Cinturão Industrial")
                         gerenciador_missoes.salvar()
                         print(f"[NARRATIVA] Missão m10_portoes_do_cinturao completada após desbloquear Cinturão")
-            # Fechar a narrativa
-            self._avancar_cena()
-            return
+                
+                # IMPORTANTE: Se uma escolha já foi processada, avançar para a próxima cena em vez de mostrar escolhas novamente
+                if getattr(self, '_escolha_ja_processada', False):
+                    self._escolha_ja_processada = False  # Resetar flag
+                    if next_scene_id:
+                        print(f"[NARRATIVA] Linhas da escolha terminadas, avançando para {next_scene_id} (escolha já foi processada)")
+                        # Marcar cena atual como visitada antes de avançar
+                        if self.current_scene_id:
+                            self.scenes_visited.add(self.current_scene_id)
+                            self._salvar_flags_cena_atual()
+                            # Completar missões quando necessário
+                            from core.missoes import gerenciador_missoes
+                            if self.current_scene_id == "ch2_2_barao_offer":
+                                gerenciador_missoes.completar_por_cena(self.current_scene_id)
+                                print(f"[NARRATIVA] Missão completada ao finalizar escolha na cena {self.current_scene_id}")
+                        # Iniciar transição para próxima cena
+                        self.scene_transition_active = True
+                        self.scene_transition_fade_alpha = 0.0
+                        self.scene_transition_fade_direction = 1
+                        self.scene_transition_duration = 0.0
+                        self.scene_transition_next_scene_id = next_scene_id
+                        return
+                    else:
+                        print(f"[NARRATIVA] Linhas da escolha terminadas mas não há nextSceneId")
+                        # Fechar narrativa se não há próxima cena
+                        self.active = False
+                        return
             
+            # IMPORTANTE: Verificar escolhas ANTES de avançar a cena
+            # Mas só mostrar escolhas se uma escolha ainda não foi processada
             choices = scene.get("choices", [])
-            if choices:
+            if choices and not getattr(self, '_escolha_ja_processada', False):
+                print(f"[NARRATIVA] Todas as linhas exibidas, mostrando {len(choices)} escolhas")
                 self.choices_visible = True
                 self.selected_choice = 0
+                return  # Não avançar cena, aguardar escolha do jogador
             else:
+                # Não há escolhas ou escolha já foi processada, avançar cena normalmente
+                if getattr(self, '_escolha_ja_processada', False):
+                    self._escolha_ja_processada = False  # Resetar flag
                 self._avancar_cena()
-            return
+                return
         
         line = lines[self.current_line_index]
         
@@ -1323,6 +1454,9 @@ class NarrativeSystem:
                 "params": params
             }
         
+        # IMPORTANTE: Marcar que uma escolha foi feita para evitar loop
+        self._escolha_ja_processada = True
+        
         # Verificar se a escolha tem linhas para exibir após a escolha
         choice_lines = choice.get("lines", [])
         if choice_lines:
@@ -1332,6 +1466,9 @@ class NarrativeSystem:
                 # Salvar as linhas originais da cena
                 if not hasattr(self, '_original_scene_lines'):
                     self._original_scene_lines = scene.get("lines", [])
+                # Salvar o nextSceneId da escolha para usar depois
+                if not hasattr(self, '_next_scene_id_escolha'):
+                    self._next_scene_id_escolha = choice.get("nextSceneId")
                 # Adicionar as linhas da escolha após as linhas originais
                 scene["lines"] = self._original_scene_lines + choice_lines
                 # Resetar o índice de linha para começar a exibir as linhas da escolha
@@ -2114,6 +2251,23 @@ class NarrativeSystem:
                 except Exception as e:
                     print(f"[NARRATIVA] Erro ao desbloquear corrida {race}: {e}")
                 print(f"[NARRATIVA] Desbloqueando corrida: {race}")
+        elif effect.startswith("unlockFeature:"):
+            feature = effect.split(":", 1)[1]
+            try:
+                from core.progresso import gerenciador_progresso
+                if feature == "scrapSell":
+                    gerenciador_progresso.glub_desbloqueado = True
+                    gerenciador_progresso.salvar()
+                    print(f"[NARRATIVA] Feature {feature} desbloqueada (Glub agora está disponível)")
+                else:
+                    # Para outras features futuras
+                    setattr(gerenciador_progresso, f"{feature}_desbloqueado", True)
+                    gerenciador_progresso.salvar()
+                    print(f"[NARRATIVA] Feature {feature} desbloqueada")
+            except Exception as e:
+                print(f"[NARRATIVA] Erro ao desbloquear feature {feature}: {e}")
+                import traceback
+                traceback.print_exc()
         elif effect.startswith("openShop:"):
             shop = effect.split(":", 1)[1]
             # TODO: abrir loja

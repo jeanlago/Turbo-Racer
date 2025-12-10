@@ -16,7 +16,7 @@ class CarroFisica:
     TRACAO_FRONTAL  = "front"
     TRACAO_INTEGRAL = "awd"
 
-    def __init__(self, x, y, prefixo_cor, controles, turbo_key=None, nome=None, tipo_tracao=None, upgrades=None, multiplicador_base=1.0):
+    def __init__(self, x, y, prefixo_cor, controles, turbo_key=None, nome=None, tipo_tracao=None, upgrades=None, multiplicador_base=1.0, modo_arcade=False):
         self.x = float(x); self.y = float(y)
         self.angulo = 0.0
         self.vx = 0.0; self.vy = 0.0
@@ -28,6 +28,7 @@ class CarroFisica:
         self.yaw_rate = 0.0
 
         self.controles = controles
+        self.modo_arcade = modo_arcade
         self.turbo_key = KEY_NAME_TO_CONST.get(turbo_key) if isinstance(turbo_key, str) else turbo_key
         self.nome = nome or f"Carro {prefixo_cor}"
         self.tipo_tracao = tipo_tracao or self.TRACAO_TRASEIRA
@@ -242,8 +243,8 @@ class CarroFisica:
         # Verificar se é carro da campanha e carregar sprite apropriado
         caminho_sprite = None
         
-        # Se for Car1, verificar se está em modo campanha
-        if prefixo_cor == "Car1":
+        # Se for Car1, verificar se está em modo campanha (NÃO usar sprite da campanha no modo arcade)
+        if prefixo_cor == "Car1" and not self.modo_arcade:
             try:
                 from core.progresso import gerenciador_progresso
                 # Verificar se é modo campanha (Car1 sempre é campanha)
@@ -507,7 +508,7 @@ class CarroFisica:
         if na_grama:
             velocidade_atual_temp = math.sqrt(v_long*v_long + v_lat*v_lat)
             ARCADE_SPEED_MULT = 2.5
-            PXPS_TO_KMH = 1.0
+            PXPS_TO_KMH = 0.26
             velocidade_kmh_temp = velocidade_atual_temp * ARCADE_SPEED_MULT * PXPS_TO_KMH
             
             if esta_tentando_re:
@@ -555,7 +556,7 @@ class CarroFisica:
         if v_long < 0.0:
             velocidade_total_pxps = math.sqrt(v_long*v_long + v_lat*v_lat)
             ARCADE_SPEED_MULT = 2.5
-            PXPS_TO_KMH = 1.0
+            PXPS_TO_KMH = 0.26
             velocidade_rev_kmh = velocidade_total_pxps * ARCADE_SPEED_MULT * PXPS_TO_KMH
             
             VEL_ALVO_KMH = 38.0
@@ -605,7 +606,7 @@ class CarroFisica:
             esta_em_re_arrasto = v_long_atual < 0.0 or brk > 0.0
             velocidade_atual_grama = math.sqrt(v_long_atual*v_long_atual + v_lat_atual*v_lat_atual)
             ARCADE_SPEED_MULT = 2.5
-            PXPS_TO_KMH = 1.0
+            PXPS_TO_KMH = 0.26
             velocidade_kmh_atual = velocidade_atual_grama * ARCADE_SPEED_MULT * PXPS_TO_KMH
             
             if esta_em_re_arrasto:
@@ -661,7 +662,7 @@ class CarroFisica:
             # Calcular velocidade total (magnitude) em km/h
             velocidade_total_pxps = math.sqrt(v_long*v_long + v_lat*v_lat)
             ARCADE_SPEED_MULT = 2.5
-            PXPS_TO_KMH = 1.0
+            PXPS_TO_KMH = 0.26
             velocidade_rev_kmh = velocidade_total_pxps * ARCADE_SPEED_MULT * PXPS_TO_KMH
             VEL_MAX_KMH = 45.0
             
@@ -704,7 +705,7 @@ class CarroFisica:
             vel_max_real_pxps = V_TOP_calc * fator_eficiencia
             
             ARCADE_SPEED_MULT = 2.5
-            PXPS_TO_KMH = 1.0
+            PXPS_TO_KMH = 0.26
             vel_max_real_kmh = vel_max_real_pxps * ARCADE_SPEED_MULT * PXPS_TO_KMH
             
             vel_max_nitro_kmh = vel_max_real_kmh * 1.20
@@ -777,7 +778,7 @@ class CarroFisica:
             
             velocidade_atual_pxps = math.sqrt(v_long*v_long + v_lat*v_lat)
             ARCADE_SPEED_MULT = 2.5
-            PXPS_TO_KMH = 1.0
+            PXPS_TO_KMH = 0.26
             velocidade_kmh_atual = velocidade_atual_pxps * ARCADE_SPEED_MULT * PXPS_TO_KMH
             
             if esta_em_re:
@@ -958,9 +959,15 @@ class CarroFisica:
                 self.y = min(pista_h, self.y)
 
         ARCADE_SPEED_MULT = 2.5
-        velocidade_com_mult = abs(v_long) * ARCADE_SPEED_MULT
+        # Usar velocidade total (magnitude) em vez de apenas v_long para refletir velocidade real
+        velocidade_total_pxps = math.sqrt(v_long*v_long + v_lat*v_lat)
+        velocidade_com_mult = velocidade_total_pxps * ARCADE_SPEED_MULT
         
-        PXPS_TO_KMH = 1.0
+        # Ajustar fator para que ~500 px/s = ~300-350 km/h
+        # 300 = 500 * 2.5 * PXPS_TO_KMH => PXPS_TO_KMH = 300 / 1250 = 0.24
+        # 350 = 500 * 2.5 * PXPS_TO_KMH => PXPS_TO_KMH = 350 / 1250 = 0.28
+        # Usando 0.26 (valor intermediário) para que ~500 px/s = ~325 km/h
+        PXPS_TO_KMH = 0.26  # Ajustado para que ~500 px/s = ~325 km/h (300-350 km/h)
         self.velocidade_kmh = velocidade_com_mult * PXPS_TO_KMH
         self.velocidade = v_long
 

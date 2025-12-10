@@ -254,10 +254,14 @@ class Crank:
         gerenciador_progresso.crank_nome_revelado = getattr(self, 'nome_revelado', False)
         gerenciador_progresso.salvar()
     
-    def registrar_corrida(self, posicao, colisoes, venceu):
+    def registrar_corrida(self, posicao, colisoes, venceu, modo_arcade=False):
         """Registra os dados da última corrida"""
         from core.progresso import gerenciador_progresso
         from main import CARROS_DISPONIVEIS
+        
+        # No modo arcade, não aplicar dano
+        if modo_arcade:
+            return
         
         carro_p1_atual = gerenciador_progresso.obter_carro_atual(1)
         if carro_p1_atual is None:

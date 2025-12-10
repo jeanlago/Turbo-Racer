@@ -42,6 +42,29 @@ class GerenciadorMissoes:
         # Carregar missões completas
         self._carregar_missoes_completas()
         
+        # IMPORTANTE: Para novos saves (nenhuma missão completa), ativar m1_primeira_faisca imediatamente
+        # Usar try/except para evitar importação circular
+        if len(self.missoes_completas) == 0:
+            try:
+                from core.progresso import gerenciador_progresso
+                capitulo_atual = gerenciador_progresso.obter_capitulo_atual()
+                if not capitulo_atual:
+                    capitulo_atual = "ch1"
+                    gerenciador_progresso.definir_capitulo_atual("ch1")
+                    gerenciador_progresso.salvar()
+                
+                if capitulo_atual == "ch1" and "m1_primeira_faisca" in self.missoes:
+                    if not self.missao_ativa_id or self.missao_ativa_id != "m1_primeira_faisca":
+                        print(f"[MISSÕES] ====== NOVO SAVE: ATIVANDO m1_primeira_faisca NO CARREGAMENTO ======")
+                        self.ativar_missao("m1_primeira_faisca", forcar_ativacao=True)
+                        self.salvar()
+                        print(f"[MISSÕES] m1_primeira_faisca ativada! missao_ativa_id={self.missao_ativa_id}")
+            except ImportError as e:
+                # Importação circular - tentar novamente depois
+                print(f"[MISSÕES] Importação circular detectada ao ativar m1_primeira_faisca, será ativada depois: {e}")
+            except Exception as e:
+                print(f"[MISSÕES] Erro ao ativar m1_primeira_faisca no carregamento: {e}")
+        
         # Verificar se m15_ruido_nos_servidores deve ser completada (jogador já foi até o Pixel)
         self._verificar_missao_pixel_completa()
         
@@ -130,7 +153,7 @@ class GerenciadorMissoes:
                     # Sempre carregar do progresso.json se existir (mesmo que vazio)
                     self.missoes_completas = set(data.get('missoes_completas', []))
                     self.missao_ativa_id = data.get('missao_ativa_id', None)
-                    print(f"[MISSÕES] Carregado do progresso.json: {len(self.missoes_completas)} completas, ativa: {self.missao_ativa_id}")
+                    # Debug removido
                     # Continuar com a lógica de validação abaixo
                     if self.missao_ativa_id:
                         # Verificar se a missão existe no dicionário de missões
@@ -376,8 +399,10 @@ class GerenciadorMissoes:
         """Ativa uma missão baseada no ID da cena"""
         # Mapeamento de cenas para garantir compatibilidade
         mapeamento_ativacao = {
-            "ch1_2_meet_boris": "ch1_3_meet_boris",  # ch1_2_meet_boris deve ativar missões com activateOnSceneId="ch1_3_meet_boris"
+            "ch1_1c_crank_test_result": "ch1_1c_crank_test_result",  # ch1_1c_crank_test_result deve ativar missões com activateOnSceneId="ch1_1c_crank_test_result" (m3)
+            "ch1_2_meet_boris": "ch1_2_meet_boris",  # ch1_2_meet_boris deve ativar missões com activateOnSceneId="ch1_2_meet_boris" (m4)
             "ch1_4_garage_return": "ch1_4_return_garage_upgrade",  # ch1_4_garage_return deve ativar missões com activateOnSceneId="ch1_4_return_garage_upgrade"
+            "ch1_4b_housing_offer": "ch1_4b_housing_offer",  # ch1_4b_housing_offer deve ativar missões com activateOnSceneId="ch1_4b_housing_offer" (m2)
             "ch1_5_race_briefing": "ch1_5_first_race_unlocked",  # ch1_5_race_briefing deve ativar missões com activateOnSceneId="ch1_5_first_race_unlocked"
             "ch1_6_post_race": "ch1_6_post_first_race_and_pixel",  # ch1_6_post_race deve ativar missões com activateOnSceneId="ch1_6_post_first_race_and_pixel"
             "ch2_1_barao_intro": "ch2_2_barao_appears",  # ch2_1_barao_intro deve ativar missões com activateOnSceneId="ch2_2_barao_appears"
@@ -399,10 +424,18 @@ class GerenciadorMissoes:
         ))
         
         print(f"[MISSÕES] ativar_por_cena: verificando cena {scene_id} (mapeada: {scene_id_original})")
+        
+        # IMPORTANTE: Marcar a cena mapeada como visitada também para garantir que missões sejam ativadas
+        from core.narrative_system import narrative_system
+        if scene_id_original != scene_id:
+            narrative_system.scenes_visited.add(scene_id_original)
+            print(f"[MISSÕES] Cena mapeada {scene_id_original} marcada como visitada (original: {scene_id})")
+        
         for missao_id, missao in missoes_ordenadas:
             activate_on = missao.get("activateOnSceneId")
             if activate_on:
                 print(f"[MISSÕES] Verificando missão {missao_id}: activateOnSceneId={activate_on}")
+            # Verificar tanto a cena original quanto a mapeada
             if activate_on == scene_id or activate_on == scene_id_original:
                 if missao_id not in self.missoes_completas:
                     print(f"[MISSÕES] Ativando missão {missao_id} pela cena {scene_id} (activateOnSceneId={activate_on})")
@@ -420,6 +453,12 @@ class GerenciadorMissoes:
         
         if missao_id is None:
             missao_id = self.missao_ativa_id
+        
+        # IMPORTANTE: Quando m6 é completada, marcar cena para permitir ativação de m7
+        if missao_id == "m6_batismo_de_pista":
+            if "ch1_6_post_first_race_and_pixel" not in narrative_system.scenes_visited:
+                narrative_system.scenes_visited.add("ch1_6_post_first_race_and_pixel")
+                print(f"[MISSÕES] m6 completada - marcando ch1_6_post_first_race_and_pixel como visitada para permitir m7")
         
         if missao_id and missao_id in self.missoes:
             if missao_id not in self.missoes_completas:
@@ -614,12 +653,26 @@ class GerenciadorMissoes:
     def completar_por_cena(self, scene_id: str):
         """Completa uma missão baseada no ID da cena"""
         print(f"[MISSÕES] completar_por_cena chamado para cena: {scene_id}")
+        
+        # IMPORTANTE: Quando ch1_6_post_race ou ch1_6_post_first_race_and_pixel é visitada, completar m6
+        # e marcar cena para permitir m7
+        from core.narrative_system import narrative_system
+        if scene_id in ["ch1_6_post_race", "ch1_6_post_first_race_and_pixel"]:
+            if "m6_batismo_de_pista" not in self.missoes_completas:
+                print(f"[MISSÕES] Cena pós-corrida visitada, completando m6_batismo_de_pista...")
+                self.completar_missao("m6_batismo_de_pista")
+            # Marcar cena para permitir m7
+            if "ch1_6_post_first_race_and_pixel" not in narrative_system.scenes_visited:
+                narrative_system.scenes_visited.add("ch1_6_post_first_race_and_pixel")
+                print(f"[MISSÕES] Marcando ch1_6_post_first_race_and_pixel como visitada para permitir m7")
+        
         # Mapeamento de cenas antigas para novas (compatibilidade)
         mapeamento_cenas = {
             "ch1_1b_crank_test_briefing": "ch1_1b_the_deal",
             "ch1_1c_crank_test_result": "ch1_1b_the_deal",
             "ch1_3_meet_boris": "ch1_2_meet_boris",
             "ch1_2_meet_boris": "ch1_2_meet_boris",  # Mapear ch1_2_meet_boris para si mesma para ativar m4
+            "ch1_3_boris_deal": "ch1_3_boris_deal",  # Mapear ch1_3_boris_deal para si mesma para completar m4
             "ch1_4_return_garage_upgrade": "ch1_4_garage_return",
             "ch1_5_first_race_unlocked": "ch1_5_race_briefing",
             "ch1_6_post_first_race_and_pixel": "ch1_6_post_race",
@@ -805,16 +858,40 @@ class GerenciadorMissoes:
                 return self.missoes[self.missao_ativa_id]
         
         # Se não há missão ativa, tentar ativar automaticamente a próxima baseada no progresso
+        print(f"[MISSÕES] Nenhuma missão ativa, tentando ativar automaticamente... (completas: {len(self.missoes_completas)})")
         self._ativar_proxima_missao_automaticamente()
         
         if self.missao_ativa_id and self.missao_ativa_id in self.missoes:
+            print(f"[MISSÕES] Missão ativada automaticamente: {self.missao_ativa_id}")
+            self.salvar()  # IMPORTANTE: Salvar imediatamente após ativar
             return self.missoes[self.missao_ativa_id]
+        else:
+            print(f"[MISSÕES] Nenhuma missão pôde ser ativada automaticamente. missao_ativa_id={self.missao_ativa_id}")
+            # DEBUG: Verificar qual é a próxima missão que deveria ser ativada
+            from core.progresso import gerenciador_progresso
+            capitulo_atual = gerenciador_progresso.obter_capitulo_atual() or "ch1"
+            print(f"[MISSÕES] DEBUG: Capítulo atual: {capitulo_atual}, Missões completas: {sorted(self.missoes_completas)}")
+            # Listar todas as missões do capítulo atual que não foram completadas
+            missoes_capitulo = [(mid, m) for mid, m in self.missoes.items() if m.get("chapter") == capitulo_atual and mid not in self.missoes_completas]
+            print(f"[MISSÕES] DEBUG: Missões do capítulo {capitulo_atual} não completadas: {[mid for mid, m in missoes_capitulo]}")
+            for mid, m in missoes_capitulo:
+                activate_on = m.get("activateOnSceneId")
+                if activate_on:
+                    from core.narrative_system import narrative_system
+                    scenes_visited = getattr(narrative_system, 'scenes_visited', set())
+                    print(f"[MISSÕES] DEBUG: {mid} requer cena {activate_on}, visitada: {activate_on in scenes_visited}")
         return None
     
     def _ativar_proxima_missao_automaticamente(self):
         """Ativa automaticamente a próxima missão baseada no progresso do jogador"""
         if self.missao_ativa_id:
-            return  # Já há uma missão ativa
+            # Se já há uma missão ativa e ela é válida, não fazer nada
+            if self.missao_ativa_id in self.missoes:
+                return  # Já há uma missão ativa válida
+            else:
+                # Missão ativa é inválida, limpar
+                print(f"[MISSÕES] Missão ativa {self.missao_ativa_id} é inválida, limpando...")
+                self.missao_ativa_id = None
         
         # Obter capítulo atual
         from core.progresso import gerenciador_progresso
@@ -829,6 +906,22 @@ class GerenciadorMissoes:
                 capitulo_atual = "ch1"
             print(f"[MISSÕES] Capítulo não definido, inferindo como {capitulo_atual} baseado em {len(self.missoes_completas)} missões completas")
         
+        # IMPORTANTE: Para um novo save (nenhuma missão completa), ativar m1_primeira_faisca imediatamente
+        # Esta missão será ativada novamente quando ch1_0_prologue for visitada (via ativar_por_cena),
+        # mas precisamos ativá-la agora para que o jogador tenha uma missão ativa desde o início
+        if len(self.missoes_completas) == 0 and capitulo_atual == "ch1":
+            if "m1_primeira_faisca" in self.missoes and "m1_primeira_faisca" not in self.missoes_completas:
+                if not self.missao_ativa_id or self.missao_ativa_id != "m1_primeira_faisca":
+                    print(f"[MISSÕES] ====== NOVO SAVE DETECTADO ======")
+                    print(f"[MISSÕES] Nenhuma missão completa, capítulo atual: {capitulo_atual}")
+                    print(f"[MISSÕES] Ativando primeira missão m1_primeira_faisca imediatamente (sem esperar prólogo)")
+                    self.ativar_missao("m1_primeira_faisca", forcar_ativacao=True)
+                    print(f"[MISSÕES] m1_primeira_faisca ativada! missao_ativa_id={self.missao_ativa_id}")
+                    return
+                else:
+                    print(f"[MISSÕES] m1_primeira_faisca já está ativa (missao_ativa_id={self.missao_ativa_id})")
+                    return
+        
         # Verificar se o capítulo atual está correto
         # Se está no ch4 mas as missões do ch3 não foram completadas, voltar para ch3
         if capitulo_atual == "ch4":
@@ -852,6 +945,22 @@ class GerenciadorMissoes:
                 # Atualizar o capítulo no progresso
                 gerenciador_progresso.definir_capitulo_atual("ch3")
                 gerenciador_progresso.salvar()
+        
+        # IMPORTANTE: Se completou m5 mas m6 não está ativa, marcar cena como visitada e ativar m6
+        # Isso resolve o problema onde ch1_5_race_briefing nunca é visitada
+        if capitulo_atual == "ch1":
+            if "m5_cirurgia_na_garagem" in self.missoes_completas:
+                if "m6_batismo_de_pista" not in self.missoes_completas and "m6_batismo_de_pista" in self.missoes:
+                    from core.narrative_system import narrative_system
+                    # Marcar a cena como visitada para permitir ativação
+                    if "ch1_5_first_race_unlocked" not in narrative_system.scenes_visited:
+                        narrative_system.scenes_visited.add("ch1_5_first_race_unlocked")
+                        print(f"[MISSÕES] m5 completada mas m6 não ativa - marcando ch1_5_first_race_unlocked como visitada")
+                    # Tentar ativar m6
+                    if not self.missao_ativa_id or self.missao_ativa_id != "m6_batismo_de_pista":
+                        print(f"[MISSÕES] m5 completada, ativando m6_batismo_de_pista automaticamente...")
+                        self.ativar_missao("m6_batismo_de_pista", forcar_ativacao=True)
+                        return
         
         # Verificar progresso da Akira para determinar qual missão ativar
         try:
@@ -932,6 +1041,7 @@ class GerenciadorMissoes:
                         return
         
         # Encontrar a primeira missão NÃO COMPLETA do capítulo atual
+        # IMPORTANTE: Processar em ordem para garantir que a primeira missão disponível seja ativada
         for missao_id, missao in missoes_capitulo_atual:
             # PULAR missões que já foram completadas
             if missao_id in self.missoes_completas:
@@ -941,23 +1051,23 @@ class GerenciadorMissoes:
             activate_on_scene = missao.get("activateOnSceneId")
             missao_chapter = missao.get("chapter", "ch1")
             
-            # Extrair número da missão (m1, m2, m11, m13, etc.)
-            try:
-                missao_num = int(missao_id.split("_")[0].replace("m", ""))
-            except:
-                missao_num = 0
-            
             # Verificar se todas as missões anteriores do mesmo capítulo foram completadas
+            # Usar a ordem na lista ordenada, não apenas números
             todas_anteriores_completas = True
-            for outra_id, outra_missao in missoes_capitulo_atual:
-                try:
-                    outra_num = int(outra_id.split("_")[0].replace("m", ""))
-                except:
-                    outra_num = 0
-                # Se é uma missão anterior do mesmo capítulo e não está completa
-                if outra_num < missao_num and outra_id not in self.missoes_completas:
-                    todas_anteriores_completas = False
+            posicao_atual = None
+            for i, (outra_id, outra_missao) in enumerate(missoes_capitulo_atual):
+                if outra_id == missao_id:
+                    posicao_atual = i
                     break
+            
+            if posicao_atual is not None:
+                # Verificar todas as missões anteriores na lista
+                for i in range(posicao_atual):
+                    outra_id, outra_missao = missoes_capitulo_atual[i]
+                    if outra_id not in self.missoes_completas:
+                        todas_anteriores_completas = False
+                        print(f"[MISSÕES] Missão {missao_id} não pode ser ativada: {outra_id} ainda não foi completada")
+                        break
             
             # Se a missão tem activateOnSceneId, verificar se a cena já foi vista
             if activate_on_scene:
@@ -971,6 +1081,8 @@ class GerenciadorMissoes:
                             print(f"[MISSÕES] Ativando automaticamente missão {missao_id} (cena {activate_on_scene} já foi vista, todas anteriores completas)")
                             self.ativar_missao(missao_id)
                             return
+                        else:
+                            print(f"[MISSÕES] Missão {missao_id} requer cena {activate_on_scene} (já vista), mas missões anteriores não foram completadas")
                     else:
                         # IMPORTANTE: Se a missão tem activateOnSceneId, NÃO ativar até que a cena seja visitada
                         # Mesmo que todas as anteriores tenham sido completadas
@@ -987,44 +1099,17 @@ class GerenciadorMissoes:
                     print(f"[MISSÕES] Ativando automaticamente missão {missao_id} (sem activateOnSceneId, todas anteriores completas)")
                     self.ativar_missao(missao_id)
                     return
+                else:
+                    print(f"[MISSÕES] Missão {missao_id} não pode ser ativada: missões anteriores não foram completadas")
+                    # Se esta é a primeira missão não completada, parar aqui para não pular para missões mais avançadas
+                    break
         
-        # Se não encontrou missão no capítulo atual, verificar próximo capítulo
-        if capitulo_atual == "ch1":
-            proximo_capitulo = "ch2"
-        elif capitulo_atual == "ch2":
-            proximo_capitulo = "ch3"
-        elif capitulo_atual == "ch3":
-            proximo_capitulo = "ch4"
-        elif capitulo_atual == "ch4":
-            proximo_capitulo = "ch5"
-        elif capitulo_atual == "ch5":
-            # No capítulo 5, não há próximo capítulo, mas pode haver missões pendentes
-            pass
-        else:
-            return
-        
-        # Verificar se há missões no próximo capítulo
-        missoes_proximo = [(mid, m) for mid, m in todas_missoes_ordenadas if m.get("chapter") == proximo_capitulo]
-        
-        if missoes_proximo:
-            for missao_id, missao in missoes_proximo:
-                if missao_id not in self.missoes_completas:
-                    activate_on_scene = missao.get("activateOnSceneId")
-                    if activate_on_scene:
-                        try:
-                            from core.narrative_system import narrative_system
-                            # Verificar tanto cenas_visitadas quanto scenes_visited
-                            cenas_visitadas = getattr(narrative_system, 'cenas_visitadas', None) or getattr(narrative_system, 'scenes_visited', None) or set()
-                            if activate_on_scene in cenas_visitadas:
-                                    print(f"[MISSÕES] Ativando automaticamente missão {missao_id} do próximo capítulo (cena {activate_on_scene} já foi vista)")
-                                    self.ativar_missao(missao_id)
-                                    return
-                        except:
-                            pass
-                    else:
-                        print(f"[MISSÕES] Ativando automaticamente missão {missao_id} do próximo capítulo (sem activateOnSceneId)")
-                        self.ativar_missao(missao_id)
-                        return
+        # IMPORTANTE: NÃO ativar missões de capítulos futuros automaticamente
+        # Se não encontrou missão no capítulo atual, significa que todas as missões do capítulo atual
+        # requerem cenas que ainda não foram visitadas ou têm pré-requisitos não cumpridos
+        # Neste caso, NÃO devemos pular para o próximo capítulo
+        print(f"[MISSÕES] Nenhuma missão do capítulo {capitulo_atual} pode ser ativada automaticamente no momento. Aguardando progresso do jogador.")
+        return
     
     def esta_completa(self, missao_id: str) -> bool:
         """Verifica se uma missão está completa"""

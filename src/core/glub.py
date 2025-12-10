@@ -348,6 +348,8 @@ class Glub:
     
     def _nome_upgrade(self):
         """Retorna o nome amigável do upgrade"""
+        if not self.oferta_atual:
+            return "Peça"
         nomes = {
             'motor': 'Motor',
             'filtro_ar': 'Filtro de Ar',
@@ -357,7 +359,7 @@ class Glub:
             'suspensao': 'Suspensão',
             'nitro': 'Nitro'
         }
-        return nomes.get(self.oferta_atual['tipo_upgrade'], self.oferta_atual['tipo_upgrade'])
+        return nomes.get(self.oferta_atual.get('tipo_upgrade', ''), self.oferta_atual.get('tipo_upgrade', 'Peça'))
     
     def obter_texto_cumprimento(self):
         """Retorna o texto de cumprimento do Glub"""
@@ -372,9 +374,11 @@ class Glub:
     
     def obter_texto_oferta(self):
         """Retorna o texto da oferta do Glub"""
+        if not self.oferta_atual:
+            return "Humano! Pare! Eu preciso de peças antigas! Traga suas peças usadas para mim!"
         nome = self._nome_upgrade()
-        nivel = self.oferta_atual['nivel_antigo']
-        preco = self.oferta_atual['preco']
+        nivel = self.oferta_atual.get('nivel_antigo', 1)
+        preco = self.oferta_atual.get('preco', 0)
         
         textos = [
             f"Humano! Pare! Aquele '{nome} Nível {nivel} Enferrujado' que você ia jogar fora... Ele vibra com energias primitivas! É uma obra de arte! Eu *preciso* absorvê-lo. Te dou ${preco:,} por ele!",
