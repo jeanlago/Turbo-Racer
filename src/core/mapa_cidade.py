@@ -1157,7 +1157,6 @@ def mapa_cidade_loop(screen) -> Optional[str]:
                                         # Verificar estado da localização
                                         estado = gerenciador_localizacoes.obter_estado(territorio_id)
                                         
-                                        # Debug: verificar estado da montanha
                                         if territorio_id == "montanha":
                                             print(f"[MAPA_CIDADE] Clique na montanha detectado. Estado: {estado}")
                                         

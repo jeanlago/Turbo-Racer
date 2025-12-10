@@ -113,10 +113,8 @@ class Akira:
                 print("AVISO: pygame não inicializado, tentando inicializar...")
                 pygame.init()
             
-            # Criar diretório se não existir
             os.makedirs(CAMINHO_SPRITES, exist_ok=True)
             
-            # Carregar sprites com nomes corretos
             if os.path.exists(SPRITE_NEUTRO):
                 self.sprite_neutro = pygame.image.load(SPRITE_NEUTRO).convert_alpha()
                 print(f"[AKIRA] Sprite neutro carregado: {SPRITE_NEUTRO}")
@@ -238,7 +236,6 @@ class Akira:
             self.primeira_aparicao_mostrada = True
             self.salvar_estado()
             
-            # Salvar também missões e localizações após primeira aparição
             try:
                 from core.missoes import gerenciador_missoes
                 from core.mapa_locations import gerenciador_localizacoes
@@ -500,9 +497,6 @@ class Akira:
         venceu = self.ultima_corrida['venceu']
         
         # Verificar se é a primeira corrida ou se os flags ainda não foram desbloqueados
-        # IMPORTANTE: Esta verificação acontece DEPOIS de registrar_corrida_completa ser chamado,
-        # então se corridas_completas == 1, significa que esta é a primeira corrida que acabou de ser registrada
-        # Também verificamos se os flags ainda não estão desbloqueados como fallback
         stats_gerais = gerenciador_estatisticas.obter_estatisticas_gerais()
         corridas_completas = stats_gerais.get("corridas_completas", 0)
         primeira_corrida = (corridas_completas == 1) or (corridas_completas >= 1 and not gerenciador_progresso.oficina_desbloqueada)

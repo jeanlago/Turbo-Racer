@@ -308,7 +308,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             return trofeu_vazio
     
     def obter_pontuacoes_alvo(num_checkpoints, voltas=1, dificuldade="medio"):
-        fator_base = 25000.0 / 19.0
+        fator_base = 75000.0 / 19.0
         pontuacao_base_ouro = fator_base * num_checkpoints
         pontuacao_ouro = pontuacao_base_ouro * voltas
         
@@ -515,7 +515,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             caixa_x = (LARGURA - caixa_largura) // 2
             caixa_y = (ALTURA - caixa_altura) // 2
         
-        # Calcular espaçamento: aumentar entre "REINICIAR JOGO" e "MENU PRINCIPAL" no modo 2 jogadores
         if modo_jogo == ModoJogo.DOIS_JOGADORES and len(opcoes) >= 2:
             # Espaçamento maior entre os dois últimos botões
             altura_total_opcoes = (len(opcoes) - 2) * 60 + 2 * 80  # 80px entre os dois últimos
@@ -550,7 +549,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         opcao_hover = -1
         if mouse_in_caixa:
             for i, (nome, chave) in enumerate(opcoes):
-                # Calcular y_opcao com mesmo espaçamento usado no desenho
                 if modo_jogo == ModoJogo.DOIS_JOGADORES and len(opcoes) >= 2:
                     if i < len(opcoes) - 2:
                         y_opcao = offset_opcoes + i * 60
@@ -1286,7 +1284,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 # Navegação contínua para telas de fim de jogo no modo 2 jogadores
                 elif modo_jogo == ModoJogo.DOIS_JOGADORES:
                     if estado_fim_jogo_p1 is not None:
-                        # Calcular opções disponíveis para player 1
                         # Se o outro jogador ainda não terminou, mostrar apenas "ASSISTIR JOGADOR"
                         if estado_fim_jogo_p2 is None:
                             opcoes_p1 = [
@@ -1305,7 +1302,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         elif acao == "baixo":
                             estado_fim_jogo_p1[6] = (estado_fim_jogo_p1[6] + 1) % len(opcoes_p1)
                     if estado_fim_jogo_p2 is not None:
-                        # Calcular opções disponíveis para player 2
                         # Se o outro jogador ainda não terminou, mostrar apenas "ASSISTIR JOGADOR"
                         if estado_fim_jogo_p1 is None:
                             opcoes_p2 = [
@@ -1516,7 +1512,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             elif acao == "trocar_carro":
                                 from core.menu import selecionar_carros_loop
                                 resultado = selecionar_carros_loop(tela, modo_arcade=modo_arcade, modo_jogo=modo_jogo)
-                                # Verificar se cancelou (None, None) - no modo arcade, voltar ao menu
                                 if resultado is None or (isinstance(resultado, tuple) and len(resultado) == 2 and resultado[0] is None and resultado[1] is None):
                                     if modo_arcade:
                                         rodando = False
@@ -1554,9 +1549,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             if ev.joy < len(gerenciador_gamepad.joysticks):
                                 tipo_controle = gerenciador_gamepad._detectar_tipo_controle(ev.joy)
                             
-                            # PS5/PS4: botão 6 = Share, botão 8/9 = Options
-                            # Xbox: botão 6 = Back (View), botão 7 = Start
-                            # IMPORTANTE: botão 4 = L1/LB (NÃO é pause)
                             botao_pausa = False
                             if ev.button == 4:
                                 botao_pausa = False
@@ -1572,8 +1564,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 opcao_pausa_selecionada = 0
                                 evento_processado = True
                 
-                # Verificar se todos os carros terminaram para mostrar tela de resultados finais
-                # Verificar se todos os carros finalizaram (incluindo bots) antes de coletar resultados
                 # Isso garante que os bots tenham seus tempos e posições registrados corretamente
                 todos_carros_finalizaram = corrida.todos_finalizados()
                 
@@ -1627,7 +1617,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 trofeu = obter_trofeu_por_posicao(posicao) if posicao else trofeu_vazio
                         else:
                             nome = carro.nome if hasattr(carro, 'nome') else "IA"
-                            # Calcular recompensa para bots baseado na posição
                             if posicao == 1:
                                 recompensa = 600 if dificuldade_ia == "facil" else 1500 if dificuldade_ia == "medio" else 3000
                             elif posicao == 2:
@@ -1706,7 +1695,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         elif acao == "trocar_carro":
                             from core.menu import selecionar_carros_loop
                             resultado = selecionar_carros_loop(tela, modo_arcade=modo_arcade, modo_jogo=modo_jogo)
-                            # Verificar se cancelou (None, None) - no modo arcade, voltar ao menu
                             if resultado is None or (isinstance(resultado, tuple) and len(resultado) == 2 and resultado[0] is None and resultado[1] is None):
                                 if modo_arcade:
                                     rodando = False
@@ -1723,10 +1711,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             # Após fechar tela de resultados finais, verificar se Rex deve aparecer (primeira corrida, modo 1 jogador, não no modo arcade)
                             if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not crank.ativo and not mercador_alien.ativo and not modo_arcade:
                                 rex.verificar_aparecer()
-                            # Verificar se o Crank deve aparecer (após o Rex, modo 1 jogador, não no modo arcade)
                             if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not crank.ativo and not modo_arcade:
                                 crank.verificar_aparecer_pos_corrida()
-                            # Verificar se o mercador alien deve aparecer (após o Crank, modo 1 jogador)
                             if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not mercador_alien.ativo and not crank.ativo:
                                 mercador_alien.verificar_aparecer(contexto="corrida")
                             continue
@@ -1758,10 +1744,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             # Após fechar tela de fim de jogo, verificar se Rex deve aparecer (primeira corrida, modo 1 jogador, não no modo arcade)
                             if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not crank.ativo and not mercador_alien.ativo and not modo_arcade:
                                 rex.verificar_aparecer()
-                            # Verificar se o Crank deve aparecer (após o Rex, modo 1 jogador, não no modo arcade)
                             if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not crank.ativo and not modo_arcade:
                                 crank.verificar_aparecer_pos_corrida()
-                            # Verificar se o mercador alien deve aparecer (após o Crank, modo 1 jogador)
                             if modo_jogo == ModoJogo.UM_JOGADOR and not rex.ativo and not mercador_alien.ativo and not crank.ativo:
                                 mercador_alien.verificar_aparecer(contexto="corrida")
                             continue
@@ -1809,7 +1793,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             elif i == 1:
                                 return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                             elif i == 2:
-                                # IMPORTANTE: Se o jogador desistir da corrida (menu de pausa -> menu), limpar a flag de corrida da campanha
                                 if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
                                     # Usar a importação global de gerenciador_progresso (não importar localmente)
                                     if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha:
@@ -1848,7 +1831,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             elif chave == "reiniciar":
                                 return principal(carro_selecionado_p1, carro_selecionado_p2, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                             elif chave == "menu":
-                                # IMPORTANTE: Se o jogador desistir da corrida (menu de pausa -> menu), limpar a flag de corrida da campanha
                                 if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
                                     # Usar a importação global de gerenciador_progresso (não importar localmente)
                                     if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha:
@@ -1892,7 +1874,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 
                 # PS5/PS4: botão 6 = Share, botão 8/9 = Options
                 # Xbox: botão 6 = Back (View), botão 7 = Start
-                # IMPORTANTE: botão 4 = L1/LB (NÃO é pause)
                 botao_pausa = False
                 if ev.button == 4:
                     botao_pausa = False
@@ -2060,7 +2041,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         checkpoint_manager.processar_teclas_f(teclas)
 
         if not corrida.iniciada:
-            # Verificar se há NPCs ativos (cutscenes) - não iniciar corrida durante cutscenes
             # No modo arcade, não há cutscenes, então npcs_ativos sempre será False
             if modo_arcade:
                 npcs_ativos = False
@@ -2089,6 +2069,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         recompensa_drift_p1 = int(pontuacao_final_p1 / 120)
                     else:  # dificil
                         recompensa_drift_p1 = int(pontuacao_final_p1 / 100)
+                    
+                    
                     gerenciador_progresso.adicionar_dinheiro(recompensa_drift_p1)
                     numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                     chave_recorde = f"{numero_pista}_{voltas_objetivo}"
@@ -2112,7 +2094,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 
                 estado_fim_jogo_p1 = [
                     "DRIFT FINALIZADO!",
-                    "TODOS OS CHECKPOINTS COLETADOS!",
+                    None,
                     trofeu_drift_p1,
                     None,
                     pontuacao_final_p1,
@@ -2139,6 +2121,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 recompensa_drift_p2 = int(pontuacao_final_p2 / 120)
                             else:  # dificil
                                 recompensa_drift_p2 = int(pontuacao_final_p2 / 100)
+                            
+                            
                             gerenciador_progresso.adicionar_dinheiro(recompensa_drift_p2)
                             numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                             chave_recorde = f"{numero_pista}_{voltas_objetivo}"
@@ -2150,7 +2134,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         
                         estado_fim_jogo_p2 = [
                             "DRIFT FINALIZADO!",
-                            "TODOS OS CHECKPOINTS COLETADOS!",
+                            None,
                             trofeu_drift_p2,
                             None,
                             pontuacao_final_p2,
@@ -2173,6 +2157,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 recompensa_drift_p2 = int(pontuacao_final_p2 / 120)
                             else:  # dificil
                                 recompensa_drift_p2 = int(pontuacao_final_p2 / 100)
+                            
+                            
                             gerenciador_progresso.adicionar_dinheiro(recompensa_drift_p2)
                             numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                             chave_recorde = f"{numero_pista}_{voltas_objetivo}"
@@ -2184,7 +2170,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         
                         estado_fim_jogo_p2 = [
                             "DRIFT FINALIZADO!",
-                            "TODOS OS CHECKPOINTS COLETADOS!",
+                            None,
                             trofeu_drift_p2,
                             None,
                             pontuacao_final_p2,
@@ -2242,6 +2228,15 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             recompensa_dinheiro_p1 = 400
                     
                     if not hasattr(principal, '_recompensa_corrida_p1_calculada'):
+                        # Aplicar multiplicador de dinheiro baseado na popularidade (apenas modo campanha)
+                        if not modo_arcade:
+                            try:
+                                from core.status_jogador import status_jogador
+                                multiplicador_dinheiro = status_jogador.obter_multiplicador_dinheiro()
+                                recompensa_dinheiro_p1 = int(recompensa_dinheiro_p1 * multiplicador_dinheiro)
+                            except Exception as e:
+                                print(f"Erro ao aplicar multiplicador de dinheiro: {e}")
+                        
                         gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro_p1)
                         principal._recompensa_corrida_p1_calculada = recompensa_dinheiro_p1
                     else:
@@ -2257,7 +2252,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             
                             # Registrar recordes APENAS no modo arcade; no modo campanha o foco é narrativa
                             if modo_arcade:
-                                # Verificar recorde ANTES de registrar (para comparar com o ghost)
                                 recorde_antes = gerenciador_progresso.obter_recorde(numero_pista)
                                 
                                 novo_recorde = gerenciador_progresso.registrar_recorde(numero_pista, tempo_final_p1)
@@ -2304,9 +2298,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                             gerenciador_estatisticas.registrar_corrida_completa(numero_pista, posicao_jogador_p1, tempo_final_p1)
                             
-                            # IMPORTANTE: NÃO limpar a flag aqui - ela será limpa no menu.py após verificar gatilhos narrativos
-                            # A flag deve permanecer definida para que o menu.py possa detectar que a corrida foi completada
-                            # e ativar a cena narrativa pós-corrida se necessário
                             if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
                                 if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha:
                                     print(f"[MAIN] Corrida da campanha completada, mantendo flag ultima_corrida_campanha para verificação no menu")
@@ -2319,12 +2310,10 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             
                             # Cutscenes removidas completamente do modo arcade
                             
-                            # Verificar se Rex deve aparecer (primeira corrida, modo 1 jogador, não no modo arcade) - DEPOIS de registrar a corrida
                             if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
                                 rex.verificar_aparecer()
                             
                             # Desbloqueio direto como fallback caso os flags não estejam desbloqueados
-                            # IMPORTANTE: Executar SEMPRE após completar corrida, independente de NPCs aparecerem
                             if modo_jogo == ModoJogo.UM_JOGADOR:
                                 stats_gerais = gerenciador_estatisticas.obter_estatisticas_gerais()
                                 corridas_completas = stats_gerais.get("corridas_completas", 0)
@@ -2378,7 +2367,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         todos_carros = [c for c in carros if c is not None]
                         posicao_jogador_p2 = obter_posicao_jogador(carro2, todos_carros)
                         
-                        # Calcular recompensa
                         if posicao_jogador_p2 == 1:
                             if dificuldade_ia == "facil":
                                 recompensa_dinheiro_p2 = 600
@@ -2409,6 +2397,15 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 recompensa_dinheiro_p2 = 400
                         
                         if not hasattr(principal, '_recompensa_corrida_p2_calculada'):
+                            # Aplicar multiplicador de dinheiro baseado na popularidade (apenas modo campanha)
+                            if not modo_arcade:
+                                try:
+                                    from core.status_jogador import status_jogador
+                                    multiplicador_dinheiro = status_jogador.obter_multiplicador_dinheiro()
+                                    recompensa_dinheiro_p2 = int(recompensa_dinheiro_p2 * multiplicador_dinheiro)
+                                except Exception as e:
+                                    print(f"Erro ao aplicar multiplicador de dinheiro: {e}")
+                            
                             gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro_p2)
                             principal._recompensa_corrida_p2_calculada = recompensa_dinheiro_p2
                         else:
@@ -2443,7 +2440,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         ]
                         # Criar tela de resultados finais imediatamente (não esperar próximo ciclo do loop de eventos)
                         # Duplicar a lógica de criação da tela de resultados finais aqui
-                        # Verificar se todos os carros finalizaram (incluindo bots) antes de coletar resultados
                         todos_carros_finalizaram = corrida.todos_finalizados()
                         
                         if todos_carros_finalizaram and estado_resultados_finais is None:
@@ -2572,6 +2568,15 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 recompensa_dinheiro_p2 = 400
                         
                         if not hasattr(principal, '_recompensa_corrida_p2_calculada'):
+                            # Aplicar multiplicador de dinheiro baseado na popularidade (apenas modo campanha)
+                            if not modo_arcade:
+                                try:
+                                    from core.status_jogador import status_jogador
+                                    multiplicador_dinheiro = status_jogador.obter_multiplicador_dinheiro()
+                                    recompensa_dinheiro_p2 = int(recompensa_dinheiro_p2 * multiplicador_dinheiro)
+                                except Exception as e:
+                                    print(f"Erro ao aplicar multiplicador de dinheiro: {e}")
+                            
                             gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro_p2)
                             principal._recompensa_corrida_p2_calculada = recompensa_dinheiro_p2
                         else:
@@ -2664,6 +2669,15 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             recompensa_dinheiro_p1 = 400
                     
                     if not hasattr(principal, '_recompensa_corrida_p1_calculada'):
+                        # Aplicar multiplicador de dinheiro baseado na popularidade (apenas modo campanha)
+                        if not modo_arcade:
+                            try:
+                                from core.status_jogador import status_jogador
+                                multiplicador_dinheiro = status_jogador.obter_multiplicador_dinheiro()
+                                recompensa_dinheiro_p1 = int(recompensa_dinheiro_p1 * multiplicador_dinheiro)
+                            except Exception as e:
+                                print(f"Erro ao aplicar multiplicador de dinheiro: {e}")
+                        
                         gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro_p1)
                         principal._recompensa_corrida_p1_calculada = recompensa_dinheiro_p1
                     else:
@@ -2714,7 +2728,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             
                             # Completar missão se for training_01 e garantir que o progresso está salvo
                             if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
-                                # IMPORTANTE: Recarregar progresso para ter a flag atualizada
                                 gerenciador_progresso.carregar()
                                 
                                 # Avançar 8 horas no jogo após completar corrida no modo campanha
@@ -2725,7 +2738,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 
                                 print(f"[MAIN] Modo campanha detectado. Verificando ultima_corrida_campanha: {getattr(gerenciador_progresso, 'ultima_corrida_campanha', 'N/A')}")
                                 
-                                # IMPORTANTE: Verificar se a missão m6 está ativa e a corrida foi na pista 1
                                 from core.missoes import gerenciador_missoes
                                 gerenciador_missoes.carregar()
                                 if numero_pista == 1 and gerenciador_missoes.missao_ativa_id == "m6_batismo_de_pista":
@@ -2841,7 +2853,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     
                     gerenciador_desafios.atualizar_progresso("completar_corridas", 1, gerenciador_progresso)
                     if posicao_jogador_p1 == 1:
-                        # A vitória já é registrada em registrar_corrida_completa quando posicao_final == 1
                         gerenciador_desafios.atualizar_progresso("vencer_corridas", 1, gerenciador_progresso)
                     
                     colisoes_na_corrida = getattr(principal, '_colisoes_na_corrida', 0)
@@ -2879,7 +2890,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         todos_carros = [c for c in carros if c is not None]
                         posicao_jogador_p2 = obter_posicao_jogador(carro2, todos_carros)
                         
-                        # Calcular recompensa
                         if posicao_jogador_p2 == 1:
                             if dificuldade_ia == "facil":
                                 recompensa_dinheiro_p2 = 600
@@ -2910,6 +2920,15 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 recompensa_dinheiro_p2 = 400
                         
                         if not hasattr(principal, '_recompensa_corrida_p2_calculada'):
+                            # Aplicar multiplicador de dinheiro baseado na popularidade (apenas modo campanha)
+                            if not modo_arcade:
+                                try:
+                                    from core.status_jogador import status_jogador
+                                    multiplicador_dinheiro = status_jogador.obter_multiplicador_dinheiro()
+                                    recompensa_dinheiro_p2 = int(recompensa_dinheiro_p2 * multiplicador_dinheiro)
+                                except Exception as e:
+                                    print(f"Erro ao aplicar multiplicador de dinheiro: {e}")
+                            
                             gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro_p2)
                             principal._recompensa_corrida_p2_calculada = recompensa_dinheiro_p2
                         else:
@@ -2944,7 +2963,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         ]
                         # Criar tela de resultados finais imediatamente (não esperar próximo ciclo do loop de eventos)
                         # Duplicar a lógica de criação da tela de resultados finais aqui
-                        # Verificar se todos os carros finalizaram (incluindo bots) antes de coletar resultados
                         todos_carros_finalizaram = corrida.todos_finalizados()
                         
                         if todos_carros_finalizaram and estado_resultados_finais is None:
@@ -3073,6 +3091,15 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 recompensa_dinheiro_p2 = 400
                         
                         if not hasattr(principal, '_recompensa_corrida_p2_calculada'):
+                            # Aplicar multiplicador de dinheiro baseado na popularidade (apenas modo campanha)
+                            if not modo_arcade:
+                                try:
+                                    from core.status_jogador import status_jogador
+                                    multiplicador_dinheiro = status_jogador.obter_multiplicador_dinheiro()
+                                    recompensa_dinheiro_p2 = int(recompensa_dinheiro_p2 * multiplicador_dinheiro)
+                                except Exception as e:
+                                    print(f"Erro ao aplicar multiplicador de dinheiro: {e}")
+                            
                             gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro_p2)
                             principal._recompensa_corrida_p2_calculada = recompensa_dinheiro_p2
                         else:
@@ -3345,9 +3372,12 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 velocidade = math.sqrt(vel_sq) if vel_sq > 0.01 else 0.0
                 if hasattr(carro1, 'velocidade_kmh'):
                     velocidade_atual_kmh = carro1.velocidade_kmh
+                    # Aplicar multiplicador do velocímetro (5.0x) para que a conquista use a velocidade exibida
+                    # Isso garante que quando o jogador vê 300 km/h no velocímetro, a conquista seja desbloqueada
+                    velocidade_exibida_kmh = velocidade_atual_kmh * 5.0
                     velocidade_maxima = gerenciador_achievements.obter_estatistica("velocidade_maxima")
-                    if velocidade_atual_kmh > velocidade_maxima:
-                        gerenciador_achievements.atualizar_estatistica("velocidade_maxima", velocidade_atual_kmh)
+                    if velocidade_exibida_kmh > velocidade_maxima:
+                        gerenciador_achievements.atualizar_estatistica("velocidade_maxima", velocidade_exibida_kmh)
                 if velocidade < 20:
                     zoom = 1.8
                 elif velocidade < 50:
@@ -3697,6 +3727,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     recompensa_drift = int(pontuacao_final / 120)
                 else:  # dificil
                     recompensa_drift = int(pontuacao_final / 100)
+                
+                
                 gerenciador_progresso.adicionar_dinheiro(recompensa_drift)
 
                 numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
@@ -3713,16 +3745,36 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             pontuacoes_alvo = obter_pontuacoes_alvo(num_checkpoints, voltas_objetivo, dificuldade_ia)
             trofeu_drift = obter_trofeu_por_pontuacao(pontuacao_final, pontuacoes_alvo)
 
-            estado_fim_jogo = [
-                "DRIFT FINALIZADO!",
-                "TODOS OS CHECKPOINTS COLETADOS!",
-                trofeu_drift,
-                None,
-                pontuacao_final,
-                recompensa_drift,
-                0,
-                [0.0, 0.0, 0.0]
-            ]
+            todos_carros = [c for c in carros if c is not None]
+            posicao_jogador = obter_posicao_jogador(carro1, todos_carros)
+            
+            resultados = []
+            resultados.append({
+                "posicao": posicao_jogador,
+                "nome": "JOGADOR",
+                "tempo": None,
+                "trofeu": trofeu_drift,
+                "dinheiro": recompensa_drift
+            })
+            
+            opcoes_resultado = []
+            if modo_arcade:
+                opcoes_resultado.append(("CONTINUAR", "continuar_arcade"))
+            elif not modo_arcade and modo_jogo == ModoJogo.UM_JOGADOR:
+                opcoes_resultado.append(("CONTINUAR", "continuar_campanha"))
+            opcoes_resultado.extend([
+                ("TROCAR CARRO", "trocar_carro"),
+                ("REINICIAR JOGO", "reiniciar"),
+                ("MENU PRINCIPAL", "menu")
+            ])
+            
+            estado_resultados_finais = {
+                "resultados": resultados,
+                "opcoes": opcoes_resultado,
+                "opcao_atual": 0
+            }
+            
+            estado_fim_jogo = None
 
             if mostrar_drift_hud and tipo_jogo == TipoJogo.DRIFT:
                 fonte_drift = pygame.font.Font(None, 24)
@@ -3781,27 +3833,27 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 if posicao_jogador == 1:
                     vencedor = "JOGADOR VENCEU!"
                     if dificuldade_ia == "facil":
-                        recompensa_dinheiro = 600
+                        recompensa_dinheiro = 2300
                     elif dificuldade_ia == "medio":
-                        recompensa_dinheiro = 1500
+                        recompensa_dinheiro = 4500
                     else:  # dificil
-                        recompensa_dinheiro = 3000
+                        recompensa_dinheiro = 9000
                 elif posicao_jogador == 2:
                     vencedor = "CORRIDA FINALIZADA!"
                     if dificuldade_ia == "facil":
-                        recompensa_dinheiro = 300
+                        recompensa_dinheiro = 900
                     elif dificuldade_ia == "medio":
-                        recompensa_dinheiro = 750
+                        recompensa_dinheiro = 1700
                     else:  # dificil
-                        recompensa_dinheiro = 1500
+                        recompensa_dinheiro = 3000
                 elif posicao_jogador == 3:
                     vencedor = "CORRIDA FINALIZADA!"
                     if dificuldade_ia == "facil":
-                        recompensa_dinheiro = 150
+                        recompensa_dinheiro = 500
                     elif dificuldade_ia == "medio":
-                        recompensa_dinheiro = 400
+                        recompensa_dinheiro = 1000
                     else:  # dificil
-                        recompensa_dinheiro = 800
+                        recompensa_dinheiro = 2000
                 else:
                     vencedor = "CORRIDA FINALIZADA!"
                     if dificuldade_ia == "facil":
@@ -3811,42 +3863,43 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     else:  # dificil
                         recompensa_dinheiro = 400
 
-                # Aplicar multiplicador de dinheiro baseado na popularidade
-                try:
-                    from core.status_jogador import status_jogador
-                    multiplicador_dinheiro = status_jogador.obter_multiplicador_dinheiro()
-                    recompensa_dinheiro = int(recompensa_dinheiro * multiplicador_dinheiro)
-                    
-                    # Atualizar popularidade baseado no resultado
-                    if posicao_jogador == 1:
-                        # Ganhou: +5 a +15 de popularidade (baseado na dificuldade)
-                        if dificuldade_ia == "facil":
-                            status_jogador.ganhar_popularidade(5.0)
-                        elif dificuldade_ia == "medio":
-                            status_jogador.ganhar_popularidade(10.0)
-                        else:  # dificil
-                            status_jogador.ganhar_popularidade(15.0)
-                    elif posicao_jogador >= 2:
-                        # Perdeu: -3 a -8 de popularidade (baseado na dificuldade e posição)
-                        if dificuldade_ia == "facil":
-                            status_jogador.perder_popularidade(3.0)
-                        elif dificuldade_ia == "medio":
-                            status_jogador.perder_popularidade(5.0)
-                        else:  # dificil
-                            status_jogador.perder_popularidade(8.0)
-                    
-                    status_jogador.salvar()
-                    
-                    # Verificar se a missão m14_tres_mundos deve ser completada (reputação >= 500)
-                    if status_jogador.popularidade >= 500.0:
-                        from core.missoes import gerenciador_missoes
-                        if gerenciador_missoes.missao_ativa_id == "m14_tres_mundos":
-                            if "m14_tres_mundos" not in gerenciador_missoes.missoes_completas:
-                                print(f"[MAIN] Reputação chegou a 500! Completando missão m14_tres_mundos...")
-                                gerenciador_missoes.completar_missao("m14_tres_mundos")
-                                gerenciador_missoes.salvar()
-                except Exception as e:
-                    print(f"Erro ao atualizar status do jogador: {e}")
+                # Aplicar multiplicador de dinheiro baseado na popularidade (apenas modo campanha)
+                if not modo_arcade:
+                    try:
+                        from core.status_jogador import status_jogador
+                        multiplicador_dinheiro = status_jogador.obter_multiplicador_dinheiro()
+                        recompensa_dinheiro = int(recompensa_dinheiro * multiplicador_dinheiro)
+                        
+                        # Atualizar popularidade baseado no resultado (apenas no modo campanha)
+                        if posicao_jogador == 1:
+                            # Ganhou: +5 a +15 de popularidade (baseado na dificuldade)
+                            if dificuldade_ia == "facil":
+                                status_jogador.ganhar_popularidade(5.0)
+                            elif dificuldade_ia == "medio":
+                                status_jogador.ganhar_popularidade(10.0)
+                            else:  # dificil
+                                status_jogador.ganhar_popularidade(15.0)
+                        elif posicao_jogador >= 2:
+                            # Perdeu: -3 a -8 de popularidade (baseado na dificuldade e posição)
+                            if dificuldade_ia == "facil":
+                                status_jogador.perder_popularidade(3.0)
+                            elif dificuldade_ia == "medio":
+                                status_jogador.perder_popularidade(5.0)
+                            else:  # dificil
+                                status_jogador.perder_popularidade(8.0)
+                        
+                        status_jogador.salvar()
+                        
+                        # Verificar se a missão m14_tres_mundos deve ser completada (reputação >= 500)
+                        if status_jogador.popularidade >= 500.0:
+                            from core.missoes import gerenciador_missoes
+                            if gerenciador_missoes.missao_ativa_id == "m14_tres_mundos":
+                                if "m14_tres_mundos" not in gerenciador_missoes.missoes_completas:
+                                    print(f"[MAIN] Reputação chegou a 500! Completando missão m14_tres_mundos...")
+                                    gerenciador_missoes.completar_missao("m14_tres_mundos")
+                                    gerenciador_missoes.salvar()
+                    except Exception as e:
+                        print(f"Erro ao atualizar status do jogador: {e}")
                 
                 gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro)
 
@@ -3923,7 +3976,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 gerenciador_achievements.atualizar_estatistica("recordes_estabelecidos", incrementar=True)
 
                     # Salvar ghost (sempre no modo relógio se melhor, ou quando novo recorde no modo drift)
-                    # IMPORTANTE: Salvar ghost mesmo quando não há novo recorde, desde que seja no modo relógio
                     if (tipo_jogo in (TipoJogo.GHOST, TipoJogo.DRIFT)):
                         if ghost_recorder_p1:
                             # Obter frames gravados (mesmo que gravando seja False)
@@ -3948,7 +4000,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                         salvar_ghost = True
                                         print(f"[GHOST] Tempo melhor no modo relógio ({tempo_final:.2f}s < {recorde_antes:.2f}s), salvando ghost...")
                                 elif tipo_jogo == TipoJogo.DRIFT:
-                                    # No modo DRIFT, salvar apenas se for novo recorde
                                     if novo_recorde_drift:
                                         salvar_ghost = True
                                         print(f"[GHOST] Novo recorde de drift, salvando ghost...")
@@ -4060,7 +4111,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         trofeu_carro = trofeu
                     else:
                         nome = carro.nome if hasattr(carro, 'nome') else "IA"
-                        # Calcular recompensa apenas se o carro terminou
                         if corrida.finalizou.get(carro, False) and posicao:
                             if posicao == 1:
                                 recompensa = 600 if dificuldade_ia == "facil" else 1500 if dificuldade_ia == "medio" else 3000
@@ -4140,7 +4190,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 break
                     else:
                         nome = carro.nome if hasattr(carro, 'nome') else "IA"
-                        # Calcular recompensa apenas se o carro terminou
                         if corrida.finalizou.get(carro, False) and posicao:
                             if posicao == 1:
                                 recompensa = 600 if dificuldade_ia == "facil" else 1500 if dificuldade_ia == "medio" else 3000
@@ -4229,12 +4278,10 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     if i != opcao_pausa_selecionada:
                         principal._hover_animation_pause[i] = max(0.0, principal._hover_animation_pause[i] - hover_speed * dt * 1.5)
             
-            # Desenhar cursor do controle se houver controle conectado
+            # Desenhar cursor (sempre, não apenas com controle)
             animacao_cursor_pausa = getattr(principal, '_animacao_cursor_pausa', 0.0)
-            tem_controle = gerenciador_gamepad.obter_numero_controles() > 0
-            if tem_controle:
-                animacao_cursor_pausa = (animacao_cursor_pausa + 3.0 * dt) % (2.0 * math.pi)
-                principal._animacao_cursor_pausa = animacao_cursor_pausa
+            animacao_cursor_pausa = (animacao_cursor_pausa + 3.0 * dt) % (2.0 * math.pi)
+            principal._animacao_cursor_pausa = animacao_cursor_pausa
             
             for i, (nome, chave) in enumerate(opcoes_pausa_formatadas):
                 y_opcao = offset_opcoes + i * 60
@@ -4243,14 +4290,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 # Determinar cor baseado no estado
                 if i == opcao_pausa_selecionada:
                     cor = (255, 255, 255)
-                    # Desenhar cursor do controle
-                    if tem_controle:
-                        cursor_alpha = int(128 + 127 * abs(math.sin(animacao_cursor_pausa)))
-                        cursor_rect = pygame.Rect(caixa_x + 20, y_opcao - 5, caixa_largura - 40, 60)
-                        pygame.draw.rect(tela, (0, 200, 255), cursor_rect, 3)
-                        cursor_surface = pygame.Surface((cursor_rect.width, cursor_rect.height), pygame.SRCALPHA)
-                        cursor_surface.fill((0, 200, 255, cursor_alpha // 4))
-                        tela.blit(cursor_surface, cursor_rect.topleft)
+                    # Desenhar cursor (sempre, não apenas com controle)
+                    cursor_alpha = int(128 + 127 * abs(math.sin(animacao_cursor_pausa)))
+                    cursor_rect = pygame.Rect(caixa_x + 20, y_opcao - 5, caixa_largura - 40, 60)
+                    pygame.draw.rect(tela, (0, 200, 255), cursor_rect, 3)
+                    cursor_surface = pygame.Surface((cursor_rect.width, cursor_rect.height), pygame.SRCALPHA)
+                    cursor_surface.fill((0, 200, 255, cursor_alpha // 4))
+                    tela.blit(cursor_surface, cursor_rect.topleft)
                 elif hover_progress > 0.1:
                     cor = (200, 200, 255)
                 else:

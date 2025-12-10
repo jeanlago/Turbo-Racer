@@ -99,41 +99,32 @@ class HUD:
             self.fonte_velocimetro = pygame.font.SysFont("consolas", 28, bold=True)
             self.fonte_velocimetro_pequena = pygame.font.SysFont("consolas", 16)
         
-        # Obter velocidade do carro e converter para km/h
-        # Usar velocidade_kmh se disponível, senão calcular a partir de px/s
         if hasattr(carro, 'velocidade_kmh'):
             velocidade_kmh = carro.velocidade_kmh
         else:
-            # Calcular a partir de velocidade em px/s
             if hasattr(carro, 'u'):
                 velocidade_pxps = abs(carro.u)
             else:
                 velocidade_pxps = 0.0
-            # Converter para km/h: mesma fórmula do carro_fisica.py
             ARCADE_SPEED_MULT = 2.5
             PXPS_TO_KMH = 0.26
             velocidade_kmh = velocidade_pxps * ARCADE_SPEED_MULT * PXPS_TO_KMH
         
-        # Multiplicar por 5.0 apenas para exibição (não altera a física)
-        # Ajustado para que carro base inicial chegue ~200 km/h e último carro com tunagem ~450 km/h
-        # Carro base: ~40 km/h real * 5.0 = ~200 km/h mostrado
-        # Último carro: ~90 km/h real * 5.0 = ~450 km/h mostrado
-        velocidade_kmh = velocidade_kmh * 5.0
+        esta_de_re = False
+        if hasattr(carro, 'velocidade'):
+            esta_de_re = carro.velocidade < 0.0
         
-        # Simular oscilação do velocímetro quando próximo do limite máximo
-        # Adicionar pequena variação visual para simular o limite que o carro aguenta
+        if not esta_de_re:
+            velocidade_kmh = velocidade_kmh * 5.0
         if not hasattr(self, '_tempo_oscilacao'):
             self._tempo_oscilacao = 0.0
         
         self._tempo_oscilacao += dt
         
-        # Quando a velocidade está próxima ou acima de ~1625 km/h (325 * 5.0), adicionar oscilação
-        limite_kmh_oscilacao = 1625.0  # ~500 px/s * 2.5 * 0.26 * 5.0 = 1625 km/h
-        if velocidade_kmh >= limite_kmh_oscilacao - 20:  # Começar a oscilar quando próximo do máximo
-            # Calcular quanto acima do limite estamos
+        limite_kmh_oscilacao = 1625.0
+        if velocidade_kmh >= limite_kmh_oscilacao - 20:
             excesso = min(velocidade_kmh - (limite_kmh_oscilacao - 20), 40.0)
-            # Oscilação senoidal: varia entre -3 e +5 km/h quando no máximo
-            amplitude = 2.0 + (excesso / 40.0) * 3.0  # Aumenta a amplitude conforme se aproxima do máximo
+            amplitude = 2.0 + (excesso / 40.0) * 3.0
             frequencia = 2.5  # Velocidade da oscilação
             oscilacao = math.sin(self._tempo_oscilacao * frequencia) * amplitude
             # Adicionar oscilação ao valor mostrado (mas não deixar abaixo do limite)
@@ -219,9 +210,7 @@ class HUD:
             texto_kmh_rect = texto_kmh.get_rect(topleft=(pos_x_velocimetro + texto_surf.get_width() + 5, pos_y - 28))
             superficie.blit(texto_kmh, texto_kmh_rect)
         else:
-            # Debug: desenhar retângulo se imagens não carregaram
             if not hasattr(self, '_debug_mostrado'):
-                print(f"DEBUG HUD: velocimetro_sem_cor={self.velocimetro_sem_cor is not None}, velocimetro_colorido={self.velocimetro_colorido is not None}")
                 self._debug_mostrado = True
             # Fallback: desenhar retângulo simples
             pygame.draw.rect(superficie, (100, 100, 100), (pos_x_velocimetro, pos_y, 100, 50))
@@ -232,13 +221,10 @@ class HUD:
         
         # Desenhar nitro
         if hasattr(carro, 'turbo_carga') and self.nitro_vazio and self.nitro:
-            # turbo_carga está em 0.0 a 100.0, converter para 0.0 a 1.0
-            porcentagem_nitro = carro.turbo_carga / 100.0  # Converter de 0-100 para 0-1
+            porcentagem_nitro = carro.turbo_carga / 100.0
             
-            # Redimensionar nitro (12% do original - MUITO menor)
             largura_nitro_original = self.nitro_vazio.get_width()
             altura_nitro_original = self.nitro_vazio.get_height()
-            # Usar escala_nitro já definida acima (0.12)
             largura_nitro = int(largura_nitro_original * escala_nitro)
             altura_nitro = int(altura_nitro_original * escala_nitro)
             
@@ -847,11 +833,9 @@ class HUD:
         """
         try:
             from core.missoes import gerenciador_missoes
-            # IMPORTANTE: Recarregar missões para garantir que está atualizado
             gerenciador_missoes.carregar()
             missao = gerenciador_missoes.obter_missao_ativa()
             if not missao:
-                # Debug: verificar se há missão ativa
                 if hasattr(gerenciador_missoes, 'missao_ativa_id'):
                     if gerenciador_missoes.missao_ativa_id:
                         print(f"[HUD] Missão ativa ID: {gerenciador_missoes.missao_ativa_id}, mas não encontrada no dicionário")

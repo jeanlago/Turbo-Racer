@@ -435,7 +435,6 @@ class Boris:
         gerenciador_progresso.remover_dinheiro(preco)
         
         # Completar missão m4_coracao_de_sucata quando comprar peça do Boris
-        # IMPORTANTE: Completar sempre, não apenas se estiver ativa
         try:
             from core.missoes import gerenciador_missoes
             # Verificar se a missão ainda não foi completada
@@ -450,7 +449,6 @@ class Boris:
             import traceback
             traceback.print_exc()
         
-        # Salvar progresso após compra
         gerenciador_progresso.salvar()
         
         # Reação baseada no tipo de preço

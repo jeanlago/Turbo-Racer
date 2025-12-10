@@ -333,7 +333,6 @@ class GamepadManager:
                 elif tipo == "button":
                     # Botão digital
                     valor = joystick.get_button(index) > 0
-                    # DEBUG: Mostrar quando botão de freio de mão ou drift é pressionado
                     if acao in ("freio_mao", "drift") and valor:
                         print(f"[DEBUG GAMEPAD] {acao} ativado - botão {index} pressionado (player {player_id})")
                     return valor

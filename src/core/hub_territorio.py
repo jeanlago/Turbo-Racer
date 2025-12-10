@@ -140,7 +140,6 @@ def obter_fundo_territorio(territorio_id: str, npc_id: str = None, sprite_fundo_
         if caminho and os.path.exists(caminho):
             return caminho
     
-    # Verificar se o ID contém palavras-chave (usando funções dinâmicas)
     territorio_id_lower = territorio_id.lower()
     if "oficina" in territorio_id_lower or "garagem" in territorio_id_lower or "crank" in territorio_id_lower:
         caminho = obter_caminho_oficina()
@@ -194,7 +193,6 @@ def menu_escolha_fabrica_boris(screen) -> Optional[str]:
     clock = pygame.time.Clock()
     rodando = True
     
-    # Carregar fundo da fábrica
     CAMINHO_FABRICA = obter_caminho_fabrica()
     if os.path.exists(CAMINHO_FABRICA):
         bg_raw = pygame.image.load(CAMINHO_FABRICA).convert()
@@ -223,7 +221,6 @@ def menu_escolha_fabrica_boris(screen) -> Optional[str]:
             elif ev.type == pygame.MOUSEBUTTONDOWN:
                 if ev.button == 1:
                     mouse_x, mouse_y = ev.pos
-                    # Verificar clique nas opções
                     caixa_largura = 500
                     caixa_altura = 200
                     caixa_x = (LARGURA - caixa_largura) // 2
@@ -238,7 +235,6 @@ def menu_escolha_fabrica_boris(screen) -> Optional[str]:
                             escolha = opcoes[i][1]
                             return escolha
                     
-                    # Verificar clique no botão voltar
                     voltar_rect = pygame.Rect(caixa_x + caixa_largura - 150, caixa_y + caixa_altura - 40, 130, 35)
                     if voltar_rect.collidepoint(mouse_x, mouse_y):
                         return "voltar_mapa"
@@ -315,7 +311,6 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
         "parametros": {...}
     }
     """
-    # Verificar gatilhos narrativos ao entrar no território
     from core.narrative_system import narrative_system
     from core.progresso import gerenciador_progresso
     
@@ -334,7 +329,6 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
             narrative_system.current_chapter_id = capitulo_atual
             print(f"[HUB_TERRITORIO] current_chapter_id ainda None após tentativa, definindo como {capitulo_atual}")
     
-    # Verificar gatilhos mesmo se current_chapter_id não estiver definido (para permitir cenas de qualquer capítulo)
     if True:  # Sempre verificar gatilhos
         # Mapear territorio_id para locationId do narrative
         location_map = {
@@ -370,12 +364,9 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
         location_id = location_map.get(territorio_id.lower(), territorio_id.lower())
         context = {"locationId": location_id}
         
-        # IMPORTANTE: Só verificar gatilhos se o locationId corresponder ao territorio_id
-        # Isso evita que triggers de outras localizações sejam ativados incorretamente
         print(f"[HUB_TERRITORIO] Verificando gatilhos para territorio_id={territorio_id}, location_id={location_id}, current_chapter_id={narrative_system.current_chapter_id}")
         print(f"[HUB_TERRITORIO] Context passado: {context}")
         
-        # Verificar se há cenas pendentes com gatilho enter_location
         gatilho_encontrado = narrative_system.verificar_gatilhos_pendentes(context)
         print(f"[HUB_TERRITORIO] Resultado verificar_gatilhos_pendentes: {gatilho_encontrado}, narrative_system.active={narrative_system.active}, current_scene_id={narrative_system.current_scene_id}")
         if gatilho_encontrado:
@@ -393,16 +384,13 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
     
     # Se não encontrar território, tentar criar um básico baseado no ID
     if not territorio:
-        # Verificar se é uma área especial (ex: oficina, autódromo)
         territorio_id_lower = territorio_id.lower()
         area_nome_lower = (area_nome or "").lower()
         
-        # Verificar se é oficina/garagem - mas ANTES de redirecionar, verificar se há cena narrativa pendente
         if ("oficina" in territorio_id_lower or "garagem" in territorio_id_lower or 
             "crank" in territorio_id_lower or 
             "oficina" in area_nome_lower or "garagem" in area_nome_lower):
             
-            # Verificar se há uma cena narrativa pendente para a garagem (especialmente ch1_1_crank_garage_intro)
             if narrative_system.current_chapter_id:
                 from core.missoes import gerenciador_missoes
                 # Se a missão m1 está ativa e a cena ch1_1_crank_garage_intro não foi visitada, iniciar a cena
@@ -418,12 +406,10 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
             selecionar_carros_loop(screen)
             return "voltar_mapa"  # Voltar para o mapa após sair da oficina
         
-        # Verificar se é o iate do Barão - iniciar cena narrativa
         if ("iate" in territorio_id_lower and "barao" in territorio_id_lower) or ("iate" in territorio_id_lower and "barão" in territorio_id_lower):
             from core.narrative_system import narrative_system
             from core.tempo_jogo import gerenciador_tempo
             
-            # Verificar se é noite (18h-6h) e se tem dívida
             hora_atual = gerenciador_tempo.obter_hora()
             is_noite = hora_atual >= 18 or hora_atual < 6
             from core.progresso import gerenciador_progresso
@@ -460,7 +446,6 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
             
             return "voltar_mapa"
         
-        # Verificar se é o autódromo - abrir menu de corridas do Circuito da Coroa
         if ("autódromo" in territorio_id_lower or "autodromo" in territorio_id_lower or
             "autódromo" in area_nome_lower or "autodromo" in area_nome_lower):
             # Abrir menu de corridas do Circuito da Coroa
@@ -475,7 +460,6 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
                 }
             return None  # Cancelado
         
-        # Criar território temporário
         from core.territorios import Territorio, TipoTerritorio
         # Garantir que o nome do território está correto
         if not area_nome:
@@ -503,7 +487,6 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
     clock = pygame.time.Clock()
     render_text = _get_render_text()
     
-    # Carregar fundo do território
     caminho_fundo = obter_fundo_territorio(territorio_id, territorio.npc_id, sprite_fundo)
     print(f"[HUB_TERRITORIO] Carregando fundo para territorio_id={territorio_id}, npc_id={territorio.npc_id}, sprite_fundo={sprite_fundo}, caminho={caminho_fundo}, existe={os.path.exists(caminho_fundo) if caminho_fundo else False}")
     
@@ -556,9 +539,7 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
         cor_fundo = cores_fundo.get(territorio.tipo.value, (20, 20, 20))
         bg.fill(cor_fundo)
     
-    # Carregar sprite do NPC (se existir)
     npc_sprite = None
-    # Verificar se há NPC antes de construir o caminho
     if territorio.npc_id:
         caminho_npc = os.path.join(DIR_PROJETO, "assets", "images", "characters", territorio.npc_id)
         if os.path.exists(caminho_npc):
@@ -580,12 +561,9 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
     from core.boris import boris
     from core.progresso import gerenciador_progresso
     mostrar_boris = False
-    # Inicializar mostrar_glub antes de qualquer uso
     from core.glub import glub
     mostrar_glub = False
     
-    # Verificar se é território do Boris (fábrica)
-    # Verificar tanto pelo npc_id quanto pelo territorio_id (pode ser "fosso_ferrugem")
     is_territorio_boris = (territorio.npc_id and ("boris" in territorio.npc_id.lower() or "fosso" in territorio.npc_id.lower() or "ferrugem" in territorio.npc_id.lower())) or \
                          ("boris" in territorio_id.lower() or "fosso" in territorio_id.lower() or "ferrugem" in territorio_id.lower())
     if is_territorio_boris:
@@ -599,7 +577,6 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
         if not boris.sprite_fundo_redimensionado:
             # Tentar usar o bg que já foi carregado
             if bg:
-                # Criar uma cópia do bg para o Boris
                 boris.sprite_fundo_redimensionado = bg.copy()
                 print(f"[HUB_TERRITORIO] Fundo do Boris definido do bg do território")
             else:
@@ -621,7 +598,6 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
             boris.ativar_loja_narrativa(on_close_scene_id=None)
             mostrar_boris = True
     
-    # Verificar se é território do Slick (beco neon)
     territorio_id_lower = territorio_id.lower()
     slick_em_cooldown = False
     is_beco_neon = "neon" in territorio_id_lower or "slick" in territorio_id_lower
@@ -637,7 +613,6 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
             slick_em_cooldown = True
             print(f"[SLICK] Beco Neon não desbloqueado, mostrando mensagem de cooldown")
         else:
-            # Verificar se a primeira aparição do Slick já aconteceu (cena ch4_5_meet_slick)
             from core.narrative_system import narrative_system
             primeira_aparicao_aconteceu = "ch4_5_meet_slick" in narrative_system.scenes_visited
             
@@ -686,7 +661,6 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
     # Verificar se é território do Glub (beco da sucata) - NÃO incluir beco_neon
     glub_em_cooldown = False
     mostrar_glub = False
-    # IMPORTANTE: Só processar Glub se foi desbloqueado pela narrativa (cena ch4_4_meet_glub)
     glub_desbloqueado = getattr(gerenciador_progresso, 'glub_desbloqueado', False)
     if not is_beco_neon and glub_desbloqueado and ((territorio.npc_id and ("glub" in territorio.npc_id.lower() or ("beco" in territorio.npc_id.lower() and "sucata" in territorio.npc_id.lower()))) or \
        ("glub" in territorio_id_lower or ("beco" in territorio_id_lower and "sucata" in territorio_id_lower))):
@@ -724,7 +698,6 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
         mostrar_pixel = pixel.verificar_aparecer_primeira_vez()
     
     # Verificar se é território da Akira (Montanha)
-    # IMPORTANTE: Só usar sistema antigo da Akira se não houver gatilho narrativo
     from core.akira import akira
     mostrar_akira = False
     if territorio.npc_id and "akira" in territorio.npc_id.lower():
@@ -1069,7 +1042,6 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
         
         # Processar Akira se ativa
         if mostrar_akira and akira.ativo:
-            # IMPORTANTE: Capturar o modo ANTES de processar eventos, pois fechar() reseta o modo
             modo_antes_processar = akira.modo_dialogo
             akira.atualizar(dt)
             resultado_akira = akira.processar_eventos(eventos)
@@ -1178,7 +1150,6 @@ def hub_territorio_loop(screen, territorio_id: str, area_nome: str = None, sprit
             traceback.print_exc()
         
         # Processar eventos (apenas se Boris/Pixel/Fuligem/Akira/Glub não estiverem ativos, para evitar processamento duplo)
-        # IMPORTANTE: Se Fuligem está ativo, não processar ESC aqui para evitar conflito
         if not (mostrar_boris and boris.ativo) and not (mostrar_pixel and pixel.ativo) and not (mostrar_fuligem and fuligem.ativo) and not (mostrar_akira and akira.ativo) and not (mostrar_glub and glub.ativo):
             # Se o celular processou um evento importante, pular processamento de outros eventos
             if celular_processou_evento and celular.menu_aberto:

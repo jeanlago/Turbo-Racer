@@ -137,14 +137,26 @@ class PopupAchievement:
             mapeamento_traducoes = {
                 "Primeira Corrida": "achievements.primeira_corrida",
                 "Velocista": "achievements.velocista",
+                "Velocista Pro": "achievements.velocista_pro",
+                "Velocidade Extrema": "achievements.velocidade_extrema",
                 "Mestre do Drift": "achievements.drift_master",
+                "Expert em Drift": "achievements.drift_expert",
+                "Lenda do Drift": "achievements.drift_legend",
                 "Piloto Limpo": "achievements.sem_colisao",
+                "Mestre da Precisão": "achievements.sem_colisao_mestre",
                 "Campeão": "achievements.trofeu_ouro",
                 "Colecionador": "achievements.colecionador",
+                "Colecionador Pro": "achievements.colecionador_pro",
                 "Perfeccionista": "achievements.perfeccionista",
+                "Mestre Perfeccionista": "achievements.perfeccionista_mestre",
+                "Perfeição Absoluta": "achievements.sem_erros_perfeito",
                 "Recordista": "achievements.recordista",
+                "Recordista Pro": "achievements.recordista_pro",
                 "Tunado": "achievements.upgrade_completo",
+                "Mestre da Tunagem": "achievements.upgrade_mestre",
                 "Veterano": "achievements.veterano",
+                "Lenda": "achievements.lenda",
+                "Piloto Estrela": "achievements.piloto_estrella",
             }
             if nome_achievement in mapeamento_traducoes:
                 nome_achievement = t(mapeamento_traducoes[nome_achievement])

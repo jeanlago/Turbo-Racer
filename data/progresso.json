@@ -1,17 +1,19 @@
 {
-  "dinheiro": 14000,
+  "dinheiro": 6038,
   "nome_jogador": "JOGADOR",
   "carros_desbloqueados": [
-    "Car2",
-    "Car1"
+    "Car1",
+    "Car2"
   ],
   "recordes_corrida": {
     "1": 31.182999999998902,
     "6": 33.58299999999995,
-    "2": 25.795999999999907
+    "2": 25.795999999999907,
+    "3": 44.849000000003144
   },
   "recordes_drift": {
-    "2_1": 2775.70097025184
+    "2_1": 2775.70097025184,
+    "1_1": 118358.7387682267
   },
   "trofeus": {
     "1": "ouro",
@@ -23,6 +25,13 @@
       "ecu": 5,
       "filtro_ar": 5,
       "transmissao": 4
+    },
+    "Car2": {
+      "motor": 5,
+      "filtro_ar": 5,
+      "transmissao": 2,
+      "ecu": 3,
+      "rodas": 2
     }
   },
   "carro_p1_atual": 1,
@@ -30,8 +39,8 @@
   "ultima_compra_alien": null,
   "dialogo_alien_ja_mostrado": false,
   "upgrades_visitados": [
-    "Car2",
-    "Car1"
+    "Car1",
+    "Car2"
   ],
   "missoes_completas": [],
   "missao_ativa_id": null,
@@ -119,7 +128,7 @@
     "data_inicial": "1990-12-05"
   },
   "status_jogador": {
-    "popularidade": 90.0,
+    "popularidade": 67.0,
     "fome": 100.0,
     "sono": 100.0,
     "tedio": 0.0
@@ -3576,20 +3585,20 @@
     "current_chapter_id": "ch2",
     "current_scene_id": null,
     "scenes_visited": [
+      "ch2_3_time_skip",
       "ch1_5_first_race_unlocked",
-      "ch2_2_barao_appears",
-      "ch1_3_boris_deal",
-      "ch2_0_time_skip",
-      "ch1_1b_the_deal",
-      "ch1_4_garage_return",
-      "ch1_1_crank_garage_intro",
-      "ch1_2_meet_boris",
-      "ch2_2_barao_offer",
-      "ch1_4_return_garage_upgrade",
-      "ch1_4b_housing_offer",
-      "ch2_1_barao_intro",
       "ch1_0_prologue",
-      "ch2_3_time_skip"
+      "ch2_2_barao_offer",
+      "ch2_1_barao_intro",
+      "ch1_1b_the_deal",
+      "ch2_0_time_skip",
+      "ch1_1_crank_garage_intro",
+      "ch1_4b_housing_offer",
+      "ch1_4_return_garage_upgrade",
+      "ch1_3_boris_deal",
+      "ch1_2_meet_boris",
+      "ch1_4_garage_return",
+      "ch2_2_barao_appears"
     ],
     "flags": {
       "wantsEscape": true,
@@ -3688,7 +3697,7 @@
   "rex_primeira_aparicao_mostrada": false,
   "rex_nome_revelado": false,
   "glub_primeira_aparicao_feita": true,
-  "glub_nome_revelado": false,
+  "glub_nome_revelado": true,
   "glub_ultima_aparicao_data": null,
   "slick_ultima_aparicao_data": null,
   "slick_primeira_aparicao_mostrada": false,
@@ -3711,8 +3720,8 @@
   ],
   "capitulo_atual": "ch2",
   "capitulos_completos": [
-    "ch2",
-    "ch1"
+    "ch1",
+    "ch2"
   ],
   "hierarquia_desbloqueada": true,
   "oficina_desbloqueada": true,
@@ -3725,12 +3734,15 @@
   "corridas_cinturao_completas": [],
   "crown_stages_won": [],
   "achievements_desbloqueados": [
-    "upgrade_completo",
+    "upgrade_mestre",
+    "velocista",
     "primeira_corrida",
+    "upgrade_completo",
     "recordista",
     "trofeu_ouro"
   ],
   "achievements_visualizados": [
+    "upgrade_mestre",
     "upgrade_completo",
     "primeira_corrida",
     "recordista",
@@ -3739,12 +3751,12 @@
   "achievements_estatisticas": {
     "corridas_completas": 17,
     "voltas_drift": 1,
-    "recordes_estabelecidos": 8,
+    "recordes_estabelecidos": 9,
     "carros_desbloqueados": 0,
     "corridas_sem_colisao": 0,
     "corridas_sem_erros": 0,
-    "velocidade_maxima": 168.12648313884128,
-    "upgrades_maximizados": 1
+    "velocidade_maxima": 263.6365458249622,
+    "upgrades_maximizados": 3
   },
   "desafios_diarios": [
     {
@@ -3794,18 +3806,20 @@
   "desafios_progresso": {
     "semanal_202549_2": 1,
     "semanal_202550_1": 1,
-    "diario_20251210_1": 10
+    "diario_20251210_1": 11
   },
-  "desafios_completados": [],
+  "desafios_completados": [
+    "diario_20251210_1"
+  ],
   "ultima_atualizacao_diaria": "2025-12-10",
   "ultima_atualizacao_semanal": "2025-W50",
   "estatisticas_gerais": {
-    "tempo_total_jogado": 1209.7320000010086,
+    "tempo_total_jogado": 2902.027000013157,
     "distancia_total": 0.0,
-    "corridas_completas": 36,
-    "corridas_vencidas": 19,
-    "voltas_completas": 21,
-    "colisoes_totais": 1291,
+    "corridas_completas": 42,
+    "corridas_vencidas": 20,
+    "voltas_completas": 29,
+    "colisoes_totais": 5248,
     "drifts_totais": 0,
     "turbo_usado": 0,
     "recordes_estabelecidos": 1,
@@ -3840,13 +3854,14 @@
       "recordes_estabelecidos": 0
     },
     "1": {
-      "corridas_completas": 32,
-      "corridas_vencidas": 17,
+      "corridas_completas": 37,
+      "corridas_vencidas": 18,
       "melhor_tempo": 31.182999999998902,
       "melhor_posicao": 1,
-      "voltas_completas": 17,
-      "colisoes": 964,
-      "recordes_estabelecidos": 0
+      "voltas_completas": 24,
+      "colisoes": 4085,
+      "recordes_estabelecidos": 0,
+      "melhor_pontuacao_drift": 118358.7387682267
     },
     "2": {
       "corridas_completas": 3,
@@ -3859,12 +3874,12 @@
       "melhor_pontuacao_drift": 2775.70097025184
     },
     "3": {
-      "corridas_completas": 0,
+      "corridas_completas": 1,
       "corridas_vencidas": 0,
-      "melhor_tempo": null,
-      "melhor_posicao": null,
-      "voltas_completas": 0,
-      "colisoes": 0,
+      "melhor_tempo": 44.849000000003144,
+      "melhor_posicao": 3,
+      "voltas_completas": 1,
+      "colisoes": 836,
       "recordes_estabelecidos": 0
     },
     "7": {

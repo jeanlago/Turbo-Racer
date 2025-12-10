@@ -675,8 +675,6 @@ class Pixel:
         if self.menu_desbloqueios_aberto and len(self.texto_exibido) >= len(self.texto_completo) and self.fase_dialogo == "desbloqueios":
             self.desenhar_menu_desbloqueios(tela)
         elif self.menu_desbloqueios_aberto:
-            # Debug: verificar por que o menu não está sendo desenhado
-            print(f"[PIXEL DEBUG] Menu não desenhado. menu_aberto={self.menu_desbloqueios_aberto}, texto_exibido={len(self.texto_exibido)}, texto_completo={len(self.texto_completo)}, fase={self.fase_dialogo}")
     
     def _desenhar_caixa_dialogo(self, tela, dt):
         """Desenha apenas a caixa de diálogo (usado quando menu de desbloqueios está aberto)"""

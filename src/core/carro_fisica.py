@@ -545,51 +545,69 @@ class CarroFisica:
             else:
                 Fx_long = +self.brake_force * 1.0
 
+        # Limitar força de ré baseado na velocidade atual (aplicado sempre, não apenas quando freando)
         if v_long < 0.0:
             velocidade_total_pxps = math.sqrt(v_long*v_long + v_lat*v_lat)
             ARCADE_SPEED_MULT = 2.5
             PXPS_TO_KMH = 0.26
             velocidade_rev_kmh = velocidade_total_pxps * ARCADE_SPEED_MULT * PXPS_TO_KMH
             
-            VEL_ALVO_KMH = 38.0
-            VEL_INICIO_LIMITE_KMH = 35.0
-            VEL_MAX_KMH = 45.0
+            VEL_ALVO_KMH = 35.0
+            VEL_INICIO_LIMITE_KMH = 30.0
+            VEL_MAX_KMH = 40.0
             
+            # Aplicar limite sempre que está de ré, não apenas quando está freando
             if velocidade_rev_kmh > VEL_INICIO_LIMITE_KMH:
                 if velocidade_rev_kmh < VEL_ALVO_KMH:
                     progresso = (velocidade_rev_kmh - VEL_INICIO_LIMITE_KMH) / (VEL_ALVO_KMH - VEL_INICIO_LIMITE_KMH)
-                    fator_forca = 1.0 - progresso * 0.5
+                    fator_forca = 1.0 - progresso * 0.7  # Redução mais agressiva
                 else:
                     excesso = velocidade_rev_kmh - VEL_ALVO_KMH
                     max_excesso = VEL_MAX_KMH - VEL_ALVO_KMH
-                    fator_forca = 0.5 - (excesso / max_excesso) * 0.4
-                    fator_forca = max(0.1, fator_forca)
+                    fator_forca = 0.3 - (excesso / max_excesso) * 0.25  # Redução ainda mais agressiva
+                    fator_forca = max(0.0, fator_forca)  # Pode chegar a zero
                 
+                # Aplicar limite sempre, não apenas quando freando
                 if brk > 0.0:
                     Fx_long *= fator_forca
+                # Também aplicar quando não está freando mas está de ré (inércia)
+                elif velocidade_rev_kmh > VEL_MAX_KMH:
+                    Fx_long = 0.0  # Zerar força se ultrapassou o limite sem frear
 
         Fx_f, Fy_f = self._ellipse_clamp(0.0, Fy_f, Fzf)
         Fx_r, Fy_r = self._ellipse_clamp(Fx_long, Fy_r, Fzr)
 
-        # somatório no chassi
         cs = math.cos(self._steer_wheel); sn = math.sin(self._steer_wheel)
-        Fx = Fx_f*cs - Fy_f*sn + Fx_r
+        componente_direcao = Fx_f*cs - Fy_f*sn
+        
+        if v_long < 0.0:
+            Fx = Fx_r
+        else:
+            Fx = componente_direcao + Fx_r
+        
         Fy = Fy_f*cs + Fx_f*sn + Fy_r
         
-        # Prevenir aceleração quando apenas direção é pressionada (sem acelerar ou frear)
-        # Se não há aceleração nem freio E o carro está parado ou quase parado,
-        # não deve haver força longitudinal resultante da direção
-        # IMPORTANTE: Não aplicar quando está dando ré (brk > 0.0), pois ré precisa funcionar
-        velocidade_atual = math.sqrt(v_long*v_long + v_lat*v_lat)
-        if thr == 0.0 and brk == 0.0 and velocidade_atual < 5.0:
-            # Remover componente longitudinal que vem da força lateral ao virar
-            # Isso previne que o carro acelere para o lado quando apenas A ou D são pressionados
-            Fx = 0.0
+        if v_long >= 0.0:
+            velocidade_atual = math.sqrt(v_long*v_long + v_lat*v_lat)
+            if thr == 0.0 and brk == 0.0 and velocidade_atual < 5.0:
+                Fx = 0.0
+        
+        if v_long < 0.0:
+            ARCADE_SPEED_MULT = 2.5
+            PXPS_TO_KMH = 0.26
+            velocidade_rev_long_kmh = abs(v_long) * ARCADE_SPEED_MULT * PXPS_TO_KMH
+            VEL_MAX_RE_KMH = 40.0
+            
+            if Fx < 0.0:
+                if velocidade_rev_long_kmh >= VEL_MAX_RE_KMH:
+                    Fx = 0.0
+                elif velocidade_rev_long_kmh > 30.0:
+                    fator_reducao = 1.0 - ((velocidade_rev_long_kmh - 30.0) / 10.0)
+                    fator_reducao = max(0.0, min(1.0, fator_reducao))
+                    Fx *= fator_reducao
 
-        # resistências
         Fy += - self.stability_k * v_lat * (1.0 + 0.6*abs(v_long))
-        # Reduzir arrasto quando turbo está ativo para permitir velocidades maiores
-        drag_multiplier = 0.05 if self.turbo_ativo else 1.0  # 95% menos arrasto com turbo (EXTREMAMENTE poderoso)
+        drag_multiplier = 0.05 if self.turbo_ativo else 1.0
         # Aumentar arrasto na grama de forma significativa e progressiva
         # Menos arrasto para ré do que para frente
         if na_grama:
@@ -650,20 +668,34 @@ class CarroFisica:
         v_lat  += (Fy / self.m - v_long * r) * dt_fis
 
         # Limitar velocidade total de ré após integração (previne bug ao virar)
+        # Para bots, prevenir ré completamente - se velocidade longitudinal ficar negativa, zerar
+        eh_bot = hasattr(self, 'eh_bot') and self.eh_bot
+        
         if v_long < 0.0:
-            # Calcular velocidade total (magnitude) em km/h
-            velocidade_total_pxps = math.sqrt(v_long*v_long + v_lat*v_lat)
-            ARCADE_SPEED_MULT = 2.5
-            PXPS_TO_KMH = 0.26
-            velocidade_rev_kmh = velocidade_total_pxps * ARCADE_SPEED_MULT * PXPS_TO_KMH
-            VEL_MAX_KMH = 45.0
-            
-            if velocidade_rev_kmh > VEL_MAX_KMH:
-                velocidade_max_pxps = VEL_MAX_KMH / (ARCADE_SPEED_MULT * PXPS_TO_KMH)
-                fator_reducao_vel = velocidade_max_pxps / velocidade_total_pxps
-                v_long *= fator_reducao_vel
-                v_lat *= fator_reducao_vel
+            if eh_bot:
+                # Para bots: prevenir ré completamente - zerar velocidade longitudinal negativa
+                # Isso previne que inércia ou física cause movimento para trás
+                v_long = 0.0
+                # Também reduzir velocidade lateral se estiver muito alta (pode estar manobrando de ré)
+                if abs(v_lat) > 50.0:
+                    v_lat *= 0.5
                 self._recomp_vel(v_long, v_lat)
+            else:
+                ARCADE_SPEED_MULT = 2.5
+                PXPS_TO_KMH = 0.26
+                velocidade_rev_long_kmh = abs(v_long) * ARCADE_SPEED_MULT * PXPS_TO_KMH
+                VEL_MAX_RE_KMH = 40.0
+                
+                if velocidade_rev_long_kmh > VEL_MAX_RE_KMH:
+                    velocidade_max_pxps = VEL_MAX_RE_KMH / (ARCADE_SPEED_MULT * PXPS_TO_KMH)
+                    v_long = -velocidade_max_pxps
+                    self._recomp_vel(v_long, v_lat)
+                elif velocidade_rev_long_kmh > 35.0:
+                    excesso = velocidade_rev_long_kmh - 35.0
+                    fator_reducao = 1.0 - (excesso / 5.0) * 0.4
+                    fator_reducao = max(0.6, fator_reducao)
+                    v_long *= fator_reducao
+                    self._recomp_vel(v_long, v_lat)
 
         if escapando:
             v_long *= (self.drift_long_damp ** dt_fis)
@@ -682,29 +714,8 @@ class CarroFisica:
         speed = math.sqrt(speed_sq)
         
         if self.turbo_ativo:
-            multiplicador_base = self.multiplicador_base
-            nivel_motor = getattr(self, 'nivel_motor_inicial', 0)
-            
-            V_TOP_base_calc = 400.0 * (1.0 + (multiplicador_base - 1.0) * 0.08)
-            V_TOP_calc = V_TOP_base_calc * (1.0 + nivel_motor * 0.10)
-            
-            eficiencia_base_primeiro = 0.14
-            eficiencia_base = eficiencia_base_primeiro - (multiplicador_base - 1.0) * 0.005
-            fator_eficiencia_base = max(0.12, eficiencia_base)
-            bonus_motor = nivel_motor * 0.004
-            fator_eficiencia = min(0.20, fator_eficiencia_base + bonus_motor)
-            
-            vel_max_real_pxps = V_TOP_calc * fator_eficiencia
-            
-            ARCADE_SPEED_MULT = 2.5
-            PXPS_TO_KMH = 0.26
-            vel_max_real_kmh = vel_max_real_pxps * ARCADE_SPEED_MULT * PXPS_TO_KMH
-            
-            vel_max_nitro_kmh = vel_max_real_kmh * 1.20
-            vel_max_nitro_pxps = (vel_max_nitro_kmh / (ARCADE_SPEED_MULT * PXPS_TO_KMH))
-            
-            V_SOFT_TURBO = vel_max_real_pxps * 1.10
-            V_TOP_TURBO = vel_max_nitro_pxps
+            V_TOP_TURBO = self.V_TOP * 1.20
+            V_SOFT_TURBO = self.V_TOP * 1.10
             
             if speed > V_SOFT_TURBO:
                 cut = (speed - V_SOFT_TURBO) / max(1e-6, V_TOP_TURBO - V_SOFT_TURBO)
@@ -859,8 +870,23 @@ class CarroFisica:
             
             # Reduzir velocidade de forma mais suave (estilo GRIP)
             # No GRIP, quando está na grama, a velocidade é reduzida
-            self.vx *= -0.2
-            self.vy *= -0.2
+            # Para bots, não inverter velocidade (evitar ré) - apenas reduzir drasticamente
+            eh_bot = hasattr(self, 'eh_bot') and self.eh_bot
+            
+            if eh_bot:
+                # Para bots: apenas reduzir velocidade drasticamente, não inverter (evitar ré)
+                # E garantir que velocidade não fique negativa
+                self.vx *= 0.1
+                self.vy *= 0.1
+                # Se velocidade ficou negativa após redução, zerar
+                if self.vx < 0:
+                    self.vx = 0
+                if self.vy < 0:
+                    self.vy = 0
+            else:
+                # Para jogadores: comportamento normal (inverter velocidade)
+                self.vx *= -0.2
+                self.vy *= -0.2
             
             # Aplicar damping adicional para evitar oscilações
             self.vx *= 0.8
@@ -951,15 +977,9 @@ class CarroFisica:
                 self.y = min(pista_h, self.y)
 
         ARCADE_SPEED_MULT = 2.5
-        # Usar velocidade total (magnitude) em vez de apenas v_long para refletir velocidade real
         velocidade_total_pxps = math.sqrt(v_long*v_long + v_lat*v_lat)
         velocidade_com_mult = velocidade_total_pxps * ARCADE_SPEED_MULT
-        
-        # Ajustar fator para que ~500 px/s = ~300-350 km/h
-        # 300 = 500 * 2.5 * PXPS_TO_KMH => PXPS_TO_KMH = 300 / 1250 = 0.24
-        # 350 = 500 * 2.5 * PXPS_TO_KMH => PXPS_TO_KMH = 350 / 1250 = 0.28
-        # Usando 0.26 (valor intermediário) para que ~500 px/s = ~325 km/h
-        PXPS_TO_KMH = 0.26  # Ajustado para que ~500 px/s = ~325 km/h (300-350 km/h)
+        PXPS_TO_KMH = 0.26
         self.velocidade_kmh = velocidade_com_mult * PXPS_TO_KMH
         self.velocidade = v_long
 

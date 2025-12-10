@@ -307,7 +307,6 @@ def splash_screen(screen) -> bool:
                 for ev in pygame.event.get():
                     if ev.type == pygame.QUIT:
                         return False
-                    # Verificar controles
                     if gerenciador_gamepad.obter_numero_controles() > 0:
                         if ev.type == pygame.JOYBUTTONDOWN:
                             return True
@@ -382,10 +381,8 @@ def _carregar_cache_achievements():
     if os.path.exists(caminho_conquista_concluida):
         try:
             icon_concluida = pygame.image.load(caminho_conquista_concluida).convert_alpha()
-            # Calcular proporção: manter altura de 35px (igual ao achievements) e ajustar largura proporcionalmente
             largura_original, altura_original = icon_concluida.get_size()
             altura_alvo = 35
-            # Calcular largura proporcional
             escala = altura_alvo / altura_original
             largura_alvo = int(largura_original * escala)
             # Usar smoothscale para melhor qualidade
@@ -457,7 +454,6 @@ def desenhar_tela_achievements(screen, dt):
     y_atual = y_inicio - _achievements_scroll_offset
     espacamento = 70  # Aumentado para acomodar texto maior
     
-    # Calcular altura total necessária para todos os achievements
     achievements = gerenciador_achievements.obter_todos_achievements()
     altura_total = len(achievements) * espacamento
     altura_visivel = area_scroll_altura
@@ -497,7 +493,6 @@ def desenhar_tela_achievements(screen, dt):
     scroll_surface.fill((0, 0, 0, 0))  # Transparente
     
     for achievement in achievements:
-        # Verificar se o achievement está visível na área de scroll
         if y_atual + espacamento < area_scroll_y:
             y_atual += espacamento
             continue
@@ -506,7 +501,6 @@ def desenhar_tela_achievements(screen, dt):
         
         achievement_id = achievement['id']
         
-        # Obter traduções
         if achievement_id in traducoes_achievements:
             chave_nome, chave_desc = traducoes_achievements[achievement_id]
             nome_traduzido = t(f"achievements.{chave_nome}")
@@ -525,7 +519,6 @@ def desenhar_tela_achievements(screen, dt):
             cor_texto = (150, 150, 150)
             cor_icone = (100, 100, 100)
         
-        # Calcular posição relativa na surface de scroll
         y_relativo = y_atual - area_scroll_y
         
         # Fundo do achievement (aumentado para acomodar texto maior)
@@ -578,7 +571,6 @@ def desenhar_tela_achievements(screen, dt):
         barra_y = area_scroll_y
         barra_altura = area_scroll_altura
         
-        # Calcular posição e tamanho do thumb (indicador) da barra
         thumb_altura = max(30, int((altura_visivel / altura_total) * barra_altura))
         thumb_y = barra_y + int((_achievements_scroll_offset / scroll_max) * (barra_altura - thumb_altura)) if scroll_max > 0 else barra_y
         
@@ -596,7 +588,6 @@ def desenhar_tela_achievements(screen, dt):
     mouse_x, mouse_y = pygame.mouse.get_pos()
     fechar_hover = botao_fechar_rect.collidepoint(mouse_x, mouse_y)
     
-    # Verificar se está selecionado pelo controle
     from core.gamepad_manager import gerenciador_gamepad
     fechar_selecionado = getattr(desenhar_tela_achievements, '_fechar_selecionado', False)
     
@@ -801,7 +792,6 @@ def desenhar_tela_estatisticas(screen, dt, mouse_x=None, mouse_y=None):
         
         y_conteudo += 10  # Espaço entre seções
     
-    # Calcular scroll máximo
     altura_total_conteudo = y_conteudo
     _estatisticas_altura_total = altura_total_conteudo  # Armazenar para uso no scroll
     scroll_max = max(0, altura_total_conteudo - area_conteudo_altura)
@@ -822,12 +812,10 @@ def desenhar_tela_estatisticas(screen, dt, mouse_x=None, mouse_y=None):
         desenhar_scrollbar(screen, _estatisticas_scroll_offset, scroll_max, caixa_x, caixa_y, caixa_largura, caixa_altura, _estatisticas_scroll_dragging)
     
     botao_fechar_rect = pygame.Rect(caixa_x + caixa_largura - 120, caixa_y + 20, 100, 40)
-    # Verificar hover
     fechar_hover = False
     if mouse_x is not None and mouse_y is not None:
         fechar_hover = botao_fechar_rect.collidepoint(mouse_x, mouse_y)
     
-    # Verificar se está selecionado pelo controle
     from core.gamepad_manager import gerenciador_gamepad
     fechar_selecionado = getattr(desenhar_tela_estatisticas, '_fechar_selecionado', False)
     
@@ -956,7 +944,7 @@ def desenhar_tela_desafios(screen, dt):
             descricao_traduzida = _traduzir_descricao_desafio(desafio)
             desc_texto = render_text(descricao_traduzida, 18, cor_desc, bold=False, pixel_style=True)
             progresso_texto = render_text(f"{progresso}/{desafio['objetivo']} ({porcentagem}%)", 16, cor_progresso, bold=True, pixel_style=True)
-            recompensa_texto = render_text(f"Recompensa: ${desafio['recompensa']}", 16, (200, 150, 255), bold=True, pixel_style=True)
+            recompensa_texto = render_text(t("desafios.recompensa").format(recompensa=desafio['recompensa']), 16, (200, 150, 255), bold=True, pixel_style=True)
             
             screen.blit(desc_texto, (caixa_x + 50, y_atual))
             screen.blit(progresso_texto, (caixa_x + 50, y_atual + 25))
@@ -966,11 +954,9 @@ def desenhar_tela_desafios(screen, dt):
             y_atual += 60
     
     botao_fechar_rect = pygame.Rect(caixa_x + caixa_largura - 120, caixa_y + 20, 100, 40)
-    # Verificar hover
     mouse_x, mouse_y = pygame.mouse.get_pos()
     fechar_hover = botao_fechar_rect.collidepoint(mouse_x, mouse_y)
     
-    # Verificar se está selecionado pelo controle
     from core.gamepad_manager import gerenciador_gamepad
     fechar_selecionado = getattr(desenhar_tela_desafios, '_fechar_selecionado', False)
     
@@ -1103,7 +1089,6 @@ def menu_loop(screen) -> Escolha:
     if os.path.exists(caminho_exclamacao):
         try:
             icon_exclamacao_raw = pygame.image.load(caminho_exclamacao).convert_alpha()
-            # Calcular proporção para manter aspecto original (ícone vertical 233x850)
             largura_original, altura_original = icon_exclamacao_raw.get_size()
             # Usar tamanho adequado para notificação (mantendo proporção)
             altura_alvo = 24  # Tamanho maior para ficar mais visível
@@ -1311,7 +1296,6 @@ def menu_loop(screen) -> Escolha:
                         _estatisticas_scroll_offset -= scroll_speed
                         caixa_altura = 600
                         area_conteudo_altura = caixa_altura - 150
-                        # Calcular altura total do conteúdo (aproximado)
                         altura_total = 800  # Valor aproximado, será recalculado no desenho
                         scroll_max = max(0, altura_total - area_conteudo_altura)
                         _estatisticas_scroll_offset = max(0, min(_estatisticas_scroll_offset, scroll_max))
@@ -1731,7 +1715,6 @@ def menu_loop(screen) -> Escolha:
         # desenha
         screen.blit(bg, (0, 0))
         
-        # Verificar hover dos botões de ícones (os retângulos já foram definidos antes do loop)
         botao_estatisticas_hover = botao_estatisticas_rect.collidepoint(mouse_x, mouse_y)
         botao_achievements_hover = botao_achievements_rect.collidepoint(mouse_x, mouse_y)
         botao_missao_hover = botao_missao_rect.collidepoint(mouse_x, mouse_y)
@@ -2038,7 +2021,6 @@ def selecionar_mapas_loop(screen):
         gerenciador_musica.verificar_fim_musica()
         popup_musica.atualizar(dt)
         
-        # Verificar hover do pop-up
         mouse_x, mouse_y = pygame.mouse.get_pos()
         popup_musica.verificar_hover(mouse_x, mouse_y)
         
@@ -2288,15 +2270,7 @@ def calcular_especificacoes_carro(carro_info, upgrades):
     brake_force_base = 5500.0 * multiplicador_base
     # Frenagem não tem upgrade direto, mas melhora com estabilidade
     
-    # Calcular velocidade máxima real considerando atrito e arrasto
-    # OBSERVAÇÃO: Velocidade base observada ~140 km/h para primeiro carro
-    # Último carro (multiplicador_base = 3.89) com upgrades máximos: máximo 380 km/h
-    # Cálculo baseado na velocidade real observada:
-    # - Primeiro carro (multiplicador_base = 1.00): ~140 km/h base, ~220 km/h com upgrades máximos
-    # - Último carro (multiplicador_base = 3.89): ~200 km/h base, ~380 km/h com upgrades máximos
-    
     # Fator de eficiência base: varia com multiplicador_base
-    # Primeiro carro: 14% de V_TOP (140 km/h)
     # Último carro: eficiência reduzida para compensar V_TOP maior
     # Quanto maior o multiplicador_base, menor a eficiência para manter velocidades realistas
     eficiencia_base_primeiro = 0.14  # 14% para primeiro carro (~140 km/h)
@@ -2496,7 +2470,6 @@ def _mostrar_selecao_cores(screen, fundo_base):
         menu_x = (LARGURA - menu_largura) // 2
         menu_y = (ALTURA - menu_altura) // 2
         
-        # Verificar hover sobre itens
         y_inicio = menu_y + 100
         altura_item = 80
         espacamento = 10
@@ -2508,7 +2481,6 @@ def _mostrar_selecao_cores(screen, fundo_base):
             if item_rect.collidepoint(mouse_x, mouse_y):
                 opcao_selecionada = i
         
-        # Verificar hover sobre botão "Voltar"
         voltar_y = menu_y + menu_altura - 50
         voltar_rect = pygame.Rect(menu_x + menu_largura - 150, voltar_y, 130, 35)
         if voltar_rect.collidepoint(mouse_x, mouse_y):
@@ -2620,7 +2592,6 @@ def _mostrar_selecao_cores(screen, fundo_base):
             item_y = y_inicio + i * (altura_item + espacamento)
             item_rect = pygame.Rect(menu_x + 20, item_y, menu_largura - 40, altura_item)
             
-            # Verificar hover
             hover = item_rect.collidepoint(mouse_x, mouse_y) or i == opcao_selecionada
             ja_aplicada = gerenciador_progresso.carro_campanha_cor_final == cor_data['cor']
             preco = cor_data.get('preco', 5000)
@@ -3459,7 +3430,6 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                     controle_processado = True
                     acao = resultado_controle.get("acao")
                     # Processar ações de carro (L1/R1) - funciona em ambos os modos
-                    # IMPORTANTE: Processar L1/R1 ANTES de outros eventos para garantir que funcione
                     if acao == "carro_anterior" or acao == "carro_proximo":
                         # Processar mesmo durante transição (permitir mudança rápida)
                         if acao == "carro_anterior":
@@ -4582,7 +4552,13 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                             carro_atual = CARROS_DISPONIVEIS_FILTRADOS[carro_p1] if not modo_arcade else CARROS_DISPONIVEIS[carro_p1]
                             esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
                             if esta_desbloqueado and carro_selecionado_p1:
-                                fase_selecao = 2
+                                # Só avança para fase 2 se for modo 2 jogadores
+                                if modo_dois_jogadores:
+                                    fase_selecao = 2
+                                else:
+                                    # Modo 1 jogador: confirma e retorna
+                                    gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1, carro_p2=carro_p2)
+                                    return carro_p1, carro_p2
                         elif fase_selecao == 2:
                             carro_atual = CARROS_DISPONIVEIS[carro_p2]
                             esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
@@ -4768,7 +4744,6 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                     seta_esquerda_y = 100  # Mesma altura da seta direita
                     seta_esquerda_rect_p1 = pygame.Rect(seta_esquerda_x, seta_esquerda_y, seta_esquerda_temp.get_width(), seta_esquerda_temp.get_height())
                     seta_esquerda_hover = seta_esquerda_rect_p1.collidepoint(pygame.mouse.get_pos())
-                    # Verificar se está selecionado pelo controle (L1 pressionado)
                     seta_esquerda_selecionada = (botao_selecionado_controle == "seta_esquerda")
                     cor_seta_esquerda = (200, 255, 255) if (seta_esquerda_hover or seta_esquerda_selecionada) else (150, 220, 255)
                     escala_seta = 1.3 if (seta_esquerda_hover or seta_esquerda_selecionada) else 1.0
@@ -4796,7 +4771,6 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                     seta_direita_y = 100  # Posicionada acima dos botões de confirmação
                     seta_direita_rect_p1 = pygame.Rect(seta_direita_x, seta_direita_y, seta_direita_temp.get_width(), seta_direita_temp.get_height())
                     seta_direita_hover = seta_direita_rect_p1.collidepoint(pygame.mouse.get_pos())
-                    # Verificar se está selecionado pelo controle (R1 pressionado)
                     seta_direita_selecionada = (botao_selecionado_controle == "seta_direita")
                     cor_seta_direita = (200, 255, 255) if (seta_direita_hover or seta_direita_selecionada) else (150, 220, 255)
                     escala_seta = 1.3 if (seta_direita_hover or seta_direita_selecionada) else 1.0
@@ -4983,7 +4957,6 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                     # Garantir comparação de inteiros
                     carro_esta_selecionado = (carro_atual_idx == carro_p1)
                     
-                    # Verificar se está selecionado pelo controle
                     selecionado_controle = (botao_selecionado_controle == "usar")
                     
                     # Se o carro está selecionado, mostrar botão REPARAR (apenas no modo campanha)
@@ -5349,7 +5322,6 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                     seta_esquerda_y = 100  # Mesma altura da seta direita
                     seta_esquerda_rect_p2 = pygame.Rect(seta_esquerda_x, seta_esquerda_y, seta_esquerda_temp.get_width(), seta_esquerda_temp.get_height())
                     seta_esquerda_hover = seta_esquerda_rect_p2.collidepoint(pygame.mouse.get_pos())
-                    # Verificar se está selecionado pelo controle (L1 pressionado)
                     seta_esquerda_selecionada = (botao_selecionado_controle == "seta_esquerda")
                     cor_seta_esquerda = (200, 255, 255) if (seta_esquerda_hover or seta_esquerda_selecionada) else (150, 220, 255)
                     escala_seta = 1.3 if (seta_esquerda_hover or seta_esquerda_selecionada) else 1.0
@@ -5377,7 +5349,6 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                     seta_direita_y = 100  # Posicionada acima dos botões de confirmação
                     seta_direita_rect_p2 = pygame.Rect(seta_direita_x, seta_direita_y, seta_direita_temp.get_width(), seta_direita_temp.get_height())
                     seta_direita_hover = seta_direita_rect_p2.collidepoint(pygame.mouse.get_pos())
-                    # Verificar se está selecionado pelo controle (R1 pressionado)
                     seta_direita_selecionada = (botao_selecionado_controle == "seta_direita")
                     cor_seta_direita = (200, 255, 255) if (seta_direita_hover or seta_direita_selecionada) else (150, 220, 255)
                     escala_seta = 1.3 if (seta_direita_hover or seta_direita_selecionada) else 1.0
@@ -5545,7 +5516,6 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                 if botao_usar_rect_p2:
                     usar_hover_p2 = botao_usar_rect_p2.collidepoint(pygame.mouse.get_pos())
                     usar_selecionado = carro_selecionado_p2
-                    # Verificar se está selecionado pelo controle
                     selecionado_controle = (botao_selecionado_controle == "usar")
                     if usar_selecionado:
                         cor_usar = (50, 140, 90) if usar_hover_p2 else (40, 120, 80)
@@ -5889,8 +5859,6 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
     from config import DIR_PROJETO, LARGURA, ALTURA
     import os
     
-    # IMPORTANTE: Garantir que a narrativa não está bloqueando eventos na tela de upgrade
-    # Se a narrativa estiver ativa, fechar temporariamente para permitir interação com upgrades
     from core.narrative_system import narrative_system
     narrativa_estava_ativa = narrative_system.active
     narrative_current_scene = narrative_system.current_scene_id
@@ -6038,8 +6006,6 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
         
         eventos = list(pygame.event.get())
         
-        # IMPORTANTE: Garantir que a narrativa não está interceptando eventos
-        # Se a narrativa estiver ativa, desativá-la completamente
         if narrative_system.active:
             print("[TELA_UPGRADES] Narrativa ainda está ativa durante loop, desativando completamente")
             narrative_system.fechar()
@@ -6188,7 +6154,6 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                                         y = caixa_y + 105 + i * 30
                                         rect_opcao = pygame.Rect(caixa_x + 40, y, caixa_largura - 80, 30)
                                         
-                                        # Verificar hover
                                         if rect_opcao.collidepoint(mouse_x_confirm, mouse_y_confirm):
                                             cor = (0, 200, 255)
                                             opcao_confirmacao = i
@@ -6323,7 +6288,6 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
             if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                 print(f"[TELA_UPGRADES] Clique detectado: mouse_x={mouse_x}, mouse_y={mouse_y}, narrative_active={narrative_system.active}, glub_active={glub.ativo}")
                 
-                # IMPORTANTE: Garantir que a narrativa não está interceptando eventos
                 if narrative_system.active:
                     print("[TELA_UPGRADES] Narrativa ainda está ativa durante clique, desativando completamente")
                     narrative_system.fechar()
@@ -6452,7 +6416,6 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                                     y = caixa_y + 105 + i * 30
                                     rect_opcao = pygame.Rect(caixa_x + 40, y, caixa_largura - 80, 30)
                                     
-                                    # Verificar hover
                                     if rect_opcao.collidepoint(mouse_x_confirm, mouse_y_confirm):
                                         cor = (0, 200, 255)
                                         opcao_confirmacao = i
@@ -7577,7 +7540,6 @@ def mostrar_dialogo_confirmacao_compra_carro(screen, bg, nome_carro, preco):
             y = caixa_y + 105 + i * 30
             rect_opcao = pygame.Rect(caixa_x + 40, y, caixa_largura - 80, 30)
             
-            # Verificar hover
             if rect_opcao.collidepoint(mouse_x, mouse_y):
                 cor = (0, 200, 255)
                 opcao_selecionada = i
@@ -7703,7 +7665,6 @@ def mostrar_dialogo_confirmacao_venda_carro(screen, bg, nome_carro, preco_venda)
             y = caixa_y + 105 + i * 30
             rect_opcao = pygame.Rect(caixa_x + 40, y, caixa_largura - 80, 30)
             
-            # Verificar hover
             if rect_opcao.collidepoint(mouse_x, mouse_y):
                 cor = (255, 150, 150)
                 opcao_selecionada = i
@@ -9398,7 +9359,6 @@ def selecao_modo_principal_loop(screen):
                     return opcoes[opcao_selecionada][1]  # Retorna "campanha" ou "arcade"
             
             if ev.type == pygame.MOUSEMOTION:
-                # Verificar hover
                 for i, (nome, _) in enumerate(opcoes):
                     y = caixa_y + 120 + i * 80
                     rect = pygame.Rect(caixa_x + 50, y, caixa_largura - 100, 60)
@@ -9587,7 +9547,6 @@ def modo_jogo_loop(screen):
         gerenciador_musica.verificar_fim_musica()
         popup_musica.atualizar(dt)
         
-        # Verificar hover do pop-up
         mouse_x, mouse_y = pygame.mouse.get_pos()
         popup_musica.verificar_hover(mouse_x, mouse_y)
         
@@ -10338,18 +10297,20 @@ def selecionar_fase_loop(screen):
     
     # Layout
     caixa_largura = 700
-    caixa_altura = 550
+    caixa_altura = 600  # Aumentada para acomodar textos abaixo dos minimapas
     caixa_x = (LARGURA - caixa_largura) // 2
     caixa_y = (ALTURA - caixa_altura) // 2
     
     # Grid de minimapas (3x3) - diminuído e centralizado
     minimapa_tamanho = 120
-    espacamento = 15
+    espacamento_horizontal = 15
+    espacamento_vertical = 25  # Espaçamento vertical para acomodar texto abaixo (reduzido para dar espaço ao botão voltar)
+    altura_texto = 20  # Altura aproximada do texto "Stage X"
     # Calcular posição do grid para centralizar
-    largura_total_grid = 3 * minimapa_tamanho + 2 * espacamento
-    altura_total_grid = 3 * minimapa_tamanho + 2 * espacamento
+    largura_total_grid = 3 * minimapa_tamanho + 2 * espacamento_horizontal
+    altura_total_grid = 3 * (minimapa_tamanho + altura_texto) + 2 * espacamento_vertical
     grid_x = caixa_x + (caixa_largura - largura_total_grid) // 2
-    grid_y = caixa_y + 80
+    grid_y = caixa_y + 70  # Movido um pouco para cima para dar espaço aos textos
     colunas = 3
     
     # Animações de hover
@@ -10376,8 +10337,8 @@ def selecionar_fase_loop(screen):
                 fase_num = i + 1
                 col = i % colunas
                 linha = i // colunas
-                x = grid_x + col * (minimapa_tamanho + espacamento)
-                y = grid_y + linha * (minimapa_tamanho + espacamento)
+                x = grid_x + col * (minimapa_tamanho + espacamento_horizontal)
+                y = grid_y + linha * (minimapa_tamanho + altura_texto + espacamento_vertical)
                 rect = pygame.Rect(x, y, minimapa_tamanho, minimapa_tamanho)
                 
                 is_hovering = rect.collidepoint(mouse_x, mouse_y)
@@ -10508,8 +10469,8 @@ def selecionar_fase_loop(screen):
                     fase_num = i + 1
                     col = i % colunas
                     linha = i // colunas
-                    x = grid_x + col * (minimapa_tamanho + espacamento)
-                    y = grid_y + linha * (minimapa_tamanho + espacamento)
+                    x = grid_x + col * (minimapa_tamanho + espacamento_horizontal)
+                    y = grid_y + linha * (minimapa_tamanho + altura_texto + espacamento_vertical)
                     rect = pygame.Rect(x, y, minimapa_tamanho, minimapa_tamanho)
                     
                     if rect.collidepoint(ev.pos[0], ev.pos[1]):
@@ -10580,8 +10541,8 @@ def selecionar_fase_loop(screen):
             fase_num = i + 1
             col = i % colunas
             linha = i // colunas
-            x = grid_x + col * (minimapa_tamanho + espacamento)
-            y = grid_y + linha * (minimapa_tamanho + espacamento)
+            x = grid_x + col * (minimapa_tamanho + espacamento_horizontal)
+            y = grid_y + linha * (minimapa_tamanho + altura_texto + espacamento_vertical)
             
             # Cores baseadas na seleção e hover
             # Se o botão voltar está selecionado, não mostrar nenhum mapa como selecionado
@@ -10629,10 +10590,10 @@ def selecionar_fase_loop(screen):
                 texto_y = y + (minimapa_tamanho - texto_fase.get_height()) // 2
                 screen.blit(texto_fase, (texto_x, texto_y))
             
-            # Desenhar número da fase abaixo do minimapa
+            # Desenhar número da fase abaixo do minimapa (com mais espaçamento vertical)
             texto_num = render_text(t("jogo.fase_numero").format(fase_num), 14, (255, 255, 255), bold=True, pixel_style=True)
             texto_num_x = x + (minimapa_tamanho - texto_num.get_width()) // 2
-            screen.blit(texto_num, (texto_num_x, y + minimapa_tamanho + 3))
+            screen.blit(texto_num, (texto_num_x, y + minimapa_tamanho + 10))
             
             # Desenhar troféu no canto superior direito do minimapa (usar cache)
             try:
@@ -11217,8 +11178,6 @@ def _verificar_e_iniciar_narrativa_training_01(narrative_system, gerenciador_pro
             gerenciador_progresso.salvar()
         return False
     
-    # IMPORTANTE: Só processar se a flag for 'training_01'
-    # Se for outra corrida (como 'garage_test'), limpar a flag e não processar
     if hasattr(gerenciador_progresso, 'ultima_corrida_campanha'):
         if gerenciador_progresso.ultima_corrida_campanha and gerenciador_progresso.ultima_corrida_campanha != "training_01":
             # Limpar flag de corrida desconhecida para evitar loop
@@ -11417,7 +11376,6 @@ def run():
                 # Função auxiliar para executar loop de narrativa
                 def executar_narrativa():
                     """Executa o loop de narrativa até encontrar um trigger ou terminar"""
-                    # IMPORTANTE: Se há uma cena mas a narrativa não está ativa, ativar
                     if narrative_system.current_scene_id and not narrative_system.active:
                         print(f"[EXECUTAR_NARRATIVA] Cena {narrative_system.current_scene_id} existe mas narrativa não está ativa. Ativando...")
                         narrative_system.active = True
@@ -11498,24 +11456,11 @@ def run():
                             scene = None
                         if scene:
                             lines = scene.get("lines", [])
-                            # Debug: verificar estado da cena
-                            if narrative_system.current_scene_id in ["ch1_3_boris_crank_branch", "ch1_3_boris_no_crank_branch", "ch1_3_boris_deal"]:
-                                print(f"[DEBUG] Cena {narrative_system.current_scene_id}: line_index={narrative_system.current_line_index}, total_lines={len(lines)}, choices_visible={narrative_system.choices_visible}")
-                            
-                            # Verificar trigger ANTES de verificar se terminou todas as linhas
-                            # Isso garante que mesmo se _avancar_cena() já foi chamado, o trigger ainda será detectado
-                            # IMPORTANTE: NÃO verificar trigger se há escolhas visíveis (evitar loop infinito)
                             if not narrative_system.choices_visible:
                                 scene_trigger = scene.get("gameplayTrigger")
                                 print(f"[EXECUTAR_NARRATIVA] Verificando scene_trigger: scene_id={narrative_system.current_scene_id}, has_trigger={scene_trigger is not None}, line_index={narrative_system.current_line_index}, total_lines={len(lines)}, choices_visible={narrative_system.choices_visible}")
                                 if scene_trigger and narrative_system.current_scene_id:
-                                    # Se a cena tem trigger e já terminou (sem escolhas), processar imediatamente
-                                    # IMPORTANTE: Garantir que TODAS as linhas foram exibidas antes de processar o trigger
-                                    # O jogador precisa clicar para avançar cada linha, então current_line_index >= len(lines)
-                                    # significa que todas as linhas foram exibidas e o jogador clicou além da última
                                     if narrative_system.current_line_index >= len(lines):
-                                        print(f"[EXECUTAR_NARRATIVA] Todas as linhas exibidas (line_index={narrative_system.current_line_index}, total={len(lines)}), processando trigger...")
-                                        # Debug: verificar se todas as linhas foram realmente exibidas
                                         if narrative_system.current_scene_id == "ch1_3_boris_deal":
                                             print(f"[EXECUTAR_NARRATIVA] ✓ Cena ch1_3_boris_deal: Todas as {len(lines)} linhas foram exibidas antes de abrir a loja!")
                                             for i, line in enumerate(lines):
@@ -12433,7 +12378,7 @@ def run():
                                     dificuldade_ia=difficulty,
                                     modo_arcade=modo_arcade,
                                     sem_bots=sem_bots,  # Passar flag para não criar bots
-                                    race_id=race_id  # IMPORTANTE: Passar race_id para manter a flag
+                                    race_id=race_id
                                 )
                                 
                                 # Após a corrida, continuar narrativa se houver próxima cena
@@ -12860,7 +12805,6 @@ def run():
                                 
                                 mouse_x, mouse_y = pygame.mouse.get_pos()
                                 
-                                # Verificar hover sobre itens
                                 y_inicio = menu_y + 100
                                 altura_item = 80
                                 espacamento = 10
@@ -12872,7 +12816,6 @@ def run():
                                     if item_rect.collidepoint(mouse_x, mouse_y):
                                         opcao_selecionada = i
                                 
-                                # Verificar hover sobre botão "Voltar"
                                 voltar_y = menu_y + menu_altura - 50
                                 voltar_rect = pygame.Rect(menu_x + menu_largura - 150, voltar_y, 130, 35)
                                 if voltar_rect.collidepoint(mouse_x, mouse_y):
@@ -12978,7 +12921,6 @@ def run():
                                     item_y = y_inicio + i * (altura_item + espacamento)
                                     item_rect = pygame.Rect(menu_x + 20, item_y, menu_largura - 40, altura_item)
                                     
-                                    # Verificar hover
                                     hover = item_rect.collidepoint(mouse_x, mouse_y) or i == opcao_selecionada
                                     cor_fundo = (20, 50, 20, 200) if hover else (10, 30, 10, 200)
                                     cor_borda = (0, 255, 0) if hover else (0, 200, 0)
@@ -13650,7 +13592,6 @@ def run():
                 # Verificar qual capítulo deve ser mostrado baseado no progresso
                 capitulo_atual = gerenciador_progresso.obter_capitulo_atual()
                 
-                # IMPORTANTE: Se a narrativa tem ch5_10_creditos como cena atual mas não está ativa,
                 # limpar a cena para evitar que fique preso nos créditos
                 if narrative_system.current_scene_id == "ch5_10_creditos" and not narrative_system.active:
                     print(f"[LOOP PRINCIPAL] Cena de créditos detectada mas narrativa não está ativa. Limpando...")
@@ -13738,7 +13679,6 @@ def run():
                         print(f"[LOOP PRINCIPAL] current_scene_id antes de iniciar: {narrative_system.current_scene_id}")
                         print(f"[LOOP PRINCIPAL] active antes de iniciar: {narrative_system.active}")
                         
-                        # IMPORTANTE: Para um novo save, garantir que ch1_0_prologue NÃO está marcada como visitada
                         if "ch1_0_prologue" in narrative_system.scenes_visited:
                             print(f"[LOOP PRINCIPAL] AVISO: ch1_0_prologue já está marcada como visitada em um novo save! Removendo...")
                             narrative_system.scenes_visited.discard("ch1_0_prologue")
@@ -13770,7 +13710,6 @@ def run():
                                 print(f"[LOOP PRINCIPAL] ERRO: iniciar_capitulo('ch1') retornou True mas não iniciou uma cena!")
                                 print(f"[LOOP PRINCIPAL] Tentando iniciar ch1_0_prologue manualmente...")
                                 # Tentar iniciar a primeira cena manualmente
-                                # IMPORTANTE: Garantir que a cena não está marcada como visitada
                                 if "ch1_0_prologue" in narrative_system.scenes_visited:
                                     narrative_system.scenes_visited.discard("ch1_0_prologue")
                                     print(f"[LOOP PRINCIPAL] Removendo ch1_0_prologue de scenes_visited para permitir reinício")
@@ -14012,7 +13951,6 @@ def run():
                         continue
                     
                     # Verificar se a corrida da Akira (mountain_test_run) foi completada mas as cenas pós-corrida ainda não foram mostradas
-                    # IMPORTANTE: Só verificar se realmente acabou de completar a corrida (ultima_corrida_campanha == "mountain_test_run")
                     # Não verificar apenas por estatísticas, pois isso pode ativar a cena incorretamente
                     from core.estatisticas import gerenciador_estatisticas
                     from core.missoes import gerenciador_missoes
@@ -14097,7 +14035,6 @@ def run():
                                         gerenciador_progresso.salvar()
                                     continue
                     
-                    # IMPORTANTE: Antes de verificar se não há narrativa, tentar iniciar o capítulo 1 se for um novo save
                     if not narrative_system.active and not narrative_system.current_scene_id:
                         # Verificar se é um novo save (nenhuma missão completa)
                         from core.missoes import gerenciador_missoes
@@ -14136,12 +14073,10 @@ def run():
                                 else:
                                     print(f"[LOOP PRINCIPAL] iniciar_capitulo('ch1') retornou False")
                     
-                    # IMPORTANTE: Verificar corridas da campanha ANTES de processar narrativa
                     # Isso garante que corridas como garage_test sejam processadas imediatamente após retornar
                     gerenciador_progresso.carregar()
                     
                     # Verificar se foi garage_test (corrida de teste da garagem)
-                    # IMPORTANTE: Verificar ANTES de processar narrativa, logo após a corrida retornar
                     if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "garage_test":
                         print(f"[LOOP PRINCIPAL] Detectada corrida garage_test pendente (ANTES de processar narrativa), verificando se foi completada...")
                         
@@ -14163,7 +14098,6 @@ def run():
                             gerenciador_progresso.ultima_corrida_campanha = None
                             gerenciador_progresso.salvar()
                             
-                            # IMPORTANTE: Marcar ch1_4b_housing_offer como visitada para evitar reativação
                             if "ch1_4b_housing_offer" not in narrative_system.scenes_visited:
                                 narrative_system.scenes_visited.add("ch1_4b_housing_offer")
                                 print(f"[LOOP PRINCIPAL] Marcando ch1_4b_housing_offer como visitada para evitar reativação")
@@ -14188,12 +14122,10 @@ def run():
                             else:
                                 print(f"[LOOP PRINCIPAL] Nenhum gatilho encontrado para garage_test. Tentando iniciar ch1_1c_crank_test_result manualmente...")
                                 # Tentar iniciar a cena manualmente
-                                # IMPORTANTE: Remover da lista de visitadas se estiver lá para permitir reinício
                                 if "ch1_1c_crank_test_result" in narrative_system.scenes_visited:
                                     print(f"[LOOP PRINCIPAL] Removendo ch1_1c_crank_test_result de scenes_visited para permitir reinício...")
                                     narrative_system.scenes_visited.discard("ch1_1c_crank_test_result")
                                 
-                                # IMPORTANTE: Remover da lista de visitadas para permitir reinício
                                 if "ch1_1c_crank_test_result" in narrative_system.scenes_visited:
                                     print(f"[LOOP PRINCIPAL] Removendo ch1_1c_crank_test_result de scenes_visited para permitir reinício...")
                                     narrative_system.scenes_visited.discard("ch1_1c_crank_test_result")
@@ -14203,7 +14135,6 @@ def run():
                                 if resultado and narrative_system.current_scene_id:
                                     narrative_system.active = True
                                     print(f"[LOOP PRINCIPAL] Cena ch1_1c_crank_test_result iniciada com sucesso! Continuando narrativa...")
-                                    # IMPORTANTE: Ativar missão m3 imediatamente após iniciar a cena
                                     from core.missoes import gerenciador_missoes
                                     gerenciador_missoes.carregar()
                                     if "m3_rota_da_ferrugem" not in gerenciador_missoes.missoes_completas:
@@ -14235,7 +14166,6 @@ def run():
                     
                     # Verificar se há narrativa ativa OU se há uma cena ativa (mesmo que active=False temporariamente)
                     # (pode acontecer que a narrativa foi fechada mas o trigger ainda precisa ser processado)
-                    # IMPORTANTE: Se não há narrativa ativa e não há cena, ir direto para o mapa
                     if not narrative_system.active and not narrative_system.current_scene_id:
                         # Não há narrativa ativa e não há cena - ir direto para o mapa da cidade
                         print(f"[LOOP PRINCIPAL] Não há narrativa ativa, indo para o mapa da cidade")
@@ -14263,7 +14193,6 @@ def run():
                             continue
                         
                         # Se há uma cena ativa mas a narrativa não está marcada como ativa, ativar
-                        # IMPORTANTE: NÃO reativar ch1_4b_housing_offer se a corrida garage_test já foi completada
                         if narrative_system.current_scene_id and not narrative_system.active:
                             scene_id = narrative_system.current_scene_id
                             
@@ -14366,7 +14295,6 @@ def run():
                                         gerenciador_progresso.salvar()
                                 
                                 # Verificar se foi garage_test (corrida de teste da garagem)
-                                # IMPORTANTE: Verificar ANTES de ir para o mapa, logo após a corrida retornar
                                 if hasattr(gerenciador_progresso, 'ultima_corrida_campanha') and gerenciador_progresso.ultima_corrida_campanha == "garage_test":
                                     print(f"[LOOP PRINCIPAL] Detectada corrida garage_test pendente, verificando se foi completada...")
                                     
@@ -14557,7 +14485,6 @@ def run():
                                         melhor_posicao = stats_pista.get("melhor_posicao", None) if stats_pista else None
                                         print(f"[LOOP PRINCIPAL] Estatísticas pista {pista} ({race_id}): melhor_tempo={melhor_tempo}, melhor_posicao={melhor_posicao}")
                                         
-                                        # IMPORTANTE: Verificar se a corrida foi realmente completada nesta sessão
                                         # A flag ultima_corrida_campanha é definida no início da corrida em main.py
                                         # e deve permanecer definida até aqui para indicar que a corrida foi completada
                                         # Se a flag ainda está definida (igual ao race_id), significa que a corrida foi completada nesta sessão
@@ -14774,7 +14701,6 @@ def run():
                     
                     if territorio_id == "oficina":
                         # Verificar gatilhos narrativos ANTES de entrar na oficina
-                        # IMPORTANTE: A narrativa deve ter prioridade sobre a oficina
                         from core.narrative_system import narrative_system
                         from core.missoes import gerenciador_missoes
                         

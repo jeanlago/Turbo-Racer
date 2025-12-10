@@ -391,7 +391,7 @@ def casa_loop(screen, sprite_fundo: Optional[str] = None) -> Optional[str]:
                                             dificuldade_ia=corrida_info["dificuldade"],
                                             modo_arcade=False,
                                             sem_bots=sem_bots,
-                                            race_id=race_id  # IMPORTANTE: Passar race_id para manter a flag
+                                            race_id=race_id
                                         )
                                         
                                         # Após a corrida retornar, verificar se foi training_01 e continuar narrativa
@@ -437,9 +437,6 @@ def casa_loop(screen, sprite_fundo: Optional[str] = None) -> Optional[str]:
         if hover_sprite_atual and hover_sprite_rect:
             screen.blit(hover_sprite_atual, hover_sprite_rect)
         
-        # Debug: desenhar hitboxes (opcional, remover depois)
-        # for hb in hitboxes:
-        #     pygame.draw.rect(screen, (255, 0, 0), (hb["x"], hb["y"], hb["largura"], hb["altura"]), 2)
         
         # Desenhar status do jogador (canto superior direito)
         status_x = LARGURA - 250
