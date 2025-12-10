@@ -22,6 +22,8 @@ class GhostRecorder:
         self.tempo_acumulado = 0.0
         self.frames = []
         self.gravando = True
+        print(f"[GHOST] Gravação iniciada (intervalo={self.intervalo_gravacao}s)")
+        print(f"[GHOST] Gravação iniciada (intervalo={self.intervalo_gravacao}s)")
     
     def parar_gravacao(self):
         """Para a gravação do ghost"""
@@ -59,6 +61,9 @@ class GhostRecorder:
                     angulo = 0.0
             
             self.frames.append((self.tempo_acumulado, float(x), float(y), float(angulo)))
+            # Log apenas a cada 100 frames para não poluir o console
+            if len(self.frames) % 100 == 0:
+                print(f"[GHOST] Gravando frame {len(self.frames)} (tempo={self.tempo_acumulado:.2f}s)")
     
     def obter_dados(self):
         """Retorna os dados gravados como uma lista de frames"""
@@ -166,10 +171,10 @@ class GerenciadorGhosts:
     
     def carregar(self):
         """Carrega os ghosts do progresso.json"""
-        # Primeiro, tentar carregar do progresso.json (fonte principal)
+        # Tentar carregar do progresso.json diretamente (evitar importação circular)
         try:
-            from core.progresso import gerenciador_progresso
-            caminho_progresso = os.path.join(os.path.dirname(CAMINHO_GHOSTS), 'progresso.json')
+            from config import DIR_PROJETO
+            caminho_progresso = os.path.join(DIR_PROJETO, 'data', 'progresso.json')
             caminho_progresso = os.path.normpath(caminho_progresso)
             
             if os.path.exists(caminho_progresso):
@@ -178,12 +183,13 @@ class GerenciadorGhosts:
                     if 'ghosts' in data:
                         self.ghosts = {str(k): v for k, v in data.get('ghosts', {}).items()}
                         print(f"[GHOSTS] Carregado do progresso.json: {len(self.ghosts)} ghosts")
-                        return  # Dados carregados do progresso.json, não precisa do arquivo antigo
+                        return  # Dados carregados do progresso.json
         except Exception as e:
             print(f"[GHOSTS] Erro ao carregar do progresso.json: {e}")
         
         # Fallback: valores padrão se não houver dados
         self.ghosts = {}
+        print(f"[GHOSTS] Nenhum ghost carregado (usando padrão vazio)")
     
     def salvar(self):
         """Salva os ghosts"""
@@ -213,10 +219,22 @@ class GerenciadorGhosts:
         if tempo is not None and tipo_jogo is not None:
             if tipo_jogo == "GHOST":
                 # Modo relógio: verificar se é melhor tempo (menor = melhor)
-                recorde_atual = gerenciador_progresso.obter_recorde(numero_pista)
-                if recorde_atual is not None and tempo >= recorde_atual:
-                    print(f"Ghost não salvo: tempo {tempo:.2f}s não é melhor que recorde {recorde_atual:.2f}s")
-                    return False
+                # PRIMEIRO: verificar se já existe ghost (independente do tempo)
+                ghost_existente = self.ghosts.get(pista_key, [])
+                if ghost_existente is None or len(ghost_existente) == 0:
+                    # Não há ghost anterior, sempre salvar (primeira vez)
+                    print(f"[GHOST] Primeiro ghost para pista {pista_key} no modo relógio, salvando...")
+                else:
+                    # Há ghost anterior, verificar se este tempo é melhor
+                    recorde_atual = gerenciador_progresso.obter_recorde(numero_pista)
+                    if recorde_atual is None:
+                        # Não há recorde mas há ghost? Isso não deveria acontecer, mas vamos salvar
+                        print(f"[GHOST] AVISO: Há ghost mas não há recorde no modo relógio, salvando mesmo assim...")
+                    elif tempo < recorde_atual:
+                        print(f"[GHOST] Novo recorde melhor no modo relógio ({tempo:.2f}s < {recorde_atual:.2f}s), salvando ghost...")
+                    else:
+                        print(f"[GHOST] Ghost não salvo no modo relógio: tempo {tempo:.2f}s não é melhor que recorde {recorde_atual:.2f}s")
+                        return False
             elif tipo_jogo == "DRIFT":
                 # Modo drift: verificar se é melhor score (maior = melhor)
                 # Para drift, o recorde é salvo com chave "{pista}_{voltas}", mas vamos verificar o recorde geral da pista
@@ -231,7 +249,7 @@ class GerenciadorGhosts:
         # Salvar apenas se passou na verificação ou se não foi fornecida verificação
         self.ghosts[pista_key] = frames
         self.salvar()
-        print(f"Ghost salvo para pista {pista_key} ({len(frames)} frames)")
+        print(f"[GHOST] Ghost salvo para pista {pista_key} ({len(frames)} frames)")
         return True
     
     def obter_ghost(self, numero_pista):

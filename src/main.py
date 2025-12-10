@@ -10,6 +10,8 @@ class FilteredStderr:
         self.original_stderr = original_stderr
     
     def write(self, message):
+        if self.original_stderr is None:
+            return
         if message:
             msg_lower = message.lower()
             if 'libpng' in msg_lower and 'iCCP' in message:
@@ -18,15 +20,25 @@ class FilteredStderr:
                 return
             if 'srgb profile' in msg_lower or 'known incorrect' in msg_lower:
                 return
-        self.original_stderr.write(message)
+        try:
+            self.original_stderr.write(message)
+        except (AttributeError, OSError):
+            pass
     
     def flush(self):
-        self.original_stderr.flush()
+        if self.original_stderr is not None:
+            try:
+                self.original_stderr.flush()
+            except (AttributeError, OSError):
+                pass
     
     def __getattr__(self, name):
+        if self.original_stderr is None:
+            return None
         return getattr(self.original_stderr, name)
 
-sys.stderr = FilteredStderr(sys.stderr)
+if sys.stderr is not None:
+    sys.stderr = FilteredStderr(sys.stderr)
 
 import pygame
 from config import (
@@ -1131,13 +1143,16 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     from core.particulas import EmissorColisao
     principal._emissor_colisao = EmissorColisao()
     
-    if (tipo_jogo == TipoJogo.GHOST or tipo_jogo == TipoJogo.DRIFT) and modo_jogo == ModoJogo.UM_JOGADOR:
+    # Carregar ghost para modos que suportam (GHOST, DRIFT)
+    if (tipo_jogo in (TipoJogo.GHOST, TipoJogo.DRIFT) and 
+        modo_jogo == ModoJogo.UM_JOGADOR):
         frames_ghost = gerenciador_ghosts.obter_ghost(numero_pista)
         if frames_ghost:
             ghost_player_p1 = GhostPlayer(frames_ghost)
-            print(f"Ghost carregado para pista {numero_pista} ({len(frames_ghost)} frames)")
+            print(f"[GHOST] Ghost carregado para pista {numero_pista} ({len(frames_ghost)} frames)")
         elif tipo_jogo == TipoJogo.GHOST:
-            print(f"AVISO: Modo Ghost selecionado mas não há ghost disponível para pista {numero_pista}")
+            print(f"[GHOST] AVISO: Modo Ghost selecionado mas não há ghost disponível para pista {numero_pista}")
+            ghost_player_p1 = None
 
     camera.set_alvo(carro1)
 
@@ -1358,30 +1373,24 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
         for ev in eventos:
             if modo_jogo == ModoJogo.DOIS_JOGADORES:
                 evento_processado = False
-                
-                # Processar eventos da tela de resultados finais PRIMEIRO (se estiver ativa)
+
                 if estado_resultados_finais is not None:
                     acao_resultados = processar_tela_resultados_finais(ev, estado_resultados_finais)
-                    # Se processou evento de controle, marcar como processado e continuar
                     if gerenciador_gamepad.obter_numero_controles() > 0 and ev.type in (pygame.JOYHATMOTION, pygame.JOYBUTTONDOWN, pygame.JOYAXISMOTION):
                         evento_processado = True
-                        # Se foi apenas navegação (retornou None), continuar sem processar outros eventos
                         if acao_resultados is None:
                             continue
                     if acao_resultados:
                         evento_processado = True
                         if acao_resultados == "continuar_arcade":
-                            # Continuar no modo arcade - voltar ao menu
                             estado_resultados_finais = None
                             estado_fim_jogo_p1 = None
                             estado_fim_jogo_p2 = None
-                            # Limpar a tela antes de retornar
                             tela.fill((0, 0, 0))
                             pygame.display.flip()
                             rodando = False
                             return
                         elif acao_resultados == "continuar_campanha":
-                            # Continuar a campanha - garantir que o progresso está salvo
                             gerenciador_progresso.salvar()
                             from core.missoes import gerenciador_missoes
                             gerenciador_missoes.salvar()
@@ -1389,7 +1398,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             estado_resultados_finais = None
                             estado_fim_jogo_p1 = None
                             estado_fim_jogo_p2 = None
-                            # Limpar a tela antes de retornar
                             tela.fill((0, 0, 0))
                             pygame.display.flip()
                             rodando = False
@@ -1399,7 +1407,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         elif acao_resultados == "trocar_carro":
                             from core.menu import selecionar_carros_loop
                             resultado = selecionar_carros_loop(tela, modo_arcade=modo_arcade, modo_jogo=modo_jogo)
-                            # Verificar se cancelou (None, None) - no modo arcade, voltar ao menu
                             if resultado is None or (isinstance(resultado, tuple) and len(resultado) == 2 and resultado[0] is None and resultado[1] is None):
                                 if modo_arcade:
                                     rodando = False
@@ -1420,11 +1427,9 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         elif acao_resultados == "menu" or acao_resultados == "sair":
                             rodando = False
                             return
-                    # Se processou evento de resultados finais (mouse/teclado), não processar outros eventos
                     elif ev.type in (pygame.MOUSEBUTTONDOWN, pygame.KEYDOWN):
                         evento_processado = True
                         continue
-                    # Se processou qualquer evento na tela de resultados finais, não processar outros
                     if evento_processado:
                         continue
                 
@@ -1440,7 +1445,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             elif acao == "trocar_carro":
                                 from core.menu import selecionar_carros_loop
                                 resultado = selecionar_carros_loop(tela, modo_arcade=modo_arcade, modo_jogo=modo_jogo)
-                                # Verificar se cancelou (None, None) - no modo arcade, voltar ao menu
                                 if resultado is None or (isinstance(resultado, tuple) and len(resultado) == 2 and resultado[0] is None and resultado[1] is None):
                                     if modo_arcade:
                                         rodando = False
@@ -1453,26 +1457,21 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                         if 0 <= carro_p1_idx < len(CARROS_DISPONIVEIS) and 0 <= carro_p2_idx < len(CARROS_DISPONIVEIS):
                                             return principal(carro_p1_idx, carro_p2_idx, mapa_selecionado, modo_jogo, tipo_jogo, voltas, dificuldade_ia, modo_arcade)
                                 estado_fim_jogo_p1 = None
-                                # Após fechar tela de fim de jogo P1, verificar se Rex deve aparecer (primeira corrida, só se P2 também terminou e modo 1 jogador, não no modo arcade)
                                 if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo and not mercador_alien.ativo and not modo_arcade:
                                     rex.verificar_aparecer()
-                                # Verificar se o Crank deve aparecer (após o Rex, modo 1 jogador, não no modo arcade)
+
                                 if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo and not modo_arcade:
                                     crank.verificar_aparecer_pos_corrida()
-                                # Verificar se o mercador alien deve aparecer (após o Crank, modo 1 jogador)
                                 if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not mercador_alien.ativo and not crank.ativo:
                                     mercador_alien.verificar_aparecer(contexto="corrida")
                                 continue
                             elif acao == "espectador":
                                 p1_espectador = True
                                 estado_fim_jogo_p1 = None
-                                # Após fechar tela de fim de jogo P1, verificar se Rex deve aparecer (primeira corrida, só se P2 também terminou e modo 1 jogador, não no modo arcade)
                                 if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo and not mercador_alien.ativo and not modo_arcade:
                                     rex.verificar_aparecer()
-                                # Verificar se o Crank deve aparecer (após o Rex, modo 1 jogador, não no modo arcade)
                                 if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not crank.ativo and not modo_arcade:
                                     crank.verificar_aparecer_pos_corrida()
-                                # Verificar se o mercador alien deve aparecer (após o Crank, modo 1 jogador)
                                 if modo_jogo == ModoJogo.UM_JOGADOR and estado_fim_jogo_p2 is None and not rex.ativo and not mercador_alien.ativo and not crank.ativo:
                                     mercador_alien.verificar_aparecer(contexto="corrida")
                                 continue
@@ -1485,24 +1484,20 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 opcao_pausa_selecionada = 0
                                 evento_processado = True
                         elif ev.type == pygame.JOYBUTTONDOWN:
-                            # Detectar tipo de controle para mapear botão de pausa corretamente
                             from core.gamepad_manager import gerenciador_gamepad
                             tipo_controle = "generic"
                             if ev.joy < len(gerenciador_gamepad.joysticks):
                                 tipo_controle = gerenciador_gamepad._detectar_tipo_controle(ev.joy)
                             
-                            # PS5/PS4: botão 6 = Share, botão 8/9 = Options
-                            # Xbox: botão 6 = Back (View), botão 7 = Start
-                            # IMPORTANTE: botão 4 = L1/LB (NÃO é pause)
                             botao_pausa = False
                             if ev.button == 4:
                                 botao_pausa = False
                             elif tipo_controle == "xbox":
-                                botao_pausa = (ev.button == 6 or ev.button == 7)  # Back ou Start
+                                botao_pausa = (ev.button == 6 or ev.button == 7)
                             elif tipo_controle in ["ps5", "ps4"]:
-                                botao_pausa = (ev.button == 6 or ev.button == 8 or ev.button == 9)  # Share ou Options
+                                botao_pausa = (ev.button == 6 or ev.button == 8 or ev.button == 9)
                             else:
-                                botao_pausa = (ev.button == 6)  # Fallback genérico
+                                botao_pausa = (ev.button == 6)
                             
                             if botao_pausa and estado_fim_jogo_p1 is None:
                                 jogo_pausado = not jogo_pausado
@@ -2099,6 +2094,11 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     chave_recorde = f"{numero_pista}_{voltas_objetivo}"
                     if gerenciador_progresso.registrar_recorde_drift(chave_recorde, pontuacao_final_p1):
                         print(f"Novo recorde de drift na pista {numero_pista} ({voltas_objetivo} voltas): {pontuacao_final_p1:.0f} pontos")
+                    # Salvar estatísticas de drift
+                    stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(numero_pista)
+                    if "melhor_pontuacao_drift" not in stats_pista or pontuacao_final_p1 > stats_pista.get("melhor_pontuacao_drift", 0):
+                        stats_pista["melhor_pontuacao_drift"] = pontuacao_final_p1
+                    gerenciador_estatisticas.salvar()
                     voltas_completas = corrida.voltas.get(carro1, 0)
                     gerenciador_achievements.atualizar_estatistica("voltas_drift", voltas_completas)
                     achievements_desbloqueados = gerenciador_achievements.verificar_achievements(gerenciador_progresso)
@@ -2278,8 +2278,9 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                         ghost_recorder_p1.parar_gravacao()
                                         frames_gravados = ghost_recorder_p1.obter_dados()
                                         if frames_gravados and len(frames_gravados) > 0:
-                                            gerenciador_ghosts.salvar_ghost(numero_pista, frames_gravados)
-                                            print(f"Ghost salvo para pista {numero_pista} ({len(frames_gravados)} frames)")
+                                            # Passar tempo e tipo_jogo para verificação no salvar_ghost
+                                            gerenciador_ghosts.salvar_ghost(numero_pista, frames_gravados, tempo=tempo_final_p1, tipo_jogo="GHOST")
+                                            print(f"[GHOST] Ghost salvo para pista {numero_pista} ({len(frames_gravados)} frames)")
                                     else:
                                         if ghost_recorder_p1 and ghost_recorder_p1.gravando:
                                             ghost_recorder_p1.parar_gravacao()
@@ -3134,6 +3135,15 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     inputs_p1["freio_mao"] = inputs_p1.get("freio_mao", False) or teclas[pygame.K_SPACE]
                 # Se não há controle, passar None para usar teclado normalmente (freio de mão será processado no carro_fisica)
                 carro1.atualizar(teclas, None, dt_fixo, camera, superficie_pista_renderizada, inputs_controle=inputs_p1, player_id="p1")
+                
+                # Gravar ghost (para modo relógio ou drift, 1 jogador) - DURANTE A CORRIDA
+                if (tipo_jogo in (TipoJogo.GHOST, TipoJogo.DRIFT) and modo_jogo == ModoJogo.UM_JOGADOR):
+                    if ghost_recorder_p1:
+                        if not ghost_recorder_p1.gravando and corrida.iniciada:
+                            ghost_recorder_p1.iniciar_gravacao()
+                            print(f"[GHOST] Gravação iniciada para modo relógio (corrida.iniciada={corrida.iniciada})")
+                        if ghost_recorder_p1.gravando:
+                            ghost_recorder_p1.atualizar(dt_fixo, carro1)
             elif carro1_finalizou and carro1 is not None:
                 # Se o carro finalizou, congelar completamente (não atualizar física)
                 # Apenas garantir que a velocidade seja zero
@@ -3142,14 +3152,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     carro1.vy = 0.0
                     carro1._congelado_apos_finalizar = True
                 # Não atualizar o carro fisicamente - ele está congelado
-                
-                # Gravar ghost (para modo relógio ou drift, 1 jogador)
-                if (tipo_jogo == TipoJogo.GHOST or tipo_jogo == TipoJogo.DRIFT) and modo_jogo == ModoJogo.UM_JOGADOR:
-                    if ghost_recorder_p1:
-                        if not ghost_recorder_p1.gravando and corrida.iniciada:
-                            ghost_recorder_p1.iniciar_gravacao()
-                        if ghost_recorder_p1.gravando:
-                            ghost_recorder_p1.atualizar(dt_fixo, carro1)
 
             if carro2 is not None and not jogo_pausado:
                 carro2_finalizou = corrida.finalizou.get(carro2, False)
@@ -3180,6 +3182,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             if (tipo_jogo == TipoJogo.GHOST or tipo_jogo == TipoJogo.DRIFT) and modo_jogo == ModoJogo.UM_JOGADOR and ghost_player_p1 is not None:
                 if not ghost_player_p1.esta_ativo() and corrida.iniciada:
                     ghost_player_p1.iniciar()
+                    print(f"[GHOST] Ghost iniciado para tipo_jogo={tipo_jogo}, ativo={ghost_player_p1.esta_ativo()}")
                 if ghost_player_p1.esta_ativo():
                     ghost_player_p1.atualizar(dt_fixo)
             
@@ -3529,16 +3532,17 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             principal._emissor_colisao.draw(tela, camera)
             
             if (tipo_jogo == TipoJogo.GHOST or tipo_jogo == TipoJogo.DRIFT) and modo_jogo == ModoJogo.UM_JOGADOR and ghost_player_p1 is not None:
-                if ghost_player_p1.esta_ativo() and camera.esta_visivel(ghost_player_p1.x, ghost_player_p1.y, 40):
-                    sx, sy = camera.mundo_para_tela(ghost_player_p1.x, ghost_player_p1.y)
-                    if hasattr(carro1, 'sprite_base'):
-                        angulo_ghost = ghost_player_p1.angulo
-                        sprite_ghost = pygame.transform.rotozoom(carro1.sprite_base, angulo_ghost, camera.zoom)
-                        # Criar superfície com transparência (alpha = 120/255 = ~47%)
-                        sprite_ghost_alpha = sprite_ghost.copy()
-                        sprite_ghost_alpha.set_alpha(120)
-                        rect_ghost = sprite_ghost_alpha.get_rect(center=(int(sx), int(sy)))
-                        tela.blit(sprite_ghost_alpha, rect_ghost.topleft)
+                if ghost_player_p1.esta_ativo():
+                    if camera.esta_visivel(ghost_player_p1.x, ghost_player_p1.y, 40):
+                        sx, sy = camera.mundo_para_tela(ghost_player_p1.x, ghost_player_p1.y)
+                        if hasattr(carro1, 'sprite_base'):
+                            angulo_ghost = ghost_player_p1.angulo
+                            sprite_ghost = pygame.transform.rotozoom(carro1.sprite_base, angulo_ghost, camera.zoom)
+                            # Criar superfície com transparência (alpha = 120/255 = ~47%)
+                            sprite_ghost_alpha = sprite_ghost.copy()
+                            sprite_ghost_alpha.set_alpha(120)
+                            rect_ghost = sprite_ghost_alpha.get_rect(center=(int(sx), int(sy)))
+                            tela.blit(sprite_ghost_alpha, rect_ghost.topleft)
             
             if hasattr(principal, '_emissor_colisao'):
                 principal._emissor_colisao.update(dt_fixo)
@@ -3898,34 +3902,87 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             print(f"[MAIN] Não é training_01 ou flag não está definida. ultima_corrida_campanha: {getattr(gerenciador_progresso, 'ultima_corrida_campanha', 'N/A')}")
 
                     # Registrar recordes APENAS no modo arcade; no modo campanha o foco é narrativa
+                    novo_recorde = False
+                    novo_recorde_drift = False
                     if modo_arcade:
-                        recorde_antes = gerenciador_progresso.obter_recorde(numero_pista)
+                        if tipo_jogo == TipoJogo.DRIFT:
+                            # Para drift, verificar se há novo recorde de score
+                            chave_recorde = f"{numero_pista}_{voltas}"
+                            recorde_drift_antes = gerenciador_progresso.obter_recorde_drift(chave_recorde)
+                            if drift_scoring and drift_scoring.points > 0:
+                                novo_recorde_drift = gerenciador_progresso.registrar_recorde_drift(chave_recorde, drift_scoring.points)
+                                if novo_recorde_drift:
+                                    print(f"Novo recorde de drift na pista {numero_pista} ({voltas} voltas): {drift_scoring.points:.0f} pontos")
+                        else:
+                            # Para corrida/relógio, verificar recorde de tempo
+                            recorde_antes = gerenciador_progresso.obter_recorde(numero_pista)
+                            novo_recorde = gerenciador_progresso.registrar_recorde(numero_pista, tempo_final)
+                            if novo_recorde:
+                                print(f"Novo recorde na pista {numero_pista}: {tempo_final:.2f}s")
+                                # Atualizar estatística de recordes
+                                gerenciador_achievements.atualizar_estatistica("recordes_estabelecidos", incrementar=True)
 
-                        novo_recorde = gerenciador_progresso.registrar_recorde(numero_pista, tempo_final)
-                        if novo_recorde:
-                            print(f"Novo recorde na pista {numero_pista}: {tempo_final:.2f}s")
-                            # Atualizar estatística de recordes
-                            gerenciador_achievements.atualizar_estatistica("recordes_estabelecidos", incrementar=True)
-
-                            # Salvar ghost (sempre no modo relógio se melhor, ou quando novo recorde no modo drift)
-                            if (tipo_jogo == TipoJogo.GHOST or tipo_jogo == TipoJogo.DRIFT):
-                                if ghost_recorder_p1 and ghost_recorder_p1.gravando:
-                                    salvar_ghost = False
-                                    if tipo_jogo == TipoJogo.GHOST:
-                                        if recorde_antes is None or tempo_final < recorde_antes:
-                                            salvar_ghost = True
-                                    elif tipo_jogo == TipoJogo.DRIFT and novo_recorde:
+                    # Salvar ghost (sempre no modo relógio se melhor, ou quando novo recorde no modo drift)
+                    # IMPORTANTE: Salvar ghost mesmo quando não há novo recorde, desde que seja no modo relógio
+                    if (tipo_jogo in (TipoJogo.GHOST, TipoJogo.DRIFT)):
+                        if ghost_recorder_p1:
+                            # Obter frames gravados (mesmo que gravando seja False)
+                            frames_gravados = ghost_recorder_p1.obter_dados()
+                            print(f"[GHOST] Verificando salvamento: tipo_jogo={tipo_jogo}, frames={len(frames_gravados) if frames_gravados else 0}, gravando={ghost_recorder_p1.gravando}")
+                            
+                            # Verificar se há frames gravados
+                            if frames_gravados and len(frames_gravados) > 0:
+                                salvar_ghost = False
+                                if tipo_jogo == TipoJogo.GHOST:
+                                    # No modo relógio, salvar sempre que completar a corrida (primeira vez ou se for melhor)
+                                    # Verificar se já existe ghost para esta pista
+                                    ghost_existente = gerenciador_ghosts.obter_ghost(numero_pista)
+                                    recorde_antes = gerenciador_progresso.obter_recorde(numero_pista) if modo_arcade else None
+                                    print(f"[GHOST] Ghost existente: {ghost_existente is not None and len(ghost_existente) > 0 if ghost_existente else False}, recorde_antes={recorde_antes}, tempo_final={tempo_final:.2f}s")
+                                    if ghost_existente is None or len(ghost_existente) == 0:
+                                        # Não há ghost anterior, salvar sempre (primeira vez)
                                         salvar_ghost = True
-
-                                    if salvar_ghost:
-                                        ghost_recorder_p1.parar_gravacao()
-                                        frames_gravados = ghost_recorder_p1.obter_dados()
-                                        if frames_gravados and len(frames_gravados) > 0:
-                                            gerenciador_ghosts.salvar_ghost(numero_pista, frames_gravados)
-                                            print(f"Ghost salvo para pista {numero_pista} ({len(frames_gravados)} frames)")
+                                        print(f"[GHOST] Primeira vez completando pista {numero_pista} no modo relógio, salvando ghost...")
+                                    elif recorde_antes is None or tempo_final < recorde_antes:
+                                        # Há ghost mas este tempo é melhor, salvar
+                                        salvar_ghost = True
+                                        print(f"[GHOST] Tempo melhor no modo relógio ({tempo_final:.2f}s < {recorde_antes:.2f}s), salvando ghost...")
+                                elif tipo_jogo == TipoJogo.DRIFT:
+                                    # No modo DRIFT, salvar apenas se for novo recorde
+                                    if novo_recorde_drift:
+                                        salvar_ghost = True
+                                        print(f"[GHOST] Novo recorde de drift, salvando ghost...")
                                     else:
-                                        if ghost_recorder_p1 and ghost_recorder_p1.gravando:
-                                            ghost_recorder_p1.parar_gravacao()
+                                        # Verificar se é primeira vez (não há ghost anterior)
+                                        ghost_existente = gerenciador_ghosts.obter_ghost(numero_pista)
+                                        if ghost_existente is None or len(ghost_existente) == 0:
+                                            salvar_ghost = True
+                                            print(f"[GHOST] Primeira vez completando pista {numero_pista} no modo drift, salvando ghost...")
+
+                                if salvar_ghost:
+                                    if ghost_recorder_p1.gravando:
+                                        ghost_recorder_p1.parar_gravacao()
+                                    # Passar tempo/score e tipo_jogo para verificação no salvar_ghost
+                                    tipo_jogo_str = "GHOST" if tipo_jogo == TipoJogo.GHOST else "DRIFT"
+                                    # Para drift, usar score como "tempo"
+                                    tempo_ou_score = drift_scoring.points if (tipo_jogo == TipoJogo.DRIFT and drift_scoring and hasattr(drift_scoring, 'points')) else tempo_final
+                                    resultado = gerenciador_ghosts.salvar_ghost(numero_pista, frames_gravados, tempo=tempo_ou_score, tipo_jogo=tipo_jogo_str)
+                                    if resultado:
+                                        modo_str = "relógio" if tipo_jogo == TipoJogo.GHOST else "drift"
+                                        print(f"[GHOST] Ghost salvo com sucesso para pista {numero_pista} no modo {modo_str} ({len(frames_gravados)} frames)")
+                                    else:
+                                        modo_str = "relógio" if tipo_jogo == TipoJogo.GHOST else "drift"
+                                        print(f"[GHOST] Falha ao salvar ghost para pista {numero_pista} no modo {modo_str}")
+                                else:
+                                    modo_str = "relógio" if tipo_jogo == TipoJogo.GHOST else "drift"
+                                    print(f"[GHOST] Ghost não será salvo no modo {modo_str} (condições não atendidas)")
+                                    if ghost_recorder_p1.gravando:
+                                        ghost_recorder_p1.parar_gravacao()
+                            else:
+                                modo_str = "relógio" if tipo_jogo == TipoJogo.GHOST else "drift"
+                                print(f"[GHOST] AVISO: Nenhum frame gravado para salvar no modo {modo_str}! (gravando={ghost_recorder_p1.gravando})")
+                                if ghost_recorder_p1.gravando:
+                                    ghost_recorder_p1.parar_gravacao()
 
                         if tipo_jogo == TipoJogo.GHOST:
                             if trofeu == trofeu_ouro:
@@ -4129,14 +4186,16 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             tela.blit(caixa_fundo, (caixa_x, caixa_y))
             pygame.draw.rect(tela, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
             
-            titulo_texto = render_text("JOGO PAUSADO", 48, (255, 255, 255), bold=True, pixel_style=True)
+            from core.i18n import t
+            titulo_texto = render_text(t("pause.titulo"), 48, (255, 255, 255), bold=True, pixel_style=True)
             titulo_x = caixa_x + (caixa_largura - titulo_texto.get_width()) // 2
             tela.blit(titulo_texto, (titulo_x, caixa_y + 20))
             
+            from core.i18n import t
             opcoes_pausa_formatadas = [
-                ("CONTINUAR", "continuar"),
-                ("REINICIAR JOGO", "reiniciar"),
-                ("MENU PRINCIPAL", "menu")
+                (t("pause.continuar"), "continuar"),
+                (t("pause.reiniciar"), "reiniciar"),
+                (t("pause.menu_principal"), "menu")
             ]
             
             altura_total_opcoes = len(opcoes_pausa_formatadas) * 60

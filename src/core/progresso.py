@@ -359,7 +359,14 @@ class GerenciadorProgresso:
         try:
             os.makedirs(os.path.dirname(CAMINHO_PROGRESSO), exist_ok=True)
             
-            from core.missoes import gerenciador_missoes
+            try:
+                from core.missoes import gerenciador_missoes
+                missoes_completas = list(gerenciador_missoes.missoes_completas)
+                missao_ativa_id = gerenciador_missoes.missao_ativa_id
+            except (ImportError, AttributeError):
+                missoes_completas = []
+                missao_ativa_id = None
+            
             from core.mapa_locations import gerenciador_localizacoes
             from core.tempo_jogo import gerenciador_tempo
             from core.status_jogador import status_jogador
@@ -381,8 +388,8 @@ class GerenciadorProgresso:
                 'upgrades_visitados': list(self.upgrades_visitados),
                 
                 # Dados de missões
-                'missoes_completas': list(gerenciador_missoes.missoes_completas),
-                'missao_ativa_id': gerenciador_missoes.missao_ativa_id,
+                'missoes_completas': missoes_completas,
+                'missao_ativa_id': missao_ativa_id,
                 
                 # Dados de localizações
                 'mapa_locations': {
@@ -563,6 +570,24 @@ class GerenciadorProgresso:
         """Obtém o recorde de drift de uma pista"""
         return self.recordes_drift.get(str(numero_pista), None)
     
+    def registrar_recorde_drift(self, chave_recorde, pontuacao):
+        """Registra um novo recorde de drift se a pontuação for melhor
+        
+        Args:
+            chave_recorde: Chave do recorde (ex: "1_1" para pista 1, 1 volta)
+            pontuacao: Pontuação do drift
+            
+        Returns:
+            True se foi um novo recorde, False caso contrário
+        """
+        recorde_atual = self.recordes_drift.get(chave_recorde, None)
+        
+        if recorde_atual is None or pontuacao > recorde_atual:
+            self.recordes_drift[chave_recorde] = pontuacao
+            self.salvar()
+            return True
+        return False
+    
     def obter_trofeu(self, numero_pista):
         """Obtém o troféu de uma pista"""
         return self.trofeus.get(str(numero_pista), None)
@@ -725,11 +750,15 @@ class GerenciadorProgresso:
     def _carregar_dados_outros_sistemas(self, data: dict):
         """Carrega dados de outros sistemas do progresso.json e restaura nos sistemas"""
         try:
-            # Carregar dados de missões
+            # Carregar dados de missões (lazy import para evitar circular)
             if 'missoes_completas' in data or 'missao_ativa_id' in data:
-                from core.missoes import gerenciador_missoes
-                gerenciador_missoes.missoes_completas = set(data.get('missoes_completas', []))
-                gerenciador_missoes.missao_ativa_id = data.get('missao_ativa_id', None)
+                try:
+                    from core.missoes import gerenciador_missoes
+                    gerenciador_missoes.missoes_completas = set(data.get('missoes_completas', []))
+                    gerenciador_missoes.missao_ativa_id = data.get('missao_ativa_id', None)
+                except (ImportError, AttributeError) as e:
+                    # Ignorar se houver importação circular ou se o módulo ainda não estiver pronto
+                    pass
             
             # Carregar dados de localizações
             if 'mapa_locations' in data:
@@ -752,10 +781,16 @@ class GerenciadorProgresso:
                 status_jogador.sono = status_data.get('sono', 100)
                 status_jogador.tedio = status_data.get('tedio', 0)
             
-            # Carregar dados de ghosts
-            if 'ghosts' in data:
-                from core.ghost import gerenciador_ghosts
-                gerenciador_ghosts.ghosts = data.get('ghosts', {})
+            # Carregar dados de ghosts (apenas uma vez, não repetir)
+            if 'ghosts' in data and not hasattr(self, '_ghosts_carregados'):
+                try:
+                    from core.ghost import gerenciador_ghosts
+                    ghosts_data = data.get('ghosts', {})
+                    gerenciador_ghosts.ghosts = {str(k): v for k, v in ghosts_data.items()}
+                    self._ghosts_carregados = True
+                    print(f"[PROGRESSO] Ghosts carregados: {len(gerenciador_ghosts.ghosts)} ghosts")
+                except Exception as e:
+                    print(f"[PROGRESSO] Erro ao carregar ghosts: {e}")
             
             # Carregar dados do sistema narrativo
             if 'narrative_system' in data:
@@ -769,18 +804,22 @@ class GerenciadorProgresso:
                 narrative_system.chapter_start_time = narrative_data.get('chapter_start_time', {})
                 
                 # Validar se o capítulo atual está correto baseado no progresso real
-                from core.missoes import gerenciador_missoes
-                gerenciador_missoes.carregar()
-                
-                # Determinar qual capítulo o jogador deveria estar baseado nas missões completas
-                missoes_ch1 = ["m1_primeira_faisca", "m2_teste_de_sobrevivencia", "m3_rota_da_ferrugem", 
-                               "m4_coracao_de_sucata", "m5_cirurgia_na_garagem", "m6_batismo_de_pista", "m7_olhos_no_painel"]
-                missoes_ch2 = ["m8_oferta_envenenada", "m9a_peso_da_divida", "m10_portoes_do_cinturao", "m10b_corridas_cinturao"]
-                missoes_ch3 = ["m11_chamado_da_montanha", "m12_fantasma_do_circuito", "m13_teste_de_fluxo", "m14_tres_mundos"]
-                
-                ch1_completas = sum(1 for m in missoes_ch1 if m in gerenciador_missoes.missoes_completas)
-                ch2_completas = sum(1 for m in missoes_ch2 if m in gerenciador_missoes.missoes_completas)
-                ch3_completas = sum(1 for m in missoes_ch3 if m in gerenciador_missoes.missoes_completas)
+                try:
+                    from core.missoes import gerenciador_missoes
+                    gerenciador_missoes.carregar()
+                    
+                    # Determinar qual capítulo o jogador deveria estar baseado nas missões completas
+                    missoes_ch1 = ["m1_primeira_faisca", "m2_teste_de_sobrevivencia", "m3_rota_da_ferrugem", 
+                                   "m4_coracao_de_sucata", "m5_cirurgia_na_garagem", "m6_batismo_de_pista", "m7_olhos_no_painel"]
+                    missoes_ch2 = ["m8_oferta_envenenada", "m9a_peso_da_divida", "m10_portoes_do_cinturao", "m10b_corridas_cinturao"]
+                    missoes_ch3 = ["m11_chamado_da_montanha", "m12_fantasma_do_circuito", "m13_teste_de_fluxo", "m14_tres_mundos"]
+                    
+                    ch1_completas = sum(1 for m in missoes_ch1 if m in gerenciador_missoes.missoes_completas)
+                    ch2_completas = sum(1 for m in missoes_ch2 if m in gerenciador_missoes.missoes_completas)
+                    ch3_completas = sum(1 for m in missoes_ch3 if m in gerenciador_missoes.missoes_completas)
+                except (ImportError, AttributeError):
+                    # Se houver importação circular, pular validação de capítulos
+                    ch1_completas = ch2_completas = ch3_completas = 0
                 
                 # Determinar capítulo esperado baseado no progresso
                 if ch1_completas < len(missoes_ch1):

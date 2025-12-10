@@ -1243,16 +1243,19 @@ class Crank:
         tela.blit(overlay, (caixa_x, caixa_y))
         pygame.draw.rect(tela, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 2)
         
-        titulo = render_text("CONFIRMAÇÃO DE COMPRA", 22, (255, 255, 0), bold=True, pixel_style=True)
+        from core.i18n import t
+        titulo = render_text(t("confirmacao.compra.titulo"), 22, (255, 255, 0), bold=True, pixel_style=True)
         tela.blit(titulo, (caixa_x + (caixa_largura - titulo.get_width()) // 2, caixa_y + 10))
         
         desc = render_text(f"{nome_upgrade.upper()} nível {nivel + 1}", 18, (220, 220, 220), bold=False, pixel_style=True)
-        preco_txt = render_text(f"Preço: ${preco:,}", 18, (180, 255, 180), bold=False, pixel_style=True)
+        from core.i18n import t
+        preco_txt = render_text(t("confirmacao.compra.preco").format(preco=preco), 18, (180, 255, 180), bold=False, pixel_style=True)
         tela.blit(desc, (caixa_x + 20, caixa_y + 45))
         tela.blit(preco_txt, (caixa_x + 20, caixa_y + 70))
         
         # Opções (idênticas ao Boris)
-        opcoes = ["COMPRAR PEÇA", "SAIR"]
+        from core.i18n import t
+        opcoes = [t("confirmacao.upgrade.comprar_peca"), t("confirmacao.upgrade.sair")]
         for i, texto_opcao in enumerate(opcoes):
             cor = (0, 200, 255) if i == self.opcao_confirmacao_selecionada else (200, 200, 200)
             txt = render_text(texto_opcao, 20, cor, bold=True, pixel_style=True)

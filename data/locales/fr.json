@@ -19,6 +19,8 @@
       "idioma": "LANGUE",
       "voltar": "RETOUR"
     },
+    "fechar": "FERMER",
+    "esc_para_fechar": "ESC pour fermer",
     "confirmar": "CONFIRMER",
     "cancelar": "ANNULER",
     "idioma": {
@@ -61,7 +63,8 @@
       "vender": "VENDRE",
       "dois_jogadores": "2 JOUEURS",
       "um_jogador": "1 JOUEUR",
-      "concluido": "TERMINÉ"
+      "concluido": "TERMINÉ",
+      "voltar": "RETOUR"
     },
     "upgrades": {
       "titulo": "AMÉLIORATIONS - {}",
@@ -156,7 +159,9 @@
     "1_jogador": "1 JOUEUR",
     "2_jogadores": "2 JOUEURS",
     "corrida": "COURSE",
-    "drift": "DRIFT"
+    "drift": "DRIFT",
+    "ghost": "CHRONOMÈTRE",
+    "relogio": "CHRONOMÈTRE"
   },
   "recordes": {
     "corrida": "COURSE",
@@ -210,7 +215,70 @@
     "upgrade_comprado": "{} - {} amélioré!",
     "comprar_carro_primeiro": "Vous devez d'abord acheter la voiture !",
     "erro_vender_carro": "Erreur lors de la vente de la voiture !",
-    "nao_pode_vender_unico_carro": "Vous ne pouvez pas vendre votre seule voiture !"
+    "nao_pode_vender_unico_carro": "Vous ne pouvez pas vendre votre seule voiture !",
+    "carro_reparado": "Voiture réparée pour ${}!"
+  },
+  "estatisticas": {
+    "titulo": "STATISTIQUES",
+    "gerais": "GÉNÉRAL",
+    "tempo_total_jogado": "Temps Total Joué",
+    "distancia_total": "Distance Totale",
+    "corridas_completas": "Courses Terminées",
+    "corridas_vencidas": "Courses Gagnées",
+    "voltas_completas": "Tours Complétés",
+    "colisoes_totais": "Collisions Totales",
+    "drifts_totais": "Drifts Totaux",
+    "turbo_usado": "Turbo Utilisé",
+    "recordes_estabelecidos": "Records Établis",
+    "trofeus_ganhos": "Trophées Gagnés",
+    "melhores_tempos_corrida": "MEILLEURS TEMPS (COURSE)",
+    "melhores_scores_drift": "MEILLEURS SCORES (DRIFT)",
+    "melhores_tempos_relogio": "MEILLEURS TEMPS (CONTRE LA MONTRE)",
+    "pista_tempo": "Piste {pista}: {tempo}",
+    "pista_score": "Piste {pista}: {score} pts"
+  },
+  "desafios": {
+    "titulo": "DÉFIS",
+    "diarios": "DÉFIS QUOTIDIENS",
+    "semanais": "DÉFIS HEBDOMADAIRES",
+    "concluido": "✓ TERMINÉ",
+    "recompensa": "Récompense: ${recompensa}",
+    "descricao": {
+      "completar_corridas": "Terminez {objetivo} courses",
+      "vencer_corridas": "Gagnez {objetivo} courses en 1ère place",
+      "completar_voltas": "Terminez {objetivo} tours",
+      "usar_turbo": "Utilisez le turbo {objetivo} fois",
+      "estabelecer_recorde": "Établissez {objetivo} nouveaux records"
+    }
+  },
+  "confirmacao": {
+    "compra": {
+      "titulo": "CONFIRMATION D'ACHAT",
+      "preco": "Prix: ${preco:,}",
+      "comprar_carro": "ACHETER VOITURE"
+    },
+    "venda": {
+      "titulo": "CONFIRMATION DE VENTE",
+      "valor_venda": "Valeur de vente: ${preco_venda:,}",
+      "vender_carro": "VENDRE VOITURE"
+    },
+    "fechar": {
+      "pergunta": "Êtes-vous sûr de vouloir fermer le jeu ?",
+      "sim": "OUI",
+      "nao": "NON"
+    },
+    "upgrade": {
+      "comprar_peca": "ACHETER PIÈCE",
+      "sair": "SORTIR"
+    }
+  },
+  "pause": {
+    "titulo": "JEU EN PAUSE",
+    "continuar": "CONTINUER",
+    "salvar": "SAUVEGARDER",
+    "opcoes": "OPTIONS",
+    "menu_principal": "MENU PRINCIPAL",
+    "reiniciar": "REDÉMARRER LE JEU"
   },
   "titulo_jogo": {
     "menu": "Turbo Racer — Menu",
@@ -223,8 +291,14 @@
     "primeira_corrida_desc": "Terminez votre première course",
     "velocista": "Vélociste",
     "velocista_desc": "Atteignez 200 km/h",
+    "velocista_pro": "Vélociste Pro",
+    "velocista_pro_desc": "Atteignez 250 km/h",
+    "velocidade_extrema": "Vitesse Extrême",
+    "velocidade_extrema_desc": "Atteignez 300 km/h",
     "drift_master": "Maître du Drift",
     "drift_master_desc": "Terminez 10 tours en mode drift",
+    "drift_expert": "Expert en Drift",
+    "drift_expert_desc": "Terminez 25 tours en mode drift",
     "sem_colisao": "Pilote Propre",
     "sem_colisao_desc": "Terminez une course sans collisions",
     "trofeu_ouro": "Champion",

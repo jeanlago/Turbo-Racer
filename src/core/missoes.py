@@ -85,7 +85,11 @@ class GerenciadorMissoes:
     def _verificar_missao_m19_ativacao(self):
         """Verifica se a missão m19_jogo_do_rei deve ser ativada (jogador já venceu as 3 etapas do Circuito da Coroa)"""
         try:
-            from core.progresso import gerenciador_progresso
+            try:
+                from core.progresso import gerenciador_progresso
+            except (ImportError, AttributeError):
+                # Se houver importação circular, pular verificação
+                return
             # Verificar se as 3 etapas foram vencidas
             if hasattr(gerenciador_progresso, 'crown_stages_won'):
                 crown_stages_won = gerenciador_progresso.crown_stages_won

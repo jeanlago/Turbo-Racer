@@ -591,33 +591,40 @@ def desenhar_tela_achievements(screen, dt):
         pygame.draw.rect(screen, cor_thumb, (barra_x + 2, thumb_y, barra_largura - 4, thumb_altura))
         pygame.draw.rect(screen, (255, 255, 255), (barra_x + 2, thumb_y, barra_largura - 4, thumb_altura), 1)
     
-    # Botão fechar
-    fechar_rect = pygame.Rect(caixa_x + caixa_largura - 100, caixa_y + 20, 80, 40)
+    # Botão fechar (padronizado com estatísticas e desafios)
+    botao_fechar_rect = pygame.Rect(caixa_x + caixa_largura - 120, caixa_y + 20, 100, 40)
     mouse_x, mouse_y = pygame.mouse.get_pos()
-    fechar_hover = fechar_rect.collidepoint(mouse_x, mouse_y)
+    fechar_hover = botao_fechar_rect.collidepoint(mouse_x, mouse_y)
     
-    cor_fechar = (200, 50, 50) if fechar_hover else (150, 50, 50)
-    pygame.draw.rect(screen, cor_fechar, fechar_rect)
-    pygame.draw.rect(screen, (255, 255, 255), fechar_rect, 2)
+    # Verificar se está selecionado pelo controle
+    from core.gamepad_manager import gerenciador_gamepad
+    fechar_selecionado = getattr(desenhar_tela_achievements, '_fechar_selecionado', False)
     
-    # Desenhar cursor do controle (caixa animada) para botão fechar
-    if gerenciador_gamepad.obter_numero_controles() > 0:
+    # Cores do botão baseadas no hover ou seleção (mesmo estilo das outras telas)
+    cor_fundo = (255, 80, 80) if (fechar_hover or fechar_selecionado) else (200, 50, 50)
+    cor_borda = (255, 150, 150) if (fechar_hover or fechar_selecionado) else (255, 100, 100)
+    
+    pygame.draw.rect(screen, cor_fundo, botao_fechar_rect)
+    pygame.draw.rect(screen, cor_borda, botao_fechar_rect, 2)
+    
+    # Desenhar cursor do controle se selecionado
+    if fechar_selecionado and gerenciador_gamepad.obter_numero_controles() > 0:
         tamanho_cursor = 3 + int(2 * abs(math.sin(_achievements_animacao_cursor * math.pi)))
         cursor_rect = pygame.Rect(
-            fechar_rect.x - tamanho_cursor,
-            fechar_rect.y - tamanho_cursor,
-            fechar_rect.width + tamanho_cursor * 2,
-            fechar_rect.height + tamanho_cursor * 2
+            botao_fechar_rect.x - tamanho_cursor,
+            botao_fechar_rect.y - tamanho_cursor,
+            botao_fechar_rect.width + tamanho_cursor * 2,
+            botao_fechar_rect.height + tamanho_cursor * 2
         )
         pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
     
-    fechar_texto = render_text("FECHAR", 18, (255, 255, 255), bold=True, pixel_style=True)
-    fechar_x = fechar_rect.x + (fechar_rect.width - fechar_texto.get_width()) // 2
-    fechar_y = fechar_rect.y + (fechar_rect.height - fechar_texto.get_height()) // 2
+    fechar_texto = render_text(t("menu.fechar"), 18, (255, 255, 255), bold=True, pixel_style=True)
+    fechar_x = botao_fechar_rect.x + (botao_fechar_rect.width - fechar_texto.get_width()) // 2
+    fechar_y = botao_fechar_rect.y + (botao_fechar_rect.height - fechar_texto.get_height()) // 2
     screen.blit(fechar_texto, (fechar_x, fechar_y))
     
-    # Instrução
-    instrucao = render_text("ESC para fechar", 16, (150, 150, 150), bold=False, pixel_style=True)
+    # Instrução (traduzida)
+    instrucao = render_text(t("menu.esc_para_fechar"), 16, (150, 150, 150), bold=False, pixel_style=True)
     screen.blit(instrucao, (caixa_x + 20, caixa_y + caixa_altura - 30))
 
 # Variáveis globais para animação do cursor nas telas
@@ -628,6 +635,26 @@ _estatisticas_scroll_drag_start_y = 0
 _estatisticas_scroll_drag_start_offset = 0
 _estatisticas_altura_total = 0
 _desafios_animacao_cursor = 0.0
+
+def _traduzir_descricao_desafio(desafio):
+    """Traduz a descrição de um desafio baseado no tipo e objetivo"""
+    from core.i18n import t
+    tipo = desafio.get("tipo", "")
+    objetivo = desafio.get("objetivo", 0)
+    
+    if tipo == "completar_corridas":
+        return t("desafios.descricao.completar_corridas").format(objetivo=objetivo)
+    elif tipo == "vencer_corridas":
+        return t("desafios.descricao.vencer_corridas").format(objetivo=objetivo)
+    elif tipo == "completar_voltas":
+        return t("desafios.descricao.completar_voltas").format(objetivo=objetivo)
+    elif tipo == "usar_turbo":
+        return t("desafios.descricao.usar_turbo").format(objetivo=objetivo)
+    elif tipo == "estabelecer_recorde":
+        return t("desafios.descricao.estabelecer_recorde").format(objetivo=objetivo)
+    else:
+        # Fallback: usar descrição original se não houver tradução
+        return desafio.get("descricao", "")
 
 def desenhar_tela_estatisticas(screen, dt, mouse_x=None, mouse_y=None):
     """Desenha a tela de estatísticas detalhadas"""
@@ -654,7 +681,7 @@ def desenhar_tela_estatisticas(screen, dt, mouse_x=None, mouse_y=None):
     screen.blit(caixa_fundo, (caixa_x, caixa_y))
     pygame.draw.rect(screen, (100, 150, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
     
-    titulo = render_text("ESTATÍSTICAS", 48, (100, 220, 255), bold=True, pixel_style=True)
+    titulo = render_text(t("estatisticas.titulo"), 48, (100, 220, 255), bold=True, pixel_style=True)
     titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
     screen.blit(titulo, (titulo_x, caixa_y + 20))
     
@@ -691,37 +718,59 @@ def desenhar_tela_estatisticas(screen, dt, mouse_x=None, mouse_y=None):
         if melhor_tempo is None:
             melhor_tempo = gerenciador_progresso.obter_recorde(pista_num)
         if melhor_tempo is not None:
-            recordes_corrida_texto.append(f"Pista {pista_num}: {formatar_tempo_estat(melhor_tempo)}")
+            recordes_corrida_texto.append(t("estatisticas.pista_tempo").format(pista=pista_num, tempo=formatar_tempo_estat(melhor_tempo)))
     
-    # Coletar recordes de drift
+    # Coletar recordes de drift (buscar todas as chaves no formato "pista_voltas")
     recordes_drift_texto = []
+    recordes_drift_dict = gerenciador_progresso.recordes_drift
+    for chave, pontuacao in recordes_drift_dict.items():
+        # Chave pode ser "1_1", "2_3", etc. (pista_voltas)
+        try:
+            pista_num = int(chave.split('_')[0])
+            recordes_drift_texto.append(t("estatisticas.pista_score").format(pista=pista_num, score=formatar_score_estat(pontuacao)))
+        except (ValueError, IndexError):
+            # Se a chave não estiver no formato esperado, pular
+            continue
+    
+    # Coletar melhores tempos do modo relógio (GHOST)
+    # No modo GHOST, o tempo é salvo como recorde de corrida
+    recordes_relogio_texto = []
     for pista_num in range(1, 10):
-        recorde = gerenciador_progresso.obter_recorde_drift(pista_num)
-        if recorde is not None:
-            recordes_drift_texto.append(f"Pista {pista_num}: {formatar_score_estat(recorde)} pts")
+        # Tentar obter do recorde primeiro (modo GHOST salva como recorde)
+        melhor_tempo = gerenciador_progresso.obter_recorde(pista_num)
+        # Se não houver recorde, verificar nas estatísticas
+        if melhor_tempo is None:
+            stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(pista_num)
+            melhor_tempo = stats_pista.get("melhor_tempo")
+        if melhor_tempo is not None:
+            recordes_relogio_texto.append(t("estatisticas.pista_tempo").format(pista=pista_num, tempo=formatar_tempo_estat(melhor_tempo)))
     
     secoes = [
-        ("GERAIS", [
-            ("Tempo Total Jogado", gerenciador_estatisticas.formatar_tempo(stats_gerais["tempo_total_jogado"])),
-            ("Distância Total", gerenciador_estatisticas.formatar_distancia(stats_gerais["distancia_total"])),
-            ("Corridas Completas", str(stats_gerais["corridas_completas"])),
-            ("Corridas Vencidas", str(stats_gerais["corridas_vencidas"])),
-            ("Voltas Completas", str(stats_gerais["voltas_completas"])),
-            ("Colisões Totais", str(stats_gerais["colisoes_totais"])),
-            ("Drifts Totais", str(stats_gerais["drifts_totais"])),
-            ("Turbo Usado", str(stats_gerais["turbo_usado"])),
-            ("Recordes Estabelecidos", str(stats_gerais["recordes_estabelecidos"])),
-            ("Troféus Ganhos", str(stats_gerais["trofeus_ganhos"]))
+        (t("estatisticas.gerais"), [
+            (t("estatisticas.tempo_total_jogado"), gerenciador_estatisticas.formatar_tempo(stats_gerais["tempo_total_jogado"])),
+            (t("estatisticas.distancia_total"), gerenciador_estatisticas.formatar_distancia(stats_gerais["distancia_total"])),
+            (t("estatisticas.corridas_completas"), str(stats_gerais["corridas_completas"])),
+            (t("estatisticas.corridas_vencidas"), str(stats_gerais["corridas_vencidas"])),
+            (t("estatisticas.voltas_completas"), str(stats_gerais["voltas_completas"])),
+            (t("estatisticas.colisoes_totais"), str(stats_gerais["colisoes_totais"])),
+            (t("estatisticas.drifts_totais"), str(stats_gerais["drifts_totais"])),
+            (t("estatisticas.turbo_usado"), str(stats_gerais["turbo_usado"])),
+            (t("estatisticas.recordes_estabelecidos"), str(stats_gerais["recordes_estabelecidos"])),
+            (t("estatisticas.trofeus_ganhos"), str(stats_gerais["trofeus_ganhos"]))
         ])
     ]
     
     # Adicionar seção de recordes de corrida se houver
     if recordes_corrida_texto:
-        secoes.append(("MELHORES TEMPOS (CORRIDA)", recordes_corrida_texto))
+        secoes.append((t("estatisticas.melhores_tempos_corrida"), recordes_corrida_texto))
     
     # Adicionar seção de recordes de drift se houver
     if recordes_drift_texto:
-        secoes.append(("MELHORES SCORES (DRIFT)", recordes_drift_texto))
+        secoes.append((t("estatisticas.melhores_scores_drift"), recordes_drift_texto))
+    
+    # Adicionar seção de recordes de relógio (GHOST) se houver
+    if recordes_relogio_texto:
+        secoes.append((t("estatisticas.melhores_tempos_relogio"), recordes_relogio_texto))
     
     # Criar superfície com scroll para conteúdo
     # Aumentar altura da área de conteúdo para evitar corte
@@ -800,7 +849,7 @@ def desenhar_tela_estatisticas(screen, dt, mouse_x=None, mouse_y=None):
         )
         pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
     
-    fechar_texto = render_text("FECHAR", 18, (255, 255, 255), bold=True, pixel_style=True)
+    fechar_texto = render_text(t("menu.fechar"), 18, (255, 255, 255), bold=True, pixel_style=True)
     fechar_x = botao_fechar_rect.x + (botao_fechar_rect.width - fechar_texto.get_width()) // 2
     fechar_y = botao_fechar_rect.y + (botao_fechar_rect.height - fechar_texto.get_height()) // 2
     screen.blit(fechar_texto, (fechar_x, fechar_y))
@@ -832,7 +881,7 @@ def desenhar_tela_desafios(screen, dt):
     screen.blit(caixa_fundo, (caixa_x, caixa_y))
     pygame.draw.rect(screen, (100, 150, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
     
-    titulo = render_text("DESAFIOS", 48, (100, 220, 255), bold=True, pixel_style=True)
+    titulo = render_text(t("desafios.titulo"), 48, (100, 220, 255), bold=True, pixel_style=True)
     titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
     screen.blit(titulo, (titulo_x, caixa_y + 20))
     
@@ -842,7 +891,7 @@ def desenhar_tela_desafios(screen, dt):
     desafios_semanais = gerenciador_desafios.obter_desafios_semanais()
     
     if desafios_diarios:
-        secao_titulo = render_text("DESAFIOS DIÁRIOS", 28, (150, 200, 255), bold=True, pixel_style=True)
+        secao_titulo = render_text(t("desafios.diarios"), 28, (150, 200, 255), bold=True, pixel_style=True)
         screen.blit(secao_titulo, (caixa_x + 30, y_atual))
         y_atual += 40
         
@@ -859,15 +908,17 @@ def desenhar_tela_desafios(screen, dt):
             if esta_completo:
                 cor_desc = (150, 255, 150)  # Verde para completado
                 cor_progresso = (100, 255, 100)  # Verde mais claro
-                status_texto = render_text("✓ CONCLUÍDO", 14, (100, 255, 100), bold=True, pixel_style=True)
+                status_texto = render_text(t("desafios.concluido"), 14, (100, 255, 100), bold=True, pixel_style=True)
             else:
                 cor_desc = (200, 200, 200)  # Cinza normal
                 cor_progresso = (100, 220, 255)  # Azul normal
                 status_texto = None
             
-            desc_texto = render_text(desafio["descricao"], 18, cor_desc, bold=False, pixel_style=True)
+            # Traduzir descrição do desafio
+            descricao_traduzida = _traduzir_descricao_desafio(desafio)
+            desc_texto = render_text(descricao_traduzida, 18, cor_desc, bold=False, pixel_style=True)
             progresso_texto = render_text(f"{progresso}/{desafio['objetivo']} ({porcentagem}%)", 16, cor_progresso, bold=True, pixel_style=True)
-            recompensa_texto = render_text(f"Recompensa: ${desafio['recompensa']}", 16, (150, 255, 150), bold=True, pixel_style=True)
+            recompensa_texto = render_text(t("desafios.recompensa").format(recompensa=desafio['recompensa']), 16, (150, 255, 150), bold=True, pixel_style=True)
             
             screen.blit(desc_texto, (caixa_x + 50, y_atual))
             screen.blit(progresso_texto, (caixa_x + 50, y_atual + 25))
@@ -878,7 +929,7 @@ def desenhar_tela_desafios(screen, dt):
     
     if desafios_semanais:
         y_atual += 20
-        secao_titulo = render_text("DESAFIOS SEMANAIS", 28, (200, 150, 255), bold=True, pixel_style=True)
+        secao_titulo = render_text(t("desafios.semanais"), 28, (200, 150, 255), bold=True, pixel_style=True)
         screen.blit(secao_titulo, (caixa_x + 30, y_atual))
         y_atual += 40
         
@@ -895,13 +946,15 @@ def desenhar_tela_desafios(screen, dt):
             if esta_completo:
                 cor_desc = (200, 150, 255)  # Roxo claro para completado
                 cor_progresso = (180, 120, 255)  # Roxo mais claro
-                status_texto = render_text("✓ CONCLUÍDO", 14, (180, 120, 255), bold=True, pixel_style=True)
+                status_texto = render_text(t("desafios.concluido"), 14, (180, 120, 255), bold=True, pixel_style=True)
             else:
                 cor_desc = (200, 200, 200)  # Cinza normal
                 cor_progresso = (100, 220, 255)  # Azul normal
                 status_texto = None
             
-            desc_texto = render_text(desafio["descricao"], 18, cor_desc, bold=False, pixel_style=True)
+            # Traduzir descrição do desafio
+            descricao_traduzida = _traduzir_descricao_desafio(desafio)
+            desc_texto = render_text(descricao_traduzida, 18, cor_desc, bold=False, pixel_style=True)
             progresso_texto = render_text(f"{progresso}/{desafio['objetivo']} ({porcentagem}%)", 16, cor_progresso, bold=True, pixel_style=True)
             recompensa_texto = render_text(f"Recompensa: ${desafio['recompensa']}", 16, (200, 150, 255), bold=True, pixel_style=True)
             
@@ -939,7 +992,7 @@ def desenhar_tela_desafios(screen, dt):
         )
         pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
     
-    fechar_texto = render_text("FECHAR", 18, (255, 255, 255), bold=True, pixel_style=True)
+    fechar_texto = render_text(t("menu.fechar"), 18, (255, 255, 255), bold=True, pixel_style=True)
     fechar_x = botao_fechar_rect.x + (botao_fechar_rect.width - fechar_texto.get_width()) // 2
     fechar_y = botao_fechar_rect.y + (botao_fechar_rect.height - fechar_texto.get_height()) // 2
     screen.blit(fechar_texto, (fechar_x, fechar_y))
@@ -1143,11 +1196,14 @@ def menu_loop(screen) -> Escolha:
         for ev in pygame.event.get():
             # Declarar todas as variáveis globais no início do loop de eventos
             global _achievements_scroll_offset, _achievements_scroll_dragging, _achievements_scroll_drag_start_y, _achievements_scroll_drag_start_offset
+            global _estatisticas_scroll_offset, _estatisticas_scroll_dragging, _estatisticas_scroll_drag_start_y, _estatisticas_scroll_drag_start_offset
             
             # Processar eventos de controle nas telas abertas PRIMEIRO
             if tela_achievements_aberta and gerenciador_gamepad.obter_numero_controles() > 0:
                 from core.menu_controles import processar_eventos_controle_menu
                 tempo_atual = pygame.time.get_ticks()
+                # Sempre resetar para True quando a tela está aberta (garantir que aparece ao reabrir)
+                desenhar_tela_achievements._fechar_selecionado = True
                 resultado_controle = processar_eventos_controle_menu(ev, 0, 0, joystick_id=0, tempo_atual=tempo_atual)
                 if resultado_controle:
                     acao = resultado_controle.get("acao")
@@ -1173,13 +1229,73 @@ def menu_loop(screen) -> Escolha:
                         scroll_max = max(0, altura_total - area_scroll_altura)
                         _achievements_scroll_offset = max(0, min(_achievements_scroll_offset, scroll_max))
                         continue
-                    elif acao == "confirmar" or acao == "cancelar":
+                    elif acao == "confirmar":
+                        # Fechar tela se botão fechar está selecionado
+                        if desenhar_tela_achievements._fechar_selecionado:
+                            tela_achievements_aberta = False
+                            from core.achievements import gerenciador_achievements
+                            gerenciador_achievements.marcar_todos_como_visualizados()
+                            _achievements_scroll_offset = 0.0
+                            icone_selecionado = None
+                            desenhar_tela_achievements._fechar_selecionado = False
+                        continue
+                    elif acao == "cancelar":
                         # Fechar tela
                         tela_achievements_aberta = False
                         from core.achievements import gerenciador_achievements
                         gerenciador_achievements.marcar_todos_como_visualizados()
                         _achievements_scroll_offset = 0.0
                         icone_selecionado = None
+                        desenhar_tela_achievements._fechar_selecionado = False
+                        continue
+            elif tela_achievements_aberta and gerenciador_gamepad.obter_numero_controles() > 0:
+                from core.menu_controles import processar_eventos_controle_menu
+                tempo_atual = pygame.time.get_ticks()
+                # Sempre resetar para True quando a tela está aberta (garantir que aparece ao reabrir)
+                desenhar_tela_achievements._fechar_selecionado = True
+                resultado_controle = processar_eventos_controle_menu(ev, 0, 0, joystick_id=0, tempo_atual=tempo_atual)
+                if resultado_controle:
+                    acao = resultado_controle.get("acao")
+                    if acao == "cima":
+                        # Scroll para cima
+                        scroll_speed = 50.0
+                        _achievements_scroll_offset -= scroll_speed
+                        from core.achievements import gerenciador_achievements
+                        achievements = gerenciador_achievements.obter_todos_achievements()
+                        altura_total = len(achievements) * 70
+                        area_scroll_altura = 400
+                        scroll_max = max(0, altura_total - area_scroll_altura)
+                        _achievements_scroll_offset = max(0, min(_achievements_scroll_offset, scroll_max))
+                        continue
+                    elif acao == "baixo":
+                        # Scroll para baixo
+                        scroll_speed = 50.0
+                        _achievements_scroll_offset += scroll_speed
+                        from core.achievements import gerenciador_achievements
+                        achievements = gerenciador_achievements.obter_todos_achievements()
+                        altura_total = len(achievements) * 70
+                        area_scroll_altura = 400
+                        scroll_max = max(0, altura_total - area_scroll_altura)
+                        _achievements_scroll_offset = max(0, min(_achievements_scroll_offset, scroll_max))
+                        continue
+                    elif acao == "confirmar":
+                        # Fechar tela se botão fechar está selecionado
+                        if desenhar_tela_achievements._fechar_selecionado:
+                            tela_achievements_aberta = False
+                            from core.achievements import gerenciador_achievements
+                            gerenciador_achievements.marcar_todos_como_visualizados()
+                            _achievements_scroll_offset = 0.0
+                            icone_selecionado = None
+                            desenhar_tela_achievements._fechar_selecionado = False
+                        continue
+                    elif acao == "cancelar":
+                        # Fechar tela
+                        tela_achievements_aberta = False
+                        from core.achievements import gerenciador_achievements
+                        gerenciador_achievements.marcar_todos_como_visualizados()
+                        _achievements_scroll_offset = 0.0
+                        icone_selecionado = None
+                        desenhar_tela_achievements._fechar_selecionado = False
                         continue
             elif tela_estatisticas_aberta and gerenciador_gamepad.obter_numero_controles() > 0:
                 from core.menu_controles import processar_eventos_controle_menu
@@ -1189,7 +1305,6 @@ def menu_loop(screen) -> Escolha:
                 resultado_controle = processar_eventos_controle_menu(ev, 0, 0, joystick_id=0, tempo_atual=tempo_atual)
                 if resultado_controle:
                     acao = resultado_controle.get("acao")
-                    global _estatisticas_scroll_offset
                     if acao == "cima":
                         # Scroll para cima
                         scroll_speed = 50.0
@@ -1373,8 +1488,8 @@ def menu_loop(screen) -> Escolha:
                 elif not tela_achievements_aberta and not tela_estatisticas_aberta and not tela_desafios_aberta and botao_missao_rect.collidepoint(mouse_x, mouse_y):
                     tela_desafios_aberta = True
                 elif tela_achievements_aberta:
-                    # Verificar clique no botão fechar da tela de achievements
-                    fechar_rect = pygame.Rect((LARGURA - 800) // 2 + 800 - 100, (ALTURA - 600) // 2 + 20, 80, 40)
+                    # Verificar clique no botão fechar da tela de achievements (padronizado)
+                    fechar_rect = pygame.Rect((LARGURA - 800) // 2 + 800 - 120, (ALTURA - 600) // 2 + 20, 100, 40)
                     if fechar_rect.collidepoint(mouse_x, mouse_y):
                         tela_achievements_aberta = False
                         # Marcar todos os achievements como visualizados quando fechar a tela
@@ -1404,6 +1519,22 @@ def menu_loop(screen) -> Escolha:
                         tela_estatisticas_aberta = False
                         _estatisticas_scroll_offset = 0.0
                         icone_selecionado = None  # Resetar seleção ao fechar tela
+                    else:
+                        # Verificar clique na barra de rolagem
+                        caixa_x = (LARGURA - 800) // 2
+                        caixa_y = (ALTURA - 600) // 2
+                        area_scroll_y = caixa_y + 80
+                        area_scroll_altura = 600 - 150
+                        barra_largura = 12
+                        barra_x = caixa_x + 800 - 30
+                        barra_y = area_scroll_y
+                        barra_altura = area_scroll_altura
+                        
+                        # Verificar se clicou na área da barra
+                        if barra_x <= mouse_x <= barra_x + barra_largura and barra_y <= mouse_y <= barra_y + barra_altura:
+                            _estatisticas_scroll_dragging = True
+                            _estatisticas_scroll_drag_start_y = mouse_y
+                            _estatisticas_scroll_drag_start_offset = _estatisticas_scroll_offset
                 elif tela_desafios_aberta:
                     botao_fechar_desafios = desenhar_tela_desafios(screen, dt)
                     if botao_fechar_desafios.collidepoint(mouse_x, mouse_y):
@@ -1910,6 +2041,25 @@ def selecionar_mapas_loop(screen):
         # Verificar hover do pop-up
         mouse_x, mouse_y = pygame.mouse.get_pos()
         popup_musica.verificar_hover(mouse_x, mouse_y)
+        
+        # Processar eventos de controle
+        if gerenciador_gamepad.obter_numero_controles() > 0:
+            from core.menu_controles import processar_eventos_controle_menu
+            for ev in pygame.event.get(pygame.JOYHATMOTION):
+                tempo_atual = pygame.time.get_ticks()
+                resultado_controle = processar_eventos_controle_menu(ev, indice, len(mapas), joystick_id=0, tempo_atual=tempo_atual)
+                if resultado_controle:
+                    acao = resultado_controle.get("acao")
+                    if acao == "cima" and "opcao" in resultado_controle:
+                        indice = resultado_controle["opcao"]
+                    elif acao == "baixo" and "opcao" in resultado_controle:
+                        indice = resultado_controle["opcao"]
+                    elif acao == "confirmar":
+                        mapa_selecionado = mapas[indice]
+                        main.principal(mapa_selecionado=mapa_selecionado)
+                        return None
+                    elif acao == "cancelar":
+                        return None
         
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -2543,7 +2693,8 @@ def _mostrar_selecao_cores(screen, fundo_base):
         screen.blit(overlay_voltar, voltar_rect.topleft)
         pygame.draw.rect(screen, cor_borda_voltar, voltar_rect, 2)
         
-        texto_voltar = render_text("VOLTAR", 18, (255, 255, 255), bold=True, pixel_style=True)
+        from core.i18n import t
+        texto_voltar = render_text(t("menu.oficina.voltar"), 18, (255, 255, 255), bold=True, pixel_style=True)
         texto_voltar_x = voltar_rect.x + (voltar_rect.width - texto_voltar.get_width()) // 2
         texto_voltar_y = voltar_rect.y + (voltar_rect.height - texto_voltar.get_height()) // 2
         screen.blit(texto_voltar, (texto_voltar_x, texto_voltar_y))
@@ -2857,6 +3008,7 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
     
     # Carregar sprites dos carros para seleção (usando pasta car_selection)
     sprites_carros = {}
+    sprites_carros_escurecidos = {}  # Cache de sprites escurecidos
     carros_para_carregar = CARROS_DISPONIVEIS_FILTRADOS if not modo_arcade else CARROS_DISPONIVEIS
     for carro in carros_para_carregar:
         try:
@@ -2913,6 +3065,13 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
             sprite.blit(sprite_redimensionado, (x_offset, y_offset))
             
             sprites_carros[carro['prefixo_cor']] = sprite
+            
+            # Pré-processar versão escurecida para cache
+            sprite_escurecido = sprite.copy()
+            overlay_preto = pygame.Surface(sprite_escurecido.get_size(), pygame.SRCALPHA)
+            overlay_preto.fill((0, 0, 0, 240))  # Preto quase opaco
+            sprite_escurecido.blit(overlay_preto, (0, 0), special_flags=pygame.BLEND_MULT)
+            sprites_carros_escurecidos[carro['prefixo_cor']] = sprite_escurecido
         except:
             # Se não conseguir carregar, criar um retângulo como fallback
             tamanho_oficina = carro.get('tamanho_oficina', (600, 300))
@@ -3732,6 +3891,9 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                     if botao_selecionado_controle == "usar":
                                         if not carro_selecionado_p1:
                                             carro_selecionado_p1 = True
+                                            gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1)
+                                            from core.i18n import t
+                                            popup_musica.mostrar("Carro selecionado!", tipo="outra")
                                     elif botao_selecionado_controle == "upgrade":
                                         # Abrir tela de upgrades
                                         if botao_upgrade_rect_p1:
@@ -3875,6 +4037,8 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                     if botao_selecionado_controle == "usar":
                                         if not carro_selecionado_p2:
                                             carro_selecionado_p2 = True
+                                            from core.i18n import t
+                                            popup_musica.mostrar("Carro selecionado!", tipo="outra")
                                     elif botao_selecionado_controle == "upgrade":
                                         # Abrir tela de upgrades
                                         if botao_upgrade_rect_p2:
@@ -3989,11 +4153,12 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                     caixa_x = (LARGURA - caixa_largura) // 2
                     caixa_y = (ALTURA - caixa_altura) // 2
                     
+                    from core.i18n import t
                     opcoes_pausa = [
-                        ("CONTINUAR", "continuar"),
-                        ("SALVAR", "salvar"),
-                        ("OPÇÕES", "opcoes"),
-                        ("MENU PRINCIPAL", "menu")
+                        (t("pause.continuar"), "continuar"),
+                        (t("pause.salvar"), "salvar"),
+                        (t("pause.opcoes"), "opcoes"),
+                        (t("pause.menu_principal"), "menu")
                     ]
                     
                     altura_total_opcoes = len(opcoes_pausa) * 60
@@ -4077,19 +4242,21 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                 carro_atual_p1 = obter_carro_idx_seguro(1)
                                 carro_atual_idx = carro_p1 if carro_atual_p1 is None else carro_atual_p1
                                 if carro_atual_idx == carro_p1:
-                                    # Carro já está selecionado - reparar
+                                    # Carro já está selecionado - reparar apenas se necessário
                                     from core.crank import crank
                                     saude_carro = crank.saude_carro if hasattr(crank, 'saude_carro') else 1.0
                                     if saude_carro < 1.0:
                                         custo_reparo = int((1.0 - saude_carro) * 2000)
                                         if crank.reparar_carro(custo_reparo):
                                             popup_musica.mostrar(t("mensagens.carro_reparado").format(custo_reparo), tipo="outra")
-                                        else:
-                                            popup_musica.mostrar(t("mensagens.dinheiro_insuficiente"), tipo="outra")
+                                        # Se não tem dinheiro, não mostrar mensagem (carro já está selecionado)
+                                    # Se o carro não precisa de reparo, não fazer nada
                                 else:
                                     # Selecionar o carro
                                     carro_selecionado_p1 = True
                                     gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1)
+                                    from core.i18n import t
+                                    popup_musica.mostrar("Carro selecionado!", tipo="outra")
                             # Verificar clique no botão "Concluído"
                             elif botao_concluido_rect_p1 and botao_concluido_rect_p1.collidepoint(mouse_x, mouse_y):
                                 # Verificar se o carro está desbloqueado antes de permitir concluir
@@ -4164,6 +4331,13 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                             y_offset = canvas_altura - nova_altura - 10
                                         sprite.blit(sprite_redimensionado, (x_offset, y_offset))
                                         sprites_carros[carro_atual['prefixo_cor']] = sprite
+                                        
+                                        # Pré-processar versão escurecida
+                                        sprite_escurecido = sprite.copy()
+                                        overlay_preto = pygame.Surface(sprite_escurecido.get_size(), pygame.SRCALPHA)
+                                        overlay_preto.fill((0, 0, 0, 240))
+                                        sprite_escurecido.blit(overlay_preto, (0, 0), special_flags=pygame.BLEND_MULT)
+                                        sprites_carros_escurecidos[carro_atual['prefixo_cor']] = sprite_escurecido
                                     
                                     from core.i18n import t
                                     popup_musica.mostrar(f"Cor {cor_escolhida.upper()} aplicada!", tipo="outra")
@@ -4224,6 +4398,13 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                             y_offset = canvas_altura - nova_altura - 10  # Posicionar no chão
                                         sprite.blit(sprite_redimensionado, (x_offset, y_offset))
                                         sprites_carros[carro_atual['prefixo_cor']] = sprite
+                                        
+                                        # Pré-processar versão escurecida
+                                        sprite_escurecido = sprite.copy()
+                                        overlay_preto = pygame.Surface(sprite_escurecido.get_size(), pygame.SRCALPHA)
+                                        overlay_preto.fill((0, 0, 0, 240))
+                                        sprite_escurecido.blit(overlay_preto, (0, 0), special_flags=pygame.BLEND_MULT)
+                                        sprites_carros_escurecidos[carro_atual['prefixo_cor']] = sprite_escurecido
                                     
                                     from core.i18n import t
                                     popup_musica.mostrar(f"Cor {cor_escolhida.upper()} aplicada!", tipo="outra")
@@ -4283,6 +4464,8 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                             if botao_usar_rect_p2 and botao_usar_rect_p2.collidepoint(mouse_x, mouse_y):
                                 if not carro_selecionado_p2:
                                     carro_selecionado_p2 = True
+                                    from core.i18n import t
+                                    popup_musica.mostrar("Carro selecionado!", tipo="outra")
                                 else:
                                     # Carro já está selecionado
                                     from core.i18n import t
@@ -4474,7 +4657,8 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                 botao_voltar_rect.height + tamanho_cursor * 2
             )
             pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
-        texto_voltar = render_text("VOLTAR", 18, (255, 255, 255), bold=True, pixel_style=True)
+        from core.i18n import t
+        texto_voltar = render_text(t("menu.oficina.voltar"), 18, (255, 255, 255), bold=True, pixel_style=True)
         texto_voltar_x = botao_voltar_rect.x + (botao_voltar_rect.width - texto_voltar.get_width()) // 2
         texto_voltar_y = botao_voltar_rect.y + (botao_voltar_rect.height - texto_voltar.get_height()) // 2
         screen.blit(texto_voltar, (texto_voltar_x, texto_voltar_y))
@@ -4531,10 +4715,15 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                 pos_x_anterior = pos_anterior[0] + carro_atual_pos * LARGURA
                 pos_x_atual = pos_atual[0] + carro_proximo_pos * LARGURA
                 
-                screen.blit(sprite_anterior, (int(pos_x_anterior), pos_anterior[1]))
-                screen.blit(sprite_atual, (int(pos_x_atual), pos_atual[1]))
-                
+                esta_desbloqueado_anterior = gerenciador_progresso.esta_desbloqueado(carro_anterior_obj['prefixo_cor'])
                 esta_desbloqueado_atual = gerenciador_progresso.esta_desbloqueado(carro_atual_obj['prefixo_cor'])
+                
+                sprite_anterior_desenhar = sprites_carros_escurecidos.get(carro_anterior_obj['prefixo_cor'], sprite_anterior) if not esta_desbloqueado_anterior else sprite_anterior
+                sprite_atual_desenhar = sprites_carros_escurecidos.get(carro_atual_obj['prefixo_cor'], sprite_atual) if not esta_desbloqueado_atual else sprite_atual
+                
+                screen.blit(sprite_anterior_desenhar, (int(pos_x_anterior), pos_anterior[1]))
+                screen.blit(sprite_atual_desenhar, (int(pos_x_atual), pos_atual[1]))
+                
                 if not esta_desbloqueado_atual and icone_cadeado:
                     cadeado_x = int(pos_x_atual) + (sprite_atual.get_width() - icone_cadeado.get_width()) // 2
                     cadeado_y = pos_atual[1] + (sprite_atual.get_height() - icone_cadeado.get_height()) // 2
@@ -4555,9 +4744,11 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                 else:
                     posicao = carro_atual.get('posicao_oficina', (LARGURA//2 - 300, 380))
                 
-                screen.blit(sprite_atual, posicao)
-                
                 esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                sprite_atual_desenhar = sprites_carros_escurecidos.get(carro_atual['prefixo_cor'], sprite_atual) if not esta_desbloqueado else sprite_atual
+                
+                screen.blit(sprite_atual_desenhar, posicao)
+                
                 if not esta_desbloqueado and icone_cadeado:
                     cadeado_x = posicao[0] + (sprite_atual.get_width() - icone_cadeado.get_width()) // 2
                     cadeado_y = posicao[1] + (sprite_atual.get_height() - icone_cadeado.get_height()) // 2
@@ -4641,11 +4832,15 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                 selecionar_carros_loop._info_bg_cache = info_bg
             screen.blit(selecionar_carros_loop._info_bg_cache, (info_x, info_y))
             
-            if not hasattr(selecionar_carros_loop, '_textos_cache_p1') or selecionar_carros_loop._carro_texto_cache_p1 != carro_p1:
-                nome_carro_info = render_text(carro_atual['nome'], 24, (100, 220, 255), bold=True, pixel_style=True)
+            esta_desbloqueado_p1 = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+            nome_carro_display = "???" if not esta_desbloqueado_p1 else carro_atual['nome']
+            
+            if not hasattr(selecionar_carros_loop, '_textos_cache_p1') or selecionar_carros_loop._carro_texto_cache_p1 != carro_p1 or selecionar_carros_loop._desbloqueado_cache_p1 != esta_desbloqueado_p1:
+                nome_carro_info = render_text(nome_carro_display, 24, (100, 220, 255), bold=True, pixel_style=True)
                 info_titulo = render_text(t("menu.oficina.especificacoes"), 18, (255, 255, 255), bold=True, pixel_style=True)
                 selecionar_carros_loop._textos_cache_p1 = (nome_carro_info, info_titulo)
                 selecionar_carros_loop._carro_texto_cache_p1 = carro_p1
+                selecionar_carros_loop._desbloqueado_cache_p1 = esta_desbloqueado_p1
             else:
                 nome_carro_info, info_titulo = selecionar_carros_loop._textos_cache_p1
             
@@ -5130,11 +5325,16 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
             escala = min(escala_x, escala_y)  # Usar a menor escala para manter proporção
             nova_largura = int(largura_original * escala)
             nova_altura = int(altura_original * escala)
-            sprite_p1 = pygame.transform.scale(sprite_p1_original, (nova_largura, nova_altura))
+            sprite_p1_temp = pygame.transform.scale(sprite_p1_original, (nova_largura, nova_altura))
+            
+            esta_desbloqueado_p1_selecionado = gerenciador_progresso.esta_desbloqueado(carro_p1_selecionado['prefixo_cor'])
+            sprite_p1 = escurecer_sprite(sprite_p1_temp) if not esta_desbloqueado_p1_selecionado else sprite_p1_temp
+            nome_p1_display = "???" if not esta_desbloqueado_p1_selecionado else carro_p1_selecionado['nome']
+            
             from core.i18n import t
             screen.blit(render_text(t("jogo.p1"), 20, (255, 255, 255), bold=True, pixel_style=True), (50, 200))  # Descido para alinhar com a imagem
             screen.blit(sprite_p1, (50, 210))  # Descido mais para não ficar por cima
-            screen.blit(render_text(carro_p1_selecionado['nome'], 16, (255, 255, 255), bold=True, pixel_style=True), (50, 210 + nova_altura + 10))
+            screen.blit(render_text(nome_p1_display, 16, (255, 255, 255), bold=True, pixel_style=True), (50, 210 + nova_altura + 10))
             
             # Instruções removidas conforme solicitado
             
@@ -5216,13 +5416,18 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                 pos_x_anterior = pos_anterior[0] + carro_atual_pos * LARGURA
                 pos_x_atual = pos_atual[0] + carro_proximo_pos * LARGURA
                 
+                esta_desbloqueado_anterior = gerenciador_progresso.esta_desbloqueado(carro_anterior_obj['prefixo_cor'])
+                esta_desbloqueado_atual = gerenciador_progresso.esta_desbloqueado(carro_atual_obj['prefixo_cor'])
+                
+                sprite_anterior_desenhar = sprites_carros_escurecidos.get(carro_anterior_obj['prefixo_cor'], sprite_anterior) if not esta_desbloqueado_anterior else sprite_anterior
+                sprite_atual_desenhar = sprites_carros_escurecidos.get(carro_atual_obj['prefixo_cor'], sprite_atual) if not esta_desbloqueado_atual else sprite_atual
+                
                 # Desenhar carro anterior saindo (converter para int apenas na renderização)
-                screen.blit(sprite_anterior, (int(pos_x_anterior), pos_anterior[1]))
+                screen.blit(sprite_anterior_desenhar, (int(pos_x_anterior), pos_anterior[1]))
                 # Desenhar novo carro entrando
-                screen.blit(sprite_atual, (int(pos_x_atual), pos_atual[1]))
+                screen.blit(sprite_atual_desenhar, (int(pos_x_atual), pos_atual[1]))
                 
                 # Desenhar cadeado se o carro atual não estiver desbloqueado (P2)
-                esta_desbloqueado_atual = gerenciador_progresso.esta_desbloqueado(carro_atual_obj['prefixo_cor'])
                 if not esta_desbloqueado_atual and icone_cadeado:
                     cadeado_x = int(pos_x_atual) + (sprite_atual.get_width() - icone_cadeado.get_width()) // 2
                     cadeado_y = pos_atual[1] + (sprite_atual.get_height() - icone_cadeado.get_height()) // 2
@@ -5232,10 +5437,13 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                 carro_atual = CARROS_DISPONIVEIS[carro_p2]
                 sprite_atual = sprites_carros[carro_atual['prefixo_cor']]
                 posicao = carro_atual.get('posicao_oficina', (LARGURA//2 - 300, 380))
-                screen.blit(sprite_atual, posicao)
                 
                 # Desenhar cadeado se o carro não estiver desbloqueado (P2)
                 esta_desbloqueado = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+                sprite_atual_desenhar = sprites_carros_escurecidos.get(carro_atual['prefixo_cor'], sprite_atual) if not esta_desbloqueado else sprite_atual
+                
+                screen.blit(sprite_atual_desenhar, posicao)
+                
                 if not esta_desbloqueado and icone_cadeado:
                     cadeado_x = posicao[0] + (sprite_atual.get_width() - icone_cadeado.get_width()) // 2
                     cadeado_y = posicao[1] + (sprite_atual.get_height() - icone_cadeado.get_height()) // 2
@@ -5256,7 +5464,9 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
             screen.blit(selecionar_carros_loop._info_bg_cache, (info_x, info_y))
             
             # Nome do carro (acima das especificações) - estilo pixel art (azul ciano harmonizado)
-            nome_carro_info = render_text(carro_atual['nome'], 24, (100, 220, 255), bold=True, pixel_style=True)
+            esta_desbloqueado_p2 = gerenciador_progresso.esta_desbloqueado(carro_atual['prefixo_cor'])
+            nome_carro_display = "???" if not esta_desbloqueado_p2 else carro_atual['nome']
+            nome_carro_info = render_text(nome_carro_display, 24, (100, 220, 255), bold=True, pixel_style=True)
             nome_x_info = info_x + (info_largura - nome_carro_info.get_width()) // 2
             screen.blit(nome_carro_info, (nome_x_info, info_y + 15))
             
@@ -5548,15 +5758,17 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
             screen.blit(caixa_fundo, (caixa_x, caixa_y))
             pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
             
-            titulo_texto = render_text("JOGO PAUSADO", 48, (255, 255, 255), bold=True, pixel_style=True)
+            from core.i18n import t
+            titulo_texto = render_text(t("pause.titulo"), 48, (255, 255, 255), bold=True, pixel_style=True)
             titulo_x = caixa_x + (caixa_largura - titulo_texto.get_width()) // 2
             screen.blit(titulo_texto, (titulo_x, caixa_y + 20))
             
+            from core.i18n import t
             opcoes_pausa = [
-                ("CONTINUAR", "continuar"),
-                ("SALVAR", "salvar"),
-                ("OPÇÕES", "opcoes"),
-                ("MENU PRINCIPAL", "menu")
+                (t("pause.continuar"), "continuar"),
+                (t("pause.salvar"), "salvar"),
+                (t("pause.opcoes"), "opcoes"),
+                (t("pause.menu_principal"), "menu")
             ]
             
             altura_total_opcoes = len(opcoes_pausa) * 60
@@ -5635,6 +5847,37 @@ def aplicar_blur(surface, fator=4):
     # Voltar para o tamanho original (cria o efeito de blur)
     blur = pygame.transform.scale(pequena, (largura, altura))
     return blur
+
+# Cache global para sprites escurecidos
+_sprite_escurecido_cache = {}
+
+def escurecer_sprite(surface, fator=0.05):
+    """Escurece um sprite quase completamente (quase preto) usando cache para performance"""
+    # Usar id da superfície como chave (rápido e eficiente)
+    surface_id = id(surface)
+    cache_key = (surface_id, fator)
+    
+    # Verificar cache
+    if cache_key in _sprite_escurecido_cache:
+        return _sprite_escurecido_cache[cache_key]
+    
+    # Criar uma superfície preta com a mesma forma e aplicar alpha blending
+    # Usar BLEND_MULT para escurecer mantendo a forma
+    sprite_escurecido = surface.copy()
+    overlay_preto = pygame.Surface(sprite_escurecido.get_size(), pygame.SRCALPHA)
+    overlay_preto.fill((0, 0, 0, 240))  # Preto quase opaco (240/255 = 94% opaco)
+    sprite_escurecido.blit(overlay_preto, (0, 0), special_flags=pygame.BLEND_MULT)
+    
+    # Armazenar no cache
+    _sprite_escurecido_cache[cache_key] = sprite_escurecido
+    
+    # Limitar tamanho do cache (manter apenas os últimos 30)
+    if len(_sprite_escurecido_cache) > 30:
+        # Remover o mais antigo (primeiro item)
+        chave_antiga = next(iter(_sprite_escurecido_cache))
+        del _sprite_escurecido_cache[chave_antiga]
+    
+    return sprite_escurecido
 
 def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
     """Tela de upgrades para um carro específico - estilo Need for Speed 2015"""
@@ -5918,17 +6161,18 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                                     screen.blit(overlay, (caixa_x, caixa_y))
                                     pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 2)
                                     
-                                    titulo = render_text("CONFIRMAÇÃO DE COMPRA", 22, (255, 255, 0), bold=True, pixel_style=True)
+                                    titulo = render_text(t("confirmacao.compra.titulo"), 22, (255, 255, 0), bold=True, pixel_style=True)
                                     screen.blit(titulo, (caixa_x + (caixa_largura - titulo.get_width()) // 2, caixa_y + 10))
                                     
                                     if nome_upgrade:
                                         desc = render_text(f"{nome_upgrade.upper()} nível {nivel_atual + 1}", 18, (220, 220, 220), bold=False, pixel_style=True)
-                                        preco_txt = render_text(f"Preço: ${preco:,}", 18, (180, 255, 180), bold=False, pixel_style=True)
+                                        preco_txt = render_text(t("confirmacao.compra.preco").format(preco=preco), 18, (180, 255, 180), bold=False, pixel_style=True)
                                         screen.blit(desc, (caixa_x + 20, caixa_y + 45))
                                         screen.blit(preco_txt, (caixa_x + 20, caixa_y + 70))
                                     
                                     # Opções
-                                    opcoes = ["COMPRAR PEÇA", "SAIR"]
+                                    from core.i18n import t
+                                    opcoes = [t("confirmacao.upgrade.comprar_peca"), t("confirmacao.upgrade.sair")]
                                     mouse_x_confirm, mouse_y_confirm = pygame.mouse.get_pos()
                                     
                                     # Animação do cursor do controle
@@ -6186,7 +6430,8 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                                 
                                 if nome_upgrade:
                                     desc = render_text(f"{nome_upgrade.upper()} nível {nivel_atual + 1}", 18, (220, 220, 220), bold=False, pixel_style=True)
-                                    preco_txt = render_text(f"Preço: ${preco:,}", 18, (180, 255, 180), bold=False, pixel_style=True)
+                                    from core.i18n import t
+                                    preco_txt = render_text(t("confirmacao.compra.preco").format(preco=preco), 18, (180, 255, 180), bold=False, pixel_style=True)
                                     screen.blit(desc, (caixa_x + 20, caixa_y + 45))
                                     screen.blit(preco_txt, (caixa_x + 20, caixa_y + 70))
                                 
@@ -7315,13 +7560,15 @@ def mostrar_dialogo_confirmacao_compra_carro(screen, bg, nome_carro, preco):
         titulo = render_text("CONFIRMAÇÃO DE COMPRA", 22, (255, 255, 0), bold=True, pixel_style=True)
         screen.blit(titulo, (caixa_x + (caixa_largura - titulo.get_width()) // 2, caixa_y + 10))
         
+        from core.i18n import t
         desc = render_text(f"{nome_carro.upper()}", 18, (220, 220, 220), bold=False, pixel_style=True)
-        preco_txt = render_text(f"Preço: ${preco:,}", 18, (180, 255, 180), bold=False, pixel_style=True)
+        preco_txt = render_text(t("confirmacao.compra.preco").format(preco=preco), 18, (180, 255, 180), bold=False, pixel_style=True)
         screen.blit(desc, (caixa_x + 20, caixa_y + 45))
         screen.blit(preco_txt, (caixa_x + 20, caixa_y + 70))
         
         # Opções
-        opcoes = ["COMPRAR CARRO", "CANCELAR"]
+        from core.i18n import t
+        opcoes = [t("confirmacao.compra.comprar_carro"), t("menu.cancelar")]
         mouse_x, mouse_y = pygame.mouse.get_pos()
         
         for i, texto_opcao in enumerate(opcoes):
@@ -7436,16 +7683,18 @@ def mostrar_dialogo_confirmacao_venda_carro(screen, bg, nome_carro, preco_venda)
         screen.blit(overlay, (caixa_x, caixa_y))
         pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 2)
         
-        titulo = render_text("CONFIRMAÇÃO DE VENDA", 22, (255, 200, 0), bold=True, pixel_style=True)
+        titulo = render_text(t("confirmacao.venda.titulo"), 22, (255, 200, 0), bold=True, pixel_style=True)
         screen.blit(titulo, (caixa_x + (caixa_largura - titulo.get_width()) // 2, caixa_y + 10))
         
         desc = render_text(f"{nome_carro.upper()}", 18, (220, 220, 220), bold=False, pixel_style=True)
-        preco_txt = render_text(f"Valor de venda: ${preco_venda:,}", 18, (255, 180, 180), bold=False, pixel_style=True)
+        from core.i18n import t
+        preco_txt = render_text(t("confirmacao.venda.valor_venda").format(preco_venda=preco_venda), 18, (255, 180, 180), bold=False, pixel_style=True)
         screen.blit(desc, (caixa_x + 20, caixa_y + 45))
         screen.blit(preco_txt, (caixa_x + 20, caixa_y + 70))
         
         # Opções
-        opcoes = ["VENDER CARRO", "CANCELAR"]
+        from core.i18n import t
+        opcoes = [t("confirmacao.venda.vender_carro"), t("menu.cancelar")]
         mouse_x, mouse_y = pygame.mouse.get_pos()
         
         for i, texto_opcao in enumerate(opcoes):
@@ -7593,7 +7842,8 @@ def mostrar_dialogo_confirmacao_fechar(screen, bg):
         pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
         
         # Texto principal - reduzir tamanho da fonte para caber na caixa
-        texto_pergunta = render_text("Você tem certeza que quer fechar o jogo?", 20, (255, 255, 255), bold=True, pixel_style=True)
+        from core.i18n import t
+        texto_pergunta = render_text(t("confirmacao.fechar.pergunta"), 20, (255, 255, 255), bold=True, pixel_style=True)
         texto_pergunta_x = caixa_x + (caixa_largura - texto_pergunta.get_width()) // 2
         screen.blit(texto_pergunta, (texto_pergunta_x, caixa_y + 30))
         
@@ -7631,12 +7881,12 @@ def mostrar_dialogo_confirmacao_fechar(screen, bg):
                 )
                 pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
         
-        texto_sim = render_text("SIM", 22, (255, 255, 255), bold=True, pixel_style=True)
+        texto_sim = render_text(t("confirmacao.fechar.sim"), 22, (255, 255, 255), bold=True, pixel_style=True)
         texto_sim_x = botao_sim_rect.x + (botao_sim_rect.width - texto_sim.get_width()) // 2
         texto_sim_y = botao_sim_rect.y + (botao_sim_rect.height - texto_sim.get_height()) // 2
         screen.blit(texto_sim, (texto_sim_x, texto_sim_y))
         
-        texto_nao = render_text("NÃO", 22, (255, 255, 255), bold=True, pixel_style=True)
+        texto_nao = render_text(t("confirmacao.fechar.nao"), 22, (255, 255, 255), bold=True, pixel_style=True)
         texto_nao_x = botao_nao_rect.x + (botao_nao_rect.width - texto_nao.get_width()) // 2
         texto_nao_y = botao_nao_rect.y + (botao_nao_rect.height - texto_nao.get_height()) // 2
         screen.blit(texto_nao, (texto_nao_x, texto_nao_y))
@@ -8496,8 +8746,11 @@ def submenu_idioma(screen):
                         opcao_atual = resultado_controle["opcao"]
                     elif acao == "confirmar":
                         # Selecionar idioma
+                        from config import CONFIGURACOES, salvar_configuracoes
                         chave = opcoes_idioma[opcao_atual][1]
-                        CONFIGURACOES["idioma"] = chave
+                        if "idioma" not in CONFIGURACOES:
+                            CONFIGURACOES["idioma"] = {}
+                        CONFIGURACOES["idioma"]["idioma_atual"] = chave
                         salvar_configuracoes()
                         from core.i18n import inicializar_idioma
                         inicializar_idioma()
@@ -8891,6 +9144,7 @@ def opcoes_loop(screen):
 def submenu_jogo(screen):
     """Submenu de configurações de jogo"""
     from config import CONFIGURACOES, salvar_configuracoes
+    from core.gamepad_manager import gerenciador_gamepad
     bg_raw = pygame.image.load(CAMINHO_MENU).convert_alpha()
     bg = scale_to_cover(bg_raw, LARGURA, ALTURA)
 
@@ -8901,6 +9155,7 @@ def submenu_jogo(screen):
     opcao_voltar = (t("jogo.voltar"), "voltar")
 
     opcao_atual = 0
+    voltar_selecionado = False
     clock = pygame.time.Clock()
 
     caixa_largura = 500
@@ -8933,103 +9188,164 @@ def submenu_jogo(screen):
                                                  caixa_x, caixa_y, caixa_largura, 50, 80, None, 0)
                     if idx >= 0:
                         opcao_atual = idx
+                        voltar_selecionado = False
                         chave = opcoes_jogo[opcao_atual][1]
                         if chave == "confirmar_upgrade":
                             if "jogo" not in CONFIGURACOES:
                                 CONFIGURACOES["jogo"] = {}
                             CONFIGURACOES["jogo"][chave] = not CONFIGURACOES["jogo"].get(chave, True)
                             salvar_configuracoes()
+            # Processar eventos de controle
+            if gerenciador_gamepad.obter_numero_controles() > 0:
+                from core.menu_controles import processar_eventos_controle_menu
+                tempo_atual = pygame.time.get_ticks()
+                resultado_controle = processar_eventos_controle_menu(ev, opcao_atual, len(opcoes_jogo), joystick_id=0, tempo_atual=tempo_atual)
+                if resultado_controle:
+                    acao = resultado_controle.get("acao")
+                    if acao == "cima" and "opcao" in resultado_controle:
+                        opcao_atual = resultado_controle["opcao"]
+                        voltar_selecionado = False
+                    elif acao == "baixo" and "opcao" in resultado_controle:
+                        opcao_atual = resultado_controle["opcao"]
+                        voltar_selecionado = False
+                    elif acao == "baixo" and opcao_atual == len(opcoes_jogo) - 1:
+                        voltar_selecionado = True
+                    elif acao == "cima" and voltar_selecionado:
+                        voltar_selecionado = False
+                        opcao_atual = len(opcoes_jogo) - 1
+                    elif acao == "confirmar":
+                        if voltar_selecionado:
+                            return True
+                        else:
+                            chave = opcoes_jogo[opcao_atual][1]
+                            if chave == "confirmar_upgrade":
+                                if "jogo" not in CONFIGURACOES:
+                                    CONFIGURACOES["jogo"] = {}
+                                CONFIGURACOES["jogo"][chave] = not CONFIGURACOES["jogo"].get(chave, True)
+                                salvar_configuracoes()
+                    elif acao == "cancelar":
+                        return True
+                    continue
             elif ev.type == pygame.KEYDOWN:
                 if ev.key == pygame.K_ESCAPE:
                     return True
                 elif ev.key in (pygame.K_UP, pygame.K_w):
-                    opcao_atual = (opcao_atual - 1) % len(opcoes_jogo)
+                    if voltar_selecionado:
+                        voltar_selecionado = False
+                        opcao_atual = len(opcoes_jogo) - 1
+                    else:
+                        opcao_atual = (opcao_atual - 1) % len(opcoes_jogo)
                 elif ev.key in (pygame.K_DOWN, pygame.K_s):
-                    opcao_atual = (opcao_atual + 1) % len(opcoes_jogo)
+                    if opcao_atual == len(opcoes_jogo) - 1:
+                        voltar_selecionado = True
+                    else:
+                        opcao_atual = (opcao_atual + 1) % len(opcoes_jogo)
                 elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
-                    chave = opcoes_jogo[opcao_atual][1]
-                    if chave == "confirmar_upgrade":
-                        if "jogo" not in CONFIGURACOES:
-                            CONFIGURACOES["jogo"] = {}
-                        CONFIGURACOES["jogo"][chave] = not CONFIGURACOES["jogo"].get(chave, True)
-                        salvar_configuracoes()
+                    if voltar_selecionado:
+                        return True
+                    else:
+                        chave = opcoes_jogo[opcao_atual][1]
+                        if chave == "confirmar_upgrade":
+                            if "jogo" not in CONFIGURACOES:
+                                CONFIGURACOES["jogo"] = {}
+                            CONFIGURACOES["jogo"][chave] = not CONFIGURACOES["jogo"].get(chave, True)
+                            salvar_configuracoes()
 
-        # Atualizar animações hover
+        # Atualizar animações hover (mesmo estilo do submenu_video)
         mouse_x, mouse_y = pygame.mouse.get_pos()
         mouse_in_caixa = (caixa_x <= mouse_x <= caixa_x + caixa_largura and
                           caixa_y <= mouse_y <= caixa_y + caixa_altura)
         
+        altura_item = 50
+        opcao_hover = -1
+        if mouse_in_caixa:
+            opcao_hover = verificar_clique_opcao(
+                mouse_x, mouse_y, opcoes_jogo,
+                caixa_x, caixa_y, caixa_largura, altura_item, 80, None, 0
+            )
+        if opcao_hover >= 0:
+            opcao_atual = opcao_hover
+            voltar_selecionado = False
+
         for i in range(len(opcoes_jogo)):
-            if i == opcao_atual:
-                hover_animation[i] = 0.0
+            if i == opcao_hover:
+                hover_animation[i] = min(1.0, hover_animation[i] + hover_speed * dt)
             else:
-                y_opcao = caixa_y + 80 + i * 50
-                opcao_rect = pygame.Rect(caixa_x + 20, y_opcao - 5, caixa_largura - 40, 50)
-                if opcao_rect.collidepoint(mouse_x, mouse_y) and mouse_in_caixa:
-                    hover_animation[i] = min(1.0, hover_animation[i] + dt * hover_speed)
-                else:
-                    hover_animation[i] = max(0.0, hover_animation[i] - dt * hover_speed)
+                hover_animation[i] = max(0.0, hover_animation[i] - hover_speed * dt)
+        if not mouse_in_caixa:
+            for i in range(len(opcoes_jogo)):
+                hover_animation[i] = max(0.0, hover_animation[i] - hover_speed * dt * 1.5)
 
         screen.blit(bg, (0, 0))
+        
+        # Overlay escuro
+        overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 100))
+        screen.blit(overlay, (0, 0))
 
-        # Caixa de opções
+        # Caixa de opções (mesmo estilo do submenu_video - fundo preto translúcido e borda branca)
         caixa_fundo = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
-        caixa_fundo.fill((20, 20, 20, 240))
+        caixa_fundo.fill((0, 0, 0, 150))
         screen.blit(caixa_fundo, (caixa_x, caixa_y))
-        pygame.draw.rect(screen, (100, 220, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 2)
+        pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
 
-        # Título
-        titulo = render_text(t("menu.opcoes.jogo"), 36, (100, 220, 255), bold=True, pixel_style=True)
+        # Título (mesmo estilo do submenu_video)
+        titulo = render_text(t("menu.opcoes.jogo"), 36, (255, 255, 255), bold=True, pixel_style=True)
         titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
-        titulo_y = caixa_y + 20
-        screen.blit(titulo, (titulo_x, titulo_y))
+        screen.blit(titulo, (titulo_x, caixa_y + 20))
 
-        # Opções
+        # Opções (mesmo estilo do submenu_video)
+        altura_item = 50
         for i, (nome, chave) in enumerate(opcoes_jogo):
-            y_opcao = caixa_y + 80 + i * 50
-            opcao_rect = pygame.Rect(caixa_x + 20, y_opcao - 5, caixa_largura - 40, 50)
+            y = caixa_y + 80 + i * altura_item
             
-            hover_progress = hover_animation[i] if i != opcao_atual else 0.0
-            
-            if i == opcao_atual:
-                cor_fundo = (0, 200, 255, 50)
-                cor_texto = (0, 200, 255)
-            else:
-                cor_fundo = (0, 0, 0, int(30 * hover_progress))
-                cor_texto = (255, 255, 255) if hover_progress == 0 else (0, 200, 255)
-            
-            if cor_fundo[3] > 0:
-                opcao_fundo = pygame.Surface((opcao_rect.width, opcao_rect.height), pygame.SRCALPHA)
-                opcao_fundo.fill(cor_fundo)
-                screen.blit(opcao_fundo, opcao_rect.topleft)
-            
-            pygame.draw.rect(screen, (100, 220, 255), opcao_rect, 2)
-            
-            # Valor da opção (ON/OFF)
-            valor = CONFIGURACOES.get("jogo", {}).get(chave, True)
-            valor_texto = "ON" if valor else "OFF"
-            texto_valor = render_text(valor_texto, 24, cor_texto, bold=True, pixel_style=True)
-            valor_x = opcao_rect.right - texto_valor.get_width() - 20
-            valor_y = y_opcao + (50 - texto_valor.get_height()) // 2
-            screen.blit(texto_valor, (valor_x, valor_y))
-            
-            # Nome da opção
-            texto_opcao = render_text(nome, 24, cor_texto, bold=True, pixel_style=True)
-            texto_x = opcao_rect.x + 20
-            texto_y = y_opcao + (50 - texto_opcao.get_height()) // 2
-            screen.blit(texto_opcao, (texto_x, texto_y))
+            hover_progress = 0.0 if (i == opcao_atual) else hover_animation[i]
 
-        # Botão voltar
+            if i == opcao_atual:
+                base_cor_fundo = (0, 200, 255, 50)
+                base_cor_texto = (255, 255, 255)
+            else:
+                base_cor_fundo = (0, 0, 0, 0)
+                base_cor_texto = (255, 255, 255)
+
+            if hover_progress > 0:
+                hover_cor_fundo = (0, 200, 255, 30)
+                hover_cor_texto = (0, 200, 255)
+                cor_fundo = (
+                    int(base_cor_fundo[0] + (hover_cor_fundo[0] - base_cor_fundo[0]) * hover_progress),
+                    int(base_cor_fundo[1] + (hover_cor_fundo[1] - base_cor_fundo[1]) * hover_progress),
+                    int(base_cor_fundo[2] + (hover_cor_fundo[2] - base_cor_fundo[2]) * hover_progress),
+                    int(base_cor_fundo[3] + (hover_cor_fundo[3] - base_cor_fundo[3]) * hover_progress)
+                )
+                cor_texto = (
+                    int(base_cor_texto[0] + (hover_cor_texto[0] - base_cor_texto[0]) * hover_progress),
+                    int(base_cor_texto[1] + (hover_cor_texto[1] - base_cor_texto[1]) * hover_progress),
+                    int(base_cor_texto[2] + (hover_cor_texto[2] - base_cor_texto[2]) * hover_progress)
+                )
+            else:
+                cor_fundo = base_cor_fundo
+                cor_texto = base_cor_texto
+
+            if cor_fundo[3] > 0:
+                opcao_fundo = pygame.Surface((caixa_largura - 50, altura_item), pygame.SRCALPHA)
+                opcao_fundo.fill(cor_fundo)
+                screen.blit(opcao_fundo, (caixa_x + 20, y - 5))
+            
+            # Formato "nome: valor" (mesmo estilo do submenu_video)
+            valor = CONFIGURACOES.get("jogo", {}).get(chave, True)
+            valor_texto = t("jogo.sim") if valor else t("jogo.nao")
+            texto = render_text(f"{nome}: {valor_texto}", 20, cor_texto, bold=True, pixel_style=True)
+            screen.blit(texto, (caixa_x + 30, y))
+
+        # Botão voltar (mesmo estilo do submenu_video)
+        altura_item = 50
         voltar_y = caixa_y + caixa_altura - 60
-        voltar_rect = pygame.Rect(caixa_x + 20, voltar_y - 5, caixa_largura - 40, 50)
-        voltar_hover = voltar_rect.collidepoint(mouse_x, mouse_y)
-        cor_voltar = (100, 150, 200) if voltar_hover else (80, 120, 180)
-        pygame.draw.rect(screen, cor_voltar, voltar_rect)
-        pygame.draw.rect(screen, (100, 220, 255), voltar_rect, 2)
-        voltar_texto = render_text(t("jogo.voltar"), 22, (255, 255, 255), bold=True, pixel_style=True)
-        voltar_texto_x = voltar_rect.x + (voltar_rect.width - voltar_texto.get_width()) // 2
-        voltar_texto_y = voltar_rect.y + (voltar_rect.height - voltar_texto.get_height()) // 2
-        screen.blit(voltar_texto, (voltar_texto_x, voltar_texto_y))
+        voltar_rect = pygame.Rect(caixa_x + 20, voltar_y - 5, caixa_largura - 50, altura_item)
+        voltar_hover = voltar_rect.collidepoint(mouse_x, mouse_y) or voltar_selecionado
+        if voltar_hover:
+            pygame.draw.rect(screen, (0, 200, 255, 50), voltar_rect)
+        voltar_texto = render_text(opcao_voltar[0], 24, (0, 200, 255) if voltar_hover else (255, 255, 255), bold=True, pixel_style=True)
+        screen.blit(voltar_texto, (caixa_x + 30, voltar_y))
 
         pygame.display.flip()
 
@@ -9202,7 +9518,7 @@ def modo_jogo_loop(screen):
     opcoes_tipo = [
         (t("modo_jogo.corrida"), TipoJogo.CORRIDA),
         (t("modo_jogo.drift"), TipoJogo.DRIFT),
-        (t("modo_jogo.ghost"), TipoJogo.GHOST)
+        (t("modo_jogo.relogio"), TipoJogo.GHOST)
     ]
     
     # Importar gerenciador de ghosts para verificar disponibilidade
@@ -12986,7 +13302,8 @@ def run():
                                         screen.blit(preco_txt, (caixa_x + 20, caixa_y + 70))
                                     
                                     # Opções
-                                    opcoes = ["COMPRAR PEÇA", "SAIR"]
+                                    from core.i18n import t
+                                    opcoes = [t("confirmacao.upgrade.comprar_peca"), t("confirmacao.upgrade.sair")]
                                     for i, texto_opcao in enumerate(opcoes):
                                         cor = (0, 200, 255) if i == opcao_selecionada else (200, 200, 200)
                                         txt = render_text(texto_opcao, 20, cor, bold=True, pixel_style=True)

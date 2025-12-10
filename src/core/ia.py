@@ -520,21 +520,52 @@ class IA:
         if na_grama and velocidade_atual > 0.5:
             self.tempo_travado = max(0.0, self.tempo_travado - dt * 0.5)
         
+        # Verificar colisão com outros carros primeiro
+        colidiu_com_carro = False
+        if outros_carros:
+            for outro_carro in outros_carros:
+                if outro_carro == carro:
+                    continue
+                dx = carro.x - outro_carro.x
+                dy = carro.y - outro_carro.y
+                distancia = math.sqrt(dx*dx + dy*dy)
+                if distancia < 56.0:  # Raio de colisão entre carros
+                    colidiu_com_carro = True
+                    break
+        
         colidiu = False
         if superficie_mascara is not None and superficie_pista_renderizada is None:
             colidiu = self.detectar_colisao(carro, superficie_mascara)
         
-        if colidiu:
+        # Se colidiu com outro carro, não ir de ré (deixar a física resolver)
+        if colidiu_com_carro:
+            # Resetar tempo_batido para não ficar preso em ré
+            if self.tempo_batido > 0.0:
+                self.tempo_batido = 0.0
+            # Continuar normalmente (não retornar aqui)
+        elif colidiu:
             if self.tempo_batido == 0.0:
                 self.ultima_posicao_valida = (carro.x, carro.y)
             
             self.tempo_batido += dt
             
+            # Limitar tempo de ré para evitar ficar preso
             if self.tempo_batido > self.max_tempo_batido:
-                carro._step(False, False, False, True, False, superficie_mascara, dt, None, superficie_pista_renderizada)
+                # Após max_tempo_batido, tentar voltar à posição válida
+                if self.ultima_posicao_valida:
+                    carro.x, carro.y = self.ultima_posicao_valida
+                    carro.vx = 0
+                    carro.vy = 0
+                    self.tempo_batido = 0.0
+                else:
+                    carro._step(False, False, False, True, False, superficie_mascara, dt, None, superficie_pista_renderizada)
                 return
             else:
-                carro._step(False, False, False, True, False, superficie_mascara, dt, None, superficie_pista_renderizada)
+                # Limitar tempo de ré contínuo
+                if self.tempo_batido > 0.5:  # Máximo 0.5s de ré
+                    self.tempo_batido = 0.0
+                else:
+                    carro._step(False, False, False, True, False, superficie_mascara, dt, None, superficie_pista_renderizada)
                 return
         else:
             if self.tempo_batido > 0.0:

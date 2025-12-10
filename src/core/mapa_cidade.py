@@ -1607,15 +1607,17 @@ def mapa_cidade_loop(screen) -> Optional[str]:
             screen.blit(caixa_fundo, (caixa_x, caixa_y))
             pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
             
-            titulo_texto = render_text("JOGO PAUSADO", 48, (255, 255, 255), bold=True, pixel_style=True)
+            from core.i18n import t
+            titulo_texto = render_text(t("pause.titulo"), 48, (255, 255, 255), bold=True, pixel_style=True)
             titulo_x = caixa_x + (caixa_largura - titulo_texto.get_width()) // 2
             screen.blit(titulo_texto, (titulo_x, caixa_y + 20))
             
+            from core.i18n import t
             opcoes_pausa = [
-                ("CONTINUAR", "continuar"),
-                ("SALVAR", "salvar"),
-                ("OPÇÕES", "opcoes"),
-                ("MENU PRINCIPAL", "menu")
+                (t("pause.continuar"), "continuar"),
+                (t("pause.salvar"), "salvar"),
+                (t("pause.opcoes"), "opcoes"),
+                (t("pause.menu_principal"), "menu")
             ]
             
             altura_total_opcoes = len(opcoes_pausa) * 60

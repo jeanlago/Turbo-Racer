@@ -19,6 +19,8 @@
       "idioma": "IDIOMA",
       "voltar": "VOLVER"
     },
+    "fechar": "CERRAR",
+    "esc_para_fechar": "ESC para cerrar",
     "confirmar": "CONFIRMAR",
     "cancelar": "CANCELAR",
     "idioma": {
@@ -61,7 +63,8 @@
       "vender": "VENDER",
       "dois_jogadores": "2 JUGADORES",
       "um_jogador": "1 JUGADOR",
-      "concluido": "COMPLETADO"
+      "concluido": "COMPLETADO",
+      "voltar": "VOLVER"
     },
     "upgrades": {
       "titulo": "MEJORAS - {}",
@@ -156,7 +159,9 @@
     "1_jogador": "1 JUGADOR",
     "2_jogadores": "2 JUGADORES",
     "corrida": "CARRERA",
-    "drift": "DRIFT"
+    "drift": "DRIFT",
+    "ghost": "CRONÓMETRO",
+    "relogio": "CRONÓMETRO"
   },
   "recordes": {
     "corrida": "CARRERA",
@@ -210,7 +215,70 @@
     "upgrade_comprado": "{} - ¡{} mejorado!",
     "comprar_carro_primeiro": "¡Necesitas comprar el coche primero!",
     "erro_vender_carro": "¡Error al vender el coche!",
-    "nao_pode_vender_unico_carro": "¡No puedes vender tu único coche!"
+    "nao_pode_vender_unico_carro": "¡No puedes vender tu único coche!",
+    "carro_reparado": "¡Coche reparado por ${}!"
+  },
+  "estatisticas": {
+    "titulo": "ESTADÍSTICAS",
+    "gerais": "GENERAL",
+    "tempo_total_jogado": "Tiempo Total Jugado",
+    "distancia_total": "Distancia Total",
+    "corridas_completas": "Carreras Completadas",
+    "corridas_vencidas": "Carreras Ganadas",
+    "voltas_completas": "Vueltas Completadas",
+    "colisoes_totais": "Colisiones Totales",
+    "drifts_totais": "Drifts Totales",
+    "turbo_usado": "Turbo Usado",
+    "recordes_estabelecidos": "Récords Establecidos",
+    "trofeus_ganhos": "Trofeos Ganados",
+    "melhores_tempos_corrida": "MEJORES TIEMPOS (CARRERA)",
+    "melhores_scores_drift": "MEJORES PUNTUACIONES (DRIFT)",
+    "melhores_tempos_relogio": "MEJORES TIEMPOS (CONTRA RELOJ)",
+    "pista_tempo": "Pista {pista}: {tempo}",
+    "pista_score": "Pista {pista}: {score} pts"
+  },
+  "desafios": {
+    "titulo": "DESAFÍOS",
+    "diarios": "DESAFÍOS DIARIOS",
+    "semanais": "DESAFÍOS SEMANALES",
+    "concluido": "✓ COMPLETADO",
+    "recompensa": "Recompensa: ${recompensa}",
+    "descricao": {
+      "completar_corridas": "Completa {objetivo} carreras",
+      "vencer_corridas": "Gana {objetivo} carreras en 1º lugar",
+      "completar_voltas": "Completa {objetivo} vueltas",
+      "usar_turbo": "Usa el turbo {objetivo} veces",
+      "estabelecer_recorde": "Establece {objetivo} nuevos récords"
+    }
+  },
+  "confirmacao": {
+    "compra": {
+      "titulo": "CONFIRMACIÓN DE COMPRA",
+      "preco": "Precio: ${preco:,}",
+      "comprar_carro": "COMPRAR COCHE"
+    },
+    "venda": {
+      "titulo": "CONFIRMACIÓN DE VENTA",
+      "valor_venda": "Valor de venta: ${preco_venda:,}",
+      "vender_carro": "VENDER COCHE"
+    },
+    "fechar": {
+      "pergunta": "¿Estás seguro de que quieres cerrar el juego?",
+      "sim": "SÍ",
+      "nao": "NO"
+    },
+    "upgrade": {
+      "comprar_peca": "COMPRAR PIEZA",
+      "sair": "SALIR"
+    }
+  },
+  "pause": {
+    "titulo": "JUEGO PAUSADO",
+    "continuar": "CONTINUAR",
+    "salvar": "GUARDAR",
+    "opcoes": "OPCIONES",
+    "menu_principal": "MENÚ PRINCIPAL",
+    "reiniciar": "REINICIAR JUEGO"
   },
   "titulo_jogo": {
     "menu": "Turbo Racer — Menú",
@@ -223,8 +291,14 @@
     "primeira_corrida_desc": "Completa tu primera carrera",
     "velocista": "Velocista",
     "velocista_desc": "Alcanza 200 km/h",
+    "velocista_pro": "Velocista Pro",
+    "velocista_pro_desc": "Alcanza 250 km/h",
+    "velocidade_extrema": "Velocidad Extrema",
+    "velocidade_extrema_desc": "Alcanza 300 km/h",
     "drift_master": "Maestro del Drift",
     "drift_master_desc": "Completa 10 vueltas en modo drift",
+    "drift_expert": "Experto en Drift",
+    "drift_expert_desc": "Completa 25 vueltas en modo drift",
     "sem_colisao": "Piloto Limpio",
     "sem_colisao_desc": "Completa una carrera sin colisiones",
     "trofeu_ouro": "Campeón",

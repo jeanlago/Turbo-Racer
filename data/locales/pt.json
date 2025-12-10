@@ -19,6 +19,8 @@
       "idioma": "IDIOMA",
       "voltar": "VOLTAR"
     },
+    "fechar": "FECHAR",
+    "esc_para_fechar": "ESC para fechar",
     "confirmar": "CONFIRMAR",
     "cancelar": "CANCELAR",
     "reparar": "REPARAR",
@@ -64,7 +66,8 @@
       "vender": "VENDER",
       "dois_jogadores": "2 JOGADORES",
       "um_jogador": "1 JOGADOR",
-      "concluido": "CONCLUÍDO"
+      "concluido": "CONCLUÍDO",
+      "voltar": "VOLTAR"
     },
     "upgrades": {
       "titulo": "UPGRADES - {}",
@@ -160,7 +163,8 @@
     "2_jogadores": "2 JOGADORES",
     "corrida": "CORRIDA",
     "drift": "DRIFT",
-    "ghost": "RELÓGIO"
+    "ghost": "RELÓGIO",
+    "relogio": "RELÓGIO"
   },
   "recordes": {
     "corrida": "CORRIDA",
@@ -221,6 +225,68 @@
     "erro_vender_carro": "Erro ao vender o carro!",
     "nao_pode_vender_unico_carro": "Você não pode vender seu único carro!",
     "carro_reparado": "Carro reparado por ${}!"
+  },
+  "estatisticas": {
+    "titulo": "ESTATÍSTICAS",
+    "gerais": "GERAIS",
+    "tempo_total_jogado": "Tempo Total Jogado",
+    "distancia_total": "Distância Total",
+    "corridas_completas": "Corridas Completas",
+    "corridas_vencidas": "Corridas Vencidas",
+    "voltas_completas": "Voltas Completas",
+    "colisoes_totais": "Colisões Totais",
+    "drifts_totais": "Drifts Totais",
+    "turbo_usado": "Turbo Usado",
+    "recordes_estabelecidos": "Recordes Estabelecidos",
+    "trofeus_ganhos": "Troféus Ganhos",
+    "melhores_tempos_corrida": "MELHORES TEMPOS (CORRIDA)",
+    "melhores_scores_drift": "MELHORES SCORES (DRIFT)",
+    "melhores_tempos_relogio": "MELHORES TEMPOS (RELÓGIO)",
+    "pista_tempo": "Pista {pista}: {tempo}",
+    "pista_score": "Pista {pista}: {score} pts"
+  },
+  "desafios": {
+    "titulo": "DESAFIOS",
+    "diarios": "DESAFIOS DIÁRIOS",
+    "semanais": "DESAFIOS SEMANAIS",
+    "concluido": "✓ CONCLUÍDO",
+    "recompensa": "Recompensa: ${recompensa}",
+    "descricao": {
+      "completar_corridas": "Complete {objetivo} corridas",
+      "vencer_corridas": "Vença {objetivo} corridas em 1º lugar",
+      "completar_voltas": "Complete {objetivo} voltas",
+      "usar_turbo": "Use o turbo {objetivo} vezes",
+      "estabelecer_recorde": "Estabeleça {objetivo} novos recordes"
+    }
+  },
+  "confirmacao": {
+    "compra": {
+      "titulo": "CONFIRMAÇÃO DE COMPRA",
+      "preco": "Preço: ${preco:,}",
+      "comprar_carro": "COMPRAR CARRO"
+    },
+    "venda": {
+      "titulo": "CONFIRMAÇÃO DE VENDA",
+      "valor_venda": "Valor de venda: ${preco_venda:,}",
+      "vender_carro": "VENDER CARRO"
+    },
+    "fechar": {
+      "pergunta": "Você tem certeza que quer fechar o jogo?",
+      "sim": "SIM",
+      "nao": "NÃO"
+    },
+    "upgrade": {
+      "comprar_peca": "COMPRAR PEÇA",
+      "sair": "SAIR"
+    }
+  },
+  "pause": {
+    "titulo": "JOGO PAUSADO",
+    "continuar": "CONTINUAR",
+    "salvar": "SALVAR",
+    "opcoes": "OPÇÕES",
+    "menu_principal": "MENU PRINCIPAL",
+    "reiniciar": "REINICIAR JOGO"
   },
   "titulo_jogo": {
     "menu": "Turbo Racer — Menu",

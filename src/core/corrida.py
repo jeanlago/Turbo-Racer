@@ -383,7 +383,7 @@ class GerenciadorCorrida:
     def desenhar_hud(self, tela, carros):
         y = 8
         for i, carro in enumerate(carros, start=1):
-            voltas = self.voltas.get(carro, 0)
+            voltas = self.voltas.get(carro, 0) + 1  # Começar em 1 ao invés de 0
             checkpoints_completados = self.proximo_checkpoint.get(carro, 0)
             t_final = self.tempo_final.get(carro, None)
             t_txt = self._fmt_tempo(self.tempo_global if t_final is None else t_final)

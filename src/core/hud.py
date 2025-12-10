@@ -815,8 +815,8 @@ class HUD:
             from core.i18n import t
             texto_checkpoint = t("jogo.hud.checkpoint_tempo").format("00.00")
         
-        # Voltas
-        voltas = corrida.voltas.get(carro, 0)
+        # Voltas (começar em 1 ao invés de 0)
+        voltas = corrida.voltas.get(carro, 0) + 1
         voltas_objetivo = corrida.voltas_objetivo
         texto_voltas = f"Voltas: {voltas}/{voltas_objetivo}"
         
