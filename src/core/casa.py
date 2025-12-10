@@ -1,4 +1,3 @@
-# src/core/casa.py
 """
 Sistema de Point and Click da Casa
 Gerencia interações com objetos da casa e status do jogador
@@ -7,12 +6,9 @@ Gerencia interações com objetos da casa e status do jogador
 import os
 import json
 from typing import Optional
-# Importar config primeiro para aplicar filtro de stderr
 from config import LARGURA, ALTURA, DIR_PROJETO
-# Importar pygame depois do config (filtro já aplicado)
 import pygame
 
-# Import lazy
 def _get_render_text():
     from core.menu import render_text
     return render_text
@@ -33,46 +29,38 @@ def _mostrar_animacao_tempo(screen, horas: float, bg_atual):
     clock = pygame.time.Clock()
     render_text = _get_render_text()
     
-    duracao_total = 2.0  # Duração total da animação em segundos
+    duracao_total = 2.0
     tempo_decorrido = 0.0
     
-    # Texto a ser exibido
     texto = f"Avançando {int(horas)} horas..."
     
     while tempo_decorrido < duracao_total:
         dt = clock.tick(FPS) / 1000.0
         tempo_decorrido += dt
         
-        # Calcular alpha do overlay (0.0 -> 1.0 -> 0.0)
         progresso = tempo_decorrido / duracao_total
         if progresso < 0.5:
-            # Primeira metade: escurecendo (0.0 -> 1.0)
             alpha = progresso * 2.0
         else:
-            # Segunda metade: clareando (1.0 -> 0.0)
             alpha = 2.0 - (progresso * 2.0)
         
         alpha = max(0.0, min(1.0, alpha))
         
-        # Desenhar background atual
         screen.blit(bg_atual, (0, 0))
         
-        # Desenhar overlay escuro
         overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
-        overlay_alpha = int(alpha * 220)  # Máximo de 220 de alpha
+        overlay_alpha = int(alpha * 220)
         overlay.fill((0, 0, 0, overlay_alpha))
         screen.blit(overlay, (0, 0))
         
-        # Desenhar texto (mais visível quando está escuro)
-        if alpha > 0.3:  # Só mostrar texto quando estiver escuro o suficiente
-            texto_alpha = int((alpha - 0.3) / 0.7 * 255)  # 0.3 -> 1.0 mapeia para 0 -> 255
+        if alpha > 0.3:
+            texto_alpha = int((alpha - 0.3) / 0.7 * 255)
             texto_alpha = max(0, min(255, texto_alpha))
             
             texto_surf = render_text(texto, 32, (255, 255, 255), bold=True, pixel_style=True)
             texto_x = (LARGURA - texto_surf.get_width()) // 2
             texto_y = ALTURA // 2
             
-            # Criar superfície com alpha para o texto
             texto_com_alpha = pygame.Surface(texto_surf.get_size(), pygame.SRCALPHA)
             texto_com_alpha.fill((255, 255, 255, texto_alpha))
             texto_surf.set_alpha(texto_alpha)
@@ -81,7 +69,6 @@ def _mostrar_animacao_tempo(screen, horas: float, bg_atual):
         
         pygame.display.flip()
         
-        # Processar eventos para não travar
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return

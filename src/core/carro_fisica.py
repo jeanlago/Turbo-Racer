@@ -139,7 +139,6 @@ class CarroFisica:
         nivel_suspensao = upgrades.get('suspensao', 0)
         nivel_nitro = upgrades.get('nitro', 0)
         
-        # Verificar upgrades especiais do Slick
         slick_upgrades = getattr(gerenciador_progresso, 'slick_upgrades_comprados', [])
         tem_slick_motor = any('slick_motor' in uid for uid in slick_upgrades)
         tem_slick_filtro = any('slick_filtro_ar' in uid for uid in slick_upgrades)
@@ -153,73 +152,73 @@ class CarroFisica:
         
         mult_motor = 1.0 + (nivel_motor * 0.25)
         if tem_slick_motor:
-            mult_motor *= 1.5  # +50% força
+            mult_motor *= 1.5
         self.engine_force_fwd *= mult_motor
         self.engine_force_rev *= mult_motor
         self.engine_force *= mult_motor
         v_top_bonus = 1.0 + (nivel_motor * 0.15)
         if tem_slick_motor:
-            v_top_bonus *= 1.3  # +30% velocidade
+            v_top_bonus *= 1.3
         self.V_TOP *= v_top_bonus
         self.V_SOFT = 0.95 * self.V_TOP
         
         mult_filtro = 1.0 + (nivel_filtro_ar * 0.18)
         filtro_bonus = 1.0 + (nivel_filtro_ar * 0.12)
         if tem_slick_filtro:
-            filtro_bonus *= 1.4  # +40% força
+            filtro_bonus *= 1.4
         self.engine_force_fwd *= filtro_bonus
         self.engine_force_rev *= filtro_bonus
         drag_reducao = nivel_filtro_ar * 0.05
         if tem_slick_filtro:
-            drag_reducao += 0.15  # -15% arrasto adicional
+            drag_reducao += 0.15
         self.drag *= 1.0 - drag_reducao
         
         mult_ecu = 1.0 + (nivel_ecu * 0.15)
         ecu_bonus = 1.0 + (nivel_ecu * 0.10)
         if tem_slick_ecu:
-            ecu_bonus *= 1.35  # +35% aceleração
+            ecu_bonus *= 1.35
         self.engine_force_fwd *= ecu_bonus
         steer_bonus = 1.0 + (nivel_ecu * 0.08)
         if tem_slick_ecu:
-            steer_bonus *= 1.25  # +25% direção
+            steer_bonus *= 1.25
         self.steer_rate *= steer_bonus
         
         mult_trans = 1.0 + (nivel_transmissao * 0.12)
         trans_bonus = 1.0 + (nivel_transmissao * 0.08)
         if tem_slick_trans:
-            trans_bonus *= 1.25  # +25% força
+            trans_bonus *= 1.25
         self.engine_force_fwd *= trans_bonus
         v_top_trans = 1.0 + (nivel_transmissao * 0.10)
         if tem_slick_trans:
-            v_top_trans *= 1.3  # +30% velocidade
+            v_top_trans *= 1.3
         self.V_TOP *= v_top_trans
         self.V_SOFT = 0.95 * self.V_TOP
         
         mult_rodas = 1.0 + (nivel_rodas * 0.18)
         if tem_slick_rodas:
-            mult_rodas *= 1.5  # +50% grip
+            mult_rodas *= 1.5
         self.Cf_base *= mult_rodas
         self.Cr_base *= mult_rodas
         mu_peak_base = 0.75 + (self.multiplicador_base - 1.0) * 0.15
         mu_long_base = 0.70 + (self.multiplicador_base - 1.0) * 0.15
         mu_bonus = nivel_rodas * 0.06
         if tem_slick_rodas:
-            mu_bonus += 0.15  # Bônus adicional de atrito
+            mu_bonus += 0.15
         self.mu_peak = min(1.15, mu_peak_base + mu_bonus)
         self.mu_long = min(1.10, mu_long_base + mu_bonus)
         stab_rodas = 1.0 + (nivel_rodas * 0.10)
         if tem_slick_rodas:
-            stab_rodas *= 1.3  # +30% estabilidade
+            stab_rodas *= 1.3
         self.stability_k *= stab_rodas
         
         mult_suspensao = 1.0 + (nivel_suspensao * 0.16)
         stab_susp = 1.0 + (nivel_suspensao * 0.12)
         if tem_slick_susp:
-            stab_susp *= 1.4  # +40% estabilidade
+            stab_susp *= 1.4
         self.stability_k *= stab_susp
         yaw_bonus = 1.0 + (nivel_suspensao * 0.08)
         if tem_slick_susp:
-            yaw_bonus *= 1.3  # +30% controle
+            yaw_bonus *= 1.3
         self.yaw_damp_k *= yaw_bonus
         self.counter_steer_assist *= 1.0 + (nivel_suspensao * 0.10)
         
@@ -228,34 +227,29 @@ class CarroFisica:
         
         mult_nitro = 1.0 + (nivel_nitro * 0.20)
         if tem_slick_nitro:
-            mult_nitro *= 1.6  # +60% força nitro
+            mult_nitro *= 1.6
         self._turbo_forca_base = TURBO_FORCA_IMPULSO * mult_nitro
         duracao_bonus = 1.0 + nivel_nitro * 0.15
         if tem_slick_nitro:
-            duracao_bonus *= 1.4  # +40% duração
+            duracao_bonus *= 1.4
         self._turbo_duracao_base = TURBO_DURACAO_S * duracao_bonus
         cooldown_reducao = nivel_nitro * 0.10
         if tem_slick_nitro:
-            cooldown_reducao += 0.30  # -30% cooldown adicional
+            cooldown_reducao += 0.30
         self._turbo_cooldown_base = TURBO_COOLDOWN_S * (1.0 - cooldown_reducao)
 
     def _carregar_sprite(self, prefixo_cor):
-        # Verificar se é carro da campanha e carregar sprite apropriado
         caminho_sprite = None
         
-        # Se for Car1, verificar se está em modo campanha (NÃO usar sprite da campanha no modo arcade)
         if prefixo_cor == "Car1" and not self.modo_arcade:
             try:
                 from core.progresso import gerenciador_progresso
-                # Verificar se é modo campanha (Car1 sempre é campanha)
                 estagio = gerenciador_progresso.carro_campanha_estagio
                 cor_final = gerenciador_progresso.carro_campanha_cor_final
                 
-                # Determinar nome do sprite baseado no estágio/cor
                 if cor_final:
                     sprite_nome = f"Car1_final_{cor_final}"
                 else:
-                    # Sequência de estágios: 0=inicial, 1=lataria, 2=lataria (drift usa mesmo de lataria), 3=bodykit
                     estagios = [
                         "Car1_campanha_inicial",
                         "Car1_lataria",
@@ -267,7 +261,6 @@ class CarroFisica:
                     else:
                         sprite_nome = estagios[-1]  # Usar último estágio se estagio for maior
                 
-                # Tentar carregar da pasta assets/images/cars/campanha
                 DIR_CARS_CAMPANHA = os.path.join(DIR_PROJETO, "assets", "images", "cars", "campanha")
                 caminho_sprite_campanha = os.path.join(DIR_CARS_CAMPANHA, f"{sprite_nome}.png")
                 if os.path.exists(caminho_sprite_campanha):
@@ -275,7 +268,6 @@ class CarroFisica:
             except Exception as e:
                 print(f"[CARRO_FISICA] Erro ao verificar sprite de campanha: {e}")
         
-        # Se não encontrou sprite de campanha, usar sprite padrão
         if caminho_sprite is None:
             caminho_sprite = os.path.join(DIR_SPRITES, f"{prefixo_cor}.png")
         

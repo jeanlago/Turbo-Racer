@@ -319,5 +319,4 @@ class PopupMusica:
         else:
             tela.blit(self.surface, (self.posicao_x, self.posicao_y))
 
-# Instância global do pop-up
 popup_musica = PopupMusica()

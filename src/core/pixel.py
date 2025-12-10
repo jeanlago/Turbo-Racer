@@ -7,23 +7,20 @@ from config import DIR_PROJETO, LARGURA, ALTURA
 from core.progresso import gerenciador_progresso
 
 def _get_render_text():
-    """Importa render_text de forma lazy para evitar import circular"""
     from core.menu import render_text
     return render_text
 
 CAMINHO_PIXEL_DATA = os.path.join(DIR_PROJETO, "data", "pixel.json")
 
 CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "pixel")
-# Usar os sprites reais que existem
 SPRITE_NEUTRO = os.path.join(CAMINHO_SPRITES, "pixel_neutro.png")
 SPRITE_SERIO = os.path.join(CAMINHO_SPRITES, "pixel_serio.png")
 SPRITE_MALANDRO = os.path.join(CAMINHO_SPRITES, "pixel_malandro.png")
 SPRITE_SORRISO = os.path.join(CAMINHO_SPRITES, "pixel_sorriso.png")
-# Fallbacks (usar os mesmos se não existirem)
-SPRITE_DIGITANDO = SPRITE_NEUTRO  # Usar neutro como digitando
-SPRITE_ASSUSTADO = SPRITE_SERIO  # Usar sério como assustado
-SPRITE_PARANOICO = SPRITE_MALANDRO  # Usar malandro como paranoico
-SPRITE_VENDENDO = SPRITE_SORRISO  # Usar sorriso como vendendo
+SPRITE_DIGITANDO = SPRITE_NEUTRO
+SPRITE_ASSUSTADO = SPRITE_SERIO
+SPRITE_PARANOICO = SPRITE_MALANDRO
+SPRITE_VENDENDO = SPRITE_SORRISO
 
 def obter_caminho_bunker():
     from config import obter_caminho_sprite_dia_noite
@@ -67,7 +64,6 @@ class Pixel:
         self.informacoes_disponiveis = []
         self._gerar_informacoes()
         
-        # Desbloqueios exclusivos do Pixel
         self.desbloqueios_disponiveis = [
             {
                 'tipo': 'upgrade_nivel_6',

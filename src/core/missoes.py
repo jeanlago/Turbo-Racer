@@ -1,4 +1,3 @@
-# src/core/missoes.py
 import json
 import os
 from config import DIR_PROJETO
@@ -39,11 +38,8 @@ class GerenciadorMissoes:
         else:
             print(f"Arquivo de missões não encontrado: {CAMINHO_MISSOES}")
         
-        # Carregar missões completas
         self._carregar_missoes_completas()
         
-        # IMPORTANTE: Para novos saves (nenhuma missão completa), ativar m1_primeira_faisca imediatamente
-        # Usar try/except para evitar importação circular
         if len(self.missoes_completas) == 0:
             try:
                 from core.progresso import gerenciador_progresso
@@ -60,18 +56,12 @@ class GerenciadorMissoes:
                         self.salvar()
                         print(f"[MISSÕES] m1_primeira_faisca ativada! missao_ativa_id={self.missao_ativa_id}")
             except ImportError as e:
-                # Importação circular - tentar novamente depois
                 print(f"[MISSÕES] Importação circular detectada ao ativar m1_primeira_faisca, será ativada depois: {e}")
             except Exception as e:
                 print(f"[MISSÕES] Erro ao ativar m1_primeira_faisca no carregamento: {e}")
         
-        # Verificar se m15_ruido_nos_servidores deve ser completada (jogador já foi até o Pixel)
         self._verificar_missao_pixel_completa()
-        
-        # Verificar se m19 deve ser ativada (jogador já venceu as 3 etapas do Circuito da Coroa)
         self._verificar_missao_m19_ativacao()
-        
-        # Carregar informações detalhadas das missões
         self._carregar_missoes_info()
     
     def _verificar_missao_pixel_completa(self):
@@ -79,15 +69,12 @@ class GerenciadorMissoes:
         try:
             from core.progresso import gerenciador_progresso
             from core.narrative_system import narrative_system
-            # Se o jogador já foi até o Pixel mas a missão não foi completada
             if hasattr(gerenciador_progresso, 'pixel_primeira_aparicao_mostrada') and gerenciador_progresso.pixel_primeira_aparicao_mostrada:
                 if "m15_ruido_nos_servidores" in self.missoes and "m15_ruido_nos_servidores" not in self.missoes_completas:
                     print(f"[MISSÕES] Jogador já foi até o Pixel, completando missão m15_ruido_nos_servidores...")
                     self.completar_missao("m15_ruido_nos_servidores")
             
-            # Verificar se m15 foi completada - se sim, ativar m16 (jogador já foi até o Pixel)
             if "m15_ruido_nos_servidores" in self.missoes_completas:
-                # Se m16 não foi completada e não está ativa, ativar
                 if "m16_conhecer_glub" in self.missoes and "m16_conhecer_glub" not in self.missoes_completas:
                     if not self.missao_ativa_id or self.missao_ativa_id != "m16_conhecer_glub":
                         print(f"[MISSÕES] Jogador já completou m15, ativando missão m16_conhecer_glub...")

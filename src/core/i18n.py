@@ -55,7 +55,6 @@ def carregar_idioma(idioma):
             _traducoes = json.load(f)
             _idioma_atual = idioma
             print(f"Idioma carregado: {idioma}")
-            # Atualizar título da janela imediatamente
             atualizar_titulo_janela("menu")
             return _traducoes
     except Exception as e:
@@ -96,7 +95,6 @@ def t(chave, **kwargs):
     Returns:
         str: Texto traduzido ou a chave se não encontrar tradução
     """
-    # Se não há traduções carregadas, carregar idioma padrão
     if not _traducoes:
         carregar_idioma(IDIOMA_PADRAO)
     

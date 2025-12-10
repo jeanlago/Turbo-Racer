@@ -1,4 +1,3 @@
-# src/core/mapa_cidade.py
 """
 Tela do Mapa da Cidade - Point and Click Isométrico
 Interface para navegação entre territórios
@@ -73,7 +72,6 @@ ESCALAS_HOVER = {
 }
 
 def _get_render_text():
-    """Importa e retorna a função render_text"""
     from core.menu import render_text
     return render_text
 

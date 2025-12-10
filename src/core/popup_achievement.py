@@ -7,7 +7,7 @@ class PopupAchievement:
     def __init__(self):
         self.ativo = False
         self.tempo_visivel = 0.0
-        self.duracao_visivel = 4.0  # Duração menor que música
+        self.duracao_visivel = 4.0
         self.velocidade_animacao = 200.0
         self.posicao_x = LARGURA
         self.posicao_y = 20
@@ -31,7 +31,7 @@ class PopupAchievement:
         self.tempo_piscar = 0.0
         
         self.cor_fundo = (0, 0, 0)
-        self.cor_borda = (255, 215, 0)  # Dourado para achievements
+        self.cor_borda = (255, 215, 0)
         self.cor_texto = (255, 255, 255)
         
         self.surface = pygame.Surface((self.largura, self.altura), pygame.SRCALPHA)
@@ -246,7 +246,6 @@ class PopupAchievement:
         self.surface = pygame.Surface((self.largura, self.altura), pygame.SRCALPHA)
         self.surface.fill((0, 0, 0, 0))
         
-        # Efeito de piscar dourado
         ciclo_piscar = (self.tempo_piscar * 3.0) % 2.0
         if ciclo_piscar < 1.0:
             intensidade = abs(ciclo_piscar - 0.5) * 2.0

@@ -1,4 +1,3 @@
-# src/core/ranking.py
 import json
 import os
 from config import DIR_PROJETO

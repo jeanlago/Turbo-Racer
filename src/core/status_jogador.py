@@ -1,4 +1,3 @@
-# src/core/status_jogador.py
 """
 Sistema de Status do Jogador
 Gerencia popularidade, fome, sono e tédio
@@ -15,7 +14,7 @@ class StatusJogador:
     """Gerencia os status do jogador"""
     
     def __init__(self):
-        self.popularidade = 0.0  # Popularidade vai de 0 a 500
+        self.popularidade = 0.0
         self.fome = 100.0
         self.sono = 100.0
         self.tedio = 0.0
@@ -68,7 +67,6 @@ class StatusJogador:
     
     def obter_multiplicador_dinheiro(self) -> float:
         """Retorna multiplicador de dinheiro baseado na popularidade (0-500)"""
-        # Popularidade de 0-500 mapeada para multiplicador de 0.5 a 1.5
         return 0.5 + (self.popularidade / 500.0)
     
     def pode_fazer_upgrade(self) -> Tuple[bool, str]:
@@ -89,7 +87,6 @@ class StatusJogador:
     
     def carregar(self):
         """Carrega status do progresso.json"""
-        # Primeiro, tentar carregar do progresso.json (fonte principal)
         try:
             from core.progresso import gerenciador_progresso
             caminho_progresso = os.path.join(os.path.dirname(CAMINHO_STATUS), 'progresso.json')
@@ -105,23 +102,20 @@ class StatusJogador:
                         self.sono = status_data.get('sono', 100.0)
                         self.tedio = status_data.get('tedio', 0.0)
                         print(f"[STATUS] Carregado do progresso.json: popularidade={self.popularidade:.1f}/500")
-                        return  # Dados carregados do progresso.json
+                        return
         except Exception as e:
             print(f"[STATUS] Erro ao carregar do progresso.json: {e}")
         
-        # Fallback: valores padrão se não houver dados
-        self.popularidade = 0.0  # Popularidade vai de 0 a 500
+        self.popularidade = 0.0
         self.fome = 100.0
         self.sono = 100.0
         self.tedio = 0.0
     
     def salvar(self):
         """Salva status"""
-        # Dados são salvos através do GerenciadorProgresso.salvar()
-        # Este método existe para compatibilidade, mas não salva mais em arquivo separado
         try:
             from core.progresso import gerenciador_progresso
-            gerenciador_progresso.salvar()  # Isso salvará tudo, incluindo status
+            gerenciador_progresso.salvar()
         except Exception as e:
             print(f"Erro ao salvar status: {e}")
 

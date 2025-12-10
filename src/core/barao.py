@@ -6,7 +6,6 @@ from config import DIR_PROJETO, LARGURA, ALTURA
 from core.progresso import gerenciador_progresso
 
 def _get_render_text():
-    """Importa render_text de forma lazy para evitar import circular"""
     from core.menu import render_text
     return render_text
 
@@ -16,7 +15,6 @@ SPRITE_INOCENTE = os.path.join(CAMINHO_SPRITES, "barao_inocente.png")
 SPRITE_SORRISO_FINO = os.path.join(CAMINHO_SPRITES, "barao_sorriso_fino.png")
 SPRITE_SORRISO_LARGO = os.path.join(CAMINHO_SPRITES, "barao_sorriso_largo.png")
 
-# CAMINHO_FUNDO será carregado dinamicamente baseado em dia/noite
 from config import obter_caminho_sprite_dia_noite
 
 class Barao:
@@ -53,7 +51,6 @@ class Barao:
     def carregar_estado(self):
         """Carrega o estado do Barão do progresso.json"""
         self.nome_revelado = gerenciador_progresso.barao_nome_revelado
-        # Garantir que o nome seja revelado se já foi apresentado na narrativa
         from core.narrative_system import narrative_system
         if "ch2_2_barao_offer" in narrative_system.scenes_visited:
             self.nome_revelado = True
@@ -70,7 +67,6 @@ class Barao:
             return
         
         try:
-            # Carregar sprites sem redimensionar (será feito no desenhar_dialogo)
             if os.path.exists(SPRITE_NEUTRO):
                 self.sprite_neutro = pygame.image.load(SPRITE_NEUTRO).convert_alpha()
             if os.path.exists(SPRITE_INOCENTE):
@@ -79,13 +75,11 @@ class Barao:
                 self.sprite_sorriso_fino = pygame.image.load(SPRITE_SORRISO_FINO).convert_alpha()
             if os.path.exists(SPRITE_SORRISO_LARGO):
                 self.sprite_sorriso_largo = pygame.image.load(SPRITE_SORRISO_LARGO).convert_alpha()
-            # Carregar fundo do iate baseado em dia/noite
             CAMINHO_FUNDO_IATE = obter_caminho_sprite_dia_noite("iate_barao")
             if os.path.exists(CAMINHO_FUNDO_IATE):
                 self.sprite_fundo = pygame.image.load(CAMINHO_FUNDO_IATE).convert_alpha()
                 self.sprite_fundo = pygame.transform.scale(self.sprite_fundo, (LARGURA, ALTURA))
             else:
-                # Fallback para garage_bg se iate não existir
                 CAMINHO_FUNDO_FALLBACK = os.path.join(DIR_PROJETO, "assets", "images", "ui", "garage_bg.png")
                 if os.path.exists(CAMINHO_FUNDO_FALLBACK):
                     self.sprite_fundo = pygame.image.load(CAMINHO_FUNDO_FALLBACK).convert_alpha()

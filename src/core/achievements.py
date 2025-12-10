@@ -1,4 +1,3 @@
-# src/core/achievements.py
 """
 Sistema de Achievements/Conquistas
 """
@@ -8,7 +7,6 @@ from config import DIR_PROJETO
 
 CAMINHO_ACHIEVEMENTS = os.path.join(DIR_PROJETO, "data", "achievements.json")
 
-# Definições de achievements
 ACHIEVEMENTS = {
     "primeira_corrida": {
         "id": "primeira_corrida",
@@ -188,7 +186,6 @@ class GerenciadorAchievements:
     
     def carregar(self):
         """Carrega achievements do progresso.json"""
-        # Os dados já estão no gerenciador_progresso, não precisa fazer nada
         pass
     
     def salvar(self):
@@ -215,10 +212,8 @@ class GerenciadorAchievements:
             return False
         
         self.achievements_desbloqueados.add(achievement_id)
-        # Não marcar como visualizado automaticamente - o usuário precisa abrir a tela
         achievement = ACHIEVEMENTS[achievement_id]
         
-        # Adicionar recompensa
         if gerenciador_progresso:
             gerenciador_progresso.adicionar_dinheiro(achievement['recompensa'])
         
@@ -341,9 +336,6 @@ class GerenciadorAchievements:
                     'nome': ACHIEVEMENTS["sem_colisao_mestre"]["nome"],
                     'recompensa': ACHIEVEMENTS["sem_colisao_mestre"]["recompensa"]
                 })
-        
-        # Campeão (troféu de ouro)
-        # Este será verificado separadamente quando um troféu de ouro for ganho
         
         # Colecionador (5 carros)
         if not self.esta_desbloqueado("colecionador") and self.estatisticas["carros_desbloqueados"] >= 5:
@@ -490,6 +482,5 @@ class GerenciadorAchievements:
         self.salvar()
 
 
-# Instância global
 gerenciador_achievements = GerenciadorAchievements()
 

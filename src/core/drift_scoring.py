@@ -7,34 +7,27 @@ class DriftScoring:
     """
     
     def __init__(self):
-        # Parâmetros básicos
-        self.SPEED_MIN = 8.0   # Velocidade mínima para drift (km/h) - otimizado para permitir drift normal
-        self.ANGLE_MIN = 0.5   # Ângulo mínimo para drift (graus)
+        self.SPEED_MIN = 8.0
+        self.ANGLE_MIN = 0.5
         
-        # Sistema de combo estilo CarX Drift Racing
-        self.MULTIPLIERS = [1.0, 2.0, 3.0, 4.0, 5.0]  # x1, x2, x3, x4, x5
-        self.current_multiplier = 0  # Índice do multiplicador atual
-        self.combo_fill = 0.0  # 0.0 a 1.0 para preencher o próximo nível
-        self.multiplier_progress = 0.0  # Progresso dentro do multiplicador atual (0.0 a 1.0)
+        self.MULTIPLIERS = [1.0, 2.0, 3.0, 4.0, 5.0]
+        self.current_multiplier = 0
+        self.combo_fill = 0.0
+        self.multiplier_progress = 0.0
         
-        # Pontuação
         self.points = 0.0
         self.best_points = 0.0
         self.best_combo = 0
         
-        # Controle de tempo estilo CarX (mais generoso)
-        self.drift_timer = 0.0  # Tempo atual de drift
-        self.no_drift_timer = 0.0  # Tempo sem drift
-        self.max_no_drift_time = 4.0  # 4 segundos de tolerância (mais generoso)
+        self.drift_timer = 0.0
+        self.no_drift_timer = 0.0
+        self.max_no_drift_time = 4.0
         
-        # Estado
         self.is_drifting = False
         self.last_drift_activated = False
         
-        # Taxa de pontos base (aumentada significativamente)
-        self.base_point_rate = 10000.0  # Pontos por segundo no nível 1 - aumentado para 10000
+        self.base_point_rate = 10000.0
         
-        # Clipping zones (para compatibilidade)
         self.clipping_zones = []
         
     def update(self, dt, angle_deg, speed_kmh, car_x, car_y, drift_activated=False, drifting=False, collision_force=0.0, has_skidmarks=False, na_grama=False):
@@ -53,51 +46,37 @@ class DriftScoring:
             na_grama: Se está na grama (estilo GRIP - não conta pontuação)
         """
         
-        # Se está na grama, não conta pontuação (estilo GRIP)
         if na_grama:
-            # Resetar combo se estiver na grama
             if self.is_drifting:
                 self._reset_combo()
             return
         
-        # Detectar se está derrapando - baseado em skidmarks + velocidade + ângulo
-        # Exige velocidade mínima para evitar ganhar pontos apenas fazendo "zerinho"
         self.is_drifting = has_skidmarks and speed_kmh >= self.SPEED_MIN and angle_deg >= self.ANGLE_MIN
         
-        # Mecânicas de perda de combo estilo CarX
-        # Colisão forte reseta tudo
         if collision_force > 0.8:
             self._reset_combo()
             return
         
-        # Verificar se saiu da pista (velocidade muito baixa por muito tempo)
         if speed_kmh < 2.0 and self.no_drift_timer > 2.0:
             self._reset_combo()
             return
         
-        # Verificar se parou o drift por muito tempo (mais generoso)
         if not has_skidmarks and self.no_drift_timer > 3.0:
             self._reset_combo()
             return
         
         if self.is_drifting:
-            # Está derrapando
             self.drift_timer += dt
             self.no_drift_timer = 0.0
             
-            # Calcular pontos baseados no ângulo e velocidade (mais generoso)
-            angle_factor = min(abs(angle_deg) / 20.0, 3.0)  # Máximo 3x por ângulo (mais generoso)
-            speed_factor = min(speed_kmh / 80.0, 2.0)  # Máximo 2x por velocidade (mais generoso)
+            angle_factor = min(abs(angle_deg) / 20.0, 3.0)
+            speed_factor = min(speed_kmh / 80.0, 2.0)
             
-            # Taxa de pontos base
             base_rate = self.base_point_rate * angle_factor * speed_factor
             
-            # Aplicar multiplicador atual
             multiplier = self.MULTIPLIERS[self.current_multiplier]
             points_gained = base_rate * multiplier * dt
             self.points += points_gained
-            
-            # Atualizar estatísticas
             if self.current_multiplier > self.best_combo:
                 self.best_combo = self.current_multiplier
             if self.points > self.best_points:

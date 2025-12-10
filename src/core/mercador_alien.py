@@ -1,4 +1,3 @@
-# src/core/mercador_alien.py
 import pygame
 import random
 import os
@@ -10,7 +9,6 @@ CAMINHO_SOM_COMPRA = os.path.join(DIR_PROJETO, "assets", "sounds", "purchase", "
 CAMINHO_SOM_FAIL = os.path.join(DIR_PROJETO, "assets", "sounds", "fail", "falha.mp3")
 
 def _get_render_text():
-    """Importa render_text de forma lazy para evitar import circular"""
     from core.menu import render_text
     return render_text
 

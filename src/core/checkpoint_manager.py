@@ -61,7 +61,7 @@ class CheckpointManager:
         return False
     
     def carregar_checkpoints(self):
-        """Carrega checkpoints do arquivo JSON (prioridade: checkpoint_editor, depois arquivo antigo)"""
+        """Carrega checkpoints do arquivo JSON"""
         try:
             numero_pista = self.numero_pista
             

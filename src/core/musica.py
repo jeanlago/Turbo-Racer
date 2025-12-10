@@ -15,9 +15,8 @@ class GerenciadorMusica:
         self.musica_no_jogo = True
         self.musica_tocando = False
         self.nome_musica_atual = ""
-        self.audio_disponivel = False  # Flag para indicar se o áudio está disponível
+        self.audio_disponivel = False
         
-        # Tentar inicializar o mixer do pygame
         try:
             pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
             self.audio_disponivel = True
@@ -30,7 +29,6 @@ class GerenciadorMusica:
                 self.audio_disponivel = False
                 self.musica_habilitada = False
         
-        # Só configurar volume se o áudio estiver disponível
         if self.audio_disponivel:
             try:
                 pygame.mixer.music.set_volume(self.volume)

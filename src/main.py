@@ -12,12 +12,10 @@ class FilteredStderr:
     def write(self, message):
         if message:
             msg_lower = message.lower()
-            # Filtrar todos os avisos do libpng sobre iCCP
             if 'libpng' in msg_lower and 'iCCP' in message:
                 return
             if 'iCCP' in message:
                 return
-            # Filtrar avisos sobre sRGB profile
             if 'srgb profile' in msg_lower or 'known incorrect' in msg_lower:
                 return
         self.original_stderr.write(message)
@@ -123,9 +121,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     from config import carregar_configuracoes
     carregar_configuracoes()
     
-    # IMPORTANTE: Se race_id foi fornecido, definir a flag antes de iniciar a corrida
-    # Isso garante que a flag seja mantida mesmo se já estava definida como outra coisa
-    # Se não há race_id mas a missão m6 está ativa e é pista 1, usar training_01
     if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
         gerenciador_progresso.carregar()
         if race_id:
@@ -133,7 +128,6 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             gerenciador_progresso.salvar()
             print(f"[MAIN] Flag ultima_corrida_campanha definida como '{race_id}' no início da corrida")
         elif mapa_selecionado == 1:
-            # Verificar se a missão m6 está ativa
             from core.missoes import gerenciador_missoes
             gerenciador_missoes.carregar()
             if gerenciador_missoes.missao_ativa_id == "m6_batismo_de_pista":
@@ -1499,8 +1493,11 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             
                             # PS5/PS4: botão 6 = Share, botão 8/9 = Options
                             # Xbox: botão 6 = Back (View), botão 7 = Start
+                            # IMPORTANTE: botão 4 = L1/LB (NÃO é pause)
                             botao_pausa = False
-                            if tipo_controle == "xbox":
+                            if ev.button == 4:
+                                botao_pausa = False
+                            elif tipo_controle == "xbox":
                                 botao_pausa = (ev.button == 6 or ev.button == 7)  # Back ou Start
                             elif tipo_controle in ["ps5", "ps4"]:
                                 botao_pausa = (ev.button == 6 or ev.button == 8 or ev.button == 9)  # Share ou Options
@@ -1564,8 +1561,11 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             
                             # PS5/PS4: botão 6 = Share, botão 8/9 = Options
                             # Xbox: botão 6 = Back (View), botão 7 = Start
+                            # IMPORTANTE: botão 4 = L1/LB (NÃO é pause)
                             botao_pausa = False
-                            if tipo_controle == "xbox":
+                            if ev.button == 4:
+                                botao_pausa = False
+                            elif tipo_controle == "xbox":
                                 botao_pausa = (ev.button == 6 or ev.button == 7)  # Back ou Start
                             elif tipo_controle in ["ps5", "ps4"]:
                                 botao_pausa = (ev.button == 6 or ev.button == 8 or ev.button == 9)  # Share ou Options
@@ -1897,8 +1897,11 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 
                 # PS5/PS4: botão 6 = Share, botão 8/9 = Options
                 # Xbox: botão 6 = Back (View), botão 7 = Start
+                # IMPORTANTE: botão 4 = L1/LB (NÃO é pause)
                 botao_pausa = False
-                if tipo_controle == "xbox":
+                if ev.button == 4:
+                    botao_pausa = False
+                elif tipo_controle == "xbox":
                     botao_pausa = (ev.button == 6 or ev.button == 7)  # Back ou Start
                 elif tipo_controle in ["ps5", "ps4"]:
                     botao_pausa = (ev.button == 6 or ev.button == 8 or ev.button == 9)  # Share ou Options

@@ -1,4 +1,3 @@
-# src/core/pc_corridas.py
 """
 Sistema de Corridas no PC
 Tela para selecionar e iniciar corridas no modo campanha
@@ -18,10 +17,8 @@ def _sincronizar_missoes_com_estatisticas(gerenciador_missoes):
     """Sincroniza missões com estatísticas de corridas completadas"""
     from core.estatisticas import gerenciador_estatisticas
     
-    # Mapeamento de missões para race_id e pista
     mapeamento_missoes = {
         "m6_batismo_de_pista": ("training_01", 1),
-        # Adicionar outros mapeamentos conforme necessário
     }
     
     gerenciador_estatisticas.carregar()
@@ -33,7 +30,6 @@ def _sincronizar_missoes_com_estatisticas(gerenciador_missoes):
                 melhor_tempo = stats_pista.get("melhor_tempo")
                 melhor_posicao = stats_pista.get("melhor_posicao")
                 
-                # Se a corrida foi completada (tem estatísticas)
                 if melhor_tempo is not None and melhor_posicao is not None:
                     gerenciador_missoes.completar_missao(missao_id)
 
@@ -41,7 +37,6 @@ def _carregar_config_pc_missoes():
     """Carrega configurações do arquivo JSON se existir, senão retorna valores padrão"""
     config_file = os.path.join(DIR_PROJETO, "tools", "pc_missoes_config.json")
     
-    # Valores padrão (do arquivo test_pc_missoes.py)
     config = {
         "PAINEL_ESQ_X": 50,
         "PAINEL_ESQ_Y": 100,
@@ -66,7 +61,6 @@ def _carregar_config_pc_missoes():
         try:
             with open(config_file, 'r', encoding='utf-8') as f:
                 config_carregada = json.load(f)
-                # Atualizar apenas as chaves que existem no arquivo
                 for key in config:
                     if key in config_carregada:
                         config[key] = config_carregada[key]

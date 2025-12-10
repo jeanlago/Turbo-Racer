@@ -1,4 +1,3 @@
-# src/core/narrative_system.py
 """Sistema de narrativa baseado em JSON para a campanha"""
 import pygame
 import json
@@ -6,12 +5,10 @@ import os
 from typing import Dict, List, Optional, Any
 from config import DIR_PROJETO, LARGURA, ALTURA
 def _get_render_text():
-    """Importa render_text de forma lazy para evitar import circular"""
     from core.menu import render_text
     return render_text
 
 def _get_t():
-    """Importa função de tradução de forma lazy"""
     from core.i18n import t
     return t
 
@@ -62,23 +59,20 @@ class NarrativeSystem:
         self.scene_transition_tempo_escuro = 0.1
         self.scene_transition_tempo_clarear = 0.3
         
-        # Flag para evitar loop de escolhas
         self._escolha_ja_processada = False
         
         self.scenario_hitboxes = {}
         self.hover_hitbox_atual = None
         self.hover_sprite_atual = None
         
-        # Guardar último background para fade em transições
         self.ultimo_background = None
         
-        # Sistema de créditos (auto-avanço)
         self.creditos_auto_advance = False
         self.creditos_tempo_mostrado = 0.0
-        self.creditos_tempo_por_texto = 3.5  # 3.5 segundos por texto
-        self.creditos_tempo_fade = 0.8  # Tempo de fade in/out
+        self.creditos_tempo_por_texto = 3.5
+        self.creditos_tempo_fade = 0.8
         self.creditos_texto_fade_alpha = 0.0
-        self.creditos_texto_fade_direction = 1  # 1 = aparecendo, -1 = desaparecendo
+        self.creditos_texto_fade_direction = 1
         self.creditos_background_index = 0
         self.creditos_backgrounds = [
             "oficina_dia.png",
@@ -92,12 +86,11 @@ class NarrativeSystem:
         self.creditos_backgrounds_carregados = {}
         self.creditos_background_alpha = 1.0
         self.creditos_texto_atual_index = 0
-        self.creditos_background_fade_direction = 0  # 0 = estável, 1 = fade out, -1 = fade in
+        self.creditos_background_fade_direction = 0
         
-        # Sistema de gatilhos dinâmicos
-        self.pending_scenes = []  # Cenas aguardando gatilhos
-        self.scenes_visited = set()  # Cenas já visitadas
-        self.chapter_start_time = {}  # Tempo de início de cada capítulo
+        self.pending_scenes = []
+        self.scenes_visited = set()
+        self.chapter_start_time = {}
         
         # Flag para indicar que o jogo terminou (após créditos)
         self.game_ended = False

@@ -1,4 +1,3 @@
-# src/core/mapa_locations.py
 """
 Sistema de Estados de Localizações no Mapa
 Gerencia estados: invisível, bloqueado_visível, desbloqueado
@@ -12,9 +11,9 @@ CAMINHO_LOCATIONS = os.path.join(DIR_PROJETO, "data", "mapa_locations.json")
 
 class EstadoLocalizacao:
     """Estados possíveis de uma localização"""
-    INVISIVEL = "locked_hidden"  # Não aparece no mapa
-    BLOQUEADO_VISIVEL = "locked_visible"  # Aparece com cadeado
-    DESBLOQUEADO = "unlocked"  # Acessível
+    INVISIVEL = "locked_hidden"
+    BLOQUEADO_VISIVEL = "locked_visible"
+    DESBLOQUEADO = "unlocked"
 
 class GerenciadorLocalizacoes:
     """Gerencia os estados das localizações no mapa"""
@@ -25,7 +24,6 @@ class GerenciadorLocalizacoes:
     
     def carregar(self):
         """Carrega as localizações do progresso.json"""
-        # Primeiro, tentar carregar do progresso.json (fonte principal)
         try:
             caminho_progresso = os.path.join(os.path.dirname(CAMINHO_LOCATIONS), 'progresso.json')
             caminho_progresso = os.path.normpath(caminho_progresso)
@@ -36,16 +34,14 @@ class GerenciadorLocalizacoes:
                     if 'mapa_locations' in data:
                         self.locations = data.get('mapa_locations', {})
                         print(f"[LOCATIONS] Carregado do progresso.json: {len(self.locations)} localizações")
-                        # Verificar e corrigir estados baseado no progresso (import lazy para evitar circular)
                         try:
                             self._verificar_estados_progresso()
                         except Exception as e:
                             print(f"[LOCATIONS] Erro ao verificar estados do progresso (será verificado depois): {e}")
-                        return  # Dados carregados do progresso.json, não precisa do arquivo antigo
+                        return
         except Exception as e:
             print(f"[LOCATIONS] Erro ao carregar do progresso.json: {e}")
         
-        # Fallback: tentar carregar do arquivo antigo se ainda existir (migração)
         if os.path.exists(CAMINHO_LOCATIONS):
             try:
                 with open(CAMINHO_LOCATIONS, 'r', encoding='utf-8') as f:
@@ -57,7 +53,6 @@ class GerenciadorLocalizacoes:
                             "lockedThought": loc.get("lockedThought"),
                             "unlockFlags": loc.get("unlockFlags", [])
                         }
-                # Verificar e corrigir estados baseado no progresso
                 self._verificar_estados_progresso()
             except Exception as e:
                 print(f"Erro ao carregar localizações: {e}")

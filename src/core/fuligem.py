@@ -3,7 +3,6 @@ import pygame
 import os
 import sys
 
-# Adicionar o diretório src ao path se necessário (para quando executado diretamente)
 if __name__ == "__main__":
     src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     if src_dir not in sys.path:
@@ -13,17 +12,14 @@ from config import DIR_PROJETO, LARGURA, ALTURA
 from core.progresso import gerenciador_progresso
 
 def _get_gerenciador_tempo():
-    """Importa gerenciador_tempo de forma lazy para evitar import circular"""
     from core.tempo_jogo import gerenciador_tempo
     return gerenciador_tempo
 
 def _get_render_text():
-    """Importa render_text de forma lazy para evitar import circular"""
     from core.menu import render_text
     return render_text
 
 CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "fuligem")
-# Tentar diferentes nomes de sprites disponíveis
 SPRITE_NEUTRO = os.path.join(CAMINHO_SPRITES, "fuligem_neutro - Copia.png")
 SPRITE_DESPRESO = os.path.join(CAMINHO_SPRITES, "fuligem_bravo.png")
 SPRITE_IRRITADO = os.path.join(CAMINHO_SPRITES, "fuligem_bravo.png")
@@ -39,8 +35,8 @@ class Fuligem:
         self.sprite_despreso = None
         self.sprite_irritado = None
         self.sprite_fundo = None
-        self.sprite_fundo_redimensionado = None  # Cache do fundo redimensionado
-        self.sprites_redimensionados_cache = {}  # Cache de sprites redimensionados
+        self.sprite_fundo_redimensionado = None
+        self.sprites_redimensionados_cache = {}
         self.sprites_carregados = False
         
         self.ativo = False
@@ -60,8 +56,6 @@ class Fuligem:
         self.corrida_aberta = False
         self.pista_selecionada = None
         self.opcao_corrida_selecionada = 0
-        # Corridas com preços diferentes e recompensas diferentes
-        # Corrida mais cara = mais recompensa
         self.corridas_disponiveis = [
             {"nome": "Rota da Caldeira", "pista": 4, "preco": 800, "recompensa": 2000, "dificuldade": "alta", "indice": 0},
             {"nome": "Circuito Industrial", "pista": 5, "preco": 1200, "recompensa": 3500, "dificuldade": "alta", "indice": 1},
@@ -73,9 +67,8 @@ class Fuligem:
         self.nome_revelado = gerenciador_progresso.fuligem_nome_revelado if hasattr(gerenciador_progresso, 'fuligem_nome_revelado') else False
         self.primeira_aparicao_mostrada = gerenciador_progresso.fuligem_primeira_aparicao_mostrada if hasattr(gerenciador_progresso, 'fuligem_primeira_aparicao_mostrada') else False
         
-        # Carregar corridas desbloqueadas
         if not hasattr(gerenciador_progresso, 'fuligem_corridas_desbloqueadas'):
-            gerenciador_progresso.fuligem_corridas_desbloqueadas = [0]  # Corrida 1 (índice 0) sempre desbloqueada
+            gerenciador_progresso.fuligem_corridas_desbloqueadas = [0]
         self.corridas_desbloqueadas = set(gerenciador_progresso.fuligem_corridas_desbloqueadas) if isinstance(gerenciador_progresso.fuligem_corridas_desbloqueadas, list) else set([0])
     
     def salvar_estado(self):

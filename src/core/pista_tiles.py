@@ -1,7 +1,3 @@
-"""
-Sistema de pista usando tiles estilo GRIP
-Carrega tiles de assets/pistas/ e monta a pista baseado em definições
-"""
 import pygame
 import os
 import json

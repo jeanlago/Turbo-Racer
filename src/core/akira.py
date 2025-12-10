@@ -7,7 +7,6 @@ from core.progresso import gerenciador_progresso
 from core.estatisticas import gerenciador_estatisticas
 
 def _get_render_text():
-    """Importa render_text de forma lazy para evitar import circular"""
     from core.menu import render_text
     return render_text
 
@@ -17,8 +16,8 @@ CAMINHO_SPRITES = os.path.join(DIR_PROJETO, "assets", "images", "characters", "a
 SPRITE_NEUTRO = os.path.join(CAMINHO_SPRITES, "akira_neutra.png")
 SPRITE_ENSINANDO = os.path.join(CAMINHO_SPRITES, "akira_sorriso_sutil.png")
 SPRITE_FOCADA = os.path.join(CAMINHO_SPRITES, "akira_seria.png")
-SPRITE_RESPEITO = os.path.join(CAMINHO_SPRITES, "akira_sorriso_sutil.png")  # Usar sorriso sutil para respeito
-SPRITE_DECEPCIONADA = os.path.join(CAMINHO_SPRITES, "akira_seria.png")  # Usar séria para decepcionada
+SPRITE_RESPEITO = os.path.join(CAMINHO_SPRITES, "akira_sorriso_sutil.png")
+SPRITE_DECEPCIONADA = os.path.join(CAMINHO_SPRITES, "akira_seria.png")
 
 CAMINHO_CENA_FUNDO_PRE = os.path.join(DIR_PROJETO, "assets", "images", "ui", "pista_corrida.png")
 CAMINHO_CENA_FUNDO_FIM = os.path.join(DIR_PROJETO, "assets", "images", "ui", "fim_corrida.png")
@@ -36,14 +35,14 @@ class Akira:
         self.sprite_fundo_pre = None
         self.sprite_fundo_fim = None
         self.sprites_carregados = False
-        self.sprites_redimensionados_cache = {}  # Cache de sprites redimensionados
+        self.sprites_redimensionados_cache = {}
         
         self.ativo = False
         self.opcao_corrida_selecionada = 0
         self.corridas_disponiveis = [
             {"nome": "Teste de Fluxo", "pista": 3, "preco": 0, "recompensa": 0, "dificuldade": "medio", "indice": 0, "race_id": "mountain_test_run"}
         ]
-        self.corridas_desbloqueadas = [0]  # Por padrão, a primeira corrida está desbloqueada
+        self.corridas_desbloqueadas = [0]
         self.sprite_atual = None
         self.texto_atual = ""
         self.modo_dialogo = None
@@ -95,7 +94,6 @@ class Akira:
     
     def salvar_estado(self):
         """Salva o estado da Akira APENAS em progresso.json"""
-        # Salvar APENAS em progresso.json (sistema consolidado)
         if hasattr(gerenciador_progresso, 'akira_dialogos_pre_corrida_mostrados'):
             gerenciador_progresso.akira_nome_revelado = getattr(self, 'nome_revelado', False)
             gerenciador_progresso.akira_dialogos_pre_corrida_mostrados = getattr(self, 'dialogos_pre_corrida_mostrados', {}).copy()

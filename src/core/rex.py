@@ -7,7 +7,6 @@ from core.progresso import gerenciador_progresso
 from core.estatisticas import gerenciador_estatisticas
 
 def _get_render_text():
-    """Importa render_text de forma lazy para evitar import circular"""
     from core.menu import render_text
     return render_text
 

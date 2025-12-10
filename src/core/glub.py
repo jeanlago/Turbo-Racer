@@ -64,12 +64,10 @@ class Glub:
     def _carregar_sons(self):
         """Carrega os sons do Glub"""
         try:
-            # Verificar se o mixer está inicializado
             if not pygame.mixer.get_init():
                 try:
                     pygame.mixer.init()
                 except pygame.error:
-                    # Se não conseguir inicializar, não há dispositivo de áudio
                     print("[AVISO] Dispositivo de áudio não disponível. Sons do Glub desabilitados.")
                     self.som_compra = None
                     return
@@ -91,10 +89,9 @@ class Glub:
     def carregar_sprites(self):
         """Carrega os sprites do Glub"""
         if self.sprites_carregados:
-            return  # Já foram carregados
+            return
         
         try:
-            # Garantir que pygame está inicializado
             if not pygame.get_init():
                 print("AVISO: pygame não inicializado, tentando inicializar...")
                 pygame.init()

@@ -40,19 +40,15 @@ class GhostRecorder:
         
         self.tempo_acumulado += dt
         
-        # Gravar apenas se passou o intervalo mínimo
         if len(self.frames) == 0 or (self.tempo_acumulado - self.frames[-1][0]) >= self.intervalo_gravacao:
-            # Obter posição e ângulo do carro
             x = carro.x
             y = carro.y
             
-            # Obter ângulo do carro (em graus)
             if hasattr(carro, 'angulo'):
                 angulo = carro.angulo
             elif hasattr(carro, '_angulo'):
                 angulo = carro._angulo
             else:
-                # Calcular ângulo baseado na velocidade
                 if hasattr(carro, 'vx') and hasattr(carro, 'vy'):
                     vx, vy = carro.vx, carro.vy
                     if abs(vx) > 0.01 or abs(vy) > 0.01:
@@ -62,7 +58,6 @@ class GhostRecorder:
                 else:
                     angulo = 0.0
             
-            # Adicionar frame
             self.frames.append((self.tempo_acumulado, float(x), float(y), float(angulo)))
     
     def obter_dados(self):

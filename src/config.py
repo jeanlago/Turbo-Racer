@@ -30,8 +30,7 @@ if not hasattr(sys.stderr, '_filtered_libpng'):
 LARGURA, ALTURA = 1280, 720
 FPS = 60
 
-# Modo de teste: marca corridas como concluídas automaticamente ao clicar
-MODO_TESTE_CORRIDAS = False  # Altere para False para desativar
+MODO_TESTE_CORRIDAS = False
 
 def obter_caminho_base():
     """Retorna o caminho base do projeto, funcionando tanto em dev quanto no executável"""
@@ -115,7 +114,6 @@ def obter_caminho_sprite_dia_noite(nome_base: str, diretorio: str = None, extens
     if os.path.exists(caminho_com_sufixo):
         return caminho_com_sufixo
     
-    # Se é noite e o arquivo noite não existe, tentar arquivo dia como fallback
     if estado == "noite":
         caminho_dia = os.path.join(diretorio, f"{nome_base}_dia{extensao}")
         if os.path.exists(caminho_dia):

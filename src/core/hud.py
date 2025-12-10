@@ -11,7 +11,6 @@ class HUD:
     def __init__(self):
         self.imagem_retorne = None
         self.fonte_contra_mao = None
-        # Carregar imagens do velocímetro e nitro
         self.velocimetro_sem_cor = None
         self.velocimetro_colorido = None
         self.nitro_vazio = None
@@ -62,31 +61,25 @@ class HUD:
         try:
             from core.tempo_jogo import gerenciador_tempo
             
-            # Criar fonte se não existir
             if not hasattr(self, 'fonte_relogio'):
                 self.fonte_relogio = pygame.font.SysFont("consolas", 32, bold=True)
             
-            # Obter hora formatada
             hora_formatada = gerenciador_tempo.obter_hora_formatada()
             
-            # Desenhar fundo semi-transparente
             x, y = posicao
             largura = 130
             altura = 50
             fundo = pygame.Surface((largura, altura), pygame.SRCALPHA)
-            fundo.fill((0, 0, 0, 180))  # Preto semi-transparente
+            fundo.fill((0, 0, 0, 180))
             superficie.blit(fundo, (x, y))
             
-            # Desenhar borda
             pygame.draw.rect(superficie, (100, 100, 100), (x, y, largura, altura), 2)
             
-            # Desenhar hora
             texto_hora = self.fonte_relogio.render(hora_formatada, True, (255, 255, 255))
             texto_x = x + (largura - texto_hora.get_width()) // 2
             texto_y = y + (altura - texto_hora.get_height()) // 2
             superficie.blit(texto_hora, (texto_x, texto_y))
         except Exception as e:
-            # Se houver erro, não desenhar o relógio
             pass
     
     def desenhar_hud_completo(self, superficie, carro, dt=0.016, offset_x=0):

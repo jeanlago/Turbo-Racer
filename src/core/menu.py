@@ -16,8 +16,6 @@ from core.progresso import gerenciador_progresso
 from core.gamepad_manager import gerenciador_gamepad
 from core.casa import casa_loop
 
-# Variável global para rastrear se o jogador tinha dinheiro suficiente antes (fora da oficina)
-# Usado para mostrar notificação apenas quando há transição de "sem dinheiro" para "com dinheiro"
 _tinha_dinheiro_anterior = None
 
 def scale_to_cover(img_surf, target_w, target_h):
@@ -32,7 +30,6 @@ def verificar_clique_opcao(mouse_x, mouse_y, opcoes, caixa_x, caixa_y, caixa_lar
     """Verifica se o mouse clicou em alguma opção e retorna o índice"""
     for i, (nome, chave) in enumerate(opcoes):
         if opcao_largura is None:
-            # Layout padrão para submenus
             y = caixa_y + offset_y + i * altura_item - scroll_offset
             opcao_rect = pygame.Rect(caixa_x + 20, y - 5, caixa_largura - 40, altura_item)
         else:
@@ -53,10 +50,10 @@ def desenhar_scrollbar(screen, scroll_offset, max_scroll, caixa_x, caixa_y, caix
     scrollbar_width = 12
     scrollbar_x = caixa_x + caixa_largura - scrollbar_width - 5
     scrollbar_y = caixa_y + 80
-    scrollbar_height = caixa_altura - 200  # Altura da área de opções (deixando espaço para o botão voltar)
+    scrollbar_height = caixa_altura - 200
     
     scroll_ratio = scroll_offset / max_scroll if max_scroll > 0 else 0
-    indicator_height = max(30, int(scrollbar_height * 0.3))  # 30% da altura da barra
+    indicator_height = max(30, int(scrollbar_height * 0.3))
     indicator_y = scrollbar_y + int(scroll_ratio * (scrollbar_height - indicator_height))
     
     scrollbar_bg = pygame.Surface((scrollbar_width, scrollbar_height), pygame.SRCALPHA)
@@ -105,7 +102,7 @@ def load_pixel_font_atlas():
                            'é', 'É', 'ê', 'Ê', 'í', 'Í', 'ó', 'Ó', 'ô', 'Ô', 'ú', 'Ú', 
                            'ü', 'Ü', 'ñ', 'Ñ']
             
-            char_index = 95  # 127 - 32 = 95 (posição após ASCII 32-126)
+            char_index = 95
             
             for char in special_chars:
                 row = char_index // chars_per_row
@@ -132,7 +129,7 @@ def render_pixel_text(text, size, color=(255,255,255)):
         font = pygame.font.SysFont("consolas", size, bold=True)
         return font.render(text, True, color)
     
-    base_size = 12  # Tamanho base dos caracteres no atlas
+    base_size = 12
     scale = size / base_size
     
     char_width = int(8 * scale)
@@ -154,7 +151,7 @@ def render_pixel_text(text, size, color=(255,255,255)):
             for x in range(char_surface.get_width()):
                 for y in range(char_surface.get_height()):
                     pixel = char_surface.get_at((x, y))
-                    if pixel[0] > 128:  # Se é um pixel branco (caractere)
+                    if pixel[0] > 128:
                         char_colored.set_at((x, y), (*color, 255))
             
             x = i * char_width
@@ -182,9 +179,7 @@ def render_text(text, size, color=(255,255,255), bold=True, pixel_style=True):
             "assets/fonts/retro_font.ttf",           # Fonte retrô customizada
         ]
         
-        # Se não encontrar fontes TTF, usar fontes do sistema com aparência pixel art
         if not any(os.path.exists(font_path) for font_path in pixel_fonts):
-            # Usar fontes do sistema que suportam acentos
             system_fonts = [
                 "consolas",      # Consolas (monospace, suporta acentos)
                 "courier",       # Courier (monospace, suporta acentos)

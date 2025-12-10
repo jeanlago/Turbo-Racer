@@ -24,7 +24,6 @@ class GerenciadorEstatisticas:
     
     def carregar(self):
         """Carrega as estatísticas do progresso.json"""
-        # Os dados já estão no gerenciador_progresso, não precisa fazer nada
         pass
     
     def salvar(self):
@@ -49,11 +48,9 @@ class GerenciadorEstatisticas:
     def registrar_tempo_jogado(self, segundos):
         """Registra tempo total jogado"""
         self.estatisticas_gerais["tempo_total_jogado"] += segundos
-        # Não salvar a cada frame para melhorar performance
         if not hasattr(self, '_tempo_pendente'):
             self._tempo_pendente = 0.0
         self._tempo_pendente += segundos
-        # Salvar apenas a cada 5 segundos
         if self._tempo_pendente >= 5.0:
             self.salvar()
             self._tempo_pendente = 0.0
@@ -61,11 +58,9 @@ class GerenciadorEstatisticas:
     def registrar_distancia(self, distancia_pixels):
         """Registra distância percorrida (em pixels)"""
         self.estatisticas_gerais["distancia_total"] += distancia_pixels
-        # Não salvar a cada frame para melhorar performance
         if not hasattr(self, '_ultimo_salvamento_distancia'):
             self._ultimo_salvamento_distancia = 0
         self._ultimo_salvamento_distancia += distancia_pixels
-        # Salvar apenas a cada 1000 pixels para reduzir I/O
         if self._ultimo_salvamento_distancia >= 1000:
             self.salvar()
             self._ultimo_salvamento_distancia = 0
@@ -96,11 +91,9 @@ class GerenciadorEstatisticas:
         if numero_pista is not None:
             stats_pista = self._obter_estatisticas_pista(numero_pista)
             stats_pista["voltas_completas"] += 1
-        # Não salvar a cada volta para melhorar performance
         if not hasattr(self, '_voltas_pendentes'):
             self._voltas_pendentes = 0
         self._voltas_pendentes += 1
-        # Salvar apenas a cada 5 voltas
         if self._voltas_pendentes >= 5:
             self.salvar()
             self._voltas_pendentes = 0
@@ -111,11 +104,9 @@ class GerenciadorEstatisticas:
         if numero_pista is not None:
             stats_pista = self._obter_estatisticas_pista(numero_pista)
             stats_pista["colisoes"] += 1
-        # Não salvar a cada colisão para melhorar performance
         if not hasattr(self, '_colisoes_pendentes'):
             self._colisoes_pendentes = 0
         self._colisoes_pendentes += 1
-        # Salvar apenas a cada 10 colisões
         if self._colisoes_pendentes >= 10:
             self.salvar()
             self._colisoes_pendentes = 0
@@ -123,11 +114,9 @@ class GerenciadorEstatisticas:
     def registrar_drift(self):
         """Registra uso de drift"""
         self.estatisticas_gerais["drifts_totais"] += 1
-        # Não salvar a cada drift para melhorar performance
         if not hasattr(self, '_drifts_pendentes'):
             self._drifts_pendentes = 0
         self._drifts_pendentes += 1
-        # Salvar apenas a cada 10 drifts
         if self._drifts_pendentes >= 10:
             self.salvar()
             self._drifts_pendentes = 0
@@ -135,11 +124,9 @@ class GerenciadorEstatisticas:
     def registrar_turbo(self):
         """Registra uso de turbo"""
         self.estatisticas_gerais["turbo_usado"] += 1
-        # Não salvar a cada turbo para melhorar performance
         if not hasattr(self, '_turbos_pendentes'):
             self._turbos_pendentes = 0
         self._turbos_pendentes += 1
-        # Salvar apenas a cada 10 turbos
         if self._turbos_pendentes >= 10:
             self.salvar()
             self._turbos_pendentes = 0
@@ -154,11 +141,10 @@ class GerenciadorEstatisticas:
     def registrar_trofeu(self):
         """Registra um troféu ganho"""
         self.estatisticas_gerais["trofeus_ganhos"] += 1
-        self.salvar()  # Salvar imediatamente para troféus (evento importante)
+        self.salvar()
     
     def finalizar_sessao(self):
         """Salva todas as estatísticas pendentes"""
-        # Forçar salvamento de todas as estatísticas pendentes
         if hasattr(self, '_ultimo_salvamento_distancia') and self._ultimo_salvamento_distancia > 0:
             self.salvar()
             self._ultimo_salvamento_distancia = 0

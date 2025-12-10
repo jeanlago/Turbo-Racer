@@ -1,4 +1,3 @@
-# src/core/progresso.py
 import json
 import os
 import time
@@ -72,26 +71,22 @@ class GerenciadorProgresso:
         
         self.hierarquia_desbloqueada = False
         self.oficina_desbloqueada = False
-        self.housingActive = False  # Flag para habilitar opção de casa para dormir
-        self.locations_unlocked_by_narrative = {}  # Rastreia localizações desbloqueadas pela narrativa
-        self.cinturaoUnlocked = False  # Flag para indicar que o Cinturão Industrial foi desbloqueado
-        self.corridas_cinturao_completas = set()  # Rastreia quais corridas do Cinturão foram completadas (pistas 4, 5, 6)
-        self.crownCircuitActive = False  # Flag para indicar que o Circuito da Coroa está ativo
-        self.crown_stages_won = set()  # Rastreia quais etapas do Circuito da Coroa foram vencidas (posição 1)
+        self.housingActive = False
+        self.locations_unlocked_by_narrative = {}
+        self.cinturaoUnlocked = False
+        self.corridas_cinturao_completas = set()
+        self.crownCircuitActive = False
+        self.crown_stages_won = set()
         
-        # Sistema de melhoria de carro (campanha)
-        self.carro_campanha_estagio = 0  # 0=inicial, 1=lataria, 2=pneus_drift, 3=bodykit
-        self.carro_campanha_cor_final = None  # None ou "azul", "branco", "preto", "verde"
+        self.carro_campanha_estagio = 0
+        self.carro_campanha_cor_final = None
         
-        # Desbloqueios do Pixel
-        self.pixel_upgrade_nivel_6_desbloqueado = False  # Permite upgrades até nível 6
-        self.pixel_cores_especiais_desbloqueadas = set()  # Cores especiais desbloqueadas pelo Pixel
+        self.pixel_upgrade_nivel_6_desbloqueado = False
+        self.pixel_cores_especiais_desbloqueadas = set()
         
-        # Upgrades comprados do Slick
-        self.slick_upgrades_comprados = []  # Lista de IDs de upgrades comprados do Slick
+        self.slick_upgrades_comprados = []
         
-        # Desbloqueios de features
-        self.glub_desbloqueado = False  # Flag para indicar que o Glub foi desbloqueado pela narrativa
+        self.glub_desbloqueado = False
         
         self.achievements_desbloqueados = set()
         self.achievements_visualizados = set()
@@ -182,15 +177,12 @@ class GerenciadorProgresso:
                     
                     self.glub_primeira_aparicao_feita = data.get('glub_primeira_aparicao_feita', False)
                     self.glub_nome_revelado = data.get('glub_nome_revelado', False)
-                    # Carregar datas de última aparição (compatibilidade com sistema antigo)
                     glub_ultima_aparicao_dia_antigo = data.get('glub_ultima_aparicao_dia', 0)
                     slick_ultima_aparicao_dia_antigo = data.get('slick_ultima_aparicao_dia', 0)
                     
-                    # Se houver data nova, usar ela; senão, converter do sistema antigo
                     if 'glub_ultima_aparicao_data' in data:
                         self.glub_ultima_aparicao_data = data.get('glub_ultima_aparicao_data')
                     elif glub_ultima_aparicao_dia_antigo > 0:
-                        # Converter do sistema antigo (número do dia) para data
                         from datetime import date, timedelta
                         data_base = date(1990, 12, 5)
                         self.glub_ultima_aparicao_data = (data_base + timedelta(days=glub_ultima_aparicao_dia_antigo - 1)).strftime("%Y-%m-%d")
@@ -200,7 +192,6 @@ class GerenciadorProgresso:
                     if 'slick_ultima_aparicao_data' in data:
                         self.slick_ultima_aparicao_data = data.get('slick_ultima_aparicao_data')
                     elif slick_ultima_aparicao_dia_antigo > 0:
-                        # Converter do sistema antigo (número do dia) para data
                         from datetime import date, timedelta
                         data_base = date(1990, 12, 5)
                         self.slick_ultima_aparicao_data = (data_base + timedelta(days=slick_ultima_aparicao_dia_antigo - 1)).strftime("%Y-%m-%d")
@@ -227,7 +218,7 @@ class GerenciadorProgresso:
                     
                     self.fuligem_nome_revelado = data.get('fuligem_nome_revelado', False)
                     self.fuligem_primeira_aparicao_mostrada = data.get('fuligem_primeira_aparicao_mostrada', False)
-                    self.fuligem_corridas_desbloqueadas = data.get('fuligem_corridas_desbloqueadas', [0])  # Corrida 1 sempre desbloqueada
+                    self.fuligem_corridas_desbloqueadas = data.get('fuligem_corridas_desbloqueadas', [0])
                     
                     self.capitulo_atual = data.get('capitulo_atual', None)
                     self.capitulos_completos = set(data.get('capitulos_completos', []))
@@ -277,27 +268,21 @@ class GerenciadorProgresso:
                     })
                     self.estatisticas_por_pista = data.get('estatisticas_por_pista', {})
                     
-                    # Carregar flag de última corrida da campanha
                     self.ultima_corrida_campanha = data.get('ultima_corrida_campanha', None)
                     self.iniciar_capitulo_4_apos_narrativa = data.get('iniciar_capitulo_4_apos_narrativa', False)
                     corridas_desbloqueadas_data = data.get('corridas_desbloqueadas', [])
                     self.corridas_desbloqueadas = set(corridas_desbloqueadas_data) if isinstance(corridas_desbloqueadas_data, list) else set()
                     
-                    # Carregar desbloqueios do Pixel
                     self.pixel_upgrade_nivel_6_desbloqueado = data.get('pixel_upgrade_nivel_6_desbloqueado', False)
                     self.pixel_cores_especiais_desbloqueadas = set(data.get('pixel_cores_especiais_desbloqueadas', []))
                     
-                    # Upgrades comprados do Slick
                     self.slick_upgrades_comprados = data.get('slick_upgrades_comprados', [])
                     
-                    # Sistema de melhoria de carro (campanha)
                     self.carro_campanha_estagio = data.get('carro_campanha_estagio', 0)
                     self.carro_campanha_cor_final = data.get('carro_campanha_cor_final', None)
                     
-                    # Carregar flags do sistema narrativo
                     self.crownCircuitActive = data.get('crownCircuitActive', False)
                     
-                    # Carregar dados de outros sistemas do progresso.json
                     self._carregar_dados_outros_sistemas(data)
                     
                     self._migrar_dados_antigos()
@@ -350,7 +335,7 @@ class GerenciadorProgresso:
                 import traceback
                 traceback.print_exc()
                 self.dinheiro = 0
-                self.carros_desbloqueados = {'Car1'}  # Primeiro carro sempre desbloqueado
+                self.carros_desbloqueados = {'Car1'}
                 self.recordes_corrida = {}
                 self.recordes_drift = {}
                 self.trofeus = {}
@@ -358,19 +343,14 @@ class GerenciadorProgresso:
                 self.carro_p1_atual = None
                 self.carro_p2_atual = None
         else:
-            # Progresso.json não existe - resetar tudo para valores padrão
-            self.dinheiro = 5000  # Dinheiro inicial aumentado para permitir compra de carros iniciais
+            self.dinheiro = 5000
             self.carros_desbloqueados = {'Car1'}
-            # Resetar humor do Crank para 0 (normal)
             self.crank_humor_atual = 0
             self.crank_saude_carro = 1.0
             self.crank_tutorial_mostrado = False
             self.crank_tutorial_upgrades_mostrado = False
             self.crank_prefixo_cor_ultimo_carro = None
             self.crank_nome_revelado = False
-            
-            # Resetar missões para valores padrão (será feito quando gerenciador_missoes for inicializado)
-            # Não importar aqui para evitar import circular - será resetado no _carregar_missoes_completas
             
             self.salvar()
     
@@ -379,7 +359,6 @@ class GerenciadorProgresso:
         try:
             os.makedirs(os.path.dirname(CAMINHO_PROGRESSO), exist_ok=True)
             
-            # Carregar dados de outros sistemas para salvar tudo junto
             from core.missoes import gerenciador_missoes
             from core.mapa_locations import gerenciador_localizacoes
             from core.tempo_jogo import gerenciador_tempo
@@ -519,23 +498,19 @@ class GerenciadorProgresso:
                 'iniciar_capitulo_4_apos_narrativa': self.iniciar_capitulo_4_apos_narrativa,
                 'corridas_desbloqueadas': list(self.corridas_desbloqueadas) if isinstance(self.corridas_desbloqueadas, set) else self.corridas_desbloqueadas,
                 
-                # Desbloqueios do Pixel
                 'pixel_upgrade_nivel_6_desbloqueado': getattr(self, 'pixel_upgrade_nivel_6_desbloqueado', False),
                 'pixel_cores_especiais_desbloqueadas': list(getattr(self, 'pixel_cores_especiais_desbloqueadas', set())),
                 'slick_upgrades_comprados': getattr(self, 'slick_upgrades_comprados', []),
                 
-                # Sistema de melhoria de carro (campanha)
                 'carro_campanha_estagio': getattr(self, 'carro_campanha_estagio', 0),
                 'carro_campanha_cor_final': getattr(self, 'carro_campanha_cor_final', None),
                 
-                # Flags do sistema narrativo (salvas no progresso para persistência)
                 'crownCircuitActive': getattr(self, 'crownCircuitActive', False)
             }
             
             with open(CAMINHO_PROGRESSO, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
             
-            # Após salvar no progresso.json, restaurar dados nos outros sistemas
             self._restaurar_dados_outros_sistemas()
         except Exception as e:
             print(f"Erro ao salvar progresso: {e}")
@@ -574,10 +549,8 @@ class GerenciadorProgresso:
         chave = str(numero_pista)
         recorde_atual = self.recordes_corrida.get(chave, None)
         
-        # Se não há recorde ou o novo tempo é melhor (menor)
         if recorde_atual is None or tempo < recorde_atual:
             self.recordes_corrida[chave] = tempo
-            # Sincronizar com estatísticas - atualizar melhor_tempo também
             from core.estatisticas import gerenciador_estatisticas
             stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(numero_pista)
             if stats_pista.get("melhor_tempo") is None or tempo < stats_pista.get("melhor_tempo", float('inf')):
@@ -604,12 +577,10 @@ class GerenciadorProgresso:
         chave = str(numero_pista)
         trofeu_atual = self.trofeus.get(chave, None)
         
-        # Ordem de prioridade: ouro > prata > bronze
         prioridade = {"ouro": 3, "prata": 2, "bronze": 1}
         prioridade_atual = prioridade.get(trofeu_atual, 0) if trofeu_atual else 0
         prioridade_nova = prioridade.get(tipo_trofeu, 0)
         
-        # Só atualizar se o novo troféu tiver maior prioridade
         if prioridade_nova > prioridade_atual:
             self.trofeus[chave] = tipo_trofeu
             self.salvar()
@@ -658,10 +629,8 @@ class GerenciadorProgresso:
         if self.esta_desbloqueado(prefixo_cor) and prefixo_cor != "Car1":
             self.carros_desbloqueados.remove(prefixo_cor)
             self.adicionar_dinheiro(preco_venda)
-            # Remover upgrades do carro vendido
             if prefixo_cor in self.upgrades:
                 del self.upgrades[prefixo_cor]
-            # Se era o carro atual, resetar
             if self.carro_p1_atual == prefixo_cor:
                 self.carro_p1_atual = None
             if self.carro_p2_atual == prefixo_cor:
@@ -686,7 +655,6 @@ class GerenciadorProgresso:
             'nitro': 800
         }
         preco_base = precos_base.get(tipo_upgrade, 500)
-        # Preço aumenta exponencialmente: base * (1.5 ^ nivel)
         return int(preco_base * (1.5 ** nivel_atual))
     
     def comprar_upgrade(self, prefixo_cor, tipo_upgrade, preco):
@@ -695,7 +663,6 @@ class GerenciadorProgresso:
             self.upgrades[prefixo_cor] = {}
         
         nivel_atual = self.obter_upgrade(prefixo_cor, tipo_upgrade)
-        # Máximo de 5 níveis normalmente, 6 se Pixel desbloqueou
         nivel_maximo = 6 if getattr(self, 'pixel_upgrade_nivel_6_desbloqueado', False) else 5
         if nivel_atual < nivel_maximo:
             if self.tem_dinheiro(preco):
@@ -866,21 +833,16 @@ class GerenciadorProgresso:
     def _restaurar_dados_outros_sistemas(self):
         """Restaura dados nos outros sistemas após salvar no progresso.json"""
         try:
-            # Não precisamos fazer nada aqui, pois os sistemas já estão atualizados
-            # Este método existe para compatibilidade futura se necessário
             pass
         except Exception as e:
             print(f"[PROGRESSO] Erro ao restaurar dados de outros sistemas: {e}")
     
     def _migrar_dados_antigos(self):
         """Migra dados de arquivos antigos para o progresso.json"""
-        # Implementação básica - pode ser expandida conforme necessário
         pass
     
     def _migrar_upgrades_antigos(self):
         """Migra upgrades de formato antigo para novo"""
-        # Implementação básica - pode ser expandida conforme necessário
         pass
 
-# Instância global
 gerenciador_progresso = GerenciadorProgresso()

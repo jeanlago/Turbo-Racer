@@ -12,7 +12,7 @@ class Skidmark:
         self.tempo_vida = 0.0
         self.alpha = alpha
         self.ativo = True
-        self.na_grama = na_grama  # Flag para indicar se foi criado na grama
+        self.na_grama = na_grama
     
     def atualizar(self, dt):
         """Atualiza o skidmark"""
@@ -69,7 +69,7 @@ class GerenciadorSkidmarks:
             skidmark.atualizar(dt)
     
     def desenhar(self, tela, camera):
-        """Desenha todos os skidmarks - otimizado"""
+        """Desenha todos os skidmarks"""
         if camera:
             visao = camera.ret_visao()
             margem = 50

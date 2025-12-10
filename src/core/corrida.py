@@ -12,30 +12,24 @@ class GerenciadorCorrida:
         self.fonte = fonte or pygame.font.SysFont("consolas", 26)
         self.fonte_grande = pygame.font.SysFont("consolas", 64, bold=True)
 
-        # Semáforo 3-2-1-VAI
         self.contagem_regressiva = 3.0
         self.iniciada = False
 
-        # Progresso/estado por carro
-        self.proximo_checkpoint = {}   # carro -> idx próximo CP
-        self.voltas = {}               # carro -> voltas
-        self.finalizou = {}            # carro -> bool
+        self.proximo_checkpoint = {}
+        self.voltas = {}
+        self.finalizou = {}
 
-        # Tempo
-        self.tempo_global = 0.0        # tempo desde o "VAI!"
-        self.tempo_final = {}          # carro -> tempo quando finalizou
+        self.tempo_global = 0.0
+        self.tempo_final = {}
         
-        # Tempos por checkpoint (estilo GRIP)
-        self.tempo_checkpoint = {}     # carro -> {idx_checkpoint: tempo}
-        self.tempo_secao = {}          # carro -> {secao: tempo} - para seções do GRIP
-        self.ultimo_checkpoint_tempo = {}  # carro -> tempo do último checkpoint
+        self.tempo_checkpoint = {}
+        self.tempo_secao = {}
+        self.ultimo_checkpoint_tempo = {}
 
-        # Sistema de checkpoints dinâmico
         self.checkpoints = checkpoints or []
         self.voltas_objetivo = voltas_objetivo
         self.total_checkpoints_necessarios = len(self.checkpoints) * self.voltas_objetivo
         
-        # Retângulos (mantidos para compatibilidade)
         self.ret_largada = pygame.Rect(*LINHA_LARGADA)
         self.ret_checkpoints = [pygame.Rect(*r) for r in PONTOS_DE_CONTROLE]
 
@@ -47,10 +41,8 @@ class GerenciadorCorrida:
         self.tempo_checkpoint[carro] = {}
         self.tempo_secao[carro] = {}
         self.ultimo_checkpoint_tempo[carro] = 0.0
-        # Inicializar checkpoint_atual no carro para o HUD
         carro.checkpoint_atual = 0
 
-    # --- Semáforo e tempo global ---
     def atualizar_contagem(self, dt, npcs_ativos=False):
         """
         Atualiza a contagem regressiva
@@ -58,7 +50,6 @@ class GerenciadorCorrida:
         """
         if self.iniciada:
             return
-        # Não iniciar contagem se houver NPCs ativos (cutscenes)
         if npcs_ativos:
             return
         self.contagem_regressiva -= dt
@@ -66,7 +57,6 @@ class GerenciadorCorrida:
             self.iniciada = True
 
     def atualizar_tempo(self, dt, jogo_pausado=False):
-        # Parar o tempo quando pausado ou quando todos finalizaram
         if self.iniciada and not jogo_pausado and not self.todos_finalizados():
             self.tempo_global += dt
 

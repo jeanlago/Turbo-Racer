@@ -1,4 +1,3 @@
-# src/core/hub_territorio.py
 """
 Hub do Território - Tela de ações após selecionar um território no mapa
 Mostra o NPC local e lista de atividades disponíveis
@@ -10,7 +9,6 @@ from typing import Optional, Dict, List
 from config import LARGURA, ALTURA, FPS, DIR_PROJETO, obter_caminho_sprite_dia_noite
 from core.territorios import obter_territorio, Territorio
 
-# Mapeamento de territórios para sprites de fundo (usando sistema dia/noite)
 def obter_caminho_fabrica():
     return obter_caminho_sprite_dia_noite("fosso")
 def obter_caminho_iate_barao():
@@ -18,11 +16,9 @@ def obter_caminho_iate_barao():
 def obter_caminho_monte_akira():
     return obter_caminho_sprite_dia_noite("monte_akira")
 def obter_caminho_torre_king():
-    # Torre Rex usa o saguão como entrada
     caminho_saguao = os.path.join(DIR_PROJETO, "assets", "images", "ui", "saguao_torre_rex.png")
     if os.path.exists(caminho_saguao):
         return caminho_saguao
-    # Fallback para o sistema dia/noite se não existir
     return obter_caminho_sprite_dia_noite("predio_rex")
 def obter_caminho_bunker():
     return obter_caminho_sprite_dia_noite("bunker")
@@ -33,17 +29,14 @@ def obter_caminho_autodromo():
 def obter_caminho_beco_sucata():
     return obter_caminho_sprite_dia_noite("beco_de_sucata")
 def obter_caminho_beco_neon():
-    # Beco Neon só tem versão noite por enquanto
     caminho_noite = os.path.join(DIR_PROJETO, "assets", "images", "ui", "beco_neon_noite.png")
     if os.path.exists(caminho_noite):
         return caminho_noite
-    # Fallback para dia se não existir noite
     caminho_dia = os.path.join(DIR_PROJETO, "assets", "images", "ui", "beco_neon_dia.png")
     if os.path.exists(caminho_dia):
         return caminho_dia
-    return caminho_noite  # Retornar mesmo que não exista
+    return caminho_noite
 
-# Mantém compatibilidade com código existente
 CAMINHO_FABRICA = obter_caminho_fabrica()
 CAMINHO_IATE_BARAO = obter_caminho_iate_barao()
 CAMINHO_MONTE_AKIRA = obter_caminho_monte_akira()

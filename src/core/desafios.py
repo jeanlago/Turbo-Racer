@@ -99,8 +99,6 @@ class GerenciadorDesafios:
     
     def carregar(self):
         """Carrega desafios do progresso.json"""
-        # Os dados já estão no gerenciador_progresso, não precisa fazer nada
-        # Mas corrigir IDs duplicados se existirem
         self._corrigir_ids_duplicados()
     
     def _corrigir_ids_duplicados(self):
@@ -115,11 +113,8 @@ class GerenciadorDesafios:
         
         for i, desafio in enumerate(self.desafios_diarios):
             desafio_id = desafio.get("id", "")
-            # Se o ID não começa com a data de hoje, ou se já foi visto, corrigir
             if not desafio_id.startswith(f"diario_{data_hoje_str}_") or desafio_id in ids_vistos:
-                # Gerar novo ID único
                 novo_id = f"diario_{data_hoje_str}_{i}"
-                # Se o novo ID já existe, tentar o próximo
                 tentativas = 0
                 while novo_id in ids_vistos or novo_id in [d.get("id") for d in desafios_corrigidos]:
                     tentativas += 1
@@ -154,11 +149,8 @@ class GerenciadorDesafios:
         
         for i, desafio in enumerate(self.desafios_semanais):
             desafio_id = desafio.get("id", "")
-            # Se o ID não começa com a semana atual, ou se já foi visto, corrigir
             if not desafio_id.startswith(f"semanal_{hoje.year}") or desafio_id in ids_vistos_semanais:
-                # Gerar novo ID único
                 novo_id = f"semanal_{ano_semana_str}_{i}"
-                # Se o novo ID já existe, tentar o próximo
                 tentativas = 0
                 while novo_id in ids_vistos_semanais or novo_id in [d.get("id") for d in desafios_semanais_corrigidos]:
                     tentativas += 1
@@ -185,7 +177,6 @@ class GerenciadorDesafios:
             self.desafios_semanais = desafios_semanais_corrigidos
             precisa_salvar = True
         
-        # Salvar correções se necessário
         if precisa_salvar:
             self.salvar()
     
@@ -214,19 +205,19 @@ class GerenciadorDesafios:
                 "tipo": "completar_corridas",
                 "objetivo": random.randint(2, 5),
                 "recompensa": random.randint(300, 600),
-                "descricao": None  # Será preenchida depois com o objetivo real
+                "descricao": None
             },
             {
                 "tipo": "vencer_corridas",
                 "objetivo": random.randint(1, 3),
                 "recompensa": random.randint(400, 800),
-                "descricao": None  # Será preenchida depois com o objetivo real
+                "descricao": None
             },
             {
                 "tipo": "completar_voltas",
                 "objetivo": random.randint(10, 20),
                 "recompensa": random.randint(250, 500),
-                "descricao": None  # Será preenchida depois com o objetivo real
+                "descricao": None
             },
             {
                 "tipo": "estabelecer_recorde",
@@ -238,12 +229,11 @@ class GerenciadorDesafios:
                 "tipo": "usar_turbo",
                 "objetivo": random.randint(50, 100),
                 "recompensa": random.randint(200, 400),
-                "descricao": None  # Será preenchida depois com o objetivo real
+                "descricao": None
             }
         ]
-        desafio = random.choice(tipos).copy()  # Usar copy() para não modificar o original
+        desafio = random.choice(tipos).copy()
         
-        # Preencher descrição com o objetivo real
         if desafio["descricao"] is None:
             if desafio["tipo"] == "completar_corridas":
                 desafio["descricao"] = f"Complete {desafio['objetivo']} corridas"
@@ -254,11 +244,9 @@ class GerenciadorDesafios:
             elif desafio["tipo"] == "usar_turbo":
                 desafio["descricao"] = f"Use o turbo {desafio['objetivo']} vezes"
         
-        # Gerar ID único baseado na data e índice
         hoje = datetime.now().date()
         data_hoje_str = hoje.strftime('%Y%m%d')
         if indice is None:
-            # Se não foi fornecido, contar quantos desafios do dia de hoje já existem
             desafios_hoje = [d for d in self.desafios_diarios if d.get("id", "").startswith(f"diario_{data_hoje_str}_")]
             indice = len(desafios_hoje)
         desafio["id"] = f"diario_{data_hoje_str}_{indice}"
@@ -307,17 +295,13 @@ class GerenciadorDesafios:
         # Verificar desafios diários
         if self.ultima_atualizacao_diaria is None:
             self.ultima_atualizacao_diaria = hoje.isoformat()
-            # Gerar desafios com índices únicos (0, 1, 2)
             self.desafios_diarios = [self._gerar_desafio_diario(indice=i) for i in range(3)]
-            # Limpar desafios diários antigos do set de completados
             self.completados = {c for c in self.completados if not c.startswith("diario_")}
         else:
             ultima_data = datetime.fromisoformat(self.ultima_atualizacao_diaria).date()
             if hoje > ultima_data:
                 self.ultima_atualizacao_diaria = hoje.isoformat()
-                # Gerar desafios com índices únicos (0, 1, 2)
                 self.desafios_diarios = [self._gerar_desafio_diario(indice=i) for i in range(3)]
-                # Limpar progresso e completados dos desafios diários antigos
                 self.progresso = {k: v for k, v in self.progresso.items() if not k.startswith("diario_")}
                 self.completados = {c for c in self.completados if not c.startswith("diario_")}
         
@@ -325,7 +309,6 @@ class GerenciadorDesafios:
         if self.ultima_atualizacao_semanal is None:
             self.ultima_atualizacao_semanal = f"{hoje.year}-W{semana_atual}"
             self.desafios_semanais = [self._gerar_desafio_semanal() for _ in range(2)]
-            # Limpar desafios semanais antigos do set de completados
             self.completados = {c for c in self.completados if not c.startswith("semanal_")}
         else:
             ano_semana = self.ultima_atualizacao_semanal.split('-W')
@@ -334,7 +317,6 @@ class GerenciadorDesafios:
                 if hoje.year > ano_antigo or (hoje.year == ano_antigo and semana_atual > semana_antiga):
                     self.ultima_atualizacao_semanal = f"{hoje.year}-W{semana_atual}"
                     self.desafios_semanais = [self._gerar_desafio_semanal() for _ in range(2)]
-                    # Limpar progresso e completados dos desafios semanais antigos
                     self.progresso = {k: v for k, v in self.progresso.items() if not k.startswith("semanal_")}
                     self.completados = {c for c in self.completados if not c.startswith("semanal_")}
         
@@ -349,16 +331,13 @@ class GerenciadorDesafios:
             if desafio["tipo"] == tipo and desafio["id"] not in self.completados:
                 if desafio["id"] not in self.progresso:
                     self.progresso[desafio["id"]] = 0
-                # Travar no objetivo - não permitir progresso além do objetivo
                 progresso_antes = self.progresso[desafio["id"]]
                 self.progresso[desafio["id"]] = min(desafio["objetivo"], self.progresso[desafio["id"]] + quantidade)
                 
                 if self.progresso[desafio["id"]] >= desafio["objetivo"]:
-                    # Garantir que completados é um set antes de adicionar
                     if not isinstance(self.completados, set):
                         self.completados = set(self.completados) if self.completados else set()
                     self.completados.add(desafio["id"])
-                    # Forçar salvamento imediato para garantir que o ícone seja atualizado
                     self.salvar()
                     if gerenciador_progresso:
                         gerenciador_progresso.adicionar_dinheiro(desafio["recompensa"])
@@ -369,15 +348,12 @@ class GerenciadorDesafios:
             if desafio["tipo"] == tipo and desafio["id"] not in self.completados:
                 if desafio["id"] not in self.progresso:
                     self.progresso[desafio["id"]] = 0
-                # Travar no objetivo - não permitir progresso além do objetivo
                 self.progresso[desafio["id"]] = min(desafio["objetivo"], self.progresso[desafio["id"]] + quantidade)
                 
                 if self.progresso[desafio["id"]] >= desafio["objetivo"]:
-                    # Garantir que completados é um set antes de adicionar
                     if not isinstance(self.completados, set):
                         self.completados = set(self.completados) if self.completados else set()
                     self.completados.add(desafio["id"])
-                    # Forçar salvamento imediato para garantir que o ícone seja atualizado
                     self.salvar()
                     if gerenciador_progresso:
                         gerenciador_progresso.adicionar_dinheiro(desafio["recompensa"])
@@ -389,7 +365,6 @@ class GerenciadorDesafios:
                 if missao["tipo"] == tipo and missao["id"] not in self.completados:
                     if missao["id"] not in self.progresso:
                         self.progresso[missao["id"]] = 0
-                    # Travar no objetivo - não permitir progresso além do objetivo
                     self.progresso[missao["id"]] = min(missao["objetivo"], self.progresso[missao["id"]] + quantidade)
                     
                     if self.progresso[missao["id"]] >= missao["objetivo"]:
@@ -474,19 +449,14 @@ class GerenciadorDesafios:
     
     def esta_completado(self, desafio_id):
         """Verifica se um desafio está completado - verifica tanto o set quanto o progresso"""
-        # Primeiro verificar se está no set de completados
         if desafio_id in self.completados:
-            # Mas também verificar se o progresso realmente atingiu o objetivo
-            # para evitar inconsistências
             progresso_atual = self.obter_progresso(desafio_id)
-            # Encontrar o desafio para obter o objetivo
             for desafio in self.desafios_diarios + self.desafios_semanais:
                 if desafio["id"] == desafio_id:
                     objetivo = desafio.get("objetivo", 0)
                     if progresso_atual >= objetivo:
                         return True
                     else:
-                        # Progresso não atingiu objetivo, remover de completados
                         if isinstance(self.completados, set):
                             self.completados.discard(desafio_id)
                         else:
@@ -494,23 +464,21 @@ class GerenciadorDesafios:
                             self.completados.discard(desafio_id)
                         self.salvar()
                         return False
-            # Verificar missões por pista
             for missoes in self.missoes_pista.values():
                 for missao in missoes:
                     if missao["id"] == desafio_id:
                         objetivo = missao.get("objetivo", 0)
-                        if progresso_atual >= objetivo:
-                            return True
+                    if progresso_atual >= objetivo:
+                        return True
+                    else:
+                        if isinstance(self.completados, set):
+                            self.completados.discard(desafio_id)
                         else:
-                            # Progresso não atingiu objetivo, remover de completados
-                            if isinstance(self.completados, set):
-                                self.completados.discard(desafio_id)
-                            else:
-                                self.completados = set(self.completados) if self.completados else set()
-                                self.completados.discard(desafio_id)
-                            self.salvar()
-                            return False
-            return True  # Se está em completados mas não encontrou o desafio, assumir completo
+                            self.completados = set(self.completados) if self.completados else set()
+                            self.completados.discard(desafio_id)
+                        self.salvar()
+                        return False
+            return True
         return False
     
     def contar_missoes_diarias_concluidas(self):
@@ -519,41 +487,31 @@ class GerenciadorDesafios:
         data_hoje_str = hoje.strftime('%Y%m%d')
         contador = 0
         
-        # Garantir que completados é um set
         completados_set = self.completados
         if not isinstance(completados_set, set):
             completados_set = set(completados_set) if completados_set else set()
-            # Atualizar o set no gerenciador_progresso se necessário
             if completados_set != self.gerenciador_progresso.desafios_completados:
                 self.gerenciador_progresso.desafios_completados = completados_set
         
-        # Contar apenas desafios diários do dia atual
-        # O ID do desafio tem formato: "diario_{data}_{indice}"
         for desafio in self.desafios_diarios:
             desafio_id = desafio.get("id", "")
             objetivo = desafio.get("objetivo", 0)
-            # Verificar se o ID contém a data de hoje e se está completado
             if desafio_id.startswith(f"diario_{data_hoje_str}_"):
-                # Obter progresso atual (já limitado ao objetivo)
                 progresso_atual = self.obter_progresso(desafio_id)
-                # Só contar como completo se o progresso REALMENTE atingiu o objetivo
                 if progresso_atual >= objetivo:
-                    # Se está em completados, contar
                     if desafio_id in completados_set:
                         contador += 1
                     else:
-                        # Se o progresso atingiu o objetivo mas não está em completados, adicionar
                         completados_set.add(desafio_id)
                         self.gerenciador_progresso.desafios_completados = completados_set
                         self.salvar()
                         contador += 1
                 elif desafio_id in completados_set:
-                    # Progresso não atingiu objetivo mas está em completados - remover
                     completados_set.discard(desafio_id)
                     self.gerenciador_progresso.desafios_completados = completados_set
                     self.salvar()
         
-        return min(contador, 3)  # Máximo de 3 missões diárias
+        return min(contador, 3)
 
 gerenciador_desafios = GerenciadorDesafios()
 

@@ -7,7 +7,6 @@ from config import DIR_PROJETO, LARGURA, ALTURA
 from core.progresso import gerenciador_progresso
 
 def _get_render_text():
-    """Importa render_text de forma lazy para evitar import circular"""
     from core.menu import render_text
     return render_text
 
@@ -59,45 +58,35 @@ class Crank:
         self.sprite_incredulo = None
         self.sprites_carregados = False
         
-        # Ícones para feedback de preço
         self.icone_seta = None
         self.icone_encareceu = None
         self.icones_carregados = False
         
-        # Sprite do Glub para aparecer escurecido durante o diálogo
         self.glub_sprite_escurecido = None
         self.glub_sprite_carregado = False
         
-        # Flag para evitar logs repetidos de erro de sprite
         self._erro_sprite_impresso = False
         
-        # Estado atual da interação
         self.ativo = False
         self.sprite_atual = None
         self.texto_atual = ""
-        self.fase_dialogo = "veredito"  # "veredito", "resposta", "reacao", "dano_critico", "upsell", "tutorial", "fechado", "dialogo_alien"
-        self.humor_atual = self.HUMOR_NORMAL  # Humor atual do mecânico
-        self.opcao_selecionada = 0  # Opção selecionada nas respostas (0, 1, 2)
-        self.precisa_resposta = False  # Se precisa de resposta do jogador
-        self.mudanca_preco = 0  # Mudança de preço após resposta (-1 = diminuiu, 0 = manteve, 1 = aumentou)
+        self.fase_dialogo = "veredito"
+        self.humor_atual = self.HUMOR_NORMAL
+        self.opcao_selecionada = 0
+        self.precisa_resposta = False
+        self.mudanca_preco = 0
         
-        # Dados da última corrida (para reação)
         self.ultima_corrida = {
             'posicao': None,
             'colisoes': 0,
             'venceu': False
         }
         
-        # Sistema de dano do carro (0.0 a 1.0, onde 1.0 = 100% saudável)
-        # Nota: saude_carro é carregado em carregar_estado()
-        self.prefixo_cor_ultimo_carro = None  # Rastreia qual carro teve dano registrado
+        self.prefixo_cor_ultimo_carro = None
         
-        # Tutorial - primeira aparição
-        # Nota: tutorial_mostrado e tutorial_upgrades_mostrado são carregados em carregar_estado()
-        # Não resetar aqui, senão sobrescreve o estado salvo!
-        self.tutorial_parte = 0  # Parte atual do tutorial (0 = apresentação sombra, 1 = dúvida, 2 = perguntar nome, 3, 4, 5 = partes normais)
-        self.tutorial_fase_apresentacao = "sombra"  # "sombra" -> "duvida" -> "perguntar_nome" -> "tutorial"
-        self.input_nome_ativo = False  # Flag para controlar input de nome
+        self.tutorial_parte = 0
+        self.tutorial_fase_apresentacao = "sombra"
+        self.input_nome_ativo = False
         self.nome_input = ""  # Nome sendo digitado
         self.tutorial_upgrades_parte = 0  # Parte atual do tutorial de upgrades
         

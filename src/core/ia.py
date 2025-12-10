@@ -5,7 +5,6 @@ import random
 class IA:
     _trig_cache = {}
     
-    # Personalidades disponíveis
     PERSONALIDADE_AGRESSIVA = "agressiva"
     PERSONALIDADE_DEFENSIVA = "defensiva"
     PERSONALIDADE_EQUILIBRADA = "equilibrada"
@@ -26,7 +25,6 @@ class IA:
         self.debug = False
         self.dificuldade = dificuldade
         
-        # Atribuir personalidade aleatória se não fornecida
         if personalidade is None:
             self.personalidade = random.choice(self.PERSONALIDADES)
         else:
@@ -41,21 +39,17 @@ class IA:
         self.ponto_navegacao_atual = 0
         self.atualizar_pontos_navegacao()
         
-        self.velocidade_alvo = 280.0  # Aumentado de 5.0 para 280.0 (será ajustado pela dificuldade)
-        self.velocidade_maxima = 280.0  # Aumentado de 7.5 para 280.0 (será ajustado pela dificuldade)
-        self.velocidade_curva = 180.0  # Aumentado de 4.0 para 180.0 (será ajustado pela dificuldade)
+        self.velocidade_alvo = 280.0
+        self.velocidade_maxima = 280.0
+        self.velocidade_curva = 180.0
         
         self._configurar_dificuldade()
         self._configurar_personalidade()
         
-        # Configurar lookahead após personalidade (usa lookahead_multiplier)
-        # SEMPRE garantir que lookahead_multiplier existe - usar getattr para segurança máxima
         self.lookahead_multiplier = getattr(self, 'lookahead_multiplier', 1.0)
-        # SEMPRE definir lookahead_points no __init__ - CRÍTICO para evitar AttributeError
         self.lookahead_distance = 120.0 * self.lookahead_multiplier
         self.lookahead_points = max(3, int(5 * self.lookahead_multiplier))
         
-        # Verificação final para garantir que foi definido
         assert hasattr(self, 'lookahead_points'), f"ERRO: lookahead_points não foi definido para {self.nome}"
         assert hasattr(self, 'lookahead_multiplier'), f"ERRO: lookahead_multiplier não foi definido para {self.nome}"
         
@@ -70,7 +64,7 @@ class IA:
         self.tentativas_recuperacao = 0
         self.max_tentativas_recuperacao = 2
         self.tempo_no_mesmo_checkpoint = 0.0
-        self.max_tempo_no_mesmo_checkpoint = 2.0  # Máximo de 2 segundos no mesmo checkpoint
+        self.max_tempo_no_mesmo_checkpoint = 2.0
         self.ultimo_checkpoint_idx = -1
         
         self.tempo_batido = 0.0
@@ -86,35 +80,33 @@ class IA:
     
     def _configurar_dificuldade(self):
         """Configura os parâmetros baseados na dificuldade"""
-        # Velocidades aumentadas para serem mais competitivas com o jogador
-        # O jogador pode chegar a ~400 px/s, então os bots devem estar em uma faixa competitiva
         if self.dificuldade == "facil":
-            self.velocidade_maxima = 200.0  # Aumentado de 5.0 para 200.0
-            self.velocidade_curva = 120.0  # Aumentado de 2.5 para 120.0
+            self.velocidade_maxima = 200.0
+            self.velocidade_curva = 120.0
             self.distancia_freio_curva = 80
             self.distancia_freio_checkpoint = 60
             self.angulo_max_curva = 25
-            self.velocidade_max_curva = 150.0  # Aumentado de 3.0 para 150.0
+            self.velocidade_max_curva = 150.0
             self.agressividade = 0.3
             self.precisao_curva = 0.8
             self.tempo_reacao = 0.15
         elif self.dificuldade == "dificil":
-            self.velocidade_maxima = 380.0  # Aumentado de 12.0 para 380.0 (próximo do máximo do jogador)
-            self.velocidade_curva = 250.0  # Aumentado de 7.0 para 250.0
+            self.velocidade_maxima = 380.0
+            self.velocidade_curva = 250.0
             self.distancia_freio_curva = 15
             self.distancia_freio_checkpoint = 10
             self.angulo_max_curva = 80
-            self.velocidade_max_curva = 300.0  # Aumentado de 9.0 para 300.0
+            self.velocidade_max_curva = 300.0
             self.agressividade = 1.0
             self.precisao_curva = 0.99
             self.tempo_reacao = 0.01
         else:
-            self.velocidade_maxima = 280.0  # Aumentado de 7.5 para 280.0
-            self.velocidade_curva = 180.0  # Aumentado de 4.0 para 180.0
+            self.velocidade_maxima = 280.0
+            self.velocidade_curva = 180.0
             self.distancia_freio_curva = 45
             self.distancia_freio_checkpoint = 35
             self.angulo_max_curva = 45
-            self.velocidade_max_curva = 220.0  # Aumentado de 5.5 para 220.0
+            self.velocidade_max_curva = 220.0
             self.agressividade = 0.75
             self.precisao_curva = 0.9
             self.tempo_reacao = 0.08
@@ -122,47 +114,41 @@ class IA:
     def _configurar_personalidade(self):
         """Configura parâmetros baseados na personalidade da IA"""
         if self.personalidade == self.PERSONALIDADE_AGRESSIVA:
-            # Agressiva: linha interna, freia tarde, acelera rápido
-            self.offset_lateral_base = -25.0  # Linha interna (negativo = dentro da curva)
+            self.offset_lateral_base = -25.0
             self.offset_lateral_variacao = 10.0
-            self.fator_freio = 0.7  # Freia mais tarde
-            self.fator_aceleracao = 1.3  # Acelera mais rápido
-            self.fator_velocidade_curva = 1.15  # Mais rápido nas curvas
-            self.lookahead_multiplier = 0.9  # Menos lookahead (mais reativo)
+            self.fator_freio = 0.7
+            self.fator_aceleracao = 1.3
+            self.fator_velocidade_curva = 1.15
+            self.lookahead_multiplier = 0.9
             self.agressividade_personalidade = 1.2
         elif self.personalidade == self.PERSONALIDADE_DEFENSIVA:
-            # Defensiva: linha externa, freia cedo, acelera devagar
-            self.offset_lateral_base = 30.0  # Linha externa (positivo = fora da curva)
+            self.offset_lateral_base = 30.0
             self.offset_lateral_variacao = 15.0
-            self.fator_freio = 1.4  # Freia mais cedo
-            self.fator_aceleracao = 0.85  # Acelera mais devagar
-            self.fator_velocidade_curva = 0.85  # Mais devagar nas curvas
-            self.lookahead_multiplier = 1.3  # Mais lookahead (mais antecipado)
+            self.fator_freio = 1.4
+            self.fator_aceleracao = 0.85
+            self.fator_velocidade_curva = 0.85
+            self.lookahead_multiplier = 1.3
             self.agressividade_personalidade = 0.6
         elif self.personalidade == self.PERSONALIDADE_ARISCADA:
-            # Arriscada: linha muito interna, freia muito tarde, muito agressiva
-            self.offset_lateral_base = -40.0  # Linha muito interna
+            self.offset_lateral_base = -40.0
             self.offset_lateral_variacao = 15.0
-            self.fator_freio = 0.5  # Freia muito tarde
-            self.fator_aceleracao = 1.5  # Acelera muito rápido
-            self.fator_velocidade_curva = 1.3  # Muito rápido nas curvas
-            self.lookahead_multiplier = 0.7  # Pouco lookahead (muito reativo)
+            self.fator_freio = 0.5
+            self.fator_aceleracao = 1.5
+            self.fator_velocidade_curva = 1.3
+            self.lookahead_multiplier = 0.7
             self.agressividade_personalidade = 1.5
-        else:  # EQUILIBRADA
-            # Equilibrada: linha média, comportamento balanceado
-            self.offset_lateral_base = 0.0  # Linha média
+        else:
+            self.offset_lateral_base = 0.0
             self.offset_lateral_variacao = 20.0
-            self.fator_freio = 1.0  # Freia no tempo normal
-            self.fator_aceleracao = 1.0  # Acelera normalmente
-            self.fator_velocidade_curva = 1.0  # Velocidade normal nas curvas
-            self.lookahead_multiplier = 1.0  # Lookahead normal
+            self.fator_freio = 1.0
+            self.fator_aceleracao = 1.0
+            self.fator_velocidade_curva = 1.0
+            self.lookahead_multiplier = 1.0
             self.agressividade_personalidade = 1.0
         
-        # Garantir que lookahead_multiplier foi definido (segurança extra)
         if not hasattr(self, 'lookahead_multiplier'):
             self.lookahead_multiplier = 1.0
         
-        # Aplicar variação aleatória para tornar cada IA única
         self.offset_lateral_individual = random.uniform(
             -self.offset_lateral_variacao,
             self.offset_lateral_variacao

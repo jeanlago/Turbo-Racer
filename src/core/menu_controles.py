@@ -1,4 +1,3 @@
-# core/menu_controles.py
 """Funções auxiliares para processar eventos de controle no menu"""
 import pygame
 
@@ -51,7 +50,6 @@ def processar_eventos_controle_menu(ev, opcao_atual, num_opcoes, joystick_id=0, 
             elif hat_x == 1:
                 direcao_atual = "direita"
         else:
-            # D-pad como botões
             if joystick.get_numbuttons() > 14:
                 if joystick.get_button(11):  # D-pad Up
                     direcao_atual = "cima"
@@ -213,9 +211,6 @@ def processar_eventos_controle_menu(ev, opcao_atual, num_opcoes, joystick_id=0, 
                     _ultimo_tempo_navegacao[chave_debounce_l1r1] = tempo_atual
                     return {"acao": "carro_proximo", "fonte": "botao"}
             elif ev.button == 9:
-                # Button 9 é L1 em Xbox, mas pode ser Share/PS button em PS5/PS4
-                # Na oficina, sempre tratar como L1 (carro_anterior)
-                # O botão de pausar será tratado em outro lugar se necessário
                     chave_debounce_l1r1 = f"{joystick_id}_l1r1"
                     if chave_debounce_l1r1 not in _ultimo_tempo_navegacao or \
                        tempo_atual - _ultimo_tempo_navegacao.get(chave_debounce_l1r1, 0) >= debounce_tempo:

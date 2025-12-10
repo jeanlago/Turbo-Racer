@@ -1,4 +1,3 @@
-# src/core/tempo_jogo.py
 """
 Sistema de Tempo do Jogo
 Gerencia o ciclo dia/noite baseado em tempo real
@@ -19,11 +18,10 @@ class GerenciadorTempoJogo:
     SEGUNDOS_POR_HORA_JOGO = 60.0
     
     def __init__(self):
-        # Data inicial: 05/12/1990
         from datetime import datetime, timedelta, date
         self.data_inicial = date(1990, 12, 5)
         self.hora_jogo = 12
-        self.dia_jogo = 1  # Inicializar dia_jogo antes de carregar
+        self.dia_jogo = 1
         
         self.ultima_atualizacao_timestamp = time.time()
         
@@ -47,7 +45,6 @@ class GerenciadorTempoJogo:
         
         self.hora_jogo += horas_decorridas
         
-        # Verificar se passou meia-noite (hora passou de 24 para 0)
         dias_passados = 0
         while self.hora_jogo >= 24.0:
             self.hora_jogo -= 24.0
@@ -55,7 +52,6 @@ class GerenciadorTempoJogo:
         while self.hora_jogo < 0.0:
             self.hora_jogo += 24.0
         
-        # Atualizar contador de dias quando passar meia-noite
         if dias_passados > 0:
             self.dia_jogo += dias_passados
             print(f"[TEMPO] Passou meia-noite! Avançou {dias_passados} dia(s). Dia atual: {self.dia_jogo}, Data: {self.obter_data_formatada()}")
@@ -76,7 +72,6 @@ class GerenciadorTempoJogo:
         Returns:
             datetime.date: Data atual do jogo
         """
-        # data_inicial já é a data base (05/12/1990), então só precisamos adicionar (dia_jogo - 1) dias
         from datetime import timedelta
         return self.data_inicial + timedelta(days=self.dia_jogo - 1)
     

@@ -1,4 +1,3 @@
-# core/gamepad_manager.py
 import pygame
 import json
 import os
@@ -33,7 +32,6 @@ class GamepadManager:
                 with open(self.config_path, 'r', encoding='utf-8') as f:
                     self.controles_config = json.load(f)
                 self._ajustar_joystick_ids()
-                # Verificar se precisa atualizar configuração para PS5
                 self._atualizar_configuracao_ps5()
             except Exception as e:
                 print(f"Erro ao carregar configuração de controles: {e}")
@@ -45,7 +43,6 @@ class GamepadManager:
         """Atualiza configuração se detectar PS5/PS4/Xbox e ainda não estiver configurado corretamente"""
         atualizado = False
         
-        # Configurações por tipo de controle
         configs = {
             "ps5": {
                 "acelerar": {"tipo": "axis", "index": 5, "invertido": False},
@@ -76,16 +73,13 @@ class GamepadManager:
             }
         }
         
-        # Verificar P1
         if len(self.joysticks) > 0:
             tipo_p1 = self._detectar_tipo_controle(0)
             if tipo_p1 in configs:
-                # Verificar se a configuração atual está correta
                 p1_config = self.controles_config.get("p1", {})
                 config_esperado = configs[tipo_p1]
                 precisa_atualizar = False
                 
-                # Verificar cada ação
                 for acao, config_acao in config_esperado.items():
                     if acao not in p1_config:
                         precisa_atualizar = True

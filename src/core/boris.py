@@ -7,7 +7,6 @@ from config import DIR_PROJETO, LARGURA, ALTURA
 from core.progresso import gerenciador_progresso
 
 def _get_render_text():
-    """Importa render_text de forma lazy para evitar import circular"""
     from core.menu import render_text
     return render_text
 
@@ -41,8 +40,8 @@ class Boris:
         self.sprite_ameaçador = None
         self.sprite_convencido = None
         self.sprite_fundo = None
-        self.sprite_fundo_redimensionado = None  # Cache do fundo redimensionado
-        self.sprites_redimensionados_cache = {}  # Cache de sprites redimensionados (chave: sprite original, valor: sprite redimensionado)
+        self.sprite_fundo_redimensionado = None
+        self.sprites_redimensionados_cache = {}
         self.sprites_carregados = False
         
         self.ativo = False
@@ -63,7 +62,7 @@ class Boris:
         self.loja_aberta = False
         self.peça_selecionada = None
         self.preco_tipo_atual = None
-        self.on_close_scene_id = None  # Cena a ser iniciada após fechar a loja (do sistema narrativo)
+        self.on_close_scene_id = None
         
     def carregar_estado(self):
         """Carrega o estado do Boris do progresso.json"""
