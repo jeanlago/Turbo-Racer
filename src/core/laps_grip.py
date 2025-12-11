@@ -170,7 +170,7 @@ def carregar_checkpoints_grip(numero_pista, superficie_pista=None):
         checkpoint_16 = (centro_x + -698, centro_y + 582, 45)  # Ângulo: 45°
         checkpoint_17 = (centro_x + 756, centro_y + 532, 45)  # Ângulo: 45°
         checkpoint_18 = (centro_x + 744, centro_y + 100, 315)  # Ângulo: 315°
-        checkpoint_19 = (centro_x + -243, centro_y + 37, 90)  # Ângulo: 90°
+        checkpoint_19 = (centro_x + -160, centro_y + 40, 90)  # Ângulo: 90°
         # Checkpoints com ângulo: (x, y, angulo) ou (x, y) para cálculo automático
         checkpoints = [
             tuple(checkpoint_1),
