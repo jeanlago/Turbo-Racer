@@ -228,6 +228,13 @@ class Glub:
         return True
     
     def verificar_aparecer(self, tipo_upgrade, nivel_antigo, prefixo_cor):
+        try:
+            from config import CONFIGURACOES
+            if CONFIGURACOES.get("jogo", {}).get("modo_arcade", False):
+                self.ativo = False
+                return False
+        except Exception:
+            pass
         """
         Verifica se o Glub deve aparecer após um upgrade ser comprado
         
@@ -443,6 +450,14 @@ class Glub:
         return True, "Oferta recusada"
     
     def processar_eventos(self, eventos, prefixo_cor=None):
+
+        try:
+            from config import CONFIGURACOES
+            if CONFIGURACOES.get("jogo", {}).get("modo_arcade", False):
+                return None
+        except Exception:
+            pass
+
         """Processa eventos de entrada do jogador"""
         if not self.ativo:
             return None
@@ -637,7 +652,7 @@ class Glub:
             texto_x = anim['x'] - texto_surface.get_width() // 2
             texto_y = anim['y'] - texto_surface.get_height() // 2
             tela.blit(texto_surface, (texto_x, texto_y))
-    
+
     def fechar(self):
         """Fecha a interação com o Glub"""
         self.ativo = False
@@ -649,23 +664,29 @@ class Glub:
         self.opcao_selecionada = 0
         self.fase_dialogo = "apresentacao"
         # Não limpar animações aqui - deixar elas terminarem naturalmente
-    
+
     def desenhar_dialogo(self, tela, dt):
+        try:
+            from config import CONFIGURACOES
+            if CONFIGURACOES.get("jogo", {}).get("modo_arcade", False):
+                return
+        except Exception:
+            pass
         """Desenha o diálogo do Glub na tela no estilo visual novel"""
         # Atualizar animação do texto
         self._atualizar_animacao_texto(dt)
-        
+
         # Atualizar animações de dinheiro
         self._atualizar_animacoes_dinheiro(dt)
-        
+
         if not self.ativo:
             self._desenhar_animacoes_dinheiro(tela)
             return
-        
+
         # Garantir que os sprites estão carregados
         if not self.sprites_carregados:
             self.carregar_sprites()
-        
+
         if not self.sprite_atual:
             # Escolher sprite padrão se não houver um definido
             if self.sprite_encontro:

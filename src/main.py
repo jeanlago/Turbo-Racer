@@ -132,7 +132,8 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
     from config import carregar_configuracoes
     carregar_configuracoes()
-    
+    # Garantir que CONFIGURACOES reflita o modo_arcade passado ao chamar principal()
+
     if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
         gerenciador_progresso.carregar()
         if race_id:
@@ -244,6 +245,28 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
     modo_drift_atual = CONFIGURACOES["jogo"]["modo_drift"]
     mostrar_fps = CONFIGURACOES["video"]["mostrar_fps"]
     mostrar_debug = CONFIGURACOES["jogo"]["mostrar_debug"]
+    # Remover completamente NPCs/elementos da oficina no modo arcade
+    if modo_arcade:
+        try:
+            def _noop(*args, **kwargs):
+                return None
+
+            for npc in (rex, akira, crank, mercador_alien, glub):
+                try:
+                    npc.ativo = False
+                except Exception:
+                    pass
+                # Substituir métodos que podem reativar/mostrar a UI por no-ops
+                for meth in ('processar_eventos', 'desenhar_dialogo', 'verificar_aparecer', 'verificar_aparecer_pos_corrida', 'fechar', 'mostrar'):
+                    if hasattr(npc, meth):
+                        try:
+                            setattr(npc, meth, _noop)
+                        except Exception:
+                            pass
+            print("[MAIN] Modo arcade: elementos da oficina (Rex, Akira, Crank, Mercador Alien, Glub) totalmente desativados")
+        except Exception as e:
+            print(f"[MAIN] Erro ao desativar NPCs da oficina no modo arcade: {e}")
+
 
     fonte = pygame.font.SysFont("consolas", 26)
     fonte_small = pygame.font.SysFont("consolas", 18)
