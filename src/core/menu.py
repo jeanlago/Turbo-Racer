@@ -3328,6 +3328,7 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                 # Mostrar diálogo modal de confirmação antes de fechar
                 confirmado = mostrar_dialogo_confirmacao_fechar(screen, fundo_sem_textos if 'fundo_sem_textos' in locals() else bg)
                 if confirmado:
+                    popup_musica.esconder()
                     return None, None
                 # Se não confirmou, continuar na oficina
                 continue
@@ -3913,6 +3914,7 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                         # Voltar para o menu ou seleção de mapas (no modo arcade)
                                         if modo_arcade:
                                             # No modo arcade, sempre voltar para seleção de mapas
+                                            popup_musica.esconder()
                                             return None, None
                                         elif modo_dois_jogadores:
                                             if fase_selecao == 1 and carro_selecionado_p1:
@@ -3921,14 +3923,17 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                                 gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1, carro_p2=carro_p2)
                                                 return carro_p1, carro_p2
                                             elif fase_selecao == 1:
+                                                popup_musica.esconder()
                                                 return None, None
                                             else:
+                                                popup_musica.esconder()
                                                 return None, None
                                         else:
                                             if carro_selecionado_p1:
                                                 gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1)
                                                 return carro_p1, carro_p2
                                             else:
+                                                popup_musica.esconder()
                                                 return None, None
                                     # Botão "dois_jogadores" removido - o modo é definido antes de entrar na oficina
                                 else:
@@ -4051,11 +4056,13 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                         # Voltar para o menu ou seleção de mapas (no modo arcade)
                                         if modo_arcade:
                                             # No modo arcade, sempre voltar para seleção de mapas
+                                            popup_musica.esconder()
                                             return None, None
                                         elif carro_selecionado_p2:
                                             gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1, carro_p2=carro_p2)
                                             return carro_p1, carro_p2
                                         else:
+                                            popup_musica.esconder()
                                             return None, None
                                 else:
                                     # Carro não desbloqueado
@@ -4091,6 +4098,7 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                             if botao_voltar_rect:
                                 # No modo arcade, sempre cancelar e voltar à seleção de pistas
                                 if modo_arcade:
+                                    popup_musica.esconder()
                                     return None, None
                                 
                                 if modo_dois_jogadores:
@@ -4100,14 +4108,17 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                         gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1, carro_p2=carro_p2)
                                         return carro_p1, carro_p2
                                     elif fase_selecao == 1:
+                                        popup_musica.esconder()
                                         return None, None
                                     else:
+                                        popup_musica.esconder()
                                         return None, None
                                 else:
                                     if carro_selecionado_p1:
                                         gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1)
                                         return carro_p1, carro_p2
                                     else:
+                                        popup_musica.esconder()
                                         return None, None
                 
                 # Se processou evento de controle, não processar mouse/teclado para esse evento
@@ -4152,6 +4163,7 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                     oficina_pausada = False
                                 elif i == 3:
                                     # Menu principal
+                                    popup_musica.esconder()
                                     return None, None
                                 break
                     continue  # Não processar outros cliques quando pausado
@@ -4160,6 +4172,7 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                 if botao_voltar_rect.collidepoint(ev.pos[0], ev.pos[1]):
                     # No modo arcade, sempre cancelar e voltar à seleção de pistas
                     if modo_arcade:
+                        popup_musica.esconder()
                         return None, None
                     
                     # Se estiver no modo 2 jogadores, verificar se ambos selecionaram
@@ -4171,14 +4184,17 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                             gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1, carro_p2=carro_p2)
                             return carro_p1, carro_p2
                         elif fase_selecao == 1:
+                            popup_musica.esconder()
                             return None, None
                         else:
+                            popup_musica.esconder()
                             return None, None
                     else:
                         if carro_selecionado_p1:
                             gerenciador_progresso.definir_carro_atual(carro_p1=carro_p1)
                             return carro_p1, carro_p2
                         else:
+                            popup_musica.esconder()
                             return None, None
                 
                 # Botão "2 jogadores" removido - o modo é definido antes de entrar na oficina
@@ -4523,6 +4539,7 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                             oficina_pausada = False
                         elif opcao_pausa_selecionada == 3:
                             # Menu principal
+                            popup_musica.esconder()
                             return None, None
                 elif ev.key in (pygame.K_LEFT, pygame.K_a):
                     # No modo campanha, não permitir navegação entre carros

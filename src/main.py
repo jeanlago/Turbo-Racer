@@ -8,7 +8,7 @@ class FilteredStderr:
     """Filtra avisos do libpng sobre iCCP do stderr"""
     def __init__(self, original_stderr):
         self.original_stderr = original_stderr
-    
+
     def write(self, message):
         if self.original_stderr is None:
             return
@@ -24,14 +24,14 @@ class FilteredStderr:
             self.original_stderr.write(message)
         except (AttributeError, OSError):
             pass
-    
+
     def flush(self):
         if self.original_stderr is not None:
             try:
                 self.original_stderr.flush()
             except (AttributeError, OSError):
                 pass
-    
+
     def __getattr__(self, name):
         if self.original_stderr is None:
             return None
@@ -87,9 +87,8 @@ def carregar_configuracoes_garagem():
             import json
             with open(caminho_garage_config, 'r', encoding='utf-8') as f:
                 dados = json.load(f)
-            
+
             carros_dict = {carro['prefixo_cor']: carro for carro in dados.get('carros', [])}
-            
             for carro in CARROS_DISPONIVEIS:
                 prefixo = carro['prefixo_cor']
                 if prefixo in carros_dict:
@@ -97,7 +96,7 @@ def carregar_configuracoes_garagem():
                     carro['posicao'] = tuple(carro_config.get('posicao', carro['posicao']))
                     carro['tamanho_oficina'] = tuple(carro_config.get('tamanho_oficina', carro['tamanho_oficina']))
                     carro['posicao_oficina'] = tuple(carro_config.get('posicao_oficina', carro['posicao_oficina']))
-            
+
             print(f"Configurações da garagem carregadas de: {caminho_garage_config}")
     except Exception as e:
         print(f"Erro ao carregar configurações da garagem: {e}")
@@ -3750,8 +3749,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     recompensa_drift = int(pontuacao_final / 120)
                 else:  # dificil
                     recompensa_drift = int(pontuacao_final / 100)
-                
-                
+
                 gerenciador_progresso.adicionar_dinheiro(recompensa_drift)
 
                 numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
@@ -3770,7 +3768,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
             todos_carros = [c for c in carros if c is not None]
             posicao_jogador = obter_posicao_jogador(carro1, todos_carros)
-            
+
             resultados = []
             resultados.append({
                 "posicao": posicao_jogador,
@@ -3779,7 +3777,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 "trofeu": trofeu_drift,
                 "dinheiro": recompensa_drift
             })
-            
+
             opcoes_resultado = []
             if modo_arcade:
                 opcoes_resultado.append(("CONTINUAR", "continuar_arcade"))
@@ -3790,13 +3788,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 ("REINICIAR JOGO", "reiniciar"),
                 ("MENU PRINCIPAL", "menu")
             ])
-            
+
             estado_resultados_finais = {
                 "resultados": resultados,
                 "opcoes": opcoes_resultado,
                 "opcao_atual": 0
             }
-            
+
             estado_fim_jogo = None
 
             if mostrar_drift_hud and tipo_jogo == TipoJogo.DRIFT:
@@ -3842,7 +3840,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
             # Verificar se o jogador terminou
             carro1_finalizou = corrida.finalizou.get(carro1, False)
             todos_carros_finalizaram = corrida.todos_finalizados()
-            
+
             # Se o jogador terminou, mostrar tela de resultados imediatamente (não esperar bots)
             # A tela será atualizada em tempo real conforme os bots terminam
             if carro1_finalizou:
@@ -3892,7 +3890,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         from core.status_jogador import status_jogador
                         multiplicador_dinheiro = status_jogador.obter_multiplicador_dinheiro()
                         recompensa_dinheiro = int(recompensa_dinheiro * multiplicador_dinheiro)
-                        
+
                         # Atualizar popularidade baseado no resultado (apenas no modo campanha)
                         if posicao_jogador == 1:
                             # Ganhou: +5 a +15 de popularidade (baseado na dificuldade)
@@ -3910,9 +3908,9 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                 status_jogador.perder_popularidade(5.0)
                             else:  # dificil
                                 status_jogador.perder_popularidade(8.0)
-                        
+
                         status_jogador.salvar()
-                        
+
                         # Verificar se a missão m14_tres_mundos deve ser completada (reputação >= 500)
                         if status_jogador.popularidade >= 500.0:
                             from core.missoes import gerenciador_missoes
@@ -3923,7 +3921,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                                     gerenciador_missoes.salvar()
                     except Exception as e:
                         print(f"Erro ao atualizar status do jogador: {e}")
-                
+
                 gerenciador_progresso.adicionar_dinheiro(recompensa_dinheiro)
 
                 # Registrar corrida no Crank (mas não aparecer ainda - só após fechar tela de fim de jogo)
@@ -3954,16 +3952,16 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                 print(f"[MAIN] Corrida finalizada (UM_JOGADOR): posicao={posicao_jogador}, tempo={tempo_final}, modo_arcade={modo_arcade}")
                 if tempo_final is not None:
                     numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
-                    
+
                     # Registrar corrida completa SEMPRE (tanto arcade quanto campanha)
                     print(f"[MAIN] Registrando corrida completa: pista={numero_pista}, posicao={posicao_jogador}, tempo={tempo_final}")
                     gerenciador_estatisticas.registrar_corrida_completa(numero_pista, posicao_jogador, tempo_final)
                     gerenciador_estatisticas.salvar()
-                    
+
                     # Verificar se foi registrado corretamente
                     stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(numero_pista)
                     print(f"[MAIN] Estatísticas após registro: melhor_tempo={stats_pista.get('melhor_tempo')}, melhor_posicao={stats_pista.get('melhor_posicao')}, completas={stats_pista.get('corridas_completas', 0)}")
-                    
+
                     # Completar missão se for training_01 e garantir que o progresso está salvo
                     if modo_jogo == ModoJogo.UM_JOGADOR and not modo_arcade:
                         print(f"[MAIN] Modo campanha detectado. Verificando ultima_corrida_campanha: {getattr(gerenciador_progresso, 'ultima_corrida_campanha', 'N/A')}")
@@ -4004,7 +4002,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                             # Obter frames gravados (mesmo que gravando seja False)
                             frames_gravados = ghost_recorder_p1.obter_dados()
                             print(f"[GHOST] Verificando salvamento: tipo_jogo={tipo_jogo}, frames={len(frames_gravados) if frames_gravados else 0}, gravando={ghost_recorder_p1.gravando}")
-                            
+
                             # Verificar se há frames gravados
                             if frames_gravados and len(frames_gravados) > 0:
                                 salvar_ghost = False
@@ -4082,13 +4080,13 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
                         gerenciador_achievements.atualizar_estatistica("corridas_completas", incrementar=True)
                         achievements_desbloqueados = gerenciador_achievements.verificar_achievements(gerenciador_progresso)
-                        
+
                         numero_pista = mapa_selecionado if mapa_selecionado is not None else 1
                         # No modo GHOST/DRIFT, usar posicao_jogador e tempo_final que já foram definidos acima
                         print(f"[MAIN] Registrando corrida completa (modo arcade): pista={numero_pista}, posicao={posicao_jogador}, tempo={tempo_final}")
                         gerenciador_estatisticas.registrar_corrida_completa(numero_pista, posicao_jogador, tempo_final)
                         gerenciador_estatisticas.salvar()
-                        
+
                         # Verificar se foi registrado corretamente
                         stats_pista = gerenciador_estatisticas._obter_estatisticas_pista(numero_pista)
                         print(f"[MAIN] Estatísticas após registro (arcade): melhor_tempo={stats_pista.get('melhor_tempo')}, melhor_posicao={stats_pista.get('melhor_posicao')}, completas={stats_pista.get('corridas_completas', 0)}")
@@ -4124,7 +4122,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         # Carro ainda não terminou - calcular posição temporária baseada no progresso
                         posicao = obter_posicao_jogador(carro, todos_carros)
                         tempo = None  # Ainda não tem tempo final
-                    
+
                     recompensa = 0
                     trofeu_carro = None
 
@@ -4158,7 +4156,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
                 # Ordenar por posição (carros que não terminaram ficam no final)
                 resultados.sort(key=lambda x: (x["posicao"] if x["posicao"] else 999, x["tempo"] if x["tempo"] is not None else float('inf')))
-                
+
                 # Se já existem resultados finais, atualizar; senão, criar
                 if estado_resultados_finais is not None:
                     # Atualizar resultados existentes (atualização em tempo real)
@@ -4182,7 +4180,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     print(f"[RESULTADOS] Tela de resultados criada assim que jogador terminou. Bots ainda correndo: {not todos_carros_finalizaram}")
                 # Limpar estado de fim de jogo individual para evitar sobreposição
                 estado_fim_jogo = None
-            
+
             # SEMPRE atualizar resultados em tempo real enquanto a tela estiver aberta e houver carros correndo
             if estado_resultados_finais is not None and not todos_carros_finalizaram:
                 # Atualizar resultados em tempo real sempre que alguém terminar
@@ -4198,7 +4196,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                         # Carro ainda não terminou - calcular posição temporária baseada no progresso
                         posicao = obter_posicao_jogador(carro, todos_carros)
                         tempo = None  # Ainda não tem tempo final
-                    
+
                     recompensa = 0
                     trofeu_carro = None
 
@@ -4237,49 +4235,49 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
 
                 # Ordenar por posição (carros que não terminaram ficam no final)
                 resultados.sort(key=lambda x: (x["posicao"] if x["posicao"] else 999, x["tempo"] if x["tempo"] is not None else float('inf')))
-                
+
                 # Atualizar resultados existentes (atualização em tempo real)
                 estado_resultados_finais["resultados"] = resultados
 
         if jogo_pausado:
             from core.menu import render_text
-            
+
             overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 150))
             tela.blit(overlay, (0, 0))
-            
+
             caixa_largura = 500
             caixa_altura = 400
             caixa_x = (LARGURA - caixa_largura) // 2
             caixa_y = (ALTURA - caixa_altura) // 2
-            
+
             caixa_fundo = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
             caixa_fundo.fill((0, 0, 0, 200))
             tela.blit(caixa_fundo, (caixa_x, caixa_y))
             pygame.draw.rect(tela, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
-            
+
             from core.i18n import t
             titulo_texto = render_text(t("pause.titulo"), 48, (255, 255, 255), bold=True, pixel_style=True)
             titulo_x = caixa_x + (caixa_largura - titulo_texto.get_width()) // 2
             tela.blit(titulo_texto, (titulo_x, caixa_y + 20))
-            
+
             from core.i18n import t
             opcoes_pausa_formatadas = [
                 (t("pause.continuar"), "continuar"),
                 (t("pause.reiniciar"), "reiniciar"),
                 (t("pause.menu_principal"), "menu")
             ]
-            
+
             altura_total_opcoes = len(opcoes_pausa_formatadas) * 60
             offset_opcoes = caixa_y + caixa_altura - altura_total_opcoes - 20
-            
+
             if not hasattr(principal, '_hover_animation_pause'):
                 principal._hover_animation_pause = [0.0] * len(opcoes_pausa_formatadas)
-            
+
             mouse_x, mouse_y = pygame.mouse.get_pos()
             mouse_in_caixa = (caixa_x <= mouse_x <= caixa_x + caixa_largura and
                             caixa_y <= mouse_y <= caixa_y + caixa_altura)
-            
+
             hover_speed = 8.0
             opcao_hover = -1
             if mouse_in_caixa:
@@ -4289,27 +4287,27 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     if opcao_rect.collidepoint(mouse_x, mouse_y):
                         opcao_hover = i
                         break
-            
+
             for i in range(len(opcoes_pausa_formatadas)):
                 if i == opcao_hover or i == opcao_pausa_selecionada:
                     principal._hover_animation_pause[i] = min(1.0, principal._hover_animation_pause[i] + hover_speed * dt)
                 else:
                     principal._hover_animation_pause[i] = max(0.0, principal._hover_animation_pause[i] - hover_speed * dt)
-            
+
             if not mouse_in_caixa:
                 for i in range(len(opcoes_pausa_formatadas)):
                     if i != opcao_pausa_selecionada:
                         principal._hover_animation_pause[i] = max(0.0, principal._hover_animation_pause[i] - hover_speed * dt * 1.5)
-            
+
             # Desenhar cursor (sempre, não apenas com controle)
             animacao_cursor_pausa = getattr(principal, '_animacao_cursor_pausa', 0.0)
             animacao_cursor_pausa = (animacao_cursor_pausa + 3.0 * dt) % (2.0 * math.pi)
             principal._animacao_cursor_pausa = animacao_cursor_pausa
-            
+
             for i, (nome, chave) in enumerate(opcoes_pausa_formatadas):
                 y_opcao = offset_opcoes + i * 60
                 hover_progress = principal._hover_animation_pause[i]
-                
+
                 # Determinar cor baseado no estado
                 if i == opcao_pausa_selecionada:
                     cor = (255, 255, 255)
@@ -4324,7 +4322,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     cor = (200, 200, 255)
                 else:
                     cor = (150, 150, 150)
-                
+
                 # Desenhar efeito de hover se aplicável
                 if hover_progress > 0 and i != opcao_pausa_selecionada:
                     hover_alpha = int(30 * hover_progress)
@@ -4332,7 +4330,7 @@ def principal(carro_selecionado_p1=0, carro_selecionado_p2=1, mapa_selecionado=N
                     hover_surface = pygame.Surface((hover_rect.width, hover_rect.height), pygame.SRCALPHA)
                     hover_surface.fill((0, 200, 255, hover_alpha))
                     tela.blit(hover_surface, hover_rect.topleft)
-                
+
                 # Desenhar texto da opção
                 opcao_texto = render_text(nome, 32, cor, bold=True, pixel_style=True)
                 opcao_x = caixa_x + (caixa_largura - opcao_texto.get_width()) // 2
