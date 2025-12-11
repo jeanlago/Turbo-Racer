@@ -78,7 +78,7 @@ def load_pixel_font_atlas():
         try:
             if not pygame.get_init():
                 pygame.init()
-            _pixel_font_atlas = pygame.image.load("assets/fonts/pixel_font_atlas.png").convert_alpha()
+            _pixel_font_atlas = pygame.image.load(os.path.join(DIR_PROJETO, "assets", "fonts", "pixel_font_atlas.png")).convert_alpha()
             
             char_width = 8
             char_height = 12
@@ -170,13 +170,13 @@ def render_text(text, size, color=(255,255,255), bold=True, pixel_style=True):
     
     if pixel_style:
         pixel_fonts = [
-            "assets/fonts/PixeloidSans.ttf",           # PixeloidSans (pixel art com acentos)
-            "assets/fonts/ByteBounce.ttf",             # ByteBounce (pixel art com acentos)
-            "assets/fonts/PressStart2P-Regular.ttf",  # Press Start 2P (clássica)
-            "assets/fonts/04b_03.ttf",               # 04b_03 (pixel art clássica)
-            "assets/fonts/04b_08.ttf",               # 04b_08 (pixel art moderna)
-            "assets/fonts/pixel_font.ttf",           # Fonte customizada
-            "assets/fonts/retro_font.ttf",           # Fonte retrô customizada
+            os.path.join(DIR_PROJETO, "assets", "fonts", "PixeloidSans.ttf"),
+            os.path.join(DIR_PROJETO, "assets", "fonts", "ByteBounce.ttf"),
+            os.path.join(DIR_PROJETO, "assets", "fonts", "PressStart2P-Regular.ttf"),
+            os.path.join(DIR_PROJETO, "assets", "fonts", "04b_03.ttf"),
+            os.path.join(DIR_PROJETO, "assets", "fonts", "04b_08.ttf"),
+            os.path.join(DIR_PROJETO, "assets", "fonts", "pixel_font.ttf"),
+            os.path.join(DIR_PROJETO, "assets", "fonts", "retro_font.ttf"),
         ]
         
         if not any(os.path.exists(font_path) for font_path in pixel_fonts):
