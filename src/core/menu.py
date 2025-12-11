@@ -3871,7 +3871,7 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                             if pode_upgrade and fundo_sem_textos:
                                                 # Marcar que visitou a tela de upgrades para este carro
                                                 gerenciador_progresso.marcar_upgrades_visitado(carro_atual['prefixo_cor'])
-                                                if tela_upgrades(screen, carro_atual['prefixo_cor'], carro_atual['nome'], fundo_sem_textos):
+                                                if tela_upgrades(screen, carro_atual['prefixo_cor'], carro_atual['nome'], fundo_sem_textos, modo_arcade=modo_arcade):
                                                     pass  # Volta para seleção de carros
                                             elif not pode_upgrade:
                                                 from core.i18n import t
@@ -4249,7 +4249,7 @@ def selecionar_carros_loop(screen, modo_arcade=False, modo_jogo=None):
                                 if pode_upgrade and fundo_sem_textos:
                                     # Marcar que visitou a tela de upgrades para este carro
                                     gerenciador_progresso.marcar_upgrades_visitado(carro_atual['prefixo_cor'])
-                                    if tela_upgrades(screen, carro_atual['prefixo_cor'], carro_atual['nome'], fundo_sem_textos):
+                                    if tela_upgrades(screen, carro_atual['prefixo_cor'], carro_atual['nome'], fundo_sem_textos, modo_arcade=modo_arcade):
                                         pass  # Volta para seleção de carros
                                 elif not pode_upgrade:
                                     from core.i18n import t
@@ -5849,7 +5849,7 @@ def escurecer_sprite(surface, fator=0.05):
     
     return sprite_escurecido
 
-def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
+def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None, modo_arcade=False):
     """Tela de upgrades para um carro específico - estilo Need for Speed 2015"""
     from core.i18n import t
     from core.progresso import gerenciador_progresso
@@ -5864,7 +5864,6 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
     narrative_current_scene = narrative_system.current_scene_id
     narrative_current_line = narrative_system.current_line_index
     if narrativa_estava_ativa:
-        print("[TELA_UPGRADES] Narrativa estava ativa, fechando temporariamente para permitir interação com upgrades")
         # Fechar completamente a narrativa para evitar interceptação de eventos
         narrative_system.fechar()
         narrative_system.active = False
@@ -6007,7 +6006,6 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
         eventos = list(pygame.event.get())
         
         if narrative_system.active:
-            print("[TELA_UPGRADES] Narrativa ainda está ativa durante loop, desativando completamente")
             narrative_system.fechar()
             narrative_system.active = False
             narrative_system.current_scene_id = None
@@ -6024,9 +6022,7 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                 # Filtrar eventos já processados pelo Glub (APENAS se o Glub estiver ativo)
                 if glub.ativo:
                     eventos = [ev for ev in eventos if not (ev.type in (pygame.MOUSEBUTTONDOWN, pygame.KEYDOWN))]
-                    print(f"[TELA_UPGRADES] Eventos filtrados pelo Glub, restantes: {len(eventos)}")
         
-        print(f"[TELA_UPGRADES] Total de eventos antes do loop: {len(eventos)}, tipos: {[ev.type for ev in eventos]}")
         
         # Definir rects das setas ANTES do loop de eventos (para que os cliques funcionem)
         seta_esquerda_rect = None
@@ -6044,7 +6040,6 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                 seta_direita_rect = pygame.Rect(seta_direita_x, seta_direita_y, seta_direita_temp.get_width(), seta_direita_temp.get_height())
         
         for ev in eventos:
-            print(f"[TELA_UPGRADES] Processando evento: type={ev.type}, button={ev.button if hasattr(ev, 'button') else 'N/A'}")
             if ev.type == pygame.QUIT:
                 return False
             
@@ -6330,9 +6325,8 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
                     hitbox_tamanho
                 )
                 
-                print(f"[TELA_UPGRADES] Verificando colisão: mouse=({mouse_x}, {mouse_y}), icon_rect={icon_rect}, collidepoint={icon_rect.collidepoint(mouse_x, mouse_y)}")
+
                 if icon_rect.collidepoint(mouse_x, mouse_y):
-                    print(f"[TELA_UPGRADES] Clique no ícone do upgrade {upgrade_atual_tipo} detectado")
                     nivel_atual = gerenciador_progresso.obter_upgrade(prefixo_cor, upgrade_atual_tipo)
                     nivel_maximo = gerenciador_progresso.obter_nivel_maximo_upgrade()
                     if nivel_atual < nivel_maximo:
@@ -6851,26 +6845,21 @@ def tela_upgrades(screen, prefixo_cor, nome_carro, fundo_garagem=None):
         popup_musica.atualizar(dt)
         popup_musica.desenhar(screen)
         
-        # Desenhar rastreador de missão no canto superior direito (apenas em modo campanha)
-        try:
-            from core.missoes import gerenciador_missoes
-            from config import LARGURA
-            if hud_instance is not None:
-                hud_instance.desenhar_missao_ativa(screen, posicao=(LARGURA - 20, 10), alinhar_direita=True)
-        except Exception as e:
-            pass  # Silenciosamente falhar se o sistema de missões não estiver disponível
+        # Desenhar rastreador de missão no canto superior direito (apenas em modo campanha, nunca no modo arcade)
+        if not modo_arcade:
+            try:
+                from core.missoes import gerenciador_missoes
+                from config import LARGURA
+                if hud_instance is not None:
+                    hud_instance.desenhar_missao_ativa(screen, posicao=(LARGURA - 20, 10), alinhar_direita=True)
+            except Exception as e:
+                pass  # Silenciosamente falhar se o sistema de missões não estiver disponível
         
-        # Crank removido da tela de upgrades - não desenhar
-        # Desenhar Glub (se ativo e Crank não estiver ativo) - APENAS no modo arcade, não na campanha
-        # O Glub só deve aparecer na narrativa, não na oficina do modo campanha
-        # elif glub.ativo:
-        #     glub.desenhar_dialogo(screen, dt)
         
         pygame.display.flip()
     
     # Restaurar estado da narrativa se estava ativa antes de entrar na tela de upgrades
     if narrativa_estava_ativa:
-        print("[TELA_UPGRADES] Restaurando estado da narrativa após sair da tela de upgrades")
         narrative_system.active = narrativa_estava_ativa
 
 def submenu_audio(screen):
