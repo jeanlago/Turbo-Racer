@@ -271,6 +271,7 @@
       "vender_carro": "VENDER CARRO"
     },
     "fechar": {
+      "titulo": "FECHAR JOGO",
       "pergunta": "Você tem certeza que quer fechar o jogo?",
       "sim": "SIM",
       "nao": "NÃO"

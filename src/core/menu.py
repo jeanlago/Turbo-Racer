@@ -7728,131 +7728,219 @@ def mostrar_dialogo_confirmacao_venda_carro(screen, bg, nome_carro, preco_venda)
                             return i == 0  # VENDER = True, CANCELAR = False
 
 def mostrar_dialogo_confirmacao_fechar(screen, bg):
-    """Mostra diálogo modal de confirmação para fechar o jogo"""
+    """Mostra diálogo modal de confirmação para fechar o jogo - estilo janela de opções"""
     from config import LARGURA, ALTURA, FPS
     from core.i18n import t
+    from core.gamepad_manager import gerenciador_gamepad
+    from core.menu_controles import processar_eventos_controle_menu
     
     clock = pygame.time.Clock()
     opcao_selecionada = 0  # 0 = SIM, 1 = NÃO
     
-    # Variáveis para os botões
-    caixa_largura = 600
-    caixa_altura = 220
+    # Variáveis para a caixa (estilo janela de opções)
+    caixa_largura = 500
     caixa_x = (LARGURA - caixa_largura) // 2
+    
+    # Calcular altura da caixa baseada no texto (antes do loop)
+    texto_pergunta_str = t("confirmacao.fechar.pergunta")
+    tamanho_fonte_pergunta = 24
+    largura_maxima = caixa_largura - 40  # Margens de 20 de cada lado
+    
+    # Quebrar texto em múltiplas linhas
+    palavras = texto_pergunta_str.split(' ')
+    linhas_pergunta = []
+    linha_atual = ""
+    for palavra in palavras:
+        teste_linha = linha_atual + (" " if linha_atual else "") + palavra
+        teste_render = render_text(teste_linha, tamanho_fonte_pergunta, (220, 220, 220), bold=False, pixel_style=True)
+        if teste_render.get_width() <= largura_maxima:
+            linha_atual = teste_linha
+        else:
+            if linha_atual:
+                linhas_pergunta.append(linha_atual)
+            linha_atual = palavra
+    if linha_atual:
+        linhas_pergunta.append(linha_atual)
+    
+    # Calcular altura da caixa dinamicamente
+    titulo_altura = 48  # Tamanho do título
+    espacamento_titulo = 20
+    linha_divisoria_altura = 10
+    espacamento_apos_titulo = 30
+    espacamento_linhas = 25
+    altura_total_pergunta = len(linhas_pergunta) * espacamento_linhas if linhas_pergunta else tamanho_fonte_pergunta
+    espacamento_apos_pergunta = 20
+    opcao_altura = 50
+    espacamento_opcoes = 15
+    altura_total_opcoes = 2 * opcao_altura + espacamento_opcoes
+    margem_inferior = 20
+    
+    caixa_altura = (espacamento_titulo + titulo_altura + linha_divisoria_altura + 
+                    espacamento_apos_titulo + altura_total_pergunta + 
+                    espacamento_apos_pergunta + altura_total_opcoes + margem_inferior)
     caixa_y = (ALTURA - caixa_altura) // 2
     
-    botao_sim_rect = pygame.Rect(caixa_x + 50, caixa_y + caixa_altura - 70, 180, 50)
-    botao_nao_rect = pygame.Rect(caixa_x + caixa_largura - 230, caixa_y + caixa_altura - 70, 180, 50)
-    
-    animacao_cursor = 0.0
+    # Animação hover (estilo janela de opções)
+    hover_animation = [0.0] * 2
+    hover_speed = 8.0
     
     while True:
         dt = clock.tick(FPS) / 1000.0
-        animacao_cursor += dt * 3.0
-        if animacao_cursor >= 1.0:
-            animacao_cursor = 0.0
         
-        for ev in pygame.event.get():
-            if ev.type == pygame.QUIT:
-                return False  # Não fechar se clicar no X durante confirmação
-            elif ev.type == pygame.KEYDOWN:
-                if ev.key in (pygame.K_LEFT, pygame.K_a):
-                    opcao_selecionada = (opcao_selecionada - 1) % 2
-                elif ev.key in (pygame.K_RIGHT, pygame.K_d):
-                    opcao_selecionada = (opcao_selecionada + 1) % 2
-                elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
-                    return opcao_selecionada == 0  # SIM = True, NÃO = False
-                elif ev.key == pygame.K_ESCAPE:
-                    return False  # Cancelar
-            elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                mouse_x, mouse_y = pygame.mouse.get_pos()
-                if botao_sim_rect.collidepoint(mouse_x, mouse_y):
-                    return True
-                elif botao_nao_rect.collidepoint(mouse_x, mouse_y):
-                    return False
-            
-            # Processar controle
-            from core.gamepad_manager import gerenciador_gamepad
-            if gerenciador_gamepad.obter_numero_controles() > 0:
-                from core.menu_controles import processar_eventos_controle_menu
-                tempo_atual = pygame.time.get_ticks()
-                resultado_controle = processar_eventos_controle_menu(ev, opcao_selecionada, 2, joystick_id=0, tempo_atual=tempo_atual)
-                if resultado_controle:
-                    acao = resultado_controle.get("acao")
-                    if acao == "esquerda":
-                        opcao_selecionada = (opcao_selecionada - 1) % 2
-                    elif acao == "direita":
-                        opcao_selecionada = (opcao_selecionada + 1) % 2
-                    elif acao == "confirmar":
-                        return opcao_selecionada == 0  # SIM = True, NÃO = False
-                    elif acao == "cancelar":
-                        return False  # Cancelar
-        
-        # Desenhar
+        # Desenhar fundo (sem blur, estilo janela de opções)
         screen.blit(bg, (0, 0))
         
-        # Overlay escuro
+        # Overlay escuro (estilo janela de opções - mais claro)
         overlay = pygame.Surface((LARGURA, ALTURA), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 150))
+        overlay.fill((0, 0, 0, 50))
         screen.blit(overlay, (0, 0))
         
-        # Caixa do diálogo
+        # Caixa e borda (estilo janela de opções)
         caixa_fundo = pygame.Surface((caixa_largura, caixa_altura), pygame.SRCALPHA)
-        caixa_fundo.fill((0, 0, 0, 200))
+        caixa_fundo.fill((0, 0, 0, 150))
         screen.blit(caixa_fundo, (caixa_x, caixa_y))
         pygame.draw.rect(screen, (255, 255, 255), (caixa_x, caixa_y, caixa_largura, caixa_altura), 3)
         
-        # Texto principal - reduzir tamanho da fonte para caber na caixa
-        from core.i18n import t
-        texto_pergunta = render_text(t("confirmacao.fechar.pergunta"), 20, (255, 255, 255), bold=True, pixel_style=True)
-        texto_pergunta_x = caixa_x + (caixa_largura - texto_pergunta.get_width()) // 2
-        screen.blit(texto_pergunta, (texto_pergunta_x, caixa_y + 30))
+        # Título (estilo janela de opções)
+        titulo = render_text(t("confirmacao.fechar.titulo"), 48, (255, 255, 255), bold=True, pixel_style=True)
+        titulo_x = caixa_x + (caixa_largura - titulo.get_width()) // 2
+        titulo_y = caixa_y + 20
+        screen.blit(titulo, (titulo_x, titulo_y))
         
-        # Botões
+        # Linha divisória abaixo do título (estilo janela de opções)
+        pygame.draw.line(screen, (255, 255, 255),
+                         (caixa_x + 20, titulo_y + titulo.get_height() + 10),
+                         (caixa_x + caixa_largura - 20, titulo_y + titulo.get_height() + 10), 2)
+        
+        # Desenhar linhas da pergunta
+        pergunta_y = titulo_y + titulo.get_height() + 30
+        for i, linha in enumerate(linhas_pergunta):
+            linha_render = render_text(linha, tamanho_fonte_pergunta, (220, 220, 220), bold=False, pixel_style=True)
+            pergunta_x = caixa_x + (caixa_largura - linha_render.get_width()) // 2
+            screen.blit(linha_render, (pergunta_x, pergunta_y + i * espacamento_linhas))
+        
+        # Opções (estilo janela de opções)
+        opcoes = [t("confirmacao.fechar.sim"), t("confirmacao.fechar.nao")]
+        opcao_largura = 450
+        opcao_altura = 50
+        opcao_x = caixa_x + (caixa_largura - opcao_largura) // 2
+        opcao_y_inicial = pergunta_y + altura_total_pergunta + 20
+        espacamento = 15
+        
+        # Verificar hover do mouse
         mouse_x, mouse_y = pygame.mouse.get_pos()
-        sim_hover = botao_sim_rect.collidepoint(mouse_x, mouse_y)
-        nao_hover = botao_nao_rect.collidepoint(mouse_x, mouse_y)
+        mouse_in_caixa = (caixa_x <= mouse_x <= caixa_x + caixa_largura and
+                          caixa_y <= mouse_y <= caixa_y + caixa_altura)
         
-        cor_sim = (100, 255, 100) if (opcao_selecionada == 0 or sim_hover) else (80, 200, 80)
-        cor_nao = (255, 100, 100) if (opcao_selecionada == 1 or nao_hover) else (200, 80, 80)
+        opcao_hover = -1
+        if mouse_in_caixa:
+            for i in range(len(opcoes)):
+                opcao_y = opcao_y_inicial + i * (opcao_altura + espacamento)
+                opcao_rect = pygame.Rect(opcao_x, opcao_y, opcao_largura, opcao_altura)
+                if opcao_rect.collidepoint(mouse_x, mouse_y):
+                    opcao_hover = i
+                    opcao_selecionada = i
         
-        pygame.draw.rect(screen, cor_sim, botao_sim_rect)
-        pygame.draw.rect(screen, (150, 255, 150), botao_sim_rect, 2)
-        pygame.draw.rect(screen, cor_nao, botao_nao_rect)
-        pygame.draw.rect(screen, (255, 150, 150), botao_nao_rect, 2)
-        
-        # Desenhar cursor do controle se selecionado
-        from core.gamepad_manager import gerenciador_gamepad
-        if gerenciador_gamepad.obter_numero_controles() > 0:
-            tamanho_cursor = 3 + int(2 * abs(math.sin(animacao_cursor * math.pi)))
-            if opcao_selecionada == 0:
-                cursor_rect = pygame.Rect(
-                    botao_sim_rect.x - tamanho_cursor,
-                    botao_sim_rect.y - tamanho_cursor,
-                    botao_sim_rect.width + tamanho_cursor * 2,
-                    botao_sim_rect.height + tamanho_cursor * 2
-                )
-                pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
+        # Atualizar animações hover (estilo janela de opções)
+        for i in range(len(opcoes)):
+            if i == opcao_hover:
+                hover_animation[i] = min(1.0, hover_animation[i] + hover_speed * dt)
             else:
-                cursor_rect = pygame.Rect(
-                    botao_nao_rect.x - tamanho_cursor,
-                    botao_nao_rect.y - tamanho_cursor,
-                    botao_nao_rect.width + tamanho_cursor * 2,
-                    botao_nao_rect.height + tamanho_cursor * 2
+                hover_animation[i] = max(0.0, hover_animation[i] - hover_speed * dt)
+        if not mouse_in_caixa:
+            for i in range(len(opcoes)):
+                hover_animation[i] = max(0.0, hover_animation[i] - hover_speed * dt * 1.5)
+        
+        # Desenhar opções (estilo janela de opções)
+        for i, texto_opcao in enumerate(opcoes):
+            opcao_y = opcao_y_inicial + i * (opcao_altura + espacamento)
+            
+            # Não misturar hover com selecionado
+            hover_progress = 0.0 if (i == opcao_selecionada) else hover_animation[i]
+            
+            if i == opcao_selecionada:
+                base_cor_fundo = (0, 200, 255, 50)
+                base_cor_texto = (0, 200, 255)
+            else:
+                base_cor_fundo = (0, 0, 0, 0)
+                base_cor_texto = (255, 255, 255)
+            
+            if hover_progress > 0:
+                hover_cor_fundo = (0, 200, 255, 30)
+                hover_cor_texto = (0, 200, 255)
+                cor_fundo = (
+                    int(base_cor_fundo[0] + (hover_cor_fundo[0] - base_cor_fundo[0]) * hover_progress),
+                    int(base_cor_fundo[1] + (hover_cor_fundo[1] - base_cor_fundo[1]) * hover_progress),
+                    int(base_cor_fundo[2] + (hover_cor_fundo[2] - base_cor_fundo[2]) * hover_progress),
+                    int(base_cor_fundo[3] + (hover_cor_fundo[3] - base_cor_fundo[3]) * hover_progress)
                 )
-                pygame.draw.rect(screen, (0, 200, 255), cursor_rect, 3)
-        
-        texto_sim = render_text(t("confirmacao.fechar.sim"), 22, (255, 255, 255), bold=True, pixel_style=True)
-        texto_sim_x = botao_sim_rect.x + (botao_sim_rect.width - texto_sim.get_width()) // 2
-        texto_sim_y = botao_sim_rect.y + (botao_sim_rect.height - texto_sim.get_height()) // 2
-        screen.blit(texto_sim, (texto_sim_x, texto_sim_y))
-        
-        texto_nao = render_text(t("confirmacao.fechar.nao"), 22, (255, 255, 255), bold=True, pixel_style=True)
-        texto_nao_x = botao_nao_rect.x + (botao_nao_rect.width - texto_nao.get_width()) // 2
-        texto_nao_y = botao_nao_rect.y + (botao_nao_rect.height - texto_nao.get_height()) // 2
-        screen.blit(texto_nao, (texto_nao_x, texto_nao_y))
+                cor_texto = (
+                    int(base_cor_texto[0] + (hover_cor_texto[0] - base_cor_texto[0]) * hover_progress),
+                    int(base_cor_texto[1] + (hover_cor_texto[1] - base_cor_texto[1]) * hover_progress),
+                    int(base_cor_texto[2] + (hover_cor_texto[2] - base_cor_texto[2]) * hover_progress)
+                )
+            else:
+                cor_fundo = base_cor_fundo
+                cor_texto = base_cor_texto
+            
+            if cor_fundo[3] > 0:
+                opcao_fundo = pygame.Surface((opcao_largura, opcao_altura), pygame.SRCALPHA)
+                opcao_fundo.fill(cor_fundo)
+                screen.blit(opcao_fundo, (opcao_x, opcao_y))
+            
+            pygame.draw.rect(screen, (255, 255, 255), (opcao_x, opcao_y, opcao_largura, opcao_altura), 2)
+            texto_opcao_render = render_text(texto_opcao, 32, cor_texto, bold=True, pixel_style=True)
+            texto_x = opcao_x + (opcao_largura - texto_opcao_render.get_width()) // 2
+            texto_y = opcao_y + (opcao_altura - texto_opcao_render.get_height()) // 2
+            screen.blit(texto_opcao_render, (texto_x, texto_y))
         
         pygame.display.flip()
+        
+        # Processar eventos
+        for ev in pygame.event.get():
+            if ev.type == pygame.QUIT:
+                return False
+            
+            # Processar controle primeiro
+            controle_processado = False
+            if gerenciador_gamepad.obter_numero_controles() > 0:
+                tempo_atual = pygame.time.get_ticks()
+                resultado_controle = processar_eventos_controle_menu(ev, opcao_selecionada, len(opcoes), joystick_id=0, tempo_atual=tempo_atual)
+                if resultado_controle:
+                    controle_processado = True
+                    acao = resultado_controle.get("acao")
+                    if acao == "cima" and "opcao" in resultado_controle:
+                        opcao_selecionada = resultado_controle["opcao"]
+                    elif acao == "baixo" and "opcao" in resultado_controle:
+                        opcao_selecionada = resultado_controle["opcao"]
+                    elif acao == "confirmar":
+                        if opcao_selecionada == 0:  # SIM
+                            return True
+                        else:  # NÃO
+                            return False
+                    elif acao == "cancelar":
+                        return False
+            
+            if not controle_processado:
+                if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                    mouse_x, mouse_y = pygame.mouse.get_pos()
+                    mouse_in_caixa = (caixa_x <= mouse_x <= caixa_x + caixa_largura and
+                                      caixa_y <= mouse_y <= caixa_y + caixa_altura)
+                    if mouse_in_caixa:
+                        for i in range(len(opcoes)):
+                            opcao_y = opcao_y_inicial + i * (opcao_altura + espacamento)
+                            opcao_rect = pygame.Rect(opcao_x, opcao_y, opcao_largura, opcao_altura)
+                            if opcao_rect.collidepoint(mouse_x, mouse_y):
+                                return i == 0  # SIM = True, NÃO = False
+                elif ev.type == pygame.KEYDOWN:
+                    if ev.key == pygame.K_ESCAPE:
+                        return False
+                    elif ev.key in (pygame.K_UP, pygame.K_w):
+                        opcao_selecionada = (opcao_selecionada - 1) % len(opcoes)
+                    elif ev.key in (pygame.K_DOWN, pygame.K_s):
+                        opcao_selecionada = (opcao_selecionada + 1) % len(opcoes)
+                    elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
+                        return opcao_selecionada == 0  # SIM = True, NÃO = False
 
 def mostrar_dialogo_confirmacao_resolucao(screen_ref, bg, nova_resolucao, resolucao_anterior):
     """Mostra diálogo de confirmação para mudança de resolução com timer de 30 segundos"""

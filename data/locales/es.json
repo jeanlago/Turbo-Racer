@@ -263,6 +263,7 @@
       "vender_carro": "VENDER COCHE"
     },
     "fechar": {
+      "titulo": "CERRAR JUEGO",
       "pergunta": "¿Estás seguro de que quieres cerrar el juego?",
       "sim": "SÍ",
       "nao": "NO"
